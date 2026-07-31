@@ -14,6 +14,7 @@ import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 
 import { EdfFile } from '../edf/reader.js';
+import { describeFormat } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { decodeRecordAnnotations } from '../edf/annotations.js';
 import type { Annotation } from '../edf/annotations.js';
@@ -420,7 +421,7 @@ async function writeMetadata(
       sha256: options.checksum === true ? await sha256(inputPath) : null,
     },
     recording: {
-      format: header.isEdfPlus ? `EDF+ (${header.continuity})` : 'EDF',
+      format: describeFormat(header),
       version: header.version,
       patient_id: header.patientId,
       recording_id: header.recordingId,

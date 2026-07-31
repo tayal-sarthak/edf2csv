@@ -7,7 +7,7 @@
 
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
-import { formatRate } from '../edf/header.js';
+import { describeFormat, formatRate } from '../edf/header.js';
 import { formatBytes, formatDuration } from '../format/number.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -39,7 +39,7 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   const lines: string[] = [];
 
   lines.push(`File       ${file.path}`);
-  lines.push(`Format     ${header.isEdfPlus ? `EDF+ (${header.continuity})` : 'EDF'}`);
+  lines.push(`Format     ${describeFormat(header)}`);
   lines.push(
     `Recorded   ${header.startDateTime ? header.startDateTime.toISOString().replace('T', ' ').replace('.000Z', ' UTC') : `${header.startDateRaw} ${header.startTimeRaw} (unparseable)`}`,
   );

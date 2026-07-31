@@ -39,7 +39,6 @@ export interface Diagnostic {
 export type EdfErrorCode =
   | 'FILE_TOO_SMALL'
   | 'BAD_HEADER_FIELD'
-  | 'BDF_UNSUPPORTED'
   | 'NO_DATA_RECORDS'
   | 'INVALID_SIGNAL_COUNT'
   | 'INVALID_RECORD_DURATION'

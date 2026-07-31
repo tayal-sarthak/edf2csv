@@ -149,6 +149,20 @@ export function generate() {
     ],
   });
 
+  // BDF: BioSemi's 24-bit variant. Same layout, 3-byte samples, wider digital range.
+  writeEdf({
+    path: at('biosemi.bdf'),
+    bdf: true,
+    reserved: '24BIT',
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'A1', dimension: 'uV', physMin: -262144, physMax: 262144, digMin: -8388608, digMax: 8388607, samplesPerRecord: 8, gen: ramp(8) },
+      // Values only a 24-bit range can hold, to prove the wider samples survive.
+      { label: 'A2', dimension: 'uV', physMin: -262144, physMax: 262144, digMin: -8388608, digMax: 8388607, samplesPerRecord: 8, gen: (r, i) => (r * 8 + i) * -1000000 },
+    ],
+  });
+
   // A file whose only content is annotations.
   writeEdf({
     path: at('annotations-only.edf'),

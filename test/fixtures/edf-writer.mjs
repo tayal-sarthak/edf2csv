@@ -75,10 +75,18 @@ export function writeEdf(spec) {
     declaredRecords = null,
   } = spec;
 
+  const bdf = spec.bdf === true;
+  const bytesPerSample = bdf ? 3 : 2;
+
+  // BDF announces itself with byte 255 followed by 'BIOSEMI'.
+  const versionField = bdf
+    ? Buffer.concat([Buffer.from([0xff]), Buffer.from('BIOSEMI', 'latin1')])
+    : ascii('0', 8);
+
   const ns = signals.length;
   const headerBytes = 256 * (1 + ns);
   const parts = [
-    ascii('0', 8),
+    versionField,
     ascii(patient, 80),
     ascii(recording, 80),
     ascii(startDate, 8),
@@ -109,7 +117,7 @@ export function writeEdf(spec) {
     throw new Error(`header is ${header.length} bytes, expected ${headerBytes}`);
   }
 
-  const recordBytes = signals.reduce((total, s) => total + s.samplesPerRecord, 0) * 2;
+  const recordBytes = signals.reduce((total, s) => total + s.samplesPerRecord, 0) * bytesPerSample;
   const recordsToWrite = truncateRecords ?? numRecords;
   const body = Buffer.alloc(recordBytes * recordsToWrite);
 
@@ -117,7 +125,7 @@ export function writeEdf(spec) {
   for (let record = 0; record < recordsToWrite; record++) {
     for (const signal of signals) {
       if (signal.annotations) {
-        const slot = Buffer.alloc(signal.samplesPerRecord * 2, 0x00);
+        const slot = Buffer.alloc(signal.samplesPerRecord * bytesPerSample, 0x00);
         const text = talsForRecord ? talsForRecord(record) : buildTal(record * recordDuration);
         const encoded = Buffer.from(text, 'utf8');
         if (encoded.length > slot.length) {
@@ -133,8 +141,15 @@ export function writeEdf(spec) {
           let value = Math.round(signal.gen(record, sample));
           if (value > signal.digMax) value = signal.digMax;
           if (value < signal.digMin) value = signal.digMin;
-          body.writeInt16LE(value, offset);
-          offset += 2;
+          if (bdf) {
+            const unsigned = value < 0 ? value + 0x1000000 : value;
+            body[offset] = unsigned & 0xff;
+            body[offset + 1] = (unsigned >> 8) & 0xff;
+            body[offset + 2] = (unsigned >> 16) & 0xff;
+          } else {
+            body.writeInt16LE(value, offset);
+          }
+          offset += bytesPerSample;
         }
       }
     }

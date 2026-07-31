@@ -1,6 +1,6 @@
 # edf2csv
 
-Turn an EDF or EDF+ recording into CSV with one command.
+Turn an EDF, EDF+ or BDF recording into CSV with one command.
 
 ```bash
 npx edf2csv recording.edf
@@ -97,6 +97,5 @@ npm test
 
 Needs Node 20+. No dependencies. MIT licensed.
 
-Doesn't read BDF (BioSemi 24-bit) yet — it says so clearly rather than guessing.
-No filtering, no artifact removal, no AI, no network calls. It reads a file and
-writes files.
+Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal,
+no AI, no network calls. It reads a file and writes files.

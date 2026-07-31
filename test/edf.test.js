@@ -203,6 +203,39 @@ describe('reading samples', () => {
   });
 });
 
+describe('BDF (BioSemi 24-bit)', () => {
+  it('recognises the format from its version bytes', async () => {
+    const file = await load('biosemi.bdf');
+    assert.equal(file.header.isBdf, true);
+    assert.equal(file.header.bytesPerSample, 3);
+    assert.equal(file.header.signalCount, 2);
+  });
+
+  it('sizes data records by three bytes per sample', async () => {
+    const file = await load('biosemi.bdf');
+    // 2 signals * 8 samples * 3 bytes
+    assert.equal(file.header.recordBytes, 48);
+    assert.equal(file.recordCount, 2);
+  });
+
+  it('decodes 24-bit samples, including values no 16-bit field could hold', async () => {
+    const file = await load('biosemi.bdf');
+    const signal = file.dataSignals[1];
+    const batch = (await file.readRecords().next()).value;
+    const digital = [0, 1, 2, 3].map((i) => file.sampleAt(batch, 0, signal, i));
+    assert.deepEqual(digital, [0, -1000000, -2000000, -3000000]);
+    assert.ok(digital[3] < -32768, 'a 16-bit reader could not represent this sample');
+  });
+
+  it('sign-extends negative 24-bit samples correctly', async () => {
+    const file = await load('biosemi.bdf');
+    const scale = makeScaler(file.dataSignals[1]);
+    // -1000000 digital over a -8388608..8388607 range mapped to -262144..262144 uV
+    assert.ok(scale(-1000000) < 0, 'must stay negative, not wrap to a huge positive');
+    assert.ok(Math.abs(scale(-1000000) - -31249.9862) < 1e-3);
+  });
+});
+
 describe('EDF+ annotations', () => {
   it('decodes onset, duration and text', async () => {
     const file = await load('annotations.edf');

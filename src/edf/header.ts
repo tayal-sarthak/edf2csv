@@ -34,6 +34,8 @@ import type { Diagnostic } from './errors.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
 export const ANNOTATIONS_LABEL = 'EDF Annotations';
+/** BDF+ uses its own spelling for the same channel. */
+export const BDF_ANNOTATIONS_LABEL = 'BDF Annotations';
 
 export const FIXED_HEADER_BYTES = 256;
 export const SIGNAL_HEADER_BYTES = 256;
@@ -72,6 +74,8 @@ export interface EdfHeader {
   headerBytes: number;
   reserved: string;
   isEdfPlus: boolean;
+  /** True for BioSemi BDF/BDF+ files, whose samples are 3 bytes rather than 2. */
+  isBdf: boolean;
   /** 'EDF+C' continuous, 'EDF+D' discontinuous, or null for plain EDF. */
   continuity: 'EDF+C' | 'EDF+D' | null;
   /** As declared in the header. -1 means "unknown", which the spec permits. */
@@ -172,16 +176,10 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
     );
   }
 
-  const version = trimField(dec(buf, 0, 8));
-
-  // BDF (BioSemi 24-bit) starts with byte 255 followed by 'BIOSEMI'.
-  if (buf[0] === 0xff && dec(buf, 1, 7) === 'BIOSEMI') {
-    throw new EdfError(
-      'BDF_UNSUPPORTED',
-      'This is a BDF (BioSemi 24-bit) file, which edf2csv does not read yet.',
-      'Only EDF and EDF+ are supported in this version.',
-    );
-  }
+  // BDF (BioSemi) marks itself with byte 255 followed by 'BIOSEMI', and stores
+  // 3-byte samples instead of 2. Everything else about the layout is identical.
+  const isBdf = buf[0] === 0xff && dec(buf, 1, 7) === 'BIOSEMI';
+  const version = isBdf ? 'BIOSEMI' : trimField(dec(buf, 0, 8));
 
   const patientId = trimField(dec(buf, 8, 80));
   const recordingId = trimField(dec(buf, 88, 80));
@@ -245,7 +243,7 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
 
   const signals: EdfSignal[] = [];
   let byteOffsetInRecord = 0;
-  const bytesPerSample = 2;
+  const bytesPerSample = isBdf ? 3 : 2;
   const seenLabels = new Map<string, number[]>();
 
   for (let i = 0; i < signalCount; i++) {
@@ -281,7 +279,7 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
       );
     }
 
-    const isAnnotations = label === ANNOTATIONS_LABEL;
+    const isAnnotations = label === ANNOTATIONS_LABEL || label === BDF_ANNOTATIONS_LABEL;
 
     signals.push({
       index: i,
@@ -461,6 +459,7 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
       headerBytes: expectedHeaderBytes,
       reserved,
       isEdfPlus,
+      isBdf,
       continuity,
       declaredRecordCount,
       recordDuration,
@@ -473,6 +472,12 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
     trailingBytes,
     diagnostics,
   };
+}
+
+/** "EDF", "EDF+ (EDF+D)", "BDF", "BDF+ (EDF+C)". */
+export function describeFormat(header: EdfHeader): string {
+  const base = header.isBdf ? 'BDF' : 'EDF';
+  return header.isEdfPlus ? `${base}+ (${header.continuity})` : base;
 }
 
 /** Render a sampling rate without trailing noise: 256, 0.5, 12.5. */

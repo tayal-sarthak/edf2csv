@@ -170,6 +170,17 @@ export class EdfFile {
       recordOffset * this.header.recordBytes +
       signal.byteOffsetInRecord +
       sampleIndex * this.header.bytesPerSample;
+
+    if (this.header.bytesPerSample === 3) {
+      // BDF stores 24-bit little-endian two's complement. Loading the three bytes
+      // into the top of a 32-bit word and shifting back down sign-extends them.
+      const data = batch.data;
+      return (
+        ((data[position] as number) << 8) |
+        ((data[position + 1] as number) << 16) |
+        ((data[position + 2] as number) << 24)
+      ) >> 8;
+    }
     return batch.data.readInt16LE(position);
   }
 
