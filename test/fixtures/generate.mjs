@@ -163,6 +163,22 @@ export function generate() {
     ],
   });
 
+  // BDF+D: BioSemi's discontinuous variant, which spells its markers "BDF+D" and
+  // "BDF Annotations" rather than the EDF+ equivalents.
+  writeEdf({
+    path: at('biosemi-plus.bdf'),
+    bdf: true,
+    reserved: 'BDF+D',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'A1', dimension: 'uV', physMin: -262144, physMax: 262144, digMin: -8388608, digMax: 8388607, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'BDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -8388608, digMax: 8388607, samplesPerRecord: 16, annotations: true },
+    ],
+    talsForRecord: (record) =>
+      buildTal([0, 1, 20][record], record === 1 ? [{ onset: 1.5, duration: 0.25, text: 'Blink' }] : []),
+  });
+
   // A file whose only content is annotations.
   writeEdf({
     path: at('annotations-only.edf'),

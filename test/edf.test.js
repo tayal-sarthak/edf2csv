@@ -227,6 +227,23 @@ describe('BDF (BioSemi 24-bit)', () => {
     assert.ok(digital[3] < -32768, 'a 16-bit reader could not represent this sample');
   });
 
+  it('understands BDF+ markers, which are spelled differently from EDF+', async () => {
+    const file = await load('biosemi-plus.bdf');
+    // The reserved field says "BDF+D" and the channel is "BDF Annotations".
+    assert.equal(file.header.isBdf, true);
+    assert.equal(file.header.isEdfPlus, true);
+    assert.equal(file.header.continuity, 'EDF+D', 'normalised to a single continuity marker');
+    assert.equal(file.annotationSignals.length, 1);
+    assert.equal(file.dataSignals.length, 1);
+  });
+
+  it('recovers gaps and annotations from a discontinuous BDF+ file', async () => {
+    const file = await load('biosemi-plus.bdf');
+    const { annotations, recordStarts } = await file.readAnnotations();
+    assert.deepEqual([...recordStarts], [0, 1, 20]);
+    assert.deepEqual(annotations.map((a) => [a.onset, a.duration, a.text]), [[1.5, 0.25, 'Blink']]);
+  });
+
   it('sign-extends negative 24-bit samples correctly', async () => {
     const file = await load('biosemi.bdf');
     const scale = makeScaler(file.dataSignals[1]);

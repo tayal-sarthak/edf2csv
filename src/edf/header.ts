@@ -238,8 +238,11 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
   const readField = (offsetUnits: number, width: number, i: number): string =>
     dec(buf, base + offsetUnits * signalCount + i * width, width);
 
+  // EDF+ writes 'EDF+C'/'EDF+D' here; BDF+ writes 'BDF+C'/'BDF+D'. The two mean the
+  // same thing, so both are normalised to a single continuity marker.
+  const continuityTag = /^(?:EDF|BDF)\+([CD])/u.exec(reserved);
   const continuity: 'EDF+C' | 'EDF+D' | null =
-    reserved.startsWith('EDF+C') ? 'EDF+C' : reserved.startsWith('EDF+D') ? 'EDF+D' : null;
+    continuityTag === null ? null : continuityTag[1] === 'D' ? 'EDF+D' : 'EDF+C';
 
   const signals: EdfSignal[] = [];
   let byteOffsetInRecord = 0;
@@ -422,7 +425,8 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
       code: 'DISCONTINUOUS',
       severity: 'warning',
       message:
-        'This is an EDF+D (discontinuous) recording: its data records are not contiguous in time.',
+        `This is a discontinuous (${isBdf ? 'BDF+D' : 'EDF+D'}) recording: its data records are ` +
+        `not contiguous in time.`,
       hint: 'Each row carries its true recording time, so gaps stay visible instead of being closed.',
     });
   }
@@ -477,7 +481,8 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
 /** "EDF", "EDF+ (EDF+D)", "BDF", "BDF+ (EDF+C)". */
 export function describeFormat(header: EdfHeader): string {
   const base = header.isBdf ? 'BDF' : 'EDF';
-  return header.isEdfPlus ? `${base}+ (${header.continuity})` : base;
+  if (!header.isEdfPlus) return base;
+  return `${base}+ (${header.continuity === 'EDF+D' ? 'discontinuous' : 'continuous'})`;
 }
 
 /** Render a sampling rate without trailing noise: 256, 0.5, 12.5. */
