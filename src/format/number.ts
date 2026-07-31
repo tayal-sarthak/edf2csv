@@ -67,12 +67,22 @@ export function makeSampleFormatter(signal: EdfSignal, decimals: number): Sample
 }
 
 /**
- * Decimals needed for a time column so that consecutive samples never collide.
- * Three places past the rate's magnitude keeps 256 Hz at microsecond-ish detail
- * without printing digits that carry no information.
+ * Decimals for the time column.
+ *
+ * The interval between samples is 1/rate, which has a terminating decimal
+ * expansion of d places exactly when 10^d divides evenly by the rate. Every rate
+ * in common use clears this — 256 Hz needs 8 places, 512 Hz needs 9, 250 Hz and
+ * 1000 Hz need 3 — so sample times are written exactly rather than rounded, and
+ * `time_s * rate` comes back as a whole number instead of 8191.999999.
+ *
+ * Rates with a repeating expansion (3 Hz, say) fall back to enough places to keep
+ * consecutive samples distinct.
  */
 export function timeDecimals(samplingRate: number): number {
   if (!(samplingRate > 0) || !Number.isFinite(samplingRate)) return 3;
+  for (let d = 0; d <= 9; d++) {
+    if (Number.isInteger(10 ** d / samplingRate)) return Math.max(3, d);
+  }
   return Math.min(9, Math.max(3, Math.ceil(Math.log10(samplingRate)) + 3));
 }
 

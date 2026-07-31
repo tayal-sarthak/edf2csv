@@ -162,8 +162,8 @@ describe('converting', () => {
 
     const rows = await readCsv(dir, 'signals.csv');
     assert.equal(rows[0], 'time_s,ch1,ch2');
-    assert.equal(rows[1], '0.0000,0.000,0.00000');
-    assert.equal(rows[2], '0.1000,0.100,-0.00100');
+    assert.equal(rows[1], '0.000,0.000,0.00000');
+    assert.equal(rows[2], '0.100,0.100,-0.00100');
     assert.equal(rows.length, 21, '20 samples plus a header');
   });
 
@@ -229,8 +229,8 @@ describe('converting', () => {
     await convert(fixture('tiny.edf'), { outputDir: dir, start: 0.5, duration: 0.5 });
     const rows = await readCsv(dir, 'signals.csv');
     assert.equal(rows.length, 6, 'five samples between 0.5s and 1.0s');
-    assert.equal(rows[1].split(',')[0], '0.5000');
-    assert.equal(rows.at(-1).split(',')[0], '0.9000');
+    assert.equal(rows[1].split(',')[0], '0.500');
+    assert.equal(rows.at(-1).split(',')[0], '0.900');
   });
 
   it('writes annotations alone when asked', async () => {

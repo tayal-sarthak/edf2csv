@@ -42,7 +42,15 @@ export function makeScaler(signal: EdfSignal): Scaler {
   // zero in the offset below.
   if (gain === 0 || !Number.isFinite(gain)) return () => physicalMin;
 
+  // Deriving the offset divides by the gain. For every realistic calibration that is
+  // both safe and more accurate, but an absurd header (a huge physical range over a
+  // near-zero gain) could overflow it, so fall back to the specification's own
+  // arrangement rather than emitting Infinity.
   const offset = physicalMax / gain - digitalMax;
+  if (!Number.isFinite(offset)) {
+    return (digital: number): number => (digital - digitalMin) * gain + physicalMin;
+  }
+
   return (digital: number): number => gain * (offset + digital);
 }
 
