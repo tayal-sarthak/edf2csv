@@ -1,0 +1,62 @@
+{
+  "name": "edf2csv",
+  "version": "0.1.0",
+  "description": "Convert EDF and EDF+ biosignal recordings to CSV from the command line. Local, deterministic, and scientifically careful.",
+  "keywords": [
+    "edf",
+    "edf+",
+    "csv",
+    "eeg",
+    "ecg",
+    "emg",
+    "biosignal",
+    "polysomnography",
+    "sleep",
+    "converter",
+    "cli",
+    "neuroscience"
+  ],
+  "license": "MIT",
+  "author": "Sarthak Tayal",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tayal-sarthak/edf2csv.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tayal-sarthak/edf2csv/issues"
+  },
+  "homepage": "https://github.com/tayal-sarthak/edf2csv#readme",
+  "type": "module",
+  "bin": {
+    "edf2csv": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "fixtures": "node test/fixtures/generate.mjs",
+    "test": "npm run build && npm run fixtures && node --test test/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
