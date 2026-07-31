@@ -1,0 +1,115 @@
+/**
+ * EDF+ annotation (TAL) decoding.
+ *
+ * The annotations channel stores UTF-8 text in place of samples. Its bytes are a
+ * run of Time-stamped Annotation Lists, each terminated by a NUL, with the rest
+ * of the channel NUL-padded:
+ *
+ *   +<onset>[<0x15><duration>]<0x14><text><0x14>...<0x00>
+ *
+ * The first TAL of every data record must carry that record's start time and no
+ * text; that is how an EDF+D file states where each record actually sits in time.
+ *
+ *   +1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
+ */
+
+const SEP_TEXT = 0x14; // separates onset/duration from text, and text from text
+const SEP_DURATION = 0x15; // separates onset from duration
+const TAL_END = 0x00;
+
+const TEXT_SEP_CHAR = String.fromCharCode(SEP_TEXT);
+const DURATION_SEP_CHAR = String.fromCharCode(SEP_DURATION);
+
+export interface Annotation {
+  /** Seconds from the start of the recording. */
+  onset: number;
+  /** Seconds, or null when the TAL omitted a duration. */
+  duration: number | null;
+  text: string;
+  /** Index of the data record this annotation was stored in. */
+  recordIndex: number;
+}
+
+export interface DecodedRecordAnnotations {
+  /** Record start time in seconds, from the leading timekeeping TAL. */
+  recordStart: number | null;
+  annotations: Annotation[];
+}
+
+/**
+ * Decode one data record's annotation bytes.
+ *
+ * Malformed TALs are skipped rather than thrown, because a single bad annotation
+ * should not cost the user an entire conversion; the caller reports the count.
+ */
+export function decodeRecordAnnotations(
+  bytes: Buffer,
+  recordIndex: number,
+): DecodedRecordAnnotations {
+  const annotations: Annotation[] = [];
+  let recordStart: number | null = null;
+  let isFirstTal = true;
+
+  let start = 0;
+  for (let i = 0; i <= bytes.length; i++) {
+    if (i !== bytes.length && bytes[i] !== TAL_END) continue;
+
+    if (i > start) {
+      const chunk = bytes.subarray(start, i);
+      const parsed = parseTal(chunk, recordIndex);
+      if (parsed) {
+        if (isFirstTal) {
+          recordStart = parsed.onset;
+          isFirstTal = false;
+        }
+        annotations.push(...parsed.annotations);
+      }
+    }
+    start = i + 1;
+  }
+
+  return { recordStart, annotations };
+}
+
+interface ParsedTal {
+  onset: number;
+  annotations: Annotation[];
+}
+
+function parseTal(chunk: Buffer, recordIndex: number): ParsedTal | null {
+  // The onset must be explicitly signed; anything else is not a TAL.
+  const first = chunk[0];
+  if (first !== 0x2b /* + */ && first !== 0x2d /* - */) return null;
+
+  const text = chunk.toString('utf8');
+  const parts = text.split(TEXT_SEP_CHAR);
+  const head = parts[0] ?? '';
+
+  let onsetText = head;
+  let durationText: string | null = null;
+  const durationSep = head.indexOf(DURATION_SEP_CHAR);
+  if (durationSep >= 0) {
+    onsetText = head.slice(0, durationSep);
+    durationText = head.slice(durationSep + 1);
+  }
+
+  const onset = Number(onsetText);
+  if (!Number.isFinite(onset)) return null;
+
+  let duration: number | null = null;
+  if (durationText !== null && durationText !== '') {
+    const d = Number(durationText);
+    duration = Number.isFinite(d) ? d : null;
+  }
+
+  const annotations: Annotation[] = [];
+  for (const raw of parts.slice(1)) {
+    // A trailing separator yields an empty segment; a timekeeping TAL is all empty.
+    if (raw === '') continue;
+    annotations.push({ onset, duration, text: raw, recordIndex });
+  }
+
+  return { onset, annotations };
+}
+
+export { SEP_TEXT, SEP_DURATION, TAL_END };
