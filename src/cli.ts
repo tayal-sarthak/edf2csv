@@ -1,0 +1,274 @@
+#!/usr/bin/env node
+/**
+ * Command-line entry point.
+ *
+ * Output discipline: anything that is the *result* of a command goes to stdout
+ * (`--info`'s channel table, `--json`'s summary). Progress, warnings and the
+ * conversion summary go to stderr, so a conversion can be run in a pipeline without
+ * its chatter contaminating the data.
+ */
+
+import { parseArgs } from 'node:util';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { realpathSync } from 'node:fs';
+import process from 'node:process';
+
+import { EdfError } from './edf/errors.js';
+import { EdfFile } from './edf/reader.js';
+import { buildPlan } from './convert/plan.js';
+import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
+import { ChannelSelectionError } from './convert/channels.js';
+import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
+import { formatDiagnostics, formatInfo, formatSummary, summaryJson } from './cli/report.js';
+
+const VERSION = '0.1.0';
+
+const USAGE = `edf2csv ${VERSION} — convert EDF and EDF+ recordings to CSV
+
+Usage
+  edf2csv <recording.edf> [options]
+
+Options
+  -i, --info             Show the recording's structure and estimated output size,
+                         without converting anything
+  -o, --out <dir>        Output directory (default: <recording>_csv beside the input)
+  -c, --channels <list>  Only these channels, comma-separated. Use #N to pick a
+                         channel by position when two share a label
+      --start <time>     Begin at this offset (30s, 5m, 1h30m, 00:30:00)
+      --duration <time>  Convert this much
+      --end <time>       Stop at this offset (instead of --duration)
+      --annotations-only Write only the EDF+ annotations, no signal data
+      --decimals <n>     Fix the decimal places instead of deriving them per channel
+      --checksum         Record a SHA-256 of the input in metadata.json
+  -f, --force            Overwrite the output directory if it exists
+  -q, --quiet            Suppress the summary; warnings and errors still print
+      --json             Print a machine-readable summary to stdout
+  -h, --help             Show this help
+  -V, --version          Show the version
+
+Output
+  A directory containing signals.csv, channels.csv, metadata.json, and
+  annotations.csv when the recording is EDF+. Channels recorded at different
+  sampling rates are written to separate files rather than resampled.
+
+Examples
+  edf2csv recording.edf
+  edf2csv recording.edf --info
+  edf2csv recording.edf --channels "EEG Fpz-Cz,ECG" --out ./converted
+  edf2csv recording.edf --start 30m --duration 5m
+  edf2csv recording.edf --annotations-only
+`;
+
+/** A problem with how the command was invoked, as opposed to a problem with the file. */
+class OptionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'OptionError';
+  }
+}
+
+const EXIT_OK = 0;
+const EXIT_ERROR = 1;
+const EXIT_USAGE = 2;
+
+export async function main(argv: readonly string[]): Promise<number> {
+  let values: Record<string, unknown>;
+  let positionals: string[];
+
+  try {
+    const parsed = parseArgs({
+      args: [...argv],
+      allowPositionals: true,
+      strict: true,
+      options: {
+        info: { type: 'boolean', short: 'i' },
+        out: { type: 'string', short: 'o' },
+        channels: { type: 'string', short: 'c', multiple: true },
+        start: { type: 'string' },
+        duration: { type: 'string' },
+        end: { type: 'string' },
+        'annotations-only': { type: 'boolean' },
+        decimals: { type: 'string' },
+        checksum: { type: 'boolean' },
+        force: { type: 'boolean', short: 'f' },
+        quiet: { type: 'boolean', short: 'q' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+        version: { type: 'boolean', short: 'V' },
+      },
+    });
+    values = parsed.values as Record<string, unknown>;
+    positionals = parsed.positionals;
+  } catch (error) {
+    process.stderr.write(`${message(error)}\n\nRun edf2csv --help to see the options.\n`);
+    return EXIT_USAGE;
+  }
+
+  if (values['help'] === true) {
+    process.stdout.write(USAGE);
+    return EXIT_OK;
+  }
+  if (values['version'] === true) {
+    process.stdout.write(`${VERSION}\n`);
+    return EXIT_OK;
+  }
+
+  if (positionals.length === 0) {
+    process.stderr.write(`No input file given.\n\n${USAGE}`);
+    return EXIT_USAGE;
+  }
+  if (positionals.length > 1) {
+    process.stderr.write(
+      `Expected one input file but got ${positionals.length}: ${positionals.join(', ')}\n` +
+        `Convert them one at a time, or use a shell loop.\n`,
+    );
+    return EXIT_USAGE;
+  }
+
+  const input = positionals[0] as string;
+  const quiet = values['quiet'] === true;
+  const asJson = values['json'] === true;
+
+  try {
+    const channels = splitChannels(values['channels']);
+    const start = optionalTime(values['start'], '--start');
+    const duration = optionalTime(values['duration'], '--duration');
+    const end = optionalTime(values['end'], '--end');
+    const decimals = optionalDecimals(values['decimals']);
+
+    if (values['info'] === true) {
+      const file = await EdfFile.open(input);
+      try {
+        const plan = buildPlan(
+          {
+            signals: file.header.signals,
+            recordDuration: file.header.recordDuration,
+            recordCount: file.recordCount,
+            hasAnnotationChannel: file.annotationSignals.length > 0,
+          },
+          { channels, start, duration, end, decimals },
+        );
+        process.stdout.write(`${formatInfo(file, plan)}\n`);
+        const diagnostics = [...file.diagnostics, ...plan.diagnostics];
+        if (diagnostics.length > 0) {
+          process.stderr.write(`\n${formatDiagnostics(diagnostics)}\n`);
+        }
+      } finally {
+        await file.close();
+      }
+      return EXIT_OK;
+    }
+
+    const showProgress = !quiet && !asJson && process.stderr.isTTY === true;
+    let lastTick = 0;
+
+    const result = await convert(input, {
+      outputDir: typeof values['out'] === 'string' ? values['out'] : undefined,
+      channels,
+      start,
+      duration,
+      end,
+      decimals,
+      annotationsOnly: values['annotations-only'] === true,
+      checksum: values['checksum'] === true,
+      force: values['force'] === true,
+      onProgress: showProgress
+        ? (progress): void => {
+            const now = Date.now();
+            if (now - lastTick < 100) return;
+            lastTick = now;
+            const percent = progress.recordsTotal === 0 ? 100 : Math.floor((progress.recordsDone / progress.recordsTotal) * 100);
+            process.stderr.write(`\r  converting… ${percent}%`);
+          }
+        : undefined,
+    });
+
+    if (showProgress) process.stderr.write('\r\u001b[K');
+
+    if (result.diagnostics.length > 0 && !asJson) {
+      process.stderr.write(`${formatDiagnostics(result.diagnostics)}\n\n`);
+    }
+    if (asJson) {
+      process.stdout.write(`${summaryJson(result)}\n`);
+    } else if (!quiet) {
+      process.stderr.write(`${formatSummary(result)}\n`);
+    }
+    return EXIT_OK;
+  } catch (error) {
+    if (error instanceof EdfError || error instanceof ConversionError) {
+      process.stderr.write(`error: ${error.message}\n`);
+      if (error.hint) process.stderr.write(`       ${error.hint}\n`);
+      return EXIT_ERROR;
+    }
+    if (
+      error instanceof ChannelSelectionError ||
+      error instanceof TimeRangeError ||
+      error instanceof OptionError
+    ) {
+      process.stderr.write(`error: ${error.message}\n`);
+      return EXIT_USAGE;
+    }
+    process.stderr.write(`error: ${message(error)}\n`);
+    return EXIT_ERROR;
+  }
+}
+
+function splitChannels(raw: unknown): string[] | undefined {
+  if (raw === undefined) return undefined;
+  const list = Array.isArray(raw) ? (raw as string[]) : [String(raw)];
+  const terms = list.flatMap((entry) => entry.split(',')).map((t) => t.trim()).filter((t) => t !== '');
+  return terms.length > 0 ? terms : undefined;
+}
+
+function optionalTime(raw: unknown, option: string): number | undefined {
+  if (raw === undefined) return undefined;
+  return parseTimeSpec(String(raw), option);
+}
+
+function optionalDecimals(raw: unknown): number | undefined {
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0 || value > 15) {
+    throw new OptionError(`--decimals must be a whole number between 0 and 15, got "${String(raw)}".`);
+  }
+  return value;
+}
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export { defaultOutputDir };
+
+/**
+ * Whether this file was executed rather than imported.
+ *
+ * npm installs a bin as a symlink (node_modules/.bin/edf2csv -> ../edf2csv/dist/cli.js),
+ * and that is the path `npx` runs. In that case process.argv[1] is the symlink while
+ * import.meta.url is already resolved to the real file, so comparing the two directly
+ * reports "imported" and the command silently does nothing. Both sides are resolved
+ * through realpath before comparing.
+ */
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (entry === undefined) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    // An unreadable or deleted entry path is not a reason to refuse to run.
+    return pathToFileURL(entry).href === import.meta.url;
+  }
+}
+
+const invokedDirectly = isMainModule();
+
+if (invokedDirectly) {
+  main(process.argv.slice(2))
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((error: unknown) => {
+      process.stderr.write(`error: ${message(error)}\n`);
+      process.exitCode = EXIT_ERROR;
+    });
+}
