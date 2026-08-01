@@ -15,7 +15,7 @@ import { formatRate } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, selectChannels } from './channels.js';
-import { resolveRange } from './time-range.js';
+import { countSamplesInRange, resolveRange } from './time-range.js';
 import type { ResolvedRange } from './time-range.js';
 
 export interface PlannedChannel {
@@ -110,7 +110,12 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   }
 
   const groups = writeSignals ? groupByRate(chosen, columnNames, options.decimals) : [];
-  const estimate = estimateOutput(groups, range);
+  const estimate = estimateOutput(
+    groups,
+    range,
+    input.recordDuration,
+    input.recordStarts,
+  );
 
   if (estimate.exceedsSpreadsheetLimit) {
     diagnostics.push({
@@ -173,14 +178,30 @@ export function rateSlug(rate: number): string {
   return `${formatRate(rate).replace('.', '_')}hz`;
 }
 
-function estimateOutput(groups: readonly RateGroup[], range: ResolvedRange): OutputEstimate {
-  const seconds = range.endSeconds - range.startSeconds;
+function estimateOutput(
+  groups: readonly RateGroup[],
+  range: ResolvedRange,
+  recordDuration: number,
+  recordStarts: Float64Array | null | undefined,
+): OutputEstimate {
   let rows = 0;
   let bytes = 0;
   let exceeds = false;
 
   for (const group of groups) {
-    const groupRows = Math.max(0, Math.round(seconds * group.rate));
+    let groupRows = 0;
+    for (let record = range.startRecord; record < range.endRecord; record++) {
+      const recordStart = recordStarts
+        ? (recordStarts[record] ?? record * recordDuration)
+        : record * recordDuration;
+      groupRows += countSamplesInRange({
+        recordStart,
+        rate: group.rate,
+        samplesPerRecord: group.samplesPerRecord,
+        startSeconds: range.startSeconds,
+        endSeconds: range.endSeconds,
+      });
+    }
     rows += groupRows;
     if (groupRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
 

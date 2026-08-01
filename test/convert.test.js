@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -217,10 +217,11 @@ describe('converting', () => {
 
   it('keeps the gap visible in a discontinuous recording', async () => {
     const dir = await outDir();
-    await convert(fixture('discontinuous.edf'), { outputDir: dir });
+    const result = await convert(fixture('discontinuous.edf'), { outputDir: dir });
     const rows = await readCsv(dir, 'signals.csv');
 
     assert.equal(rows.length, 31, 'all three records are converted, none dropped');
+    assert.equal(result.plan.estimate.rows, 30, 'timing gaps must not be counted as samples');
     const times = rows.slice(1).map((r) => Number(r.split(',')[0]));
     assert.equal(times[19], 1.9);
     assert.equal(times[20], 10, 'the nine-second gap survives as a jump in time_s');
@@ -321,6 +322,25 @@ describe('converting', () => {
       },
     );
     await convert(fixture('tiny.edf'), { outputDir: dir, force: true });
+  });
+
+  it('never overwrites the input when its name collides with a generated file', async () => {
+    const dir = await outDir();
+    await mkdir(dir, { recursive: true });
+    const input = path.join(dir, 'metadata.json');
+    await copyFile(fixture('tiny.edf'), input);
+    const before = await readFile(input);
+
+    await assert.rejects(
+      () => convert(input, { outputDir: dir, force: true }),
+      (error) => {
+        assert.ok(error instanceof ConversionError);
+        assert.equal(error.code, 'INPUT_OUTPUT_COLLISION');
+        return true;
+      },
+    );
+
+    assert.deepEqual(await readFile(input), before, 'the source recording must remain untouched');
   });
 
   it('points out leftovers from a previous conversion into the same directory', async () => {

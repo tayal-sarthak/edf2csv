@@ -3,7 +3,7 @@
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -45,7 +45,8 @@ describe('help and version', () => {
   it('prints the version', async () => {
     const { code, stdout } = await cli(['--version']);
     assert.equal(code, 0);
-    assert.match(stdout.trim(), /^\d+\.\d+\.\d+$/);
+    const packageJson = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
+    assert.equal(stdout.trim(), packageJson.version);
   });
 });
 
@@ -153,6 +154,29 @@ describe('--info', () => {
     const { stdout, stderr } = await cli([fixture('mixed-rates.edf'), '--info']);
     assert.match(stderr, /different sampling rates/);
     assert.ok(!stdout.includes('warning:'), 'warnings must not contaminate stdout');
+  });
+
+  it('uses real EDF+D timing when resolving windows and estimates', async () => {
+    const { code, stdout } = await cli([
+      fixture('discontinuous.edf'),
+      '--info',
+      '--start',
+      '5s',
+    ]);
+    assert.equal(code, 0);
+    assert.match(stdout, /Time span\s+11s/);
+    assert.match(stdout, /Would write 10 rows/);
+  });
+
+  it('shows the actual annotations-only output plan', async () => {
+    const { code, stdout } = await cli([
+      fixture('annotations.edf'),
+      '--info',
+      '--annotations-only',
+    ]);
+    assert.equal(code, 0);
+    assert.match(stdout, /Would write 0 rows/);
+    assert.ok(!stdout.includes('signals.csv'));
   });
 });
 

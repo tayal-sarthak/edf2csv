@@ -2,6 +2,8 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { copyFile, mkdtemp, rm, truncate } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +18,7 @@ const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtur
 const fixture = (name) => path.join(FIXTURES, name);
 
 const open = [];
+const temporaries = [];
 async function load(name) {
   const file = await EdfFile.open(fixture(name));
   open.push(file);
@@ -23,6 +26,7 @@ async function load(name) {
 }
 after(async () => {
   for (const file of open) await file.close();
+  for (const dir of temporaries) await rm(dir, { recursive: true, force: true });
 });
 
 const codes = (file) => file.diagnostics.map((d) => d.code);
@@ -293,5 +297,20 @@ describe('EDF+ annotations', () => {
     const { annotations } = await file.readAnnotations();
     assert.deepEqual(annotations.map((a) => a.text), ['Start']);
     assert.ok(codes(file).includes('NO_SIGNAL_CHANNELS'));
+  });
+
+  it('fails instead of returning partial annotations after a short read', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-short-read-'));
+    temporaries.push(dir);
+    const copy = path.join(dir, 'annotations.edf');
+    await copyFile(fixture('annotations.edf'), copy);
+    const file = await EdfFile.open(copy);
+    open.push(file);
+
+    await truncate(copy, file.fileSize - 1);
+    await assert.rejects(
+      () => file.readAnnotations(),
+      (error) => error instanceof EdfError && /changed size/.test(error.message),
+    );
   });
 });

@@ -599,6 +599,8 @@ interface ResolvedRange {
   startRecord: number;       // first data record touching the window
   endRecord: number;         // one past the last data record touching the window
   isWholeRecording: boolean;
+  recordingStartSeconds: number; // earliest record start, including EDF+D timing
+  recordingEndSeconds: number;   // end of the latest record, including EDF+D timing
 }
 ```
 

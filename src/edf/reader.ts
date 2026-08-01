@@ -84,7 +84,10 @@ export class EdfFile {
     const handle = await open(path, 'r');
     try {
       const fixed = Buffer.alloc(Math.min(FIXED_HEADER_BYTES, info.size));
-      if (fixed.length > 0) await handle.read(fixed, 0, fixed.length, 0);
+      if (fixed.length > 0) {
+        const bytesRead = await readFully(handle, fixed, 0, fixed.length, 0);
+        if (bytesRead < fixed.length) throw changedWhileReading(0, fixed.length, bytesRead);
+      }
 
       // The signal count decides how much more header there is to read.
       let headerBuffer = fixed;
@@ -96,7 +99,8 @@ export class EdfFile {
           const total = FIXED_HEADER_BYTES + ns * SIGNAL_HEADER_BYTES;
           if (total <= info.size) {
             headerBuffer = Buffer.alloc(total);
-            await handle.read(headerBuffer, 0, total, 0);
+            const bytesRead = await readFully(handle, headerBuffer, 0, total, 0);
+            if (bytesRead < total) throw changedWhileReading(0, total, bytesRead);
           }
         }
       }
@@ -153,7 +157,7 @@ export class EdfFile {
       const bytes = count * recordBytes;
       const position = this.header.headerBytes + record * recordBytes;
 
-      const { bytesRead } = await this.#handle.read(buffer, 0, bytes, position);
+      const bytesRead = await readFully(this.#handle, buffer, 0, bytes, position);
       if (bytesRead < bytes) {
         // The file is shorter than its own size said. Quietly stopping here would
         // hand back a conversion missing its tail with nothing to show for it.
@@ -235,8 +239,10 @@ export class EdfFile {
         if (!buffer || buffer.length === 0) continue;
 
         const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
-        const { bytesRead } = await this.#handle.read(buffer, 0, buffer.length, offset);
-        if (bytesRead < buffer.length) return { annotations, recordStarts, malformed };
+        const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
+        if (bytesRead < buffer.length) {
+          throw changedWhileReading(record, buffer.length, bytesRead, 'annotation data');
+        }
 
         const decoded = decodeRecordAnnotations(buffer, record);
         // Only the first annotation channel carries the record's timekeeping TAL.
@@ -269,4 +275,40 @@ function describe(cause: unknown): string {
     return cause.message;
   }
   return String(cause);
+}
+
+/** Fill a requested region unless EOF is reached; regular-file reads may legally be short. */
+async function readFully(
+  handle: FileHandle,
+  buffer: Buffer,
+  offset: number,
+  length: number,
+  position: number,
+): Promise<number> {
+  let total = 0;
+  while (total < length) {
+    const { bytesRead } = await handle.read(
+      buffer,
+      offset + total,
+      length - total,
+      position + total,
+    );
+    if (bytesRead === 0) break;
+    total += bytesRead;
+  }
+  return total;
+}
+
+function changedWhileReading(
+  record: number,
+  expected: number,
+  actual: number,
+  subject = 'data',
+): EdfError {
+  return new EdfError(
+    'UNREADABLE',
+    `Expected ${expected} bytes of ${subject} at record ${record} but only ${actual} were ` +
+      `available; the file appears to have changed size while it was being read.`,
+    'Make sure the recording is not still being written to, then try again.',
+  );
 }

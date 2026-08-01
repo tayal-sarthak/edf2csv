@@ -19,9 +19,9 @@ import { buildPlan } from './convert/plan.js';
 import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
+import { deriveRecordStarts } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, formatSummary, summaryJson } from './cli/report.js';
-
-const VERSION = '0.1.0';
+import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
 Convert EDF, EDF+ and BDF recordings to CSV
@@ -158,15 +158,29 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (values['info'] === true) {
       const file = await EdfFile.open(input);
       try {
+        const annotationData =
+          file.annotationSignals.length > 0
+            ? await file.readAnnotations()
+            : { annotations: [], recordStarts: [], malformed: 0 };
+        const timing = deriveRecordStarts(file, annotationData);
         const plan = buildPlan(
           {
             signals: file.header.signals,
             recordDuration: file.header.recordDuration,
             recordCount: file.recordCount,
             hasAnnotationChannel: file.annotationSignals.length > 0,
+            recordStarts: timing.starts,
           },
-          { channels, start, duration, end, decimals },
+          {
+            channels,
+            start,
+            duration,
+            end,
+            decimals,
+            annotationsOnly: values['annotations-only'] === true,
+          },
         );
+        plan.diagnostics.push(...timing.diagnostics);
         process.stdout.write(`${formatInfo(file, plan)}\n`);
         const diagnostics = [...file.diagnostics, ...plan.diagnostics];
         if (diagnostics.length > 0) {

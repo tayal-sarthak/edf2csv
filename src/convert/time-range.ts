@@ -113,6 +113,37 @@ export interface ResolvedRange {
   endRecord: number;
   /** True when the window covers the whole recording. */
   isWholeRecording: boolean;
+  /** Earliest record start, including EDF+D timing gaps. */
+  recordingStartSeconds: number;
+  /** End of the latest record, including EDF+D timing gaps. */
+  recordingEndSeconds: number;
+}
+
+/** Slack for comparisons at sample/window boundaries. */
+export const BOUNDARY_TOLERANCE = 1e-9;
+
+/** Match the exact half-open boundary rules used while writing signal rows. */
+export function sampleTimeIsInRange(time: number, startSeconds: number, endSeconds: number): boolean {
+  return time >= startSeconds - BOUNDARY_TOLERANCE && time < endSeconds - BOUNDARY_TOLERANCE;
+}
+
+/** Count samples from one record that fall inside a half-open requested window. */
+export function countSamplesInRange(options: {
+  recordStart: number;
+  rate: number;
+  samplesPerRecord: number;
+  startSeconds: number;
+  endSeconds: number;
+}): number {
+  const lower = Math.ceil(
+    (options.startSeconds - BOUNDARY_TOLERANCE - options.recordStart) * options.rate,
+  );
+  const upper = Math.ceil(
+    (options.endSeconds - BOUNDARY_TOLERANCE - options.recordStart) * options.rate,
+  );
+  const first = Math.max(0, Math.min(options.samplesPerRecord, lower));
+  const last = Math.max(0, Math.min(options.samplesPerRecord, upper));
+  return Math.max(0, last - first);
 }
 
 /**
@@ -172,6 +203,8 @@ export function resolveRange(options: {
     startRecord,
     endRecord,
     isWholeRecording: startSeconds <= earliest && clampedEnd >= latest,
+    recordingStartSeconds: earliest,
+    recordingEndSeconds: latest,
   };
 }
 
@@ -204,7 +237,7 @@ function selectRecords(
   const starts = options.recordStarts;
   if (!starts || starts.length === 0) {
     return {
-      startRecord: Math.floor(startSeconds / options.recordDuration),
+      startRecord: Math.max(0, Math.floor(startSeconds / options.recordDuration)),
       endRecord: Math.min(options.recordCount, Math.ceil(endSeconds / options.recordDuration)),
     };
   }

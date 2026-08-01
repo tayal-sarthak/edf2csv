@@ -46,6 +46,10 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   lines.push(
     `Duration   ${formatDuration(file.durationSeconds)}  (${file.recordCount} records of ${header.recordDuration}s)`,
   );
+  const elapsedSpan = plan.range.recordingEndSeconds - plan.range.recordingStartSeconds;
+  if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {
+    lines.push(`Time span  ${formatDuration(elapsedSpan)}  (includes discontinuities)`);
+  }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
   if (header.patientId) lines.push(`Patient    ${header.patientId}`);
   if (header.recordingId) lines.push(`Recording  ${header.recordingId}`);

@@ -22,8 +22,17 @@ import { fixed, makeSampleFormatter } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
+import { deriveRecordStarts } from './timing.js';
+import { sampleTimeIsInRange } from './time-range.js';
+import { VERSION as TOOL_VERSION } from '../version.js';
 
-export type ConversionErrorCode = 'OUTPUT_EXISTS' | 'OUTPUT_UNWRITABLE' | 'WRITE_FAILED';
+export { TOOL_VERSION };
+
+export type ConversionErrorCode =
+  | 'OUTPUT_EXISTS'
+  | 'OUTPUT_UNWRITABLE'
+  | 'INPUT_OUTPUT_COLLISION'
+  | 'WRITE_FAILED';
 
 export class ConversionError extends Error {
   readonly code: ConversionErrorCode;
@@ -67,9 +76,6 @@ export interface ConvertResult {
   elapsedMs: number;
 }
 
-/** Slack, in seconds, for comparing a sample's time against the window edges. */
-const BOUNDARY_TOLERANCE = 1e-9;
-
 interface OpenGroup {
   group: RateGroup;
   writer: BufferedLineWriter;
@@ -106,6 +112,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     plan.diagnostics.push(...timing.diagnostics);
 
     const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
+    await assertInputDoesNotOverlapOutputs(inputPath, outputDir, file, plan);
     await prepareOutputDir(outputDir, options.force === true);
 
     const written: WrittenFile[] = [];
@@ -191,6 +198,38 @@ export function defaultOutputDir(inputPath: string): string {
   return path.join(path.dirname(inputPath), `${base}_csv`);
 }
 
+/** Never let an output target resolve to the recording being read, even with --force. */
+async function assertInputDoesNotOverlapOutputs(
+  inputPath: string,
+  outputDir: string,
+  file: EdfFile,
+  plan: ConversionPlan,
+): Promise<void> {
+  const names = new Set(plan.groups.map((group) => group.fileName));
+  if (file.annotationSignals.length > 0) names.add('annotations.csv');
+  names.add('channels.csv');
+  names.add('metadata.json');
+
+  const inputResolved = path.resolve(inputPath);
+  const inputInfo = await stat(inputPath);
+
+  for (const name of names) {
+    const target = path.join(outputDir, name);
+    const targetResolved = path.resolve(target);
+    const targetInfo = await stat(target).catch(() => null);
+    const samePath = targetResolved === inputResolved;
+    const sameFile =
+      targetInfo !== null && targetInfo.dev === inputInfo.dev && targetInfo.ino === inputInfo.ino;
+    if (!samePath && !sameFile) continue;
+
+    throw new ConversionError(
+      'INPUT_OUTPUT_COLLISION',
+      `Output file "${target}" is the same file as the input recording.`,
+      'Choose a separate directory with --out. The input was not modified.',
+    );
+  }
+}
+
 async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
   const existing = await stat(dir).catch(() => null);
 
@@ -229,90 +268,6 @@ function describeFsError(cause: unknown): string {
   if (code === 'EROFS') return 'the filesystem is read-only';
   if (code === 'ENAMETOOLONG') return 'the path is too long';
   return cause instanceof Error ? cause.message : String(cause);
-}
-
-/**
- * True start time of every data record, for discontinuous recordings.
- *
- * A continuous file's records follow each other exactly, so their positions are
- * arithmetic. A discontinuous one has gaps that only the per-record timekeeping
- * annotation records, and closing those gaps silently would misrepresent when the
- * data was measured.
- *
- * A record whose timekeeping annotation is missing has no knowable position.
- * Falling back to arithmetic there invents a timestamp indistinguishable from a
- * real one, so the fallback is used but always reported.
- */
-function deriveRecordStarts(
-  file: EdfFile,
-  annotationData: { recordStarts: (number | null)[]; malformed: number },
-): { starts: Float64Array | null; diagnostics: Diagnostic[] } {
-  const diagnostics: Diagnostic[] = [];
-
-  if (annotationData.malformed > 0) {
-    diagnostics.push({
-      code: 'ANNOTATION_DECODE_FAILED',
-      severity: 'warning',
-      message:
-        `${annotationData.malformed} annotation entr${annotationData.malformed === 1 ? 'y was' : 'ies were'} ` +
-        `unreadable and could not be exported.`,
-      hint: 'The rest were exported normally. The file may have been written by a non-conforming tool.',
-    });
-  }
-
-  if (file.header.continuity !== 'EDF+D') return { starts: null, diagnostics };
-
-  if (file.annotationSignals.length === 0) {
-    diagnostics.push({
-      code: 'DISCONTINUOUS',
-      severity: 'warning',
-      message:
-        'This file is marked discontinuous but has no annotation channel, so where its ' +
-        'records sit in time is not recorded anywhere.',
-      hint: 'Times are written as if the records were contiguous. Any gaps are lost.',
-    });
-    return { starts: null, diagnostics };
-  }
-
-  const starts = new Float64Array(file.recordCount);
-  const missing: number[] = [];
-  for (let i = 0; i < file.recordCount; i++) {
-    const declared = annotationData.recordStarts[i];
-    if (declared === null || declared === undefined) {
-      missing.push(i);
-      starts[i] = i * file.header.recordDuration;
-    } else {
-      starts[i] = declared;
-    }
-  }
-
-  if (missing.length > 0) {
-    const shown = missing.slice(0, 5).join(', ');
-    diagnostics.push({
-      code: 'ANNOTATION_DECODE_FAILED',
-      severity: 'warning',
-      message:
-        `${missing.length} of ${file.recordCount} data records carry no readable timekeeping ` +
-        `annotation (record${missing.length === 1 ? '' : 's'} ${shown}` +
-        `${missing.length > 5 ? ', …' : ''}), so their true position in time is unknown.`,
-      hint: 'Those records are timed as if they were contiguous; treat their timestamps as unreliable.',
-    });
-  }
-
-  let outOfOrder = 0;
-  for (let i = 1; i < starts.length; i++) {
-    if ((starts[i] as number) < (starts[i - 1] as number)) outOfOrder++;
-  }
-  if (outOfOrder > 0) {
-    diagnostics.push({
-      code: 'DISCONTINUOUS',
-      severity: 'warning',
-      message: `${outOfOrder} data record${outOfOrder === 1 ? '' : 's'} start earlier than the record before it.`,
-      hint: 'Rows are written in file order, so the time column will not increase monotonically.',
-    });
-  }
-
-  return { starts, diagnostics };
 }
 
 async function writeSignalFiles(
@@ -370,11 +325,7 @@ async function streamSignalRows(
 
         for (let sample = 0; sample < group.samplesPerRecord; sample++) {
           const time = recordStart + sample / rate;
-          // A sample meant to land exactly on a boundary can compute a few ulps to
-          // either side. A nanosecond of slack is far below any real sample period,
-          // so it settles the boundary without ever admitting a neighbouring sample.
-          if (time < startSeconds - BOUNDARY_TOLERANCE) continue;
-          if (time >= endSeconds - BOUNDARY_TOLERANCE) continue;
+          if (!sampleTimeIsInRange(time, startSeconds, endSeconds)) continue;
 
           let row = fixed(time, tDecimals);
           for (let c = 0; c < channels.length; c++) {
@@ -551,6 +502,3 @@ async function sha256(filePath: string): Promise<string> {
   await pipeline(createReadStream(filePath), hash);
   return hash.digest('hex');
 }
-
-/** Kept in step with package.json by the release process. */
-export const TOOL_VERSION = '0.1.0';

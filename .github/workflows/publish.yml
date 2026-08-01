@@ -34,6 +34,17 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "${RELEASE_TAG}" != "${expected}" ]; then
+            echo "Release tag ${RELEASE_TAG} does not match package version ${expected}."
+            exit 1
+          fi
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
       # prepublishOnly reruns the build and the suite, so a broken commit cannot ship.
       - name: Publish
         run: npm publish --provenance --access public
