@@ -20,9 +20,9 @@ signals_1hz.csv
 signals_256hz.csv
 ```
 
-Four kinds of file can appear, and knowing their columns is most of what the rest of this page needs:
+Four kinds of file can appear:
 
-- `signals.csv` holds the sample data. Its first column is `time_s`, seconds from the start of the recording, followed by one column per channel named after the channel's EDF label (`EEG Fpz-Cz`, `ECG`, `Temp rectal`). If the recording mixes sampling rates there is no `signals.csv`; instead you get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, never resampled.
+- `signals.csv` holds the sample data. Its first column is `time_s`, seconds from the start of the recording, followed by one column per channel named after the channel's EDF label (`EEG Fpz-Cz`, `ECG`, `Temp rectal`). If the recording mixes sampling rates there's no `signals.csv`; instead you get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, never resampled.
 - `annotations.csv` appears for EDF+ and BDF+ recordings. Columns: `onset_s`, `duration_s`, `description`, `record_index`. `duration_s` is empty for events that carry no duration.
 - `channels.csv` always appears. Columns: `column`, `signal_index`, `label`, `unit`, `sampling_rate_hz`, `samples_per_record`, `physical_min`, `physical_max`, `digital_min`, `digital_max`, `transducer`, `prefiltering`, `output_file`, `converted`.
 - `metadata.json` always appears, and records what was converted: the source path and size, the recording's start time and record layout, the exact time window converted, the rate groups, and every warning raised.
@@ -65,7 +65,7 @@ clock
 2002-03-02 22:15:00.003906250      29.731     23.871  0.06227
 ```
 
-EDF stores no time zone, so `start_datetime_local` is written without one: it is the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`.
+EDF stores no time zone, so `start_datetime_local` is written without one: it's the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`.
 
 ## Load signals.csv into R
 
@@ -113,7 +113,7 @@ stackedplot(excerpt)
 
 `"VariableNamingRule", "preserve"` keeps `EEG Fpz-Cz` intact; without it MATLAB renames the column to a valid identifier and it stops matching `channels.csv`. Converting `time_s` to a `duration` first is what lets `table2timetable` and `timerange` work in seconds.
 
-For a file too large to load at once, read it in blocks with a datastore. Note that `tabularTextDatastore` renames columns that are not valid MATLAB identifiers, so check `ds.VariableNames` before referring to them:
+For a file too large to load at once, read it in blocks with a datastore. Note that `tabularTextDatastore` renames columns that aren't valid MATLAB identifiers, so check `ds.VariableNames` before referring to them:
 
 ```matlab
 ds = tabularTextDatastore("sleep_csv/signals_256hz.csv");
@@ -186,9 +186,9 @@ for f in /data/recordings/*.edf; do
 done
 ```
 
-edf2csv takes one input file per run, so batching is a shell loop. `--quiet` suppresses the per-file summary but still prints warnings, so a truncated or discontinuous file does not pass silently. Exit code 0 means the conversion completed, 1 means a problem with the file or the output directory, and 2 means a problem with the command line.
+edf2csv takes one input file per run, so batching is a shell loop. `--quiet` suppresses the per-file summary but still prints warnings, so a truncated or discontinuous file doesn't pass silently. Exit code 0 means the conversion completed, 1 means a problem with the file or the output directory, and 2 means a problem with the command line.
 
-Add `--force` if you are re-running over a folder you have already converted; without it an existing output directory is an error rather than something to be overwritten by accident.
+Add `--force` if you're re-running over a folder you've already converted; without it an existing output directory is an error rather than something to be overwritten by accident.
 
 To pick up BDF files in the same pass, and to survive spaces in file names, use `find`:
 
@@ -280,7 +280,7 @@ warning: --annotations-only was requested but this recording has no annotation c
          Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.
 ```
 
-Because that warning goes to stderr, the loop above keeps going and the folder that comes out has one directory per recording either way. The `glob` below simply finds nothing for the files that had no events.
+Because that warning goes to stderr, the loop above keeps going and the folder that comes out has one directory per recording either way. The `glob` below finds nothing for the files that had no events.
 
 Stack them into one table, keeping track of which recording each event came from:
 
@@ -376,7 +376,7 @@ aligned = pd.merge_asof(fast, slow, on="time_s", direction="nearest", tolerance=
 aligned["Temp rectal"].isna().sum()
 ```
 
-This is the step edf2csv deliberately does not do for you. Once the temperature column has 7,372,800 entries, only 28,800 of which came off a sensor, nothing in the file distinguishes the measurements from the fill. Doing it here means the choice of `direction` and `tolerance` is yours, it is recorded in your analysis code, and the files on disk still contain only recorded values.
+This is the step edf2csv leaves to you. Once the temperature column has 7,372,800 entries, only 28,800 of which came off a sensor, nothing in the file distinguishes the measurements from the fill. Doing it here keeps the choice of `direction` and `tolerance` in your analysis code, and leaves the files on disk holding only recorded values.
 
 ## Read a very large signals.csv in chunks
 
@@ -409,7 +409,7 @@ reader = pd.read_csv(
 )
 ```
 
-Keep `time_s` as float64. A 256 Hz recording eight hours long reaches times near 28,800 s, and float32 cannot hold that with 8 decimal places.
+Keep `time_s` as float64. A 256 Hz recording eight hours long reaches times near 28,800 s, and float32 can't hold that with 8 decimal places.
 
 ## Query the CSV directly with DuckDB
 
@@ -486,7 +486,7 @@ units = channels["unit"].to_dict()
 ax.set_ylabel(f"EEG Fpz-Cz ({units['EEG Fpz-Cz']})")
 ```
 
-The `physical_min`, `physical_max`, `digital_min` and `digital_max` columns are the header's calibration as recorded. They are what edf2csv used to convert the samples, so they let anyone reproduce the arithmetic from the digital values.
+The `physical_min`, `physical_max`, `digital_min` and `digital_max` columns are the header's calibration as recorded. They're what edf2csv used to convert the samples, so they let anyone reproduce the arithmetic from the digital values.
 
 ## Record a checksum so a conversion can be reproduced
 
@@ -501,7 +501,7 @@ jq -r '.source | "\(.bytes) bytes  \(.sha256)"' ./out/metadata.json
 
 `--checksum` costs one extra read of the input and writes a SHA-256 into `metadata.json`, where it sits alongside the tool version, the source path and modification time, the exact converted window, and every warning raised. Without the flag the field is `null`.
 
-That makes the output directory self-describing: months later, `metadata.json` still answers which file this came from, which version produced it, which seconds of the recording it covers, and whether anything looked wrong at the time.
+That makes the output directory self-describing. Months later, `metadata.json` still records which file this came from, which version produced it, which seconds of the recording it covers, and what was flagged at the time.
 
 ```bash
 jq '{tool: .tool.version, window: [.conversion.start_seconds, .conversion.end_seconds], notes: [.notes[].code]}' ./out/metadata.json

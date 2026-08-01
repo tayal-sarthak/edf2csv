@@ -4,7 +4,7 @@ description: Every diagnostic and error code edf2csv can raise, what causes it i
 order: 6
 ---
 
-edf2csv makes a sharp distinction between two things. A **warning** means the conversion succeeded but something about the recording is worth knowing before you analyse the numbers. A **fatal error** means the file cannot be read into trustworthy output, so nothing is converted at all.
+edf2csv makes a sharp distinction between two things. A **warning** means the conversion succeeded but something about the recording is worth knowing before you analyse the numbers. A **fatal error** means the file can't be read into trustworthy output, so nothing is converted at all.
 
 Warnings never change the exit code. A recording can produce six warnings and still exit 0, because the CSV it produced is correct: the warnings describe the recording, not a failure of the tool.
 
@@ -12,14 +12,14 @@ Warnings never change the exit code. A recording can produce six warnings and st
 
 Every diagnostic has a stable machine-readable code (`MIXED_SAMPLING_RATES`, `TRAILING_BYTES`, and so on), a severity, a message, and often a hint on the line below telling you what you can do.
 
-Warnings and errors go to **stderr**. Requested data (`--info`'s channel table, `--json`'s summary) goes to **stdout**. That separation is deliberate: you can pipe a conversion summary into another program without warning text contaminating it.
+Warnings and errors go to **stderr**. Requested data (`--info`'s channel table, `--json`'s summary) goes to **stdout**. The separation lets you pipe a conversion summary into another program without warning text mixed into it.
 
 ```
 warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
-The severity field can be `warning` or `info`. A `warning` prints with a `warning:` prefix; an `info` would print with a `note:` prefix. Every diagnostic the current code raises is a warning, so `note:` lines do not appear in practice.
+The severity field can be `warning` or `info`. A `warning` prints with a `warning:` prefix; an `info` would print with a `note:` prefix. Every diagnostic the current code raises is a warning, so `note:` lines don't appear in practice.
 
 Four places show you the same diagnostics in different forms.
 
@@ -27,14 +27,14 @@ Four places show you the same diagnostics in different forms.
 | --- | --- |
 | Terminal, default | Printed to stderr before the conversion summary, hint included |
 | `--quiet` | Suppresses the summary only. Warnings and errors still print |
-| `--json` | Diagnostics are not printed as text. They appear in the `warnings` array on stdout, each with `code`, `severity` and `message`. Hints are not included |
+| `--json` | Diagnostics aren't printed as text. They appear in the `warnings` array on stdout, each with `code`, `severity` and `message`. Hints aren't included |
 | `metadata.json` | The `notes` array records `code`, `severity` and `message` for every diagnostic raised while reading the header and planning the conversion |
 
-One exception is worth knowing: `STALE_OUTPUT` is detected after `metadata.json` has already been written, so it appears on the terminal and in `--json` output but never in `metadata.json`.
+There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has already been written, so it appears on the terminal and in `--json` output but never in `metadata.json`.
 
-### What `--info` can and cannot tell you
+### What `--info` can and can't tell you
 
-`--info` reads the header and builds a conversion plan without touching the data records or the annotation channel. It therefore surfaces every structural, calibration and output-shape warning, but it cannot raise the ones that only become visible while converting: `ANNOTATION_DECODE_FAILED`, `NO_ANNOTATIONS`, `STALE_OUTPUT`, and the two `DISCONTINUOUS` variants that come from inspecting record timestamps.
+`--info` reads the header and builds a conversion plan without touching the data records or the annotation channel. It therefore surfaces every structural, calibration and output-shape warning, but it can't raise the ones that only become visible while converting: `ANNOTATION_DECODE_FAILED`, `NO_ANNOTATIONS`, `STALE_OUTPUT`, and the two `DISCONTINUOUS` variants that come from inspecting record timestamps.
 
 ```bash
 edf2csv sleep-study.edf --info
@@ -58,7 +58,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `EMPTY_LABEL` | A channel has a blank label |
 | `DUPLICATE_LABEL` | Two or more channels share a label, or a `--channels` term matched several |
 | `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
-| `ANNOTATION_DECODE_FAILED` | Annotation text could not be decoded, or a record's timestamp is missing |
+| `ANNOTATION_DECODE_FAILED` | Annotation text couldn't be decoded, or a record's timestamp is missing |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
 | `MIXED_SAMPLING_RATES` | Channels run at different rates, so several output files are written |
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
@@ -81,13 +81,13 @@ The header contains a field stating its own length in bytes. This warning fires 
 warning: Header says it is 99 bytes, but 2 signals require 768 bytes. Using the value computed from the signal count.
 ```
 
-**What to do.** Nothing, if the rest of the conversion looks sane. Check the `--info` channel table: if the labels and units are readable text and the sampling rates are plausible, the header was parsed correctly and only the length field was wrong. Garbled labels alongside this warning point at a genuinely damaged file.
+**What to do.** Nothing, if the rest of the conversion looks right. Check the `--info` channel table: if the labels and units are readable text and the sampling rates are plausible, the header was parsed correctly and only the length field was wrong. Garbled labels alongside this warning point at a genuinely damaged file.
 
 ### RECORD_COUNT_UNKNOWN
 
 The header declares `-1` data records rather than a count.
 
-**Cause.** The EDF specification permits `-1` for a recording still in progress: the writer does not know the final count until it stops. Some acquisition software leaves the placeholder in place even after the recording ends.
+**Cause.** The EDF specification permits `-1` for a recording still in progress: the writer doesn't know the final count until it stops. Some acquisition software leaves the placeholder in place even after the recording ends.
 
 **What edf2csv does.** Derives the count from the file size and converts every complete record present.
 
@@ -95,21 +95,21 @@ The header declares `-1` data records rather than a count.
 warning: The header does not say how many data records the file has (-1), which the spec allows for recordings still in progress. Using the 4 records the file actually contains.
 ```
 
-**What to do.** Confirm the recording is finished and not still being written to. Converting a file that is actively growing risks a mid-read failure (see `UNREADABLE` below). If the file is closed, the derived count is the right one.
+**What to do.** Confirm the recording is finished and not still being written to. Converting a file that's actively growing risks a mid-read failure (see `UNREADABLE` below). If the file is closed, the derived count is the right one.
 
 ### RECORD_COUNT_MISMATCH
 
 The header declares a specific number of data records and the file contains a different number.
 
-**Cause.** When the file is shorter than declared, the usual causes are an interrupted recording, a copy that did not finish, or a transfer that was cut off. When the file is longer than declared, the writer under-reported, or something was appended.
+**Cause.** When the file is shorter than declared, the usual causes are an interrupted recording, a copy that didn't finish, or a transfer that was cut off. When the file is longer than declared, the writer under-reported, or something was appended.
 
-**What edf2csv does.** Trusts the file over the header and converts every complete record that is actually there. The hint changes depending on the direction: a short file gets a note that the recording may have been cut short, and a long file gets a note that the file exceeds its own claim.
+**What edf2csv does.** Trusts the file over the header and converts every complete record that's actually there. The hint changes depending on the direction: a short file gets a note that the recording may have been cut short, and a long file gets a note that the file exceeds its own claim.
 
 ```
 warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
 ```
 
-**What to do.** If the file is short, decide whether the missing tail matters for your analysis, and check whether a complete copy exists elsewhere. The duration reported by `--info` reflects the records actually present, not the declared ones, so it is safe to reason from. `metadata.json` records both numbers as `data_records` and `data_records_declared`.
+**What to do.** If the file is short, decide whether the missing tail matters for your analysis, and check whether a complete copy exists elsewhere. The duration reported by `--info` reflects the records actually present, not the declared ones, so it's safe to reason from. `metadata.json` records both numbers as `data_records` and `data_records_declared`.
 
 ### TRAILING_BYTES
 
@@ -117,17 +117,17 @@ Some bytes sit after the last complete data record, too few to form another reco
 
 **Cause.** A recording stopped part way through writing its final record, or a file transfer was truncated mid-record.
 
-**What edf2csv does.** Ignores them. A partial record cannot be decoded into a full set of samples across every channel, and guessing at it would invent data.
+**What edf2csv does.** Ignores them. A partial record can't be decoded into a full set of samples across every channel, and guessing at it would invent data.
 
 ```
 warning: 7 bytes after the last complete data record were ignored.
 ```
 
-**What to do.** Usually nothing. A handful of ignored bytes at the end of a long recording is a fraction of a second. If the count is large relative to one record's size, that is a sign of a more serious problem and is worth investigating alongside `RECORD_COUNT_MISMATCH`.
+**What to do.** Usually nothing. A handful of ignored bytes at the end of a long recording is a fraction of a second. If the count is large relative to one record's size, that's a sign of a more serious problem and is worth investigating alongside `RECORD_COUNT_MISMATCH`.
 
 ### COMMA_DECIMAL
 
-At least one numeric field in the header used a comma as its decimal separator, which the EDF specification does not allow.
+At least one numeric field in the header used a comma as its decimal separator, which the EDF specification doesn't allow.
 
 **Cause.** Software written in a locale where the comma is the decimal separator, formatting numbers without forcing a neutral locale. It shows up in physical minimum and maximum fields most often, and in the record duration.
 
@@ -150,16 +150,16 @@ Only one of the three calibration warnings is raised per channel. The checks run
 
 A channel declares the same value for its digital minimum and digital maximum.
 
-**Cause.** A header field filled in with a placeholder, or a channel that was configured but never properly calibrated. It is common on unused or dummy channels that acquisition software adds to fill out a montage.
+**Cause.** A header field filled in with a placeholder, or a channel that was configured but never properly calibrated. It's common on unused or dummy channels that acquisition software adds to fill out a montage.
 
-**What edf2csv does.** The digital-to-physical mapping is defined by two calibration points. With both points at the same digital value, the mapping does not exist, so there is nothing to compute. Every sample on that channel is written as the channel's physical minimum.
+**What edf2csv does.** The digital-to-physical mapping is defined by two calibration points. With both points at the same digital value, the mapping doesn't exist, so there's nothing to compute. Every sample on that channel is written as the channel's physical minimum.
 
 ```
 warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values cannot be scaled.
          Its samples are written as the physical minimum. Treat this channel with suspicion.
 ```
 
-**What to do.** Do not analyse that channel. The constant column in the CSV is a placeholder, not a measurement. If the channel matters to you, go back to the acquisition system for a correctly calibrated export. Otherwise exclude it with `--channels` and convert the rest:
+**What to do.** Don't analyse that channel. The constant column in the CSV is a placeholder, not a measurement. If the channel matters to you, go back to the acquisition system for a correctly calibrated export. Otherwise exclude it with `--channels` and convert the rest:
 
 ```bash
 edf2csv recording.edf --channels "EEG Fpz-Cz,ECG"
@@ -173,22 +173,22 @@ A channel declares the same value for its physical minimum and physical maximum,
 
 **What edf2csv does.** The mapping is well defined but flat, so every digital code converts to the same physical number. The channel is converted normally and produces a constant column.
 
-**What to do.** Treat the column as carrying no information. Distinct digital codes were recorded, but the header says they all mean the same physical value, so the distinction cannot be recovered from the CSV. If you need the raw codes, the header calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and `physical_max` to work from.
+**What to do.** Treat the column as carrying no information. Distinct digital codes were recorded, but the header says they all mean the same physical value, so the distinction can't be recovered from the CSV. If you need the raw codes, the header calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and `physical_max` to work from.
 
 ### INVERTED_PHYSICAL_RANGE
 
-A channel declares a physical minimum that is greater than its physical maximum.
+A channel declares a physical minimum that's greater than its physical maximum.
 
 **Cause.** This is sometimes a mistake and sometimes deliberate. Some hardware records a channel with inverted polarity and expresses that by swapping the physical bounds, which is a legitimate reading of the specification. Others simply wrote the fields in the wrong order.
 
-**What edf2csv does.** Converts exactly as the header specifies, inversion included. Second-guessing the header would silently flip the sign of real data, which is worse than reporting it.
+**What edf2csv does.** Converts exactly as the header specifies, inversion included. Overriding the header would silently flip the sign of real data.
 
 ```
 warning: Signal 3 ("inverted") declares physical minimum 100 above physical maximum -100, which inverts its polarity.
          The values are converted exactly as the header specifies, inversion included.
 ```
 
-**What to do.** Check the sign of a feature you can recognise, for example the direction of the R wave on an ECG channel or the polarity of a known artefact. If the polarity is wrong for your purposes, negate the column in your analysis. Do not assume edf2csv corrected it.
+**What to do.** Check the sign of a feature you can recognise, for example the direction of the R wave on an ECG channel or the polarity of a known artefact. If the polarity is wrong for your purposes, negate the column in your analysis. Don't assume edf2csv corrected it.
 
 ### NO_SAMPLES
 
@@ -196,7 +196,7 @@ A channel declares zero samples per data record, so it carries no data anywhere 
 
 **Cause.** A channel that was defined in the montage but never recorded, or one that was disabled after the header was laid out.
 
-**What edf2csv does.** Describes the channel in `channels.csv` with `converted` set to `no`, and leaves it out of the signal files entirely. There is no empty column and no zero-hertz output file.
+**What edf2csv does.** Describes the channel in `channels.csv` with `converted` set to `no`, and leaves it out of the signal files entirely. There's no empty column and no zero-hertz output file.
 
 ```
 warning: Signal 0 ("ch1") carries no samples at all (0 per data record).
@@ -211,7 +211,7 @@ Note that `NO_SAMPLES` is also a fatal error code. As a warning it means one cha
 
 A channel's label field is blank.
 
-**Cause.** A writer that did not fill the field in, or a channel that was never named in the acquisition setup.
+**Cause.** A writer that didn't fill the field in, or a channel that was never named in the acquisition setup.
 
 **What edf2csv does.** Names the column `signal_<index>` using the channel's position in the file, which is stable and unambiguous.
 
@@ -225,7 +225,7 @@ warning: Signal 0 has no label. It will appear as "signal_0".
 
 This code is raised in two different situations.
 
-**From the header.** Two or more channels in the file share exactly the same label. This is common in real data: some standard EEG montages ship recordings with two channels both labelled `T8-P8`. Labels in EDF are free text and the format does not require them to be unique.
+**From the header.** Two or more channels in the file share exactly the same label. This is common in real data: some standard EEG montages ship recordings with two channels both labelled `T8-P8`. Labels in EDF are free text and the format doesn't require them to be unique.
 
 edf2csv preserves labels verbatim in output and only disambiguates when the file itself is ambiguous. When a label is duplicated, every channel carrying it gets a `_ch<index>` suffix on its column name, where the index is the channel's position in the file. One warning is raised per duplicated label, naming all of the positions involved.
 
@@ -257,7 +257,7 @@ These come from reading the EDF+ annotation channel and working out where each d
 
 This code covers three related conditions, and a single file can raise more than one of them.
 
-**The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records are not contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
+**The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records aren't contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
 
 ```
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
@@ -266,11 +266,11 @@ warning: This is a discontinuous (EDF+D) recording: its data records are not con
 
 edf2csv reads each record's true start time from its timekeeping annotation and writes that time into the `time_s` column. A gap in the recording becomes a jump in `time_s`, exactly as it should. This is the behaviour that distinguishes edf2csv from the common alternatives: `mne.io.read_raw_edf` closes these gaps silently, and pyEDFlib refuses `EDF+D` files outright.
 
-**Marked discontinuous, but there is no annotation channel.** The record start times are stored in the annotation channel, so a file with no annotation channel has no record of where its records sit.
+**Marked discontinuous, but there's no annotation channel.** The record start times are stored in the annotation channel, so a file with no annotation channel has no record of where its records sit.
 
-edf2csv falls back to timing the records as if they were contiguous and says so. Any gaps are lost, because the file does not contain the information needed to reconstruct them.
+edf2csv falls back to timing the records as if they were contiguous and says so. Any gaps are lost, because the file doesn't contain the information needed to reconstruct them.
 
-**Records start earlier than the record before them.** The timekeeping annotations are not monotonically increasing.
+**Records start earlier than the record before them.** The timekeeping annotations aren't monotonically increasing.
 
 ```
 warning: 1 data record start earlier than the record before it.
@@ -279,22 +279,22 @@ warning: 1 data record start earlier than the record before it.
 
 Rows are written in file order, not sorted by time, so `time_s` will step backwards at those points.
 
-**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Do not assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third case, either sort by `time_s` in your analysis or investigate the file, since out-of-order records usually mean the annotations were written incorrectly.
+**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Don't assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third case, either sort by `time_s` in your analysis or investigate the file, since out-of-order records usually mean the annotations were written incorrectly.
 
 ### ANNOTATION_DECODE_FAILED
 
 This code covers two conditions.
 
-**Annotation entries could not be decoded.** The annotation channel stores text as a run of Time-stamped Annotation Lists, each beginning with an explicitly signed onset. A chunk that does not begin with `+` or `-`, or whose onset is not a finite number, cannot be decoded.
+**Annotation entries couldn't be decoded.** The annotation channel stores text as a run of Time-stamped Annotation Lists, each beginning with an explicitly signed onset. A chunk that doesn't begin with `+` or `-`, or whose onset isn't a finite number, can't be decoded.
 
 ```
 warning: 1 annotation entry was unreadable and could not be exported.
          The rest were exported normally. The file may have been written by a non-conforming tool.
 ```
 
-edf2csv skips the bad entry and keeps going. A single malformed annotation should not cost you a whole conversion, but losing it in silence would mean you never learn that an event is missing from `annotations.csv`.
+edf2csv skips the bad entry and keeps going. A single malformed annotation shouldn't cost you a whole conversion, but losing it in silence would mean you never learn that an event is missing from `annotations.csv`.
 
-**Records carry no readable timekeeping annotation.** In a discontinuous file, the first annotation entry of each record must carry that record's start time. When it is missing or unreadable, that record's true position in time is unknown.
+**Records carry no readable timekeeping annotation.** In a discontinuous file, the first annotation entry of each record must carry that record's start time. When it's missing or unreadable, that record's true position in time is unknown.
 
 ```
 warning: 1 of 3 data records carry no readable timekeeping annotation (record 2), so their true position in time is unknown.
@@ -330,18 +330,18 @@ These describe what the conversion is about to produce, rather than a problem wi
 
 ### MIXED_SAMPLING_RATES
 
-The recording's channels do not all run at the same sampling rate.
+The recording's channels don't all run at the same sampling rate.
 
 **Cause.** Normal and extremely common. A sleep study typically records EEG at 256 Hz, ECG at 128 Hz and a rectal temperature probe at 1 Hz, all in one file.
 
-**What edf2csv does.** Writes one file per rate: `signals_256hz.csv`, `signals_128hz.csv`, `signals_1hz.csv`. A fractional rate becomes something like `signals_12_5hz.csv`. No channel is ever resampled, so every number in every output file is a number that was actually recorded.
+**What edf2csv does.** Writes one file per rate: `signals_256hz.csv`, `signals_128hz.csv`, `signals_1hz.csv`. A fractional rate becomes something like `signals_12_5hz.csv`. No channel is resampled.
 
 ```
 warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
-**What to do.** Load the files you need. Each has its own `time_s` column, so joining them is a matter of aligning on time. Note that when every channel shares a rate, a single `signals.csv` is written and this warning does not appear at all.
+**What to do.** Load the files you need. Each has its own `time_s` column, so joining them is a matter of aligning on time. Note that when every channel shares a rate, a single `signals.csv` is written and this warning doesn't appear at all.
 
 ### NO_SIGNAL_CHANNELS
 
@@ -351,15 +351,15 @@ The file has no signal channels: it contains only an EDF+ annotations channel.
 
 **What edf2csv does.** Writes `annotations.csv`, `metadata.json`, and a `channels.csv` containing only its header row. No signal files are written, because there are no signals.
 
-**What to do.** Nothing, if you were after the events. If you expected signal data, you are converting the wrong file of the pair.
+**What to do.** Nothing, if you were after the events. If you expected signal data, you're converting the wrong file of the pair.
 
 ### LARGE_OUTPUT
 
 At least one output file will have more than 1,048,576 rows, which is the limit for Excel and most other spreadsheet applications.
 
-**Cause.** Arithmetic. A single channel at 256 Hz crosses the limit after about 68 minutes.
+**Cause.** Recording length. A single channel at 256 Hz crosses the limit after about 68 minutes.
 
-**What edf2csv does.** Nothing differently. The file is written in full, and it is a perfectly valid CSV. The warning exists so that you are not surprised when a spreadsheet opens it and silently shows you only the first million rows.
+**What edf2csv does.** Nothing differently. The file is written in full and is a valid CSV. The warning exists so you aren't surprised when a spreadsheet opens it and shows only the first million rows.
 
 ```
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
@@ -380,9 +380,9 @@ edf2csv sleep-study.edf --start 2h --duration 30m
 
 ### STALE_OUTPUT
 
-The output directory contains files that edf2csv produced on an earlier run and did not rewrite on this one.
+The output directory contains files that edf2csv produced on an earlier run and didn't rewrite on this one.
 
-**Cause.** `--force` overwrites files but does not empty the directory. Converting a mixed-rate recording and then a single-rate one into the same place leaves `signals_256hz.csv` sitting next to a fresh `signals.csv`, and both look current.
+**Cause.** `--force` overwrites files but doesn't empty the directory. Converting a mixed-rate recording and then a single-rate one into the same place leaves `signals_256hz.csv` sitting next to a fresh `signals.csv`, and both look current.
 
 **What edf2csv does.** Names the leftover files and deletes nothing. Only files matching the names edf2csv itself produces are considered: `signals.csv`, `signals_<rate>hz.csv`, `annotations.csv`, `channels.csv` and `metadata.json`. Your own files in that directory are never reported and never touched.
 
@@ -391,40 +391,40 @@ warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over fro
          Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
 ```
 
-**What to do.** Delete the named files yourself once you have confirmed you do not need them, or convert into a fresh directory with `--out`. `metadata.json` always describes the run that wrote it, so its `conversion.files` list is the authoritative record of which files belong to the current conversion.
+**What to do.** Delete the named files yourself once you've confirmed you don't need them, or convert into a fresh directory with `--out`. `metadata.json` always describes the run that wrote it, so its `conversion.files` list is the authoritative record of which files belong to the current conversion.
 
 ## Codes that exist but are never raised
 
-Two codes are declared in the source but are not raised anywhere in the current version, so you will not see them.
+Two codes are declared in the source but aren't raised anywhere in the current version, so you won't see them.
 
 `NONSTANDARD_UNIT` was reserved for reporting a physical dimension outside the set the specification recommends. `NONPRINTABLE_LABEL` was reserved for reporting control characters or other non-printable bytes in a channel label.
 
-Both cases still convert correctly today: the unit string and the label are passed through verbatim into `channels.csv` and into the column names, exactly as they appear in the header. They are listed here only so that the reference is complete, and so that seeing them in the source is not mistaken for a behaviour you should expect.
+Both cases still convert correctly today: the unit string and the label are passed through verbatim into `channels.csv` and into the column names, exactly as they appear in the header. They are listed here only so that the reference is complete, and so that seeing them in the source isn't mistaken for a behaviour you should expect.
 
-## Fatal errors: the recording cannot be read
+## Fatal errors: the recording can't be read
 
 These stop the conversion. Nothing is written. All of them exit **1**.
 
 ### FILE_TOO_SMALL
 
-The file is not large enough to hold what it declares. Raised in three situations: the file is under 256 bytes and so cannot hold even the fixed header; the file is too short to hold the 256 bytes per signal that its declared signal count requires; or the file is smaller than the header size computed from that count.
+The file isn't large enough to hold what it declares. Raised in three situations: the file is under 256 bytes and so can't hold even the fixed header; the file is too short to hold the 256 bytes per signal that its declared signal count requires; or the file is smaller than the header size computed from that count.
 
 ```
 error: File is 100 bytes; an EDF header alone needs at least 256.
 ```
 
-This is a truncated download, an incomplete copy, or a file that is not EDF at all. Check the file size against the original.
+This is a truncated download, an incomplete copy, or a file that isn't EDF at all. Check the file size against the original.
 
 ### BAD_HEADER_FIELD
 
-A field that should contain a number does not. Raised when a numeric field is empty, when its contents do not parse as a finite number, when a field that must be a whole number is fractional, or when a signal declares a negative sample count.
+A field that should contain a number doesn't. Raised when a numeric field is empty, when its contents don't parse as a finite number, when a field that must be a whole number is fractional, or when a signal declares a negative sample count.
 
 ```
 error: Header field "number of header bytes" is not a number (found "adding p").
        The file may be truncated, byte-shifted, or not an EDF file at all.
 ```
 
-This is the error you get when pointing edf2csv at something that is not an EDF file. It also appears when a file is byte-shifted, so that fields are being read from the wrong offsets.
+This is the error you get when pointing edf2csv at something that isn't an EDF file. It also appears when a file is byte-shifted, so that fields are being read from the wrong offsets.
 
 ### INVALID_SIGNAL_COUNT
 
@@ -434,11 +434,11 @@ The header declares zero or fewer signals.
 error: Header declares 0 signals; expected at least 1.
 ```
 
-A recording with no channels cannot be converted. This usually means a corrupt header rather than a genuinely empty recording.
+A recording with no channels can't be converted. This usually means a corrupt header rather than a genuinely empty recording.
 
 ### INVALID_RECORD_DURATION
 
-The header declares a data record duration that is not a positive number.
+The header declares a data record duration that isn't a positive number.
 
 ```
 error: Header declares a data record duration of 0s; expected a positive number.
@@ -469,7 +469,7 @@ An acquisition that was started and stopped immediately produces exactly this. S
 
 ### UNREADABLE
 
-The file cannot be opened or read. Raised when the path does not exist, when permission is denied, when the path is a directory, when it is not a regular file, and when a read during conversion returns fewer bytes than expected.
+The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when the path is a directory, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected.
 
 ```
 error: Cannot read "recording.edf": no such file
@@ -479,7 +479,7 @@ error: Cannot read "recording.edf": no such file
 error: "/data/recordings" is a directory, not an EDF file.
 ```
 
-The mid-conversion variant is the interesting one. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
+The mid-conversion case works differently. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
 
 ```
 error: Expected 524288 bytes of data at record 4096 but only 131072 were available; the file appears to have changed size while it was being read.
@@ -488,20 +488,20 @@ error: Expected 524288 bytes of data at record 4096 but only 131072 were availab
 
 Wait for the recording to finish, or copy it somewhere stable first, then convert.
 
-## Fatal errors: the output cannot be written
+## Fatal errors: the output can't be written
 
 These also exit **1**.
 
 ### OUTPUT_EXISTS
 
-The output directory already exists and `--force` was not given.
+The output directory already exists and `--force` wasn't given.
 
 ```
 error: "recording_csv" already exists.
        Pass --force to overwrite it, or --out to choose a different directory.
 ```
 
-This is a guard, not a failure. Refusing by default means a second run cannot quietly destroy the first one's results.
+This is a guard, not a failure. Refusing by default means a second run can't quietly destroy the first one's results.
 
 ```bash
 edf2csv recording.edf --force
@@ -510,7 +510,7 @@ edf2csv recording.edf --out ./converted-v2
 
 ### OUTPUT_UNWRITABLE
 
-The destination cannot be used. Raised when the path given to `--out` is an existing regular file rather than a directory, and when creating the directory fails.
+The destination can't be used. Raised when the path given to `--out` is an existing regular file rather than a directory, and when creating the directory fails.
 
 ```
 error: "notes.txt" is a file, but the converted data needs a directory.
@@ -532,7 +532,7 @@ The partly written files are left on disk. They are truncated at an arbitrary po
 
 ## Usage errors
 
-These mean the command was invoked in a way that cannot be carried out. They exit **2** rather than 1, so a script can tell "you asked for something impossible" apart from "this recording is broken".
+These mean the command was invoked in a way that can't be carried out. They exit **2** rather than 1, so a script can tell "you asked for something impossible" apart from "this recording is broken".
 
 | Situation | Example message |
 | --- | --- |
@@ -542,7 +542,7 @@ These mean the command was invoked in a way that cannot be carried out. They exi
 | `--channels` given with no names | `--channels was given but lists no channel names.` |
 | `--decimals` missing or out of range | `--decimals must be a whole number between 0 and 15` |
 | A channel name that matches nothing | `No channel named "ECQ". Did you mean "ECG"?` |
-| A position that does not exist | `No channel at position #9.` |
+| A position that doesn't exist | `No channel at position #9.` |
 | An unparseable time value | `--start "banana" is not a time I understand.` |
 | `--duration` and `--end` together | `Use either --duration or --end, not both.` |
 | `--start` at or past the end of the recording | `--start 600s is at or past the end of this 2s recording.` |
@@ -557,14 +557,14 @@ The last two entries are about the recording's length but are still classed as u
 | Code | Meaning |
 | --- | --- |
 | `0` | The command succeeded. Warnings may still have been printed |
-| `1` | The recording could not be read, or the output could not be written |
-| `2` | The command was invoked incorrectly, or asked for something the recording cannot provide |
+| `1` | The recording couldn't be read, or the output couldn't be written |
+| `2` | The command was invoked incorrectly, or asked for something the recording can't provide |
 
 Piping into a consumer that exits early, such as `head`, closes stdout and would normally raise a broken pipe error. That case is treated as success, so `edf2csv recording.edf --info | head -5` exits 0.
 
 ## Checking warnings from a script
 
-`--json` puts the whole summary, warnings included, on stdout as JSON. Warnings are not also printed as text in this mode, so stderr stays clean.
+`--json` puts the whole summary, warnings included, on stdout as JSON. Warnings aren't also printed as text in this mode, so stderr stays clean.
 
 ```bash
 edf2csv recording.edf --out ./converted --json > summary.json
