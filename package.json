@@ -1,20 +1,26 @@
 {
   "name": "edf2csv",
   "version": "0.1.0",
-  "description": "Convert EDF and EDF+ biosignal recordings to CSV from the command line. Local, deterministic, and scientifically careful.",
+  "description": "Convert EDF, EDF+ and BDF biosignal recordings (European Data Format) to CSV from the command line. Local, streaming, and never resamples or alters units.",
   "keywords": [
     "edf",
     "edf+",
+    "bdf",
+    "european data format",
+    "edf to csv",
     "csv",
+    "converter",
     "eeg",
     "ecg",
     "emg",
+    "eog",
     "biosignal",
+    "physiological signals",
     "polysomnography",
-    "sleep",
-    "converter",
+    "sleep study",
+    "neuroscience",
     "cli",
-    "neuroscience"
+    "biosemi"
   ],
   "license": "MIT",
   "author": "Sarthak Tayal",
@@ -25,7 +31,7 @@
   "bugs": {
     "url": "https://github.com/tayal-sarthak/edf2csv/issues"
   },
-  "homepage": "https://github.com/tayal-sarthak/edf2csv#readme",
+  "homepage": "https://edf2csv.vercel.app",
   "type": "module",
   "bin": {
     "edf2csv": "dist/cli.js"
@@ -58,5 +64,9 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }
