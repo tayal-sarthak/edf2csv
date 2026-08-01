@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Documentation site for edf2csv",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/docs-index.mjs && vite",
+    "build": "node scripts/docs-index.mjs && vite build && node scripts/prerender.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

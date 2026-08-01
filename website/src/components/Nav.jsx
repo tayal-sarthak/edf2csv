@@ -18,7 +18,7 @@ function Mark() {
   );
 }
 
-export default function Nav({ route, navigate }) {
+export default function Nav() {
   const reduced = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_KEY) ?? 'auto');
@@ -48,35 +48,15 @@ export default function Nav({ route, navigate }) {
   return (
     <nav className="nav" data-scrolled={scrolled}>
       <div className="shell nav__inner">
-        <a
-          className="nav__brand"
-          href="#/"
-          onClick={(event) => {
-            event.preventDefault();
-            navigate('/');
-          }}
-        >
+        <a className="nav__brand" href="/">
           <Mark />
           edf2csv
         </a>
 
         <div className="nav__links">
-          <a
-            href="#/docs/getting-started"
-            aria-current={route.startsWith('/docs') ? 'true' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate('/docs/getting-started');
-            }}
-          >
-            Docs
-          </a>
-          <a className="nav__hide-sm" href="#/docs/cli-reference" onClick={(event) => { event.preventDefault(); navigate('/docs/cli-reference'); }}>
-            CLI
-          </a>
-          <a className="nav__hide-sm" href="#/docs/correctness" onClick={(event) => { event.preventDefault(); navigate('/docs/correctness'); }}>
-            Correctness
-          </a>
+          <a href="/docs/getting-started">Docs</a>
+          <a className="nav__hide-sm" href="/docs/cli-reference">CLI</a>
+          <a className="nav__hide-sm" href="/docs/correctness">Correctness</a>
           <a href="https://github.com/tayal-sarthak/edf2csv" target="_blank" rel="noreferrer">
             GitHub
           </a>

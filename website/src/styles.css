@@ -723,6 +723,37 @@ a {
   background: var(--accent-soft);
 }
 
+/* On-page table of contents, prerendered into each documentation page. */
+.docs__toc {
+  display: grid;
+  gap: 1px;
+  margin: 0 0 2.4rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.docs__toc-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 0.5rem;
+}
+
+.docs__toc a {
+  font-size: 0.92rem;
+  color: var(--text-dim);
+  padding: 0.2rem 0;
+  transition: color 0.16s var(--ease);
+}
+
+.docs__toc a:hover {
+  color: var(--accent-text);
+}
+
 /* ------------------------------------------------------------------ prose */
 
 .prose {

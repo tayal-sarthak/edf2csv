@@ -163,7 +163,7 @@ function CommandBar({ command }) {
   );
 }
 
-export default function Landing({ navigate }) {
+export default function Landing() {
   const [selected, setSelected] = useState(FILES[0].name);
   const active = FILES.find((file) => file.name === selected) ?? FILES[0];
 
@@ -201,11 +201,7 @@ export default function Landing({ navigate }) {
               <div className="hero__actions">
                 <motion.a
                   className="btn btn--primary"
-                  href="#/docs/getting-started"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    navigate('/docs/getting-started');
-                  }}
+                  href="/docs/getting-started"
                   whileHover={{ y: -1 }}
                   whileTap={{ y: 0, scale: 0.985 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 26 }}
@@ -349,11 +345,7 @@ export default function Landing({ navigate }) {
               <a
                 key={page.slug}
                 className="doc-card"
-                href={`#/docs/${page.slug}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  navigate(`/docs/${page.slug}`);
-                }}
+                href={`/docs/${page.slug}`}
               >
                 <div className="doc-card__title">
                   {page.title}

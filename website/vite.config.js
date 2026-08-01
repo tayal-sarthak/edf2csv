@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // Relative base so the built site works from a subpath (GitHub Pages) or a domain root.
-  base: './',
+  // Absolute base: documentation is prerendered into /docs/<slug>/, and a relative
+  // base would make those pages look for /docs/<slug>/assets/... instead.
+  base: '/',
   build: {
     outDir: 'dist',
     assetsInlineLimit: 0,
