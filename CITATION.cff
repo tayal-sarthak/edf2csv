@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: If you use this software in research, please cite it.
+title: "edf2csv: a command-line converter from EDF, EDF+ and BDF recordings to CSV"
+abstract: >-
+  edf2csv converts EDF, EDF+ and BDF biosignal recordings to CSV from the command
+  line. It runs locally, streams so that memory does not grow with recording length,
+  and is deliberately conservative with the data: channels recorded at different
+  sampling rates are written to separate files rather than resampled onto a common
+  grid, units are never converted, discontinuous recordings keep their real timing,
+  and malformed files are reported rather than silently producing plausible output.
+  Physical values are verified against pyEDFlib.
+type: software
+authors:
+  - family-names: Tayal
+    given-names: Sarthak
+repository-code: https://github.com/tayal-sarthak/edf2csv
+url: https://edf2csv.vercel.app
+license: MIT
+version: 0.1.0
+keywords:
+  - EDF
+  - European Data Format
+  - BDF
+  - biosignal
+  - electroencephalography
+  - polysomnography
+  - data conversion

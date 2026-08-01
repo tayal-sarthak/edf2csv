@@ -1,6 +1,6 @@
 # edf2csv
 
-Turn an EDF, EDF+ or BDF recording into CSV with one command.
+Convert an EDF, EDF+ or BDF recording to CSV with one command.
 
 ```bash
 npx edf2csv recording.edf
@@ -9,6 +9,8 @@ npx edf2csv recording.edf
 That's it. You get a `recording_csv/` folder you can open in pandas, R, MATLAB, or
 Excel. Nothing is uploaded, nothing is installed permanently, and the numbers are
 not altered on the way through.
+
+Full documentation: **[edf2csv.vercel.app](https://edf2csv.vercel.app)**
 
 ## What you get
 
@@ -30,7 +32,7 @@ time_s,FP1-F7,F7-T7,T7-P7
 
 ## Check before you convert
 
-An hour of 23-channel EEG makes a 165 MB CSV — too many rows for Excel. `--info`
+An hour of 23-channel EEG makes a 165 MB CSV, too many rows for Excel. `--info`
 shows you what you'd get, without writing anything:
 
 ```bash
@@ -65,7 +67,7 @@ Exit codes: `0` fine, `1` couldn't read or write the file, `2` bad command.
 
 ## What it won't do to your data
 
-**It won't resample.** Some EDF files mix rates — EEG at 256 Hz, temperature at
+**It won't resample.** Some EDF files mix rates: EEG at 256 Hz, temperature at
 1 Hz. Squeezing those into one table means inventing samples, so each rate gets its
 own file (`signals_256hz.csv`, `signals_1hz.csv`). A 1 Hz channel over 3 seconds
 gets 3 rows, because that's how many readings exist.
@@ -80,18 +82,37 @@ uniform array to run its analysis. It's the wrong call for a converter.
 a jump in `time_s` rather than being closed up.
 
 **It won't stay quiet about problems.** Truncated files, headers that contradict
-the data, duplicate channel names, calibration that can't be applied — you get told,
+the data, duplicate channel names, calibration that can't be applied. You get told,
 in plain words, before you rely on the output.
 
 ## Is it right?
 
 Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib). On the
 recordings used for testing, 129,536 sample values came out **bit-for-bit
-identical** — not close, identical.
+identical**. Not close. Identical.
 
 ```bash
 npm test
 ```
+
+## When to use something else
+
+This is a converter. It is the right tool when you want the numbers out of an EDF
+file and into something else. It is the wrong tool for several neighbouring jobs, and
+saying so is cheaper than you finding out later.
+
+- **Analysing the signal.** Filtering, epoching, re-referencing, ICA, spectral work:
+  use [MNE-Python](https://mne.tools). It is excellent and built for exactly this.
+- **Reading EDF inside Python.** [pyEDFlib](https://github.com/holgern/pyedflib) hands
+  you arrays directly, with no CSV in the middle. edf2csv is checked against it.
+- **Writing EDF files.** This only reads them.
+- **Viewing a recording.** [EDFbrowser](https://www.teuniz.net/edfbrowser/) is a real
+  viewer and will beat a spreadsheet every time.
+- **Huge recordings you will analyse repeatedly.** CSV is a poor archival format; an
+  EDF roughly quadruples in size as text. Convert a window, or read the file directly.
+
+Use edf2csv when the destination is a spreadsheet, a colleague who does not use
+Python, a quick look at part of a recording, or a pipeline that speaks CSV.
 
 ## Notes
 
