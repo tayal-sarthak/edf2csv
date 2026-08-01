@@ -1,13 +1,13 @@
 ---
 title: Questions and troubleshooting
-description: Answers to the questions that come up most often, from several signals files to patient data in metadata.json
+description: Answers to common questions, from several signals files to patient data in metadata.json
 order: 11
 ---
 
 ## Why did I get several signals files instead of one?
 
-Because the channels in your recording were not all sampled at the same rate. When every channel
-shares one rate you get a single `signals.csv`. When they do not, you get one file per rate,
+Because the channels in your recording weren't all sampled at the same rate. When every channel
+shares one rate you get a single `signals.csv`. When they don't, you get one file per rate,
 named after that rate:
 
 ```
@@ -17,11 +17,10 @@ sleep-study_csv/
   signals_1hz.csv      Temp rectal
 ```
 
-A single wide table cannot hold two rates without inventing rows. To put a 1 Hz temperature
-channel next to a 256 Hz EEG channel in one table, something has to fill 255 out of every 256
-temperature cells with values that were never measured. edf2csv will not do that, so it splits the
-table instead. Nothing is resampled, interpolated or padded, and every number in every output file
-is a number that came off the recorder.
+A single wide table can't hold two rates without inventing rows. Putting a 1 Hz temperature
+channel next to a 256 Hz EEG channel in one table means filling 255 out of every 256 temperature
+cells with values that were never measured, so edf2csv splits the table instead. Nothing is
+resampled, interpolated or padded.
 
 `channels.csv` has an `output_file` column telling you where each channel went, and
 `--info` shows the same mapping before you convert anything.
@@ -33,25 +32,25 @@ text. A sample stored as two bytes becomes something like `-114.258`, which is e
 plus a comma. A factor of four is normal, and a factor of five or six happens on channels that
 need more decimal places.
 
-The size is not padding. The decimal places are chosen per channel from its calibration so that no
-two distinct digital codes ever round to the same text, and no further digits than that are
-written. Nothing is gained by trimming them except lost resolution.
+The extra size isn't padding. The decimal places are chosen per channel from its calibration so
+that no two distinct digital codes round to the same text, and no further digits are written.
+Trimming them would cost resolution.
 
-If the size is a problem, convert less rather than converting coarser:
+If the size is a problem, convert a smaller part of the recording rather than reducing precision:
 
 ```bash
 edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG" --start 1h --duration 20m
 ```
 
-Run `--info` first and it will tell you the row count and approximate byte size before you commit
-to writing anything. Compressing the result afterwards works well, since CSV of this kind is very
-repetitive: `gzip signals.csv` typically gets most of the size back.
+Run `--info` first to see the row count and approximate byte size before writing anything.
+Compressing the result afterwards works well, since CSV of this kind is very repetitive:
+`gzip signals.csv` typically recovers most of the size.
 
 ## Can I open the output in Excel?
 
 Sometimes. Excel and Numbers stop at 1,048,576 rows including the header. One hour of a single
-256 Hz channel is 921,600 rows, so it just fits. Two hours does not. When any output file will
-exceed the limit, edf2csv warns you before it becomes a problem:
+256 Hz channel is 921,600 rows, so it just fits. Two hours doesn't. When any output file will
+exceed the limit, edf2csv warns you before writing:
 
 ```text
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
@@ -59,7 +58,7 @@ warning: At least one output file will have more than 1,048,576 rows, which is m
 ```
 
 `channels.csv` and `annotations.csv` are small and open in a spreadsheet without trouble. For the
-signal files you have two reasonable options.
+signal files you have two options.
 
 Convert a window small enough to open:
 
@@ -79,13 +78,13 @@ signals = pd.read_csv("sleep-study_csv/signals_256hz.csv")
 signals <- readr::read_csv("sleep-study_csv/signals_256hz.csv")
 ```
 
-Note that a spreadsheet may also reformat what it displays. A time column of `0.00390625` can be
+A spreadsheet may also reformat what it displays. A time column of `0.00390625` can be
 shown as `0.004`, and a label such as `1-2` can be read as a date. The file on disk is unaffected,
-but do not trust a spreadsheet's rendering when you are checking values.
+but don't rely on a spreadsheet's rendering when you're checking values.
 
 ## Why does it refuse to write into a directory that already exists?
 
-To stop a second conversion from quietly mixing itself into the results of a first one. If the
+To stop a second conversion from mixing itself into the results of a first one. If the
 output directory exists, the conversion stops before writing anything:
 
 ```text
@@ -93,7 +92,7 @@ error: "sleep-study_csv" already exists.
        Pass --force to overwrite it, or --out to choose a different directory.
 ```
 
-That is exit code 1, and nothing on disk has changed. Pick one:
+That's exit code 1, and nothing on disk has changed. Pick one:
 
 ```bash
 edf2csv sleep-study.edf --force            # overwrite the previous output
@@ -106,9 +105,9 @@ would leave you with a metadata file describing one conversion and signal files 
 
 ## Why is there a leftover signals_256hz.csv next to my new signals.csv?
 
-`--force` overwrites the files a run produces, but it does not empty the directory first. Convert
+`--force` overwrites the files a run produces, but it doesn't empty the directory first. Convert
 a mixed-rate recording into a directory, then convert a single-rate one into the same directory,
-and the rate-named files from the first run are still sitting there looking current. edf2csv spots
+and the rate-named files from the first run are still there, looking current. edf2csv detects
 this and tells you:
 
 ```text
@@ -117,14 +116,14 @@ warning: signals_128hz.csv, signals_1hz.csv are left over from an earlier conver
          Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
 ```
 
-Nothing is deleted for you. Deleting the stale files or converting into a fresh directory both
-resolve it. `metadata.json` always lists the files the current run actually wrote, under
-`conversion.files`, so that is the authoritative list if you are unsure which is which.
+Nothing is deleted for you. Either delete the stale files or convert into a fresh directory.
+`metadata.json` always lists the files the current run actually wrote, under
+`conversion.files`, so that's the authoritative list if you're unsure which is which.
 
 ## I asked for a channel and it says there is no channel with that name
 
-`--channels` matches the channel's label exactly, ignoring case only. It does not do substring or
-prefix matching, because a partial match would silently pull in channels you did not ask for. A
+`--channels` matches the channel's label exactly, ignoring case only. It doesn't do substring or
+prefix matching, since a partial match would silently pull in channels you didn't ask for. A
 term that matches nothing is an error rather than a quiet omission:
 
 ```text
@@ -141,7 +140,7 @@ edf2csv sleep-study.edf --info
 edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"
 ```
 
-If the label is genuinely awkward, or two channels share it, address the channel by its position
+If the label is awkward, or two channels share it, address the channel by its position
 in the file instead. The `#` column in `--info` is that position:
 
 ```bash
@@ -153,9 +152,9 @@ reachable by name.
 
 ## Why did --channels give me two columns when I asked for one?
 
-Because two channels in the file share that label. EDF does not require labels to be unique, and
-recordings with two channels both labelled `T8-P8` are common enough that this is normal rather
-than corruption. Both are selected, and you are told why:
+Because two channels in the file share that label. EDF doesn't require labels to be unique, and
+recordings with two channels both labelled `T8-P8` are common enough to be normal rather
+than corrupt. Both are selected, and you're told why:
 
 ```text
 warning: "T8-P8" matches 2 channels (positions #0, #1); all of them were selected.
@@ -182,7 +181,7 @@ time_s,EEG Fpz-Cz
 10.100,4.639
 ```
 
-That file has no data between 1.9 s and 10.0 s because none was recorded. You are warned at
+That file has no data between 1.9 s and 10.0 s because none was recorded. You're warned at
 conversion time:
 
 ```text
@@ -190,23 +189,23 @@ warning: This is a discontinuous (EDF+D) recording: its data records are not con
          Each row carries its true recording time, so gaps stay visible instead of being closed.
 ```
 
-This is worth stressing because the alternatives are worse. `mne.io.read_raw_edf` closes EDF+D
-gaps silently, which shifts every sample after the gap to a time it was not recorded at.
-pyEDFlib refuses EDF+D files outright. Keeping the gap visible means `time_s` is always the real
-recording time, and it means you have to handle the gap yourself instead of it handling you.
+Other tools handle this differently. `mne.io.read_raw_edf` closes EDF+D gaps silently, which
+shifts every sample after the gap to a time it wasn't recorded at. pyEDFlib refuses EDF+D files
+outright. Keeping the gap visible means `time_s` is always the real recording time, and that the
+gap is yours to handle.
 
 Two other causes of odd times, both reported as warnings when they occur: records whose
 timekeeping annotation is missing get a fallback timestamp computed as if they were contiguous,
-and a file whose records are stored out of order produces a `time_s` column that does not increase
+and a file whose records are stored out of order produces a `time_s` column that doesn't increase
 monotonically. Both are named explicitly in the warnings and in `metadata.json` under `notes`.
 
 ## There is no annotations.csv in my output directory
 
 `annotations.csv` is written only when the recording has an EDF+ or BDF+ annotation channel. Plain
-EDF has nowhere to store events, so no file is written rather than an empty one that implies the
-events were checked for and found to be absent.
+EDF has nowhere to store events, so no file is written at all rather than an empty one suggesting
+that events were looked for and not found.
 
-Run `--info`. If the channel count line does not mention an annotation channel, the file has none:
+Run `--info`. If the channel count line doesn't mention an annotation channel, the file has none:
 
 ```text
 Channels   4 signals + 1 annotation channel
@@ -218,18 +217,17 @@ written with its header row and no data rows, and `metadata.json` records
 
 ## Does edf2csv send my data anywhere?
 
-No. It runs entirely on your machine. There are no network calls of any kind in the code: no
-upload, no download, no update check, no crash reporting, no telemetry, no usage counter. The tool
-reads the file you point it at and writes files into the output directory, and that is the whole
-of its interaction with the outside world.
+No. It runs entirely on your machine. The code contains no network calls of any kind: no
+upload, no download, no update check, no crash reporting, no telemetry, no usage counter. It
+reads the file you point it at and writes files into the output directory.
 
-It also has zero runtime dependencies, so there is no third-party package running in the same
+It also has zero runtime dependencies, so there's no third-party package running in the same
 process that could do any of the above. The only thing that touches the network is `npm` or `npx`
 when you install the tool, which happens once and is the package manager's doing rather than the
 tool's.
 
-This is deliberate. Clinical and research recordings frequently cannot leave the machine or the
-network they are on, and a converter is not worth the paperwork if it phones home.
+This matters because clinical and research recordings frequently can't leave the machine or the
+network they're on.
 
 ## Is patient information preserved in the output?
 
@@ -242,7 +240,7 @@ recording field holds the start date plus a hospital administration code, the te
 equipment. In practice these fields contain whatever the recording software put there, which is
 sometimes a study code and sometimes a person's actual name and date of birth.
 
-Concretely, `metadata.json` contains:
+`metadata.json` contains:
 
 | Field | What it holds |
 | --- | --- |
@@ -256,21 +254,20 @@ Concretely, `metadata.json` contains:
 | `source.sha256` | Checksum of the input, only when `--checksum` was passed, otherwise `null` |
 
 Two of those are easy to overlook. A recording date and time is itself identifying when combined
-with a clinic and a date of admission, so `start_datetime_local` is not neutral. And `source.path` is the
-resolved absolute path, which often embeds a subject folder name.
+with a clinic and a date of admission, so `start_datetime_local` isn't neutral. And `source.path`
+is the resolved absolute path, which often embeds a subject folder name.
 
-The fields are copied rather than stripped because a conversion that loses provenance is not
-reproducible, and because a tool that silently decided what counts as identifying would be making
-that judgement on your behalf. The judgement is yours, so:
+The fields are copied rather than stripped so that the conversion stays reproducible, and because
+what counts as identifying depends on your context. So:
 
-- Do not attach `metadata.json` to an issue report, a public repository or a shared drive without
+- Don't attach `metadata.json` to an issue report, a public repository or a shared drive without
   reading it first.
 - If you need to publish a conversion, edit or remove the `recording.patient_id`,
   `recording.recording_id`, `source.path` and start-time fields before you do.
 - Anonymise the EDF header before conversion if you want the whole pipeline clean, since the
   metadata is only a faithful copy of what the header already says.
 
-Two other files deserve a look. `--info` prints `Patient` and `Recording` lines to stdout, so
+Two other files are worth checking. `--info` prints `Patient` and `Recording` lines to stdout, so
 terminal transcripts and CI logs pick them up. And `annotations.csv` holds annotation text exactly
 as recorded, which is free text a technician typed and can contain names or clinical notes.
 
@@ -279,7 +276,7 @@ the transducer and prefiltering strings, which can identify a site's equipment b
 
 ## Can I get the raw digital values instead of physical units?
 
-The CSV output is always physical units. There is no flag for raw digital codes, and `--decimals 0`
+The CSV output is always physical units. There's no flag for raw digital codes, and `--decimals 0`
 rounds physical values to whole numbers rather than giving you the underlying integers.
 
 You have two routes. The first is to recover the digital code from the physical value, which is
@@ -332,12 +329,11 @@ Because the number of decimals is derived from each channel's own calibration, n
 The smallest physical step a channel can express is its physical range divided by its digital
 range, and edf2csv writes two places past that step. An EEG channel spanning plus or minus 250 uV
 across a 12-bit converter has a step of about 0.12 uV, so three decimals are enough for every
-distinct sample to have a distinct text. A temperature channel spanning 34 to 40 degC over the same
+distinct sample to have distinct text. A temperature channel spanning 34 to 40 degC over the same
 converter has a step near 0.0015, so it gets five.
 
-The effect is that no resolution is lost and no meaningless digits are written. The per-channel
-choice is recorded in `metadata.json` under `conversion.rate_groups[].decimals`, so you can see
-exactly what was applied.
+The result is that no resolution is lost and no meaningless digits are written. The per-channel
+choice is recorded in `metadata.json` under `conversion.rate_groups[].decimals`.
 
 If you need a fixed width across channels, for a downstream tool that insists on it, override it:
 
@@ -346,8 +342,7 @@ edf2csv sleep-study.edf --decimals 6
 ```
 
 `--decimals` accepts a whole number from 0 to 15 and applies to every channel. Setting it below
-what a channel needs discards resolution, which is a real decision and the reason it is not the
-default.
+what a channel needs discards resolution, which is why it isn't the default.
 
 ## Does it support BDF and BioSemi files?
 
@@ -362,25 +357,23 @@ The format is reported in `--info` and in `metadata.json`:
 Format     BDF+ (discontinuous)
 ```
 
-Nothing else about the workflow changes. The same flags, the same output files, the same rules
+Nothing else about the workflow changes: the same flags, the same output files, the same rules
 about sampling rates and gaps.
 
 ## Does it do filtering, detrending or artifact removal?
 
-No, and it will not. edf2csv applies exactly one transformation: the digital-to-physical scaling
+No. edf2csv applies exactly one transformation: the digital-to-physical scaling
 that the file's own header specifies. No filtering, no notch, no detrending, no re-referencing, no
 artifact rejection, no resampling, no unit conversion, no scaling to a common range.
 
-This is the point of the tool rather than a missing feature. Preprocessing choices belong to your
-analysis, where they are visible, documented and reviewable, not buried in a format conversion
-where nobody can see what was done. A converter that filtered on the way out would make the CSV
-disagree with the EDF for reasons that no longer appear anywhere.
+Preprocessing belongs in your analysis, where the choices are visible and reviewable. A converter
+that filtered on the way out would produce a CSV that disagrees with the EDF for reasons recorded
+nowhere.
 
-Two consequences worth knowing. Prefiltering that the recording hardware already applied is
-described in the `prefiltering` column of `channels.csv`, so you can see what was done before the
-file existed. And a channel whose header declares its physical minimum above its physical maximum
-is converted with that inversion intact, since correcting it would mean overriding what the file
-says:
+Two consequences. Prefiltering that the recording hardware already applied is described in the
+`prefiltering` column of `channels.csv`, so you can see what was done before the file existed. And
+a channel whose header declares its physical minimum above its physical maximum is converted with
+that inversion intact, since correcting it would mean overriding what the file says:
 
 ```text
 warning: Signal 3 ("inverted") declares physical minimum 100 above physical maximum -100, which inverts its polarity.
@@ -390,7 +383,7 @@ warning: Signal 3 ("inverted") declares physical minimum 100 above physical maxi
 ## What happens with a truncated recording, or one that is still being written?
 
 A truncated file converts. edf2csv derives the number of data records from the actual file size
-rather than trusting the header, converts every complete record that is present, and warns about
+rather than trusting the header, converts every complete record that's present, and warns about
 the discrepancy:
 
 ```text
@@ -398,12 +391,12 @@ warning: The header declares 10 data records but the file contains 4. Converting
          The recording looks truncated - it may have been cut short or copied incompletely.
 ```
 
-If bytes are left over after the last complete record, they are ignored and reported separately as
-a `TRAILING_BYTES` warning. Both warnings are also written into `metadata.json` under `notes`, so
-the conversion carries its own caveat with it. If there is not even one complete data record, the
-conversion fails with exit code 1 rather than producing a file with a header row and nothing in it.
+If bytes are left over after the last complete record, they're ignored and reported separately as
+a `TRAILING_BYTES` warning. Both warnings are also written into `metadata.json` under `notes`. If
+there isn't even one complete data record, the conversion fails with exit code 1 rather than
+producing a file with a header row and nothing in it.
 
-A recording still in progress often declares `-1` data records, which the spec permits. That is
+A recording still in progress often declares `-1` data records, which the spec permits. That's
 handled the same way:
 
 ```text
@@ -411,10 +404,10 @@ warning: The header does not say how many data records the file has (-1), which 
          for recordings still in progress. Using the 4 records the file actually contains.
 ```
 
-Converting a file that is actively being appended to is workable but has one catch: the file size
-is read once when the file is opened, so records written after that point are not included. You
+Converting a file that's actively being appended to works, with one catch: the file size
+is read once when the file is opened, so records written after that point aren't included. You
 get a clean conversion of the recording as it stood at that instant. If the file instead becomes
-shorter while it is being read, which happens when a writer rewrites it in place, the conversion
+shorter while it's being read, which happens when a writer rewrites it in place, the conversion
 fails rather than handing you a silently short result:
 
 ```text
@@ -431,10 +424,10 @@ identical to pyEDFlib on the recordings used for testing.
 
 The specification writes the same mapping as `(digital - digitalMin) * gain + physicalMin`. That
 form is algebraically equivalent but numerically worse: on a channel spanning plus or minus
-800 uV it computes a value near 800 and then subtracts 800, and the cancellation throws away
+800 uV it computes a value near 800 and then subtracts 800, and the cancellation discards
 low-order bits. Digital code 0 comes out as `0.19536019536019467` when the correctly rounded value
 is `0.19536019536019536`. A tool using the literal ordering will differ from edf2csv in the last
-few digits, and edf2csv is the one that is right.
+few digits, and the edf2csv value is the correctly rounded one.
 
 Larger disagreements usually have a structural cause rather than an arithmetic one. If another
 tool gave you more rows than edf2csv did, it probably upsampled the slow channels to a common
@@ -466,7 +459,7 @@ done
 
 ## How much memory does a large file need?
 
-Very little, and it does not scale with the length of the recording. Conversion is streamed:
+Very little, and it doesn't scale with the length of the recording. Conversion is streamed:
 records are read in batches of about 8 MB, converted, and written out, so a 4 GB recording uses
 the same working set as a 4 MB one. A 40 MB EDF producing a 159 MB CSV converts in about 1.4
 seconds with the Node heap capped at 48 MB.
@@ -474,15 +467,15 @@ seconds with the Node heap capped at 48 MB.
 All the output files are written in the same single pass over the data, so a recording that
 produces three rate-split files is still read exactly once.
 
-One thing does scale with the recording: the EDF+ annotation list is collected in memory before it
-is written, because annotations have to be sorted by onset and a writer is free to store an event
-in a record other than the one its onset falls in. A recording with hundreds of thousands of
+One thing does scale with the recording: the EDF+ annotation list is collected in memory before
+it's written, because annotations have to be sorted by onset and a writer is free to store an
+event in a record other than the one its onset falls in. A recording with hundreds of thousands of
 events uses memory in proportion to the event count. Signal data never does.
 
 ## How do I check whether a conversion had problems from a script?
 
-Use the exit code for pass or fail, and `--json` for the detail. The exit codes are: 0 for success,
-1 for a problem with the file or the output directory, 2 for a problem with how the command was
+Use the exit code for pass or fail, and `--json` for the detail. The exit codes are 0 for success,
+1 for a problem with the file or the output directory, and 2 for a problem with how the command was
 invoked.
 
 ```bash
@@ -518,10 +511,10 @@ edf2csv sleep-study.edf --json \
     })'
 ```
 
-Note that under `--json` the warnings go into the JSON on stdout instead of being printed to
-stderr, so you will not see them twice. Without `--json`, warnings and the summary go to stderr and
-only `--info` output goes to stdout, which means a conversion can run inside a pipeline without its
-chatter contaminating the data.
+Under `--json` the warnings go into the JSON on stdout instead of being printed to
+stderr, so you won't see them twice. Without `--json`, warnings and the summary go to stderr and
+only `--info` output goes to stdout, so a conversion can run inside a pipeline without mixing
+messages into the data.
 
 ## How do I cite edf2csv, or pin a version?
 
@@ -544,7 +537,7 @@ Every conversion already records which version produced it. `metadata.json` open
 ```
 
 Add `--checksum` and the SHA-256 of the input file is recorded alongside it, under
-`source.sha256`, which pins the input as firmly as the version pins the tool:
+`source.sha256`, so the input is pinned as well as the tool:
 
 ```bash
 edf2csv sleep-study.edf --checksum
@@ -559,4 +552,4 @@ non-obvious thing the conversion did:
 
 edf2csv is MIT licensed, so it can be redistributed, vendored into a pipeline or included in
 supplementary material without restriction. `edf2csv --version` prints the version of whatever
-copy you are running.
+copy you're running.

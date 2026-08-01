@@ -1,44 +1,44 @@
 ---
 title: Mixed sampling rates
-description: Why edf2csv writes one CSV per sampling rate and never resamples, and how to work with the files it produces
+description: Why edf2csv writes one CSV per sampling rate instead of resampling, and how to work with the files it produces
 order: 4
 ---
 
 ## EDF files routinely mix rates
 
-EDF does not store one sampling rate for the whole recording. It stores a record duration in the file header, and then, for every channel separately, how many samples that channel contributes to each data record. A channel's rate is those two numbers divided:
+EDF doesn't store one sampling rate for the whole recording. It stores a record duration in the file header, and then, for every channel separately, how many samples that channel contributes to each data record. A channel's rate is those two numbers divided:
 
 ```
 sampling rate (Hz) = samples per data record / record duration in seconds
 ```
 
-Because the count is per channel, nothing stops one file from holding channels at wildly different rates, and real recordings do exactly that. A polysomnography montage might carry EEG at 256 Hz, EOG at 100 Hz, respiratory effort at 10 Hz and a rectal thermistor at 1 Hz, all in one file. That is not a malformed file. It is the format working as designed: you sample each sensor at the rate that sensor deserves, and temperature does not deserve 256 Hz.
+Because the count is per channel, one file can hold channels at very different rates, and real recordings do. A polysomnography montage might carry EEG at 256 Hz, EOG at 100 Hz, respiratory effort at 10 Hz and a rectal thermistor at 1 Hz, all in the same file. That's the format working as designed: each sensor is sampled at a rate suited to it.
 
-## One wide CSV cannot hold them without inventing samples
+## One wide CSV can't hold them without inventing samples
 
-A CSV table has one row per time value and one column per channel. If you want a single table, the fastest channel decides how many rows there are. Take three seconds of recording with EEG at 256 Hz and temperature at 1 Hz. The EEG contributes 768 samples. The temperature contributes 3. A single table with 768 rows has 768 cells in the temperature column and only 3 real numbers to put in them.
+A CSV table has one row per time value and one column per channel. In a single table, the fastest channel decides how many rows there are.
 
-There are three ways to fill the other 765 cells, and all of them are worse than not filling them:
+Take three seconds of recording with EEG at 256 Hz and temperature at 1 Hz. The EEG contributes 768 samples and the temperature contributes 3. A single table with 768 rows has 768 cells in the temperature column and only 3 real numbers to put in them. The remaining 765 can be filled three ways:
 
-1. Repeat the last value. The column now shows 768 readings, 765 of which the thermistor never produced. Anything that counts samples, estimates a spectrum, or computes a variance is now working on fabricated data.
-2. Interpolate between readings. Same problem, with the added twist that the invented values look smoother and more plausible than the real ones.
-3. Leave the cells blank. This is honest, but it makes a file that is more than 99% empty for that column, and many readers will silently treat the blanks as zero or drop the rows.
+1. **Repeat the last value.** The column then shows 768 readings, 765 of which the thermistor never produced. Anything that counts samples, estimates a spectrum, or computes a variance is working on fabricated data.
+2. **Interpolate between readings.** Same problem, except the invented values look smoother and more plausible than the real ones.
+3. **Leave the cells blank.** This is accurate, but it produces a column that's more than 99% empty, and many readers treat blanks as zero or drop the rows.
 
-The trouble with options 1 and 2 is not that interpolation is wrong. Interpolation is often exactly what you want. The trouble is that once the numbers are in a CSV they are indistinguishable from measurements. Nothing in the file records which values came off a sensor and which came out of an algorithm.
+Interpolation itself isn't the problem — it's often exactly what you want. The problem is that once the numbers are in a CSV they're indistinguishable from measurements. Nothing in the file records which values came off a sensor and which came out of an algorithm.
 
-## What MNE does, and why it is right for MNE
+## What MNE does
 
-Load a three second file with one 256 Hz channel, one 128 Hz channel and one 1 Hz channel using `mne.io.read_raw_edf`, and every channel reports 768 samples. The 3 genuine temperature readings become 768 values, upsampled to the fastest channel in the file. No warning is printed.
+Load a three-second file with one 256 Hz channel, one 128 Hz channel and one 1 Hz channel using `mne.io.read_raw_edf`, and every channel reports 768 samples. The 3 genuine temperature readings become 768 values, upsampled to the fastest channel in the file. No warning is printed.
 
-This is a deliberate and defensible choice for MNE. MNE is an analysis library built around `Raw`, a single 2D array of shape `(n_channels, n_times)` with one shared time axis. Filtering, epoching, ICA, source localisation and every plotting routine assume that array. A ragged structure would break all of it. Given that design, expanding the slow channels is the only thing MNE can do, and for the work MNE is for it usually does not matter: nobody runs ICA on a thermistor.
+That's a reasonable choice for MNE. MNE is an analysis library built around `Raw`, a single 2D array of shape `(n_channels, n_times)` with one shared time axis. Filtering, epoching, ICA, source localisation and the plotting routines all assume that array, and a ragged structure would break them. Given that design, expanding the slow channels is the only option, and for MNE's purposes it rarely matters.
 
-It is the wrong choice for a converter. A converter's whole job is to hand you the file's contents in a different container. If the CSV that comes out contains 765 numbers the recording never contained, the conversion has added information, and you have no way of knowing which rows to distrust. The failure mode is quiet: your analysis runs, produces a number, and the number is partly about the interpolator.
+It's a different question for a converter, whose job is to hand you the file's contents in another container. If the CSV contains 765 numbers the recording never contained, the conversion has added information and you have no way to tell which rows to distrust.
 
 ## What edf2csv writes instead
 
-One file per distinct sampling rate. Nothing is resampled, upsampled, downsampled, interpolated or padded. Every number in every output file is a number that was in the recording.
+One file per distinct sampling rate. Nothing is resampled, upsampled, downsampled, interpolated or padded.
 
-Here is the same three second file converted:
+Here is the same three-second file converted:
 
 ```bash
 edf2csv recording.edf --out ./converted
@@ -56,7 +56,7 @@ Wrote ./converted
 Done in 0.0s.
 ```
 
-768, 384 and 3. The row counts are the sample counts. The temperature file has three rows because the thermistor produced three readings:
+The row counts are the sample counts. The temperature file has three rows because the thermistor produced three readings:
 
 ```
 time_s,Temp rectal
@@ -65,7 +65,7 @@ time_s,Temp rectal
 2.000,37.29377
 ```
 
-Each file is a complete, self-contained CSV: a `time_s` column followed by one column per channel at that rate, with the channel's label as the column heading. The files are written in descending rate order, and named after the rate they hold:
+Each file is a complete, self-contained CSV: a `time_s` column followed by one column per channel at that rate, with the channel's label as the column heading. The files are written in descending rate order and named after the rate they hold:
 
 | Rate | File name |
 | --- | --- |
@@ -75,9 +75,9 @@ Each file is a complete, self-contained CSV: a `time_s` column followed by one c
 | 12.5 Hz | `signals_12_5hz.csv` |
 | 0.5 Hz | `signals_0_5hz.csv` |
 
-A fractional rate has its decimal point replaced by an underscore, so the name is safe as a filename on every platform.
+A fractional rate has its decimal point replaced by an underscore, so the name is a safe filename on every platform.
 
-The `time_s` column is seconds from the start of the recording, and it means the same thing in every file. That shared clock is what makes the separate files joinable later. The number of decimal places is chosen per rate so that sample times are written exactly rather than rounded: 256 Hz gets 8 places because 1/256 terminates at 8 decimal places, 128 Hz gets 7, and 1 Hz gets 3. Multiplying `time_s` by the rate gives back a whole sample index rather than something like 8191.99999.
+The `time_s` column is seconds from the start of the recording and means the same thing in every file. That shared clock is what makes the separate files joinable later. The number of decimal places is chosen per rate so sample times are written exactly rather than rounded: 256 Hz gets 8 places because 1/256 terminates at 8 decimal places, 128 Hz gets 7, and 1 Hz gets 3. Multiplying `time_s` by the rate gives back a whole sample index rather than something like 8191.99999.
 
 ## Seeing the split before you convert
 
@@ -99,13 +99,13 @@ Sampling rates differ, so channels are written to 3 files, one per rate. No chan
 Would write 1,155 rows, roughly 27.4 KB.
 ```
 
-This is the cheapest way to find out what you are dealing with, and it is worth running on an unfamiliar file before you commit to a conversion.
+Run it on an unfamiliar file before committing to a conversion.
 
 ## Where each channel ended up
 
-Two of the sidecar files record the mapping, so you never have to infer it from filenames.
+Two of the sidecar files record the mapping, so you don't have to infer it from filenames.
 
-`channels.csv` has a row per channel and an `output_file` column naming the file that channel's samples went to, plus a `converted` column that is `yes` or `no`. Channels you did not select are still described here, marked `no`, so the sidecar always documents the whole recording rather than just the part you took:
+`channels.csv` has a row per channel and an `output_file` column naming the file that channel's samples went to, plus a `converted` column that's `yes` or `no`. Channels you didn't select are still described here, marked `no`, so the sidecar documents the whole recording rather than just the part you took:
 
 ```
 column,signal_index,label,unit,sampling_rate_hz,samples_per_record,...,output_file,converted
@@ -114,7 +114,7 @@ ECG,1,ECG,mV,128,128,...,signals_128hz.csv,yes
 Temp rectal,2,Temp rectal,degC,1,1,...,signals_1hz.csv,yes
 ```
 
-`metadata.json` records the same grouping under `conversion.rate_groups`, in a form that is easier to read from a script:
+`metadata.json` records the same grouping under `conversion.rate_groups`, in a form that's easier to read from a script:
 
 ```json
 "rate_groups": [
@@ -124,11 +124,11 @@ Temp rectal,2,Temp rectal,degC,1,1,...,signals_1hz.csv,yes
 ]
 ```
 
-## When there is nothing to split, nothing is split
+## Single-rate recordings get a single file
 
-If every channel in the recording shares one rate, which is the common case for a plain EEG or ECG montage, there is one group and one file, called `signals.csv`. No rate suffix, no extra files, no decisions to make. The honest behaviour costs you nothing when there is nothing to be honest about.
+If every channel shares one rate, which is the common case for a plain EEG or ECG montage, there's one group and one file, called `signals.csv`. No rate suffix and no extra files.
 
-The same collapse happens when your selection happens to be uniform. Asking for a single channel out of a mixed-rate file leaves one rate in play, so you get a plain `signals.csv`:
+The same applies when your selection happens to be uniform. Asking for a single channel out of a mixed-rate file leaves one rate in play, so you get a plain `signals.csv`:
 
 ```bash
 edf2csv recording.edf --channels "Temp rectal" --out ./temperature
@@ -139,9 +139,9 @@ edf2csv recording.edf --channels "Temp rectal" --out ./temperature
   channels.csv  3  rows
 ```
 
-The mixed-rate warning still prints, because it describes the recording rather than your selection. That is intentional: it tells you the file contains channels at other rates that you are not looking at.
+The mixed-rate warning still prints, because it describes the recording rather than your selection. It tells you the file contains channels at other rates that you aren't looking at.
 
-One consequence worth knowing. If you convert a mixed-rate recording and then a single-rate one into the same directory with `--force`, the old `signals_256hz.csv` is not deleted and will sit next to the new `signals.csv`, both looking current. edf2csv notices and warns about the leftovers, and deletes nothing. Converting into a fresh directory avoids the question entirely.
+One consequence to watch for: if you convert a mixed-rate recording and then a single-rate one into the same directory with `--force`, the old `signals_256hz.csv` isn't deleted and will sit next to the new `signals.csv`, both looking current. edf2csv warns about the leftovers and deletes nothing. Converting into a fresh directory avoids the situation.
 
 ## Working with several rate files
 
@@ -162,9 +162,9 @@ merged = pd.merge_asof(
 )
 ```
 
-`merge_asof` needs both frames sorted on `time_s`, which they are for a continuous recording. The result has 768 rows, and the temperature column repeats each reading until the next one arrives. That is still interpolation, in the crudest form, but now it is yours: it happened in your script, on a line you can see, with a `tolerance` you chose, and anyone reading the code knows the temperature column is carried forward rather than measured 768 times.
+`merge_asof` needs both frames sorted on `time_s`, which they are for a continuous recording. The result has 768 rows, and the temperature column repeats each reading until the next one arrives. That's still interpolation in its crudest form, but it happens in your script with a `tolerance` you chose, and anyone reading the code can see that the temperature column is carried forward rather than measured 768 times.
 
-To go the other way and summarise the fast channel at the slow channel's resolution, aggregate into bins the slow channel defines. This reduces data rather than inventing it, so it is usually the safer direction:
+To go the other way and summarise the fast channel at the slow channel's resolution, aggregate into bins the slow channel defines. This reduces data rather than inventing it, so it's usually the safer direction:
 
 ```python
 import pandas as pd
@@ -182,7 +182,7 @@ per_second = (
 aligned = per_second.merge(temp, left_on="second", right_on="time_s")
 ```
 
-The `count` column is a useful check: for a complete 256 Hz recording every bin should hold 256 samples, and a bin that does not is telling you something about the recording.
+The `count` column is a useful check: for a complete 256 Hz recording every bin should hold 256 samples, and a bin that doesn't indicates something about the recording.
 
 A time window applies consistently across the files. Converting one second out of the middle of the same recording gives 256, 128 and 1 rows, and each file's `time_s` still carries absolute offsets from the start of the recording rather than restarting at zero:
 
@@ -192,11 +192,11 @@ edf2csv recording.edf --start 1s --duration 1s --out ./one-second
 
 If you need wall clock times rather than offsets, `metadata.json` records the recording's start as `recording.start_datetime_local`, and adding it to `time_s` gives an absolute timestamp.
 
-## Resampling is an analyst decision
+## Resampling is left to you
 
-edf2csv will not resample for you, under any flag, because the choice has real consequences that depend on your analysis and cannot be made by a converter that knows nothing about it. Upsampling temperature to 256 Hz and downsampling EEG to 1 Hz both produce a single tidy table, and they answer different questions with different distortions. Downsampling without an anti-aliasing filter folds high frequency content back into your band of interest. Upsampling inflates every sample count, which quietly breaks anything that uses n as a denominator.
+edf2csv doesn't resample under any flag. Upsampling temperature to 256 Hz and downsampling EEG to 1 Hz both produce a single tidy table, but they answer different questions and introduce different distortions. Downsampling without an anti-aliasing filter folds high-frequency content back into your band of interest. Upsampling inflates every sample count, which breaks anything that uses n as a denominator.
 
-If you do want a uniform grid, do it explicitly and in your own code, where the choice is recorded:
+If you want a uniform grid, resample explicitly in your own code, where the choice is recorded:
 
 ```python
 import pandas as pd
@@ -211,4 +211,4 @@ time = eeg["time_s"].to_numpy()[::2]
 out = pd.DataFrame({"time_s": time, "EEG Fpz-Cz": downsampled})
 ```
 
-The point is not that this is hard. It is that the resampled file now exists because you decided it should, with a method you named, rather than because a converter quietly assumed it on your behalf.
+The resampled file then exists because you chose it, with a method you named, rather than as a side effect of the conversion.

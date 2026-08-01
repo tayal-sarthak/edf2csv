@@ -1,16 +1,18 @@
 ---
 title: Getting started
-description: Convert an EDF, EDF+ or BDF recording to CSV with one command, and know exactly what comes back
+description: Install edf2csv, convert your first recording, and understand each of the files it writes
 order: 1
 ---
 
 ## What edf2csv is
 
-edf2csv is a command-line tool that reads an EDF, EDF+ or BDF/BDF+ biosignal recording (EEG, sleep, ECG, EMG) and writes it out as CSV, together with a channel table, the EDF+ events, and a metadata file describing exactly what was converted. It runs entirely on your own machine, it does not alter the recorded values, and it never resamples a channel to make the output table look tidier.
+edf2csv is a command-line tool that reads an EDF, EDF+ or BDF/BDF+ biosignal recording — EEG, sleep, ECG, EMG — and writes it out as CSV. Alongside the data it writes a channel table, the EDF+ events, and a metadata file describing what was converted.
+
+It runs entirely on your own machine, it doesn't alter the recorded values, and it never resamples a channel to make the output table tidier.
 
 ## Requirements
 
-Node 20 or newer, and nothing else. edf2csv has zero runtime dependencies, makes no network calls, and is MIT licensed. Check what you have:
+Node 20 or newer, and nothing else. edf2csv has zero runtime dependencies, makes no network calls, and is MIT licensed. To check what you have:
 
 ```bash
 node --version
@@ -30,17 +32,17 @@ If you convert files regularly, install it once:
 npm install -g edf2csv
 ```
 
-After a global install the command is just `edf2csv`. The rest of this page uses that form; put `npx` in front of every command if you skipped the install.
+After a global install the command is just `edf2csv`. The rest of this page uses that form; add `npx` in front of every command if you skipped the install.
 
 ## Your first conversion
 
-Point it at a file and stop there. No flags are required.
+Point it at a file. No flags are required.
 
 ```bash
 edf2csv recording.edf
 ```
 
-For a small EDF+ file holding one 100 Hz EEG channel and three events, this is the whole of what appears:
+For a small EDF+ file holding one 100 Hz EEG channel and three events, the output is:
 
 ```text
 Wrote recording_csv
@@ -50,15 +52,15 @@ Wrote recording_csv
 Done in 0.0s.
 ```
 
-A few things worth knowing about that:
+Some notes on that:
 
 - The output directory defaults to the input filename with `_csv` appended, created next to the input file. Use `-o` or `--out` to put it somewhere else.
-- If that directory already exists, edf2csv refuses to touch it and exits with status 1. Pass `--force` to overwrite, or `--out` to write elsewhere. It will not silently mix a new conversion into an old one.
-- The summary, any warnings, and the live `converting… 42%` progress line all go to stderr. Only `--info` and `--json` write to stdout, so you can pipe results into another program without the chatter contaminating them.
-- Exit status is 0 on success, 1 when a file could not be read or written, and 2 when the command itself was wrong (an unknown flag, a channel name that does not exist).
-- `--quiet` suppresses the summary. Warnings and errors still print, because those are the ones you need.
+- If that directory already exists, edf2csv leaves it alone and exits with status 1. Pass `--force` to overwrite it, or `--out` to write elsewhere, so a new conversion never mixes into an old one.
+- The summary, any warnings, and the live `converting… 42%` progress line all go to stderr. Only `--info` and `--json` write to stdout, so you can pipe results straight into another program.
+- Exit status is 0 on success, 1 when a file couldn't be read or written, and 2 when the command itself was wrong — an unknown flag, or a channel name that doesn't exist.
+- `--quiet` suppresses the summary. Warnings and errors still print.
 
-Conversion is streamed rather than loaded into memory. A 40 MB EDF that expands into a 159 MB CSV converts in roughly 1.4 seconds with the Node heap capped at 48 MB, so file size is a disk question, not a RAM question.
+Conversion is streamed rather than loaded into memory. A 40 MB EDF that expands into a 159 MB CSV converts in roughly 1.4 seconds with the Node heap capped at 48 MB, so file size affects disk space rather than memory.
 
 ## What is in the output directory
 
@@ -81,19 +83,21 @@ time_s,EEG Fpz-Cz
 0.020,30.464
 ```
 
-The number of decimals in `time_s` is chosen so the sample interval is written exactly rather than rounded. At 100 Hz that is three places, as above. At 256 Hz it is eight, so a row reads `0.00390625` and multiplying `time_s` by the rate gives back a whole number instead of something like 8191.999999.
+The number of decimals in `time_s` is chosen so the sample interval is written exactly rather than rounded. At 100 Hz that's three places, as above. At 256 Hz it's eight, so a row reads `0.00390625` and multiplying `time_s` by the rate gives back a whole number instead of something like 8191.999999.
 
-If two channels in the file share a label, both column names get a `_ch` suffix carrying the channel's position (`T8-P8_ch0`, `T8-P8_ch1`), because position is the only thing that reliably tells them apart.
+If two channels in the file share a label, both column names get a `_ch` suffix carrying the channel's position — `T8-P8_ch0`, `T8-P8_ch1` — since position is the only thing that reliably tells them apart.
 
-If the recording mixes sampling rates, there is no single `signals.csv`. You get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, with nothing interpolated. See Sampling rates for why.
+If the recording mixes sampling rates, there's no single `signals.csv`. You get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, with nothing interpolated. See [Mixed sampling rates](/docs/sampling-rates) for the details.
 
 ### channels.csv
 
-One row per signal channel, whether or not it was converted. The columns are `column`, `signal_index`, `label`, `unit`, `sampling_rate_hz`, `samples_per_record`, `physical_min`, `physical_max`, `digital_min`, `digital_max`, `transducer`, `prefiltering`, `output_file`, `converted`. The `column` field is the name that channel has in the signal CSV, `output_file` says which file it landed in, and `converted` is `yes` or `no`, so a channel you filtered out with `--channels` is still documented rather than vanishing.
+One row per signal channel, whether or not it was converted. The columns are `column`, `signal_index`, `label`, `unit`, `sampling_rate_hz`, `samples_per_record`, `physical_min`, `physical_max`, `digital_min`, `digital_max`, `transducer`, `prefiltering`, `output_file` and `converted`.
+
+`column` is the name that channel has in the signal CSV, `output_file` says which file it landed in, and `converted` is `yes` or `no`. A channel you filtered out with `--channels` is still listed here rather than disappearing.
 
 ### annotations.csv
 
-Present only for EDF+ and BDF+ recordings that carry an annotation channel. Plain EDF files have no events to export.
+Written only for EDF+ and BDF+ recordings that carry an annotation channel. Plain EDF files have no events to export.
 
 ```csv
 onset_s,duration_s,description,record_index
@@ -110,7 +114,7 @@ Machine-readable provenance: the tool version, the source path, size and modific
 
 ## Check a file before you convert it
 
-`--info` reads the header only and writes nothing. It returns immediately whatever the file's size, which is why it is the right first move on a long recording.
+`--info` reads the header only and writes nothing, so it returns immediately whatever the file's size.
 
 ```bash
 edf2csv sleep-study.edf --info
@@ -143,7 +147,12 @@ warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
-On a real overnight study this matters for four reasons. You learn the row count and approximate size before spending the disk. You get the exact channel labels to hand to `--channels`, spelled the way the file spells them. You find out whether the recording is discontinuous or mixed-rate before you build an analysis on the assumption that it is neither. And you see any header problem (a truncated file, a record count that disagrees with the data, a channel whose calibration cannot be applied) while it is still cheap to react.
+On a long recording, `--info` tells you four things before you spend any disk:
+
+- The row count and approximate output size.
+- The exact channel labels to pass to `--channels`, spelled the way the file spells them.
+- Whether the recording is discontinuous or mixed-rate.
+- Any header problem — a truncated file, a record count that disagrees with the data, a channel whose calibration can't be applied.
 
 Because the table goes to stdout and the warnings go to stderr, `edf2csv sleep-study.edf --info > structure.txt` saves the table on its own.
 
@@ -159,7 +168,7 @@ edf2csv sleep-study.edf --start 30m --duration 5m
 edf2csv sleep-study.edf --start 1h --end 1h05m
 ```
 
-Times can be a plain number of seconds (`90`), a unit form (`90s`, `5m`, `1h30m`, `250ms`), or a clock form (`00:30:00`, `30:00`). All offsets are measured from the start of the recording, not from the wall clock in the header. `--duration` and `--end` together is an error, since they answer the same question.
+Times can be a plain number of seconds (`90`), a unit form (`90s`, `5m`, `1h30m`, `250ms`), or a clock form (`00:30:00`, `30:00`). All offsets are measured from the start of the recording, not from the wall clock in the header. Passing `--duration` and `--end` together is an error, since they answer the same question.
 
 Combine a window with a channel filter and a destination:
 
@@ -168,9 +177,12 @@ edf2csv sleep-study.edf --start 1h --duration 5m \
   --channels "EEG Fpz-Cz,ECG" --out ./epoch-42
 ```
 
-Channel names must match the `LABEL` column from `--info`, though matching is case-insensitive. A name that matches nothing is an error rather than a silent omission, so you never get a CSV that is quietly missing a channel you asked for. When two channels share a label, address one by position with `#N`, for example `--channels "#0"`.
+Channel names must match the `LABEL` column from `--info`, though matching is case-insensitive. A name that matches nothing is an error rather than a silent omission. When two channels share a label, address one by position with `#N`, for example `--channels "#0"`.
 
-Two details to expect from a slice. The `time_s` column is not rebased: a window starting at one hour begins at `3600.000`, so rows stay comparable with the full recording and with the events. And `annotations.csv` is filtered to the same window, so the events you get are the events inside the slice.
+Two things to expect from a slice:
+
+- `time_s` isn't rebased. A window starting at one hour begins at `3600.000`, so rows stay comparable with the full recording and with the events.
+- `annotations.csv` is filtered to the same window, so you get the events inside the slice.
 
 ## Opening the result
 
@@ -186,7 +198,7 @@ channels = pd.read_csv("recording_csv/channels.csv")
 print(channels[["column", "unit", "sampling_rate_hz"]])
 ```
 
-Pass `index_col="time_s"` to `read_csv` if you would rather have time as the index than as a column.
+Pass `index_col="time_s"` to `read_csv` to get time as the index rather than as a column.
 
 ### R
 
@@ -196,21 +208,21 @@ eeg <- signals[["EEG Fpz-Cz"]]
 plot(signals$time_s, eeg, type = "l", xlab = "time (s)", ylab = "uV")
 ```
 
-`check.names = FALSE` is the part that matters. Without it R rewrites `EEG Fpz-Cz` into `EEG.Fpz.Cz`, and your column names no longer match the ones in `channels.csv` or in the original file.
+Without `check.names = FALSE`, R rewrites `EEG Fpz-Cz` into `EEG.Fpz.Cz` and the column names no longer match the ones in `channels.csv` or in the original file.
 
 ### Excel and Numbers
 
-Open `signals.csv` directly; it is plain UTF-8 CSV with a header row and needs no import wizard. The limit is the row count. Spreadsheets stop at 1,048,576 rows including the header, which is about 68 minutes of a single 256 Hz channel. edf2csv warns you before writing when any output file would exceed that:
+Open `signals.csv` directly. It's plain UTF-8 CSV with a header row and needs no import wizard. The limit is the row count: spreadsheets stop at 1,048,576 rows including the header, which is about 68 minutes of a single 256 Hz channel. edf2csv warns you before writing when any output file would exceed that:
 
 ```text
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
          Use --start and --duration to convert a section, or read the file with pandas or R.
 ```
 
-`channels.csv`, `annotations.csv` and short slices open in a spreadsheet without trouble. Full-length signal files usually do not, and that is a spreadsheet limit rather than a conversion problem.
+`channels.csv`, `annotations.csv` and short slices open in a spreadsheet without trouble. Full-length signal files usually don't.
 
 ## Where to go next
 
-- **Output files** describes every column of every file the conversion writes, including the whole of `metadata.json`.
-- **CLI reference** lists every flag, the exit codes, and the `--json` summary for scripting.
-- **Sampling rates** explains why a mixed-rate recording becomes several files, and what other tools do instead.
+- [Output files](/docs/output-files) describes every column of every file the conversion writes, including the whole of `metadata.json`.
+- [CLI reference](/docs/cli-reference) lists every flag, the exit codes, and the `--json` summary for scripting.
+- [Mixed sampling rates](/docs/sampling-rates) explains why a mixed-rate recording becomes several files, and what other tools do instead.

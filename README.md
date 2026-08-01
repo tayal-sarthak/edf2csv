@@ -6,9 +6,9 @@ Convert an EDF, EDF+ or BDF recording to CSV with one command.
 npx edf2csv recording.edf
 ```
 
-That's it. You get a `recording_csv/` folder you can open in pandas, R, MATLAB, or
-Excel. Nothing is uploaded, nothing is installed permanently, and the numbers are
-not altered on the way through.
+You get a `recording_csv/` folder that opens in pandas, R, MATLAB or Excel. Nothing
+is uploaded, nothing is permanently installed, and the recorded values aren't
+changed.
 
 Full documentation: **[edf2csv.vercel.app](https://edf2csv.vercel.app)**
 
@@ -28,19 +28,20 @@ time_s,FP1-F7,F7-T7,T7-P7
 0.003906,0.195,0.195,0.195
 ```
 
-`time_s` is seconds from the start. Columns are the channel names from the file.
+`time_s` is seconds from the start of the recording. The other columns are the
+channel names as the file stores them.
 
 ## Check before you convert
 
-An hour of 23-channel EEG makes a 159 MB CSV with 921,600 rows, which only just
-fits inside Excel's 1,048,576-row limit. Two hours does not. `--info` shows you what
-you'd get, without writing anything:
+An hour of 23-channel EEG produces a 159 MB CSV with 921,600 rows, which just fits
+inside Excel's 1,048,576-row limit. Two hours doesn't. `--info` shows you what you'd
+get without writing anything:
 
 ```bash
 npx edf2csv recording.edf --info
 ```
 
-Want a piece instead of the whole thing:
+To convert part of a recording instead of all of it:
 
 ```bash
 npx edf2csv recording.edf --start 30m --duration 5m
@@ -64,33 +65,34 @@ npx edf2csv recording.edf --start 30m --duration 5m
   -h, --help             Help
 ```
 
-Exit codes: `0` fine, `1` couldn't read or write the file, `2` bad command.
+Exit codes: `0` success, `1` the file couldn't be read or written, `2` the command
+was wrong.
 
-## What it won't do to your data
+## What it doesn't change
 
-**It won't resample.** Some EDF files mix rates: EEG at 256 Hz, temperature at
-1 Hz. Squeezing those into one table means inventing samples, so each rate gets its
-own file (`signals_256hz.csv`, `signals_1hz.csv`). A 1 Hz channel over 3 seconds
-gets 3 rows, because that's how many readings exist.
+**Sampling rates.** Some EDF files mix them: EEG at 256 Hz, temperature at 1 Hz. A
+single table can't hold both rates without inventing samples, so each rate gets its
+own file (`signals_256hz.csv`, `signals_1hz.csv`). A 1 Hz channel recorded for three
+seconds gives you three rows.
 
-For comparison, `mne.io.read_raw_edf` turns those same 3 readings into 768
-interpolated values with no warning. That's the right call for MNE, which needs one
-uniform array to run its analysis. It's the wrong call for a converter.
+For comparison, `mne.io.read_raw_edf` expands those same three readings into 768
+interpolated values without warning. That suits MNE, which needs one uniform array
+for its analysis routines, but it isn't what a converter should do.
 
-**It won't convert units.** Microvolts stay microvolts.
+**Units.** Microvolts stay microvolts.
 
-**It won't hide gaps.** EDF+D recordings have real breaks in time. They show up as
-a jump in `time_s` rather than being closed up.
+**Gaps.** EDF+D recordings contain real breaks in time. They appear as a jump in
+`time_s` rather than being closed up.
 
-**It won't stay quiet about problems.** Truncated files, headers that contradict
-the data, duplicate channel names, calibration that can't be applied. You get told,
-in plain words, before you rely on the output.
+**Problems.** Truncated files, headers that contradict the data, duplicate channel
+names and calibration that can't be applied are all reported in plain language
+before you rely on the output.
 
-## Is it right?
+## Accuracy
 
-Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib). On the
-recordings used for testing, 129,536 sample values came out **bit-for-bit
-identical**. Not close. Identical.
+Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib). Across
+the recordings used for testing, 129,536 sample values were bit-for-bit identical:
+not equal to within a tolerance, but the same 64 bits.
 
 ```bash
 npm test
@@ -98,26 +100,24 @@ npm test
 
 ## When to use something else
 
-This is a converter. It is the right tool when you want the numbers out of an EDF
-file and into something else. It is the wrong tool for several neighbouring jobs, and
-saying so is cheaper than you finding out later.
+edf2csv converts. For neighbouring jobs, these tools are a better fit:
 
-- **Analysing the signal.** Filtering, epoching, re-referencing, ICA, spectral work:
-  use [MNE-Python](https://mne.tools). It is excellent and built for exactly this.
-- **Reading EDF inside Python.** [pyEDFlib](https://github.com/holgern/pyedflib) hands
-  you arrays directly, with no CSV in the middle. edf2csv is checked against it.
-- **Writing EDF files.** This only reads them.
-- **Viewing a recording.** [EDFbrowser](https://www.teuniz.net/edfbrowser/) is a real
-  viewer and will beat a spreadsheet every time.
-- **Huge recordings you will analyse repeatedly.** CSV is a poor archival format; an
-  EDF roughly quadruples in size as text. Convert a window, or read the file directly.
+- **Analysing the signal** — filtering, epoching, re-referencing, ICA, spectral
+  work: [MNE-Python](https://mne.tools).
+- **Reading EDF inside Python** — [pyEDFlib](https://github.com/holgern/pyedflib)
+  hands you arrays directly, with no CSV in between. edf2csv is checked against it.
+- **Writing EDF files** — edf2csv only reads them.
+- **Viewing a recording** — [EDFbrowser](https://www.teuniz.net/edfbrowser/) is a
+  purpose-built viewer.
+- **Long recordings you'll analyse repeatedly** — CSV roughly quadruples an EDF's
+  size and makes a poor archival format. Convert a window, or read the file directly.
 
-Use edf2csv when the destination is a spreadsheet, a colleague who does not use
-Python, a quick look at part of a recording, or a pipeline that speaks CSV.
+edf2csv suits a spreadsheet destination, a colleague who doesn't use Python, a quick
+look at part of a recording, or a pipeline that speaks CSV.
 
 ## Notes
 
-Needs Node 20+. No runtime dependencies. MIT licensed.
+Requires Node 20 or newer. No runtime dependencies. MIT licensed.
 
-Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal,
-no AI, no network calls. It reads a file and writes files.
+Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal, no
+AI, no network calls.
