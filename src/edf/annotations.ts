@@ -34,13 +34,16 @@ export interface DecodedRecordAnnotations {
   /** Record start time in seconds, from the leading timekeeping TAL. */
   recordStart: number | null;
   annotations: Annotation[];
+  /** Non-empty chunks that were not valid TALs, so the caller can report them. */
+  malformed: number;
 }
 
 /**
  * Decode one data record's annotation bytes.
  *
  * Malformed TALs are skipped rather than thrown, because a single bad annotation
- * should not cost the user an entire conversion; the caller reports the count.
+ * should not cost the user an entire conversion. The count of skipped chunks is
+ * returned so the caller can tell the user rather than losing them in silence.
  */
 export function decodeRecordAnnotations(
   bytes: Buffer,
@@ -49,6 +52,7 @@ export function decodeRecordAnnotations(
   const annotations: Annotation[] = [];
   let recordStart: number | null = null;
   let isFirstTal = true;
+  let malformed = 0;
 
   let start = 0;
   for (let i = 0; i <= bytes.length; i++) {
@@ -62,13 +66,15 @@ export function decodeRecordAnnotations(
           recordStart = parsed.onset;
           isFirstTal = false;
         }
-        annotations.push(...parsed.annotations);
+        for (const annotation of parsed.annotations) annotations.push(annotation);
+      } else {
+        malformed++;
       }
     }
     start = i + 1;
   }
 
-  return { recordStart, annotations };
+  return { recordStart, annotations, malformed };
 }
 
 interface ParsedTal {

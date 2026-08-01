@@ -196,35 +196,53 @@ export class EdfFile {
   }
 
   /**
-   * Stream every EDF+ annotation, plus the start time each record declares.
+   * Read every EDF+ annotation in the file, plus the start time each record declares.
    *
-   * For EDF+D the returned start times are what make gaps visible; for EDF+C they
-   * should track `recordIndex * recordDuration` and any drift is worth reporting.
+   * Only the annotation channel is read, seeking straight to it inside each record
+   * rather than pulling whole records through memory. On a multi-gigabyte recording
+   * that is the difference between a few kilobytes of I/O and all of it.
+   *
+   * The whole file is always scanned, never just the records inside a requested
+   * window: writers are not obliged to store an annotation in the record its onset
+   * falls in, and some put every annotation in the first record. Reading only the
+   * window's records would drop those entirely.
    */
   async readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
+    malformed: number;
   }> {
+    this.#assertOpen();
+
     const annotations: Annotation[] = [];
     const recordStarts: (number | null)[] = new Array<number | null>(this.recordCount).fill(null);
-    const channels = this.annotationSignals;
-    if (channels.length === 0) return { annotations, recordStarts };
+    let malformed = 0;
 
-    for await (const batch of this.readRecords()) {
-      for (let r = 0; r < batch.recordCount; r++) {
-        const recordIndex = batch.firstRecordIndex + r;
-        for (const [channelPosition, channel] of channels.entries()) {
-          const bytes = this.annotationBytes(batch, r, channel);
-          const decoded = decodeRecordAnnotations(bytes, recordIndex);
-          // Only the first annotation channel carries the record's timekeeping TAL.
-          if (channelPosition === 0) recordStarts[recordIndex] = decoded.recordStart;
-          annotations.push(...decoded.annotations);
-        }
+    const channels = this.annotationSignals;
+    if (channels.length === 0) return { annotations, recordStarts, malformed };
+
+    const { headerBytes, recordBytes, bytesPerSample } = this.header;
+    const buffers = channels.map((c) => Buffer.alloc(c.samplesPerRecord * bytesPerSample));
+
+    for (let record = 0; record < this.recordCount; record++) {
+      for (const [position, channel] of channels.entries()) {
+        const buffer = buffers[position];
+        if (!buffer || buffer.length === 0) continue;
+
+        const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
+        const { bytesRead } = await this.#handle.read(buffer, 0, buffer.length, offset);
+        if (bytesRead < buffer.length) return { annotations, recordStarts, malformed };
+
+        const decoded = decodeRecordAnnotations(buffer, record);
+        // Only the first annotation channel carries the record's timekeeping TAL.
+        if (position === 0) recordStarts[record] = decoded.recordStart;
+        for (const annotation of decoded.annotations) annotations.push(annotation);
+        malformed += decoded.malformed;
       }
     }
 
     annotations.sort((a, b) => a.onset - b.onset || a.recordIndex - b.recordIndex);
-    return { annotations, recordStarts };
+    return { annotations, recordStarts, malformed };
   }
 
   async close(): Promise<void> {

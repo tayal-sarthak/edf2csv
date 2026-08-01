@@ -16,7 +16,6 @@ import path from 'node:path';
 import { EdfFile } from '../edf/reader.js';
 import { describeFormat } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
-import { decodeRecordAnnotations } from '../edf/annotations.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
 import { fixed, makeSampleFormatter } from '../format/number.js';
@@ -78,10 +77,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   const file = await EdfFile.open(inputPath);
 
   try {
-    // A discontinuous file's records carry their own positions in time, and those
-    // must be known before a requested window can be resolved — otherwise the window
-    // is measured against the amount of data rather than the span it covers.
-    const timing = await readRecordStarts(file);
+    // One pass over the annotation channel supplies everything annotation-related:
+    // where each record sits in time, and the full event list. It reads the whole
+    // file even when a window was requested, because an annotation inside the window
+    // may be stored in a record outside it.
+    const annotationData =
+      file.annotationSignals.length > 0
+        ? await file.readAnnotations()
+        : { annotations: [] as Annotation[], recordStarts: [] as (number | null)[], malformed: 0 };
+
+    const timing = deriveRecordStarts(file, annotationData);
 
     const plan = buildPlan(
       {
@@ -98,32 +103,28 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
     await prepareOutputDir(outputDir, options.force === true);
 
-    const recordStarts = timing.starts;
     const written: WrittenFile[] = [];
-    const annotations: Annotation[] = [];
 
     if (plan.writeSignals && plan.groups.length > 0) {
-      written.push(...(await writeSignalFiles(file, plan, outputDir, recordStarts, options, annotations)));
-    } else {
-      // Annotations still need a pass over the records that carry them.
-      const collected = await file.readAnnotations();
-      annotations.push(...collected.annotations);
+      written.push(...(await writeSignalFiles(file, plan, outputDir, timing.starts, options)));
     }
 
+    let annotationsWritten = 0;
     if (file.annotationSignals.length > 0) {
-      const name = await writeAnnotationsCsv(outputDir, annotations, plan);
-      if (name) written.push(name);
+      const result = await writeAnnotationsCsv(outputDir, annotationData.annotations, plan);
+      written.push(result);
+      annotationsWritten = result.rows;
     }
 
     written.push(await writeChannelsCsv(outputDir, file, plan));
-    await writeMetadata(outputDir, inputPath, file, plan, written, annotations.length, options);
+    await writeMetadata(outputDir, inputPath, file, plan, written, annotationsWritten, options);
 
     const stale = await findStaleOutput(outputDir, written);
 
     return {
       outputDir,
       files: written,
-      annotationCount: annotations.length,
+      annotationCount: annotationsWritten,
       diagnostics: [...file.diagnostics, ...plan.diagnostics, ...stale],
       plan,
       file,
@@ -199,18 +200,30 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
  * annotation records, and closing those gaps silently would misrepresent when the
  * data was measured.
  *
- * A record whose timekeeping annotation is missing or unreadable has no knowable
- * position. Falling back to arithmetic there would invent a timestamp that looks
- * exactly like a real one, so the fallback is used but reported.
+ * A record whose timekeeping annotation is missing has no knowable position.
+ * Falling back to arithmetic there invents a timestamp indistinguishable from a
+ * real one, so the fallback is used but always reported.
  */
-async function readRecordStarts(
+function deriveRecordStarts(
   file: EdfFile,
-): Promise<{ starts: Float64Array | null; diagnostics: Diagnostic[] }> {
+  annotationData: { recordStarts: (number | null)[]; malformed: number },
+): { starts: Float64Array | null; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
+
+  if (annotationData.malformed > 0) {
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${annotationData.malformed} annotation entr${annotationData.malformed === 1 ? 'y was' : 'ies were'} ` +
+        `unreadable and could not be exported.`,
+      hint: 'The rest were exported normally. The file may have been written by a non-conforming tool.',
+    });
+  }
+
   if (file.header.continuity !== 'EDF+D') return { starts: null, diagnostics };
 
-  const channel = file.annotationSignals[0];
-  if (!channel) {
+  if (file.annotationSignals.length === 0) {
     diagnostics.push({
       code: 'DISCONTINUOUS',
       severity: 'warning',
@@ -224,17 +237,13 @@ async function readRecordStarts(
 
   const starts = new Float64Array(file.recordCount);
   const missing: number[] = [];
-
-  for await (const batch of file.readRecords()) {
-    for (let r = 0; r < batch.recordCount; r++) {
-      const index = batch.firstRecordIndex + r;
-      const decoded = decodeRecordAnnotations(file.annotationBytes(batch, r, channel), index);
-      if (decoded.recordStart === null) {
-        missing.push(index);
-        starts[index] = index * file.header.recordDuration;
-      } else {
-        starts[index] = decoded.recordStart;
-      }
+  for (let i = 0; i < file.recordCount; i++) {
+    const declared = annotationData.recordStarts[i];
+    if (declared === null || declared === undefined) {
+      missing.push(i);
+      starts[i] = i * file.header.recordDuration;
+    } else {
+      starts[i] = declared;
     }
   }
 
@@ -251,8 +260,6 @@ async function readRecordStarts(
     });
   }
 
-  // Records are expected to advance through time. Anything else means the file
-  // disagrees with itself, and the row order will not be chronological.
   let outOfOrder = 0;
   for (let i = 1; i < starts.length; i++) {
     if ((starts[i] as number) < (starts[i - 1] as number)) outOfOrder++;
@@ -275,7 +282,6 @@ async function writeSignalFiles(
   outputDir: string,
   recordStarts: Float64Array | null,
   options: ConvertOptions,
-  annotationSink: Annotation[],
 ): Promise<WrittenFile[]> {
   const open: OpenGroup[] = plan.groups.map((group) => {
     const stream = createWriteStream(path.join(outputDir, group.fileName));
@@ -291,18 +297,12 @@ async function writeSignalFiles(
 
   const { startSeconds, endSeconds, startRecord, endRecord } = plan.range;
   const { recordDuration } = file.header;
-  const annotationChannels = file.annotationSignals;
   let recordsDone = 0;
 
   for await (const batch of file.readRecords({ startRecord, endRecord })) {
     for (let r = 0; r < batch.recordCount; r++) {
       const index = batch.firstRecordIndex + r;
       const recordStart = recordStarts ? (recordStarts[index] ?? index * recordDuration) : index * recordDuration;
-
-      for (const channel of annotationChannels) {
-        const decoded = decodeRecordAnnotations(file.annotationBytes(batch, r, channel), index);
-        annotationSink.push(...decoded.annotations);
-      }
 
       for (const entry of open) {
         const { group, writer, formatters } = entry;
@@ -400,7 +400,7 @@ async function writeAnnotationsCsv(
   outputDir: string,
   annotations: readonly Annotation[],
   plan: ConversionPlan,
-): Promise<WrittenFile | null> {
+): Promise<WrittenFile> {
   const { startSeconds, endSeconds } = plan.range;
   const inWindow = annotations
     .filter((a) => a.onset >= startSeconds && a.onset < endSeconds)

@@ -149,6 +149,28 @@ export function generate() {
     ],
   });
 
+  // Every annotation crammed into the first record, with onsets spread across the
+  // recording. Nothing in the spec obliges a writer to store an event in the record
+  // its onset falls in, and some tools really do this.
+  writeEdf({
+    path: at('annotations-front-loaded.edf'),
+    reserved: 'EDF+C',
+    numRecords: 10,
+    recordDuration: 1,
+    signals: [
+      { label: 'sig', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+    talsForRecord: (record) =>
+      record === 0
+        ? buildTal(0, [
+            { onset: 0.5, duration: null, text: 'early' },
+            { onset: 5.5, duration: null, text: 'middle' },
+            { onset: 8.5, duration: null, text: 'late' },
+          ])
+        : buildTal(record),
+  });
+
   // BDF: BioSemi's 24-bit variant. Same layout, 3-byte samples, wider digital range.
   writeEdf({
     path: at('biosemi.bdf'),

@@ -235,6 +235,30 @@ describe('converting', () => {
     assert.equal(rows[2], '1.25,,Lights off,1', 'a missing duration stays empty, not zero');
   });
 
+  it('finds annotations inside the window even when stored in a record outside it', async () => {
+    // All three annotations live in record 0, but their onsets are 0.5s, 5.5s and 8.5s.
+    // Reading only the window's own records would miss the one that belongs in it.
+    const dir = await outDir();
+    const result = await convert(fixture('annotations-front-loaded.edf'), {
+      outputDir: dir,
+      start: 5,
+      duration: 2,
+    });
+
+    const rows = await readCsv(dir, 'annotations.csv');
+    assert.equal(rows.length, 2, 'header plus the one annotation inside 5s-7s');
+    assert.match(rows[1], /middle/);
+    assert.equal(result.annotationCount, 1, 'the count must match what was written');
+  });
+
+  it('reports the number of annotations it actually wrote', async () => {
+    const dir = await outDir();
+    const result = await convert(fixture('annotations-front-loaded.edf'), { outputDir: dir });
+    const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
+    assert.equal(metadata.conversion.annotations_written, 3);
+    assert.equal(result.annotationCount, 3);
+  });
+
   it('converts only the requested channels', async () => {
     const dir = await outDir();
     await convert(fixture('mixed-rates.edf'), { outputDir: dir, channels: ['ECG'] });
