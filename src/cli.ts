@@ -71,7 +71,25 @@ const EXIT_OK = 0;
 const EXIT_ERROR = 1;
 const EXIT_USAGE = 2;
 
+/**
+ * Piping into a consumer that exits early (`| head -1`) closes our stdout, and the
+ * next write raises EPIPE. That is normal in a shell pipeline, not an error worth a
+ * stack trace, so it is swallowed while anything else still surfaces.
+ */
+function ignoreBrokenPipe(stream: NodeJS.WriteStream): void {
+  stream.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EPIPE') {
+      process.exitCode = 0;
+      return;
+    }
+    throw error;
+  });
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
+  ignoreBrokenPipe(process.stdout);
+  ignoreBrokenPipe(process.stderr);
+
   let values: Record<string, unknown>;
   let positionals: string[];
 
@@ -227,7 +245,12 @@ function optionalTime(raw: unknown, option: string): number | undefined {
 
 function optionalDecimals(raw: unknown): number | undefined {
   if (raw === undefined) return undefined;
-  const value = Number(raw);
+  const text = String(raw).trim();
+  // Number('') is 0, which would quietly round every physical value to a whole number.
+  if (text === '') {
+    throw new OptionError('--decimals needs a number, for example --decimals 3.');
+  }
+  const value = Number(text);
   if (!Number.isInteger(value) || value < 0 || value > 15) {
     throw new OptionError(`--decimals must be a whole number between 0 and 15, got "${String(raw)}".`);
   }

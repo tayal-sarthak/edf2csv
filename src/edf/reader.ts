@@ -89,7 +89,9 @@ export class EdfFile {
       // The signal count decides how much more header there is to read.
       let headerBuffer = fixed;
       if (fixed.length === FIXED_HEADER_BYTES) {
-        const ns = Number(fixed.subarray(252, 256).toString('latin1').trim());
+        // Some writers NUL-pad this field instead of space-padding it, and String.trim
+        // does not remove NULs — leaving the whole header unreadable for a valid file.
+        const ns = Number(fixed.subarray(252, 256).toString('latin1').replace(/[\0\s]/gu, ''));
         if (Number.isInteger(ns) && ns > 0) {
           const total = FIXED_HEADER_BYTES + ns * SIGNAL_HEADER_BYTES;
           if (total <= info.size) {
@@ -153,11 +155,14 @@ export class EdfFile {
 
       const { bytesRead } = await this.#handle.read(buffer, 0, bytes, position);
       if (bytesRead < bytes) {
-        // The file shrank underneath us, or the size check was wrong.
-        const whole = Math.floor(bytesRead / recordBytes);
-        if (whole === 0) return;
-        yield { firstRecordIndex: record, recordCount: whole, data: buffer.subarray(0, whole * recordBytes) };
-        return;
+        // The file is shorter than its own size said. Quietly stopping here would
+        // hand back a conversion missing its tail with nothing to show for it.
+        throw new EdfError(
+          'UNREADABLE',
+          `Expected ${bytes} bytes of data at record ${record} but only ${bytesRead} were ` +
+            `available; the file appears to have changed size while it was being read.`,
+          'Make sure the recording is not still being written to, then try again.',
+        );
       }
 
       yield { firstRecordIndex: record, recordCount: count, data: buffer.subarray(0, bytes) };

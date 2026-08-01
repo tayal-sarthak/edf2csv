@@ -23,10 +23,12 @@ import type { SampleFormatter } from '../format/number.js';
 import { buildPlan } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 
+export type ConversionErrorCode = 'OUTPUT_EXISTS' | 'OUTPUT_UNWRITABLE' | 'WRITE_FAILED';
+
 export class ConversionError extends Error {
-  readonly code: 'OUTPUT_EXISTS' | 'OUTPUT_UNWRITABLE';
+  readonly code: ConversionErrorCode;
   readonly hint: string | undefined;
-  constructor(code: 'OUTPUT_EXISTS' | 'OUTPUT_UNWRITABLE', message: string, hint?: string) {
+  constructor(code: ConversionErrorCode, message: string, hint?: string) {
     super(message);
     this.name = 'ConversionError';
     this.code = code;
@@ -64,6 +66,9 @@ export interface ConvertResult {
   file: EdfFile;
   elapsedMs: number;
 }
+
+/** Slack, in seconds, for comparing a sample's time against the window edges. */
+const BOUNDARY_TOLERANCE = 1e-9;
 
 interface OpenGroup {
   group: RateGroup;
@@ -295,6 +300,27 @@ async function writeSignalFiles(
     };
   });
 
+  try {
+    return await streamSignalRows(file, plan, open, recordStarts, options);
+  } catch (cause) {
+    for (const entry of open) entry.writer.destroy();
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new ConversionError(
+      'WRITE_FAILED',
+      `Writing to "${outputDir}" failed: ${detail}`,
+      'The files written so far are incomplete and should not be used. Free up space or ' +
+        'choose another destination with --out, then run the conversion again.',
+    );
+  }
+}
+
+async function streamSignalRows(
+  file: EdfFile,
+  plan: ConversionPlan,
+  open: OpenGroup[],
+  recordStarts: Float64Array | null,
+  options: ConvertOptions,
+): Promise<WrittenFile[]> {
   const { startSeconds, endSeconds, startRecord, endRecord } = plan.range;
   const { recordDuration } = file.header;
   let recordsDone = 0;
@@ -310,7 +336,11 @@ async function writeSignalFiles(
 
         for (let sample = 0; sample < group.samplesPerRecord; sample++) {
           const time = recordStart + sample / rate;
-          if (time < startSeconds || time >= endSeconds) continue;
+          // A sample meant to land exactly on a boundary can compute a few ulps to
+          // either side. A nanosecond of slack is far below any real sample period,
+          // so it settles the boundary without ever admitting a neighbouring sample.
+          if (time < startSeconds - BOUNDARY_TOLERANCE) continue;
+          if (time >= endSeconds - BOUNDARY_TOLERANCE) continue;
 
           let row = fixed(time, tDecimals);
           for (let c = 0; c < channels.length; c++) {

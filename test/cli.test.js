@@ -3,7 +3,7 @@
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm, symlink } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -89,6 +89,13 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /not a time I understand/);
   });
 
+  it('rejects an empty --decimals rather than reading it as zero', async () => {
+    // Number('') is 0, which would silently round every value to a whole number.
+    const { code, stderr } = await cli([fixture('tiny.edf'), '--decimals', '']);
+    assert.equal(code, 2);
+    assert.match(stderr, /--decimals needs a number/);
+  });
+
   it('rejects an unknown channel and suggests a real one', async () => {
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--channels', 'ECQ']);
     assert.equal(code, 2);
@@ -113,6 +120,23 @@ describe('file errors exit 1', () => {
     assert.match(second.stderr, /--force/);
 
     assert.equal((await cli([fixture('tiny.edf'), '--out', dir, '--quiet', '--force'])).code, 0);
+  });
+});
+
+describe('write failures', () => {
+  it('reports an unwritable destination instead of dumping a stack trace', async () => {
+    const dir = await outDir();
+    await mkdir(dir, { recursive: true });
+    await chmod(dir, 0o500); // readable and listable, but not writable
+    try {
+      const { code, stderr } = await cli([fixture('tiny.edf'), '--out', dir, '--force']);
+      assert.equal(code, 1);
+      assert.match(stderr, /failed/);
+      assert.ok(!stderr.includes('at async'), 'must not leak a Node stack trace');
+      assert.match(stderr, /incomplete/, 'the user must be told the output is unusable');
+    } finally {
+      await chmod(dir, 0o700);
+    }
   });
 });
 
