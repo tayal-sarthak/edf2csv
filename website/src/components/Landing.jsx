@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
+import PhosphorScope from './PhosphorScope.jsx';
 import Reveal from './Reveal.jsx';
 import { pages } from '../lib/content.js';
 import { highlight } from '../lib/highlight.js';
@@ -170,6 +171,7 @@ export default function Landing() {
   return (
     <main>
       <section className="hero">
+        <PhosphorScope />
         <div className="shell hero__grid">
           <div>
             <motion.h1
