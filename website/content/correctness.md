@@ -202,7 +202,7 @@ The first and last of these have fixtures and tests of their own, listed below.
 
 ## Streaming does not change the numbers
 
-Conversion is streamed: data records are read in batches sized by a byte budget, so a 4 GB file and a 4 MB file use the same working set. A 40 MB EDF producing a 165 MB CSV converts in about 1.4 seconds with the Node heap capped at 48 MB.
+Conversion is streamed: data records are read in batches sized by a byte budget, so a 4 GB file and a 4 MB file use the same working set. A 40 MB EDF producing a 159 MB CSV converts in about 1.4 seconds with the Node heap capped at 48 MB.
 
 Buffered reading is a classic source of silent corruption, because a sample can straddle a chunk boundary. The suite pins this directly by reading the same file twice, once with a one byte read budget and once with a one megabyte budget, and asserting the two sample sequences are deeply equal. A one byte budget puts a boundary between essentially every pair of bytes in the file. If record boundary handling depended on buffering at all, that test could not pass.
 

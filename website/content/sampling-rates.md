@@ -190,7 +190,7 @@ A time window applies consistently across the files. Converting one second out o
 edf2csv recording.edf --start 1s --duration 1s --out ./one-second
 ```
 
-If you need wall clock times rather than offsets, `metadata.json` records the recording's start instant as `recording.start_datetime`, and adding it to `time_s` gives an absolute timestamp.
+If you need wall clock times rather than offsets, `metadata.json` records the recording's start as `recording.start_datetime_local`, and adding it to `time_s` gives an absolute timestamp.
 
 ## Resampling is an analyst decision
 

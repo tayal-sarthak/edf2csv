@@ -58,7 +58,7 @@ A few things worth knowing about that:
 - Exit status is 0 on success, 1 when a file could not be read or written, and 2 when the command itself was wrong (an unknown flag, a channel name that does not exist).
 - `--quiet` suppresses the summary. Warnings and errors still print, because those are the ones you need.
 
-Conversion is streamed rather than loaded into memory. A 40 MB EDF that expands into a 165 MB CSV converts in roughly 1.4 seconds with the Node heap capped at 48 MB, so file size is a disk question, not a RAM question.
+Conversion is streamed rather than loaded into memory. A 40 MB EDF that expands into a 159 MB CSV converts in roughly 1.4 seconds with the Node heap capped at 48 MB, so file size is a disk question, not a RAM question.
 
 ## What is in the output directory
 

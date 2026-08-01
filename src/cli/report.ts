@@ -7,7 +7,7 @@
 
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
-import { describeFormat, formatRate } from '../edf/header.js';
+import { describeFormat, formatRate, formatWallClock } from '../edf/header.js';
 import { formatBytes, formatDuration } from '../format/number.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -41,7 +41,10 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   lines.push(`File       ${file.path}`);
   lines.push(`Format     ${describeFormat(header)}`);
   lines.push(
-    `Recorded   ${header.startDateTime ? header.startDateTime.toISOString().replace('T', ' ').replace('.000Z', ' UTC') : `${header.startDateRaw} ${header.startTimeRaw} (unparseable)`}`,
+    `Recorded   ${
+      formatWallClock(header.startDateTime)?.replace('T', ' ') ??
+      `${header.startDateRaw} ${header.startTimeRaw} (unparseable)`
+    }`,
   );
   lines.push(
     `Duration   ${formatDuration(file.durationSeconds)}  (${file.recordCount} records of ${header.recordDuration}s)`,

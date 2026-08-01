@@ -487,6 +487,22 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
   };
 }
 
+/**
+ * The recording start as a zone-less wall clock, "YYYY-MM-DDTHH:MM:SS".
+ *
+ * EDF stores the start time as local wall-clock digits with no timezone anywhere in
+ * the format. `startDateTime` is built with Date.UTC purely so those digits survive a
+ * round trip unshifted, which makes it a carrier for the wall clock rather than a
+ * real instant. Serialising it with `toISOString()` would append a Z and assert UTC,
+ * and any reader converting to local time would then shift the recording by their own
+ * offset: 13:43:04 in the file becomes 08:43:04 in New York. The Z is omitted because
+ * the file genuinely does not say which zone it meant.
+ */
+export function formatWallClock(date: Date | null): string | null {
+  if (!date) return null;
+  return date.toISOString().slice(0, 19);
+}
+
 /** "EDF", "EDF+ (EDF+D)", "BDF", "BDF+ (EDF+C)". */
 export function describeFormat(header: EdfHeader): string {
   const base = header.isBdf ? 'BDF' : 'EDF';

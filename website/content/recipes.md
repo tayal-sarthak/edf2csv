@@ -50,7 +50,7 @@ import json
 import pandas as pd
 
 meta = json.load(open("sleep_csv/metadata.json"))
-start = pd.Timestamp(meta["recording"]["start_datetime"]).tz_localize(None)
+start = pd.Timestamp(meta["recording"]["start_datetime_local"])
 
 signals = pd.read_csv("sleep_csv/signals_256hz.csv")
 signals.index = start + pd.to_timedelta(signals.pop("time_s"), unit="s")
@@ -65,7 +65,7 @@ clock
 2002-03-02 22:15:00.003906250      29.731     23.871  0.06227
 ```
 
-EDF stores no time zone. `start_datetime` is written with a `Z` suffix because it has to be written in some form, but the value is the recorder's own clock. `tz_localize(None)` drops the misleading UTC marker and keeps the fields as recorded. If the header's date is unreadable, `start_datetime` is `null` and the raw fields survive as `start_date_raw` and `start_time_raw`.
+EDF stores no time zone, so `start_datetime_local` is written without one: it is the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`.
 
 ## Load signals.csv into R
 

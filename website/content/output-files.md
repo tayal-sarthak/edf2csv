@@ -76,7 +76,7 @@ smoothed, resampled or filled.
 
 `time_s` is seconds elapsed since the start of the recording. Zero is the first sample of the first
 data record. It is not a wall clock and not a Unix timestamp. To get an absolute instant, add
-`time_s` to `recording.start_datetime` in `metadata.json`.
+`time_s` to `recording.start_datetime_local` in `metadata.json`.
 
 Three properties are worth knowing before you use the column.
 
@@ -342,7 +342,7 @@ makes a conversion reproducible six months later.
     "version": "0",
     "patient_id": "X X X X",
     "recording_id": "Startdate X X X X",
-    "start_datetime": "2026-03-13T22:04:00.000Z",
+    "start_datetime_local": "2026-03-13T22:04:00",
     "start_date_raw": "13.03.26",
     "start_time_raw": "22.04.00",
     "data_records": 28800,
@@ -421,7 +421,7 @@ publish or archive.
   research files these are usually anonymised placeholders, but the EDF format allows real names,
   dates of birth and hospital numbers, and some files carry them. Check these two fields before
   sharing a converted directory.
-- `start_datetime` is the recording start as an ISO 8601 instant, resolved from the header's date
+- `start_datetime_local` is the recording start as a zone-less wall clock, resolved from the header's date
   and time fields. It is `null` when those fields are unusable, which happens more often than you
   would like. `start_date_raw` and `start_time_raw` preserve the original `dd.mm.yy` and `hh.mm.ss`
   text either way, so nothing is lost to the interpretation.

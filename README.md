@@ -32,8 +32,9 @@ time_s,FP1-F7,F7-T7,T7-P7
 
 ## Check before you convert
 
-An hour of 23-channel EEG makes a 165 MB CSV, too many rows for Excel. `--info`
-shows you what you'd get, without writing anything:
+An hour of 23-channel EEG makes a 159 MB CSV with 921,600 rows, which only just
+fits inside Excel's 1,048,576-row limit. Two hours does not. `--info` shows you what
+you'd get, without writing anything:
 
 ```bash
 npx edf2csv recording.edf --info
@@ -116,7 +117,7 @@ Python, a quick look at part of a recording, or a pipeline that speaks CSV.
 
 ## Notes
 
-Needs Node 20+. No dependencies. MIT licensed.
+Needs Node 20+. No runtime dependencies. MIT licensed.
 
 Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal,
 no AI, no network calls. It reads a file and writes files.

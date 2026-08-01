@@ -9,7 +9,7 @@
 export { EdfFile, DEFAULT_CHUNK_BYTES } from './edf/reader.js';
 export type { RecordBatch, ReadRecordsOptions } from './edf/reader.js';
 
-export { parseHeader, formatRate, describeFormat, ANNOTATIONS_LABEL, BDF_ANNOTATIONS_LABEL } from './edf/header.js';
+export { parseHeader, formatRate, describeFormat, formatWallClock, ANNOTATIONS_LABEL, BDF_ANNOTATIONS_LABEL } from './edf/header.js';
 export type { EdfHeader, EdfHeaderInfo, EdfSignal } from './edf/header.js';
 
 export { decodeRecordAnnotations } from './edf/annotations.js';

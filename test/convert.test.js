@@ -195,7 +195,7 @@ describe('converting', () => {
     const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
     assert.equal(metadata.tool.name, 'edf2csv');
     assert.equal(metadata.recording.data_records, 2);
-    assert.equal(metadata.recording.start_datetime, '2009-06-05T12:34:56.000Z');
+    assert.equal(metadata.recording.start_datetime_local, '2009-06-05T12:34:56');
     assert.equal(metadata.conversion.whole_recording, true);
   });
 

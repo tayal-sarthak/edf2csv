@@ -248,7 +248,7 @@ Concretely, `metadata.json` contains:
 | --- | --- |
 | `recording.patient_id` | The 80-character patient identification field, exactly as written in the header |
 | `recording.recording_id` | The 80-character recording identification field, exactly as written |
-| `recording.start_datetime` | Recording start as an ISO timestamp, when the header's date and time parse |
+| `recording.start_datetime_local` | Recording start as a zone-less wall clock, when the header's date and time parse |
 | `recording.start_date_raw` | The raw `dd.mm.yy` date field from the header |
 | `recording.start_time_raw` | The raw `hh.mm.ss` time field from the header |
 | `source.path` | The absolute path of the input file on the machine that ran the conversion |
@@ -256,7 +256,7 @@ Concretely, `metadata.json` contains:
 | `source.sha256` | Checksum of the input, only when `--checksum` was passed, otherwise `null` |
 
 Two of those are easy to overlook. A recording date and time is itself identifying when combined
-with a clinic and a date of admission, so `start_datetime` is not neutral. And `source.path` is the
+with a clinic and a date of admission, so `start_datetime_local` is not neutral. And `source.path` is the
 resolved absolute path, which often embeds a subject folder name.
 
 The fields are copied rather than stripped because a conversion that loses provenance is not
@@ -468,7 +468,7 @@ done
 
 Very little, and it does not scale with the length of the recording. Conversion is streamed:
 records are read in batches of about 8 MB, converted, and written out, so a 4 GB recording uses
-the same working set as a 4 MB one. A 40 MB EDF producing a 165 MB CSV converts in about 1.4
+the same working set as a 4 MB one. A 40 MB EDF producing a 159 MB CSV converts in about 1.4
 seconds with the Node heap capped at 48 MB.
 
 All the output files are written in the same single pass over the data, so a recording that

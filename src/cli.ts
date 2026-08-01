@@ -195,6 +195,27 @@ export async function main(argv: readonly string[]): Promise<number> {
     const showProgress = !quiet && !asJson && process.stderr.isTTY === true;
     let lastTick = 0;
 
+    const destination =
+      typeof values['out'] === 'string' ? values['out'] : defaultOutputDir(input);
+
+    /*
+      Interrupting a conversion leaves a CSV that stops mid-recording but is still
+      perfectly well-formed, so nothing about the file itself reveals that half the
+      data is missing. Saying so on the way out is the whole point of a tool that
+      claims it will not go quiet when something is wrong.
+    */
+    const onInterrupt = (signal: NodeJS.Signals): void => {
+      if (showProgress) process.stderr.write('\r\u001b[K');
+      process.stderr.write(
+        `\ninterrupted (${signal}): the conversion stopped part way through.\n` +
+          `       Files already written to "${destination}" are incomplete and should not be used.\n`,
+      );
+      // 128 + signal number, the conventional exit status for dying to a signal.
+      process.exit(signal === 'SIGINT' ? 130 : 143);
+    };
+    process.once('SIGINT', onInterrupt);
+    process.once('SIGTERM', onInterrupt);
+
     const result = await convert(input, {
       outputDir: typeof values['out'] === 'string' ? values['out'] : undefined,
       channels,
@@ -215,6 +236,9 @@ export async function main(argv: readonly string[]): Promise<number> {
           }
         : undefined,
     });
+
+    process.off('SIGINT', onInterrupt);
+    process.off('SIGTERM', onInterrupt);
 
     if (showProgress) process.stderr.write('\r\u001b[K');
 

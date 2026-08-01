@@ -14,7 +14,7 @@ import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 
 import { EdfFile } from '../edf/reader.js';
-import { describeFormat } from '../edf/header.js';
+import { describeFormat, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
@@ -462,7 +462,8 @@ async function writeMetadata(
       version: header.version,
       patient_id: header.patientId,
       recording_id: header.recordingId,
-      start_datetime: header.startDateTime ? header.startDateTime.toISOString() : null,
+      // Zone-less on purpose: EDF records local wall-clock digits and no timezone.
+      start_datetime_local: formatWallClock(header.startDateTime),
       start_date_raw: header.startDateRaw,
       start_time_raw: header.startTimeRaw,
       data_records: file.recordCount,

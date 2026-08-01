@@ -61,8 +61,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run clean && npm run build && npm test"
   },
+  "dependencies": {
+    "@types/node": "^22.10.0"
+  },
   "devDependencies": {
-    "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
   },
   "publishConfig": {
