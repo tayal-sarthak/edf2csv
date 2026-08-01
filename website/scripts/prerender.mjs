@@ -214,6 +214,62 @@ function notFoundPage(docs, assets) {
 `;
 }
 
+/*
+  The landing page is built by Vite from a static index.html, so its canonical link
+  and structured data are injected here, where the resolved site URL is known.
+
+  The SoftwareApplication block describes what the tool is and where the source is.
+  It deliberately carries no aggregateRating or downloadCount: inventing either would
+  be fabricating social proof, and a wrong number is worse than no number.
+*/
+function enrichLandingPage(docs) {
+  const file = path.join(DIST, 'index.html');
+  let html = readFileSync(file, 'utf8');
+
+  const graph = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${SITE_URL}/#software`,
+        name: 'edf2csv',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'macOS, Linux, Windows',
+        description:
+          'Command-line converter from EDF, EDF+ and BDF biosignal recordings to CSV. ' +
+          'Runs locally, streams large files, and never resamples channels or alters units.',
+        url: SITE_URL,
+        codeRepository: REPO,
+        license: 'https://opensource.org/licenses/MIT',
+        programmingLanguage: 'TypeScript',
+        softwareRequirements: 'Node.js 20 or newer',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${SITE_URL}/#website`,
+        name: 'edf2csv',
+        url: SITE_URL,
+        about: { '@id': `${SITE_URL}/#software` },
+      },
+    ],
+  };
+
+  const head = [
+    `<link rel="canonical" href="${SITE_URL}/" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:title" content="edf2csv - EDF and EDF+ recordings to CSV, one command" />`,
+    `<meta property="og:description" content="Convert EDF, EDF+ and BDF biosignal recordings to CSV from the command line. Local, streaming, and verified against pyEDFlib." />`,
+    `<meta property="og:url" content="${SITE_URL}/" />`,
+    `<meta property="og:site_name" content="edf2csv" />`,
+    `<meta name="twitter:card" content="summary" />`,
+    `<script type="application/ld+json">${JSON.stringify(graph)}</script>`,
+  ].join('\n    ');
+
+  html = html.replace('</head>', `  ${head}\n  </head>`);
+  writeFileSync(file, html);
+}
+
 function sitemap(docs) {
   const urls = [
     { loc: `${SITE_URL}/`, priority: '1.0' },
@@ -249,12 +305,69 @@ Key behaviour that distinguishes it from general purpose biosignal libraries:
 
 ## Documentation
 
-${docs.map((doc) => `- [${doc.title}](${SITE_URL}/docs/${doc.slug}): ${doc.description}`).join('\n')}
+${docs.map((doc) => `- [${doc.title}](${SITE_URL}/docs/${doc.slug}.md): ${doc.description}`).join('\n')}
 
 ## Source
 
 - [Repository](${REPO}): MIT licensed, zero runtime dependencies, requires Node 20 or newer.
 `;
+}
+
+/*
+  The plain-Markdown mirror of every page, at /docs/<slug>.md.
+
+  This is the part of the llms.txt proposal with real mechanical value. An agent or a
+  person who fetches the .md URL gets the actual prose instead of HTML they have to
+  strip. It is served by URL, never by sniffing the user agent, so everyone sees the
+  same thing and there is no cloaking.
+*/
+function markdownMirror(doc) {
+  return `# ${doc.title}
+
+> ${doc.description}
+
+Canonical HTML version: ${SITE_URL}/docs/${doc.slug}
+
+${doc.body.trim()}
+`;
+}
+
+/** The whole documentation set as one file, for pasting into a coding assistant. */
+function llmsFullTxt(docs) {
+  const header = `# edf2csv documentation
+
+Complete documentation for edf2csv, a command-line converter from EDF, EDF+ and BDF
+biosignal recordings to CSV. Source: ${REPO}
+
+`;
+  return (
+    header +
+    docs
+      .map((doc) => `\n\n---\n\n# ${doc.title}\n\n> ${doc.description}\n\n${doc.body.trim()}\n`)
+      .join('')
+  );
+}
+
+/*
+  A prerendered page that lost its content would look fine in a browser, because the
+  landing bundle would still hydrate, while being an empty shell to every crawler.
+  That is the exact failure this whole build step exists to prevent, so it is checked
+  rather than assumed.
+*/
+function assertPagesHaveContent(docs, pages) {
+  const MIN_WORDS = 150;
+  const thin = [];
+  for (const doc of docs) {
+    const html = pages.get(doc.slug) ?? '';
+    const words = html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    if (words < MIN_WORDS) thin.push(`${doc.slug} (${words} words)`);
+  }
+  if (thin.length > 0) {
+    throw new Error(
+      `prerender: these pages rendered with almost no text, which would make them ` +
+        `invisible to crawlers: ${thin.join(', ')}`,
+    );
+  }
 }
 
 const ROBOTS = `# edf2csv documentation. Indexing and citation are welcome.
@@ -271,19 +384,30 @@ function main() {
   const assets = findAssets();
   const docs = readDocs().map((doc) => ({ ...doc, html: renderMarkdown(doc.body) }));
 
+  const rendered = new Map();
   for (const doc of docs) {
     const dir = path.join(DIST, 'docs', doc.slug);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, 'index.html'), page(doc, docs, assets));
+    const html = page(doc, docs, assets);
+    rendered.set(doc.slug, html);
+    writeFileSync(path.join(dir, 'index.html'), html);
+    // Plain Markdown alongside the HTML, at /docs/<slug>.md
+    writeFileSync(path.join(DIST, 'docs', `${doc.slug}.md`), markdownMirror(doc));
   }
 
+  assertPagesHaveContent(docs, rendered);
+
+  enrichLandingPage(docs);
+  writeFileSync(path.join(DIST, 'llms-full.txt'), llmsFullTxt(docs));
   writeFileSync(path.join(DIST, '404.html'), notFoundPage(docs, assets));
   writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap(docs));
   writeFileSync(path.join(DIST, 'robots.txt'), ROBOTS);
   writeFileSync(path.join(DIST, 'llms.txt'), llmsTxt(docs));
   writeFileSync(path.join(DIST, 'favicon.svg'), FAVICON);
 
-  console.log(`prerender: ${docs.length} documentation pages, 404, sitemap, robots.txt, llms.txt`);
+  console.log(
+    `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, 404, sitemap, robots.txt, llms.txt, llms-full.txt`,
+  );
   console.log(`prerender: site url ${SITE_URL}`);
 }
 
