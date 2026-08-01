@@ -193,6 +193,16 @@ export function defaultOutputDir(inputPath: string): string {
 
 async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
   const existing = await stat(dir).catch(() => null);
+
+  // --force means "replace my previous output", not "write output files into
+  // whatever this happens to be". Pointing it at a regular file needs saying so.
+  if (existing && !existing.isDirectory()) {
+    throw new ConversionError(
+      'OUTPUT_UNWRITABLE',
+      `"${dir}" is a file, but the converted data needs a directory.`,
+      'Choose a directory with --out.',
+    );
+  }
   if (existing && !force) {
     throw new ConversionError(
       'OUTPUT_EXISTS',
@@ -200,12 +210,25 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
       'Pass --force to overwrite it, or --out to choose a different directory.',
     );
   }
+
   await mkdir(dir, { recursive: true }).catch((cause: unknown) => {
     throw new ConversionError(
       'OUTPUT_UNWRITABLE',
-      `Cannot create "${dir}": ${cause instanceof Error ? cause.message : String(cause)}`,
+      `Cannot create "${dir}": ${describeFsError(cause)}.`,
+      'Check the path exists and that you have permission to write there.',
     );
   });
+}
+
+/** Turn a Node filesystem error into something a person can act on. */
+function describeFsError(cause: unknown): string {
+  const code = (cause as NodeJS.ErrnoException | undefined)?.code;
+  if (code === 'EACCES' || code === 'EPERM') return 'permission denied';
+  if (code === 'ENOSPC') return 'the disk is full';
+  if (code === 'ENOTDIR') return 'part of the path is a file, not a directory';
+  if (code === 'EROFS') return 'the filesystem is read-only';
+  if (code === 'ENAMETOOLONG') return 'the path is too long';
+  return cause instanceof Error ? cause.message : String(cause);
 }
 
 /**
