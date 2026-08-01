@@ -1,0 +1,41 @@
+name: Publish to npm
+
+# Publishing is deliberately manual: it fires when a GitHub Release is published,
+# not on every push to main. Releasing is irreversible, so it should be a decision.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for npm provenance. This is what lets npm attest that the tarball
+      # really was built from this repository at this commit, which is worth having
+      # for a tool whose selling point is that you can trust its numbers.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # prepublishOnly reruns the build and the suite, so a broken commit cannot ship.
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
