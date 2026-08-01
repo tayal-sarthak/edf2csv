@@ -78,23 +78,27 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   const file = await EdfFile.open(inputPath);
 
   try {
+    // A discontinuous file's records carry their own positions in time, and those
+    // must be known before a requested window can be resolved — otherwise the window
+    // is measured against the amount of data rather than the span it covers.
+    const timing = await readRecordStarts(file);
+
     const plan = buildPlan(
       {
         signals: file.header.signals,
         recordDuration: file.header.recordDuration,
         recordCount: file.recordCount,
         hasAnnotationChannel: file.annotationSignals.length > 0,
+        recordStarts: timing.starts,
       },
       options,
     );
+    plan.diagnostics.push(...timing.diagnostics);
 
     const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
     await prepareOutputDir(outputDir, options.force === true);
 
-    // An EDF+D file states each record's true position in time. Those positions are
-    // needed before records can be selected by time, so they are read up front.
-    const recordStarts = await resolveRecordStarts(file, plan);
-
+    const recordStarts = timing.starts;
     const written: WrittenFile[] = [];
     const annotations: Annotation[] = [];
 
@@ -188,63 +192,81 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
 }
 
 /**
- * True start time of every record, in seconds from the start of the recording.
+ * True start time of every data record, for discontinuous recordings.
  *
  * A continuous file's records follow each other exactly, so their positions are
- * arithmetic. A discontinuous one has gaps that only the timekeeping annotations
- * record, and closing those gaps silently would misrepresent when the data was
- * measured.
+ * arithmetic. A discontinuous one has gaps that only the per-record timekeeping
+ * annotation records, and closing those gaps silently would misrepresent when the
+ * data was measured.
+ *
+ * A record whose timekeeping annotation is missing or unreadable has no knowable
+ * position. Falling back to arithmetic there would invent a timestamp that looks
+ * exactly like a real one, so the fallback is used but reported.
  */
-async function resolveRecordStarts(file: EdfFile, plan: ConversionPlan): Promise<Float64Array | null> {
-  if (file.header.continuity !== 'EDF+D') return null;
+async function readRecordStarts(
+  file: EdfFile,
+): Promise<{ starts: Float64Array | null; diagnostics: Diagnostic[] }> {
+  const diagnostics: Diagnostic[] = [];
+  if (file.header.continuity !== 'EDF+D') return { starts: null, diagnostics };
+
+  const channel = file.annotationSignals[0];
+  if (!channel) {
+    diagnostics.push({
+      code: 'DISCONTINUOUS',
+      severity: 'warning',
+      message:
+        'This file is marked discontinuous but has no annotation channel, so where its ' +
+        'records sit in time is not recorded anywhere.',
+      hint: 'Times are written as if the records were contiguous. Any gaps are lost.',
+    });
+    return { starts: null, diagnostics };
+  }
 
   const starts = new Float64Array(file.recordCount);
-  const channel = file.annotationSignals[0];
-  for (let i = 0; i < starts.length; i++) starts[i] = i * file.header.recordDuration;
-  if (!channel) return starts;
+  const missing: number[] = [];
 
   for await (const batch of file.readRecords()) {
     for (let r = 0; r < batch.recordCount; r++) {
       const index = batch.firstRecordIndex + r;
       const decoded = decodeRecordAnnotations(file.annotationBytes(batch, r, channel), index);
-      if (decoded.recordStart !== null) starts[index] = decoded.recordStart;
+      if (decoded.recordStart === null) {
+        missing.push(index);
+        starts[index] = index * file.header.recordDuration;
+      } else {
+        starts[index] = decoded.recordStart;
+      }
     }
   }
 
-  // The range was resolved assuming records sit end to end. In a discontinuous file
-  // they do not, so both the time window and the record selection are recomputed
-  // from where the records actually are. Without this, a record positioned past
-  // `recordCount * recordDuration` — which is normal once there is a gap — would
-  // fall outside the window and be dropped without a word.
-  if (plan.range.isWholeRecording) {
-    let earliest = Infinity;
-    let latest = -Infinity;
-    for (const begin of starts) {
-      if (begin < earliest) earliest = begin;
-      if (begin + file.header.recordDuration > latest) latest = begin + file.header.recordDuration;
-    }
-    if (Number.isFinite(earliest) && Number.isFinite(latest)) {
-      plan.range.startSeconds = earliest;
-      plan.range.endSeconds = latest;
-    }
+  if (missing.length > 0) {
+    const shown = missing.slice(0, 5).join(', ');
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${missing.length} of ${file.recordCount} data records carry no readable timekeeping ` +
+        `annotation (record${missing.length === 1 ? '' : 's'} ${shown}` +
+        `${missing.length > 5 ? ', …' : ''}), so their true position in time is unknown.`,
+      hint: 'Those records are timed as if they were contiguous; treat their timestamps as unreliable.',
+    });
   }
 
-  const { startSeconds, endSeconds } = plan.range;
-  let first = file.recordCount;
-  let last = 0;
-  for (let i = 0; i < starts.length; i++) {
-    const begin = starts[i] ?? 0;
-    const finish = begin + file.header.recordDuration;
-    if (finish > startSeconds && begin < endSeconds) {
-      if (i < first) first = i;
-      if (i + 1 > last) last = i + 1;
-    }
+  // Records are expected to advance through time. Anything else means the file
+  // disagrees with itself, and the row order will not be chronological.
+  let outOfOrder = 0;
+  for (let i = 1; i < starts.length; i++) {
+    if ((starts[i] as number) < (starts[i - 1] as number)) outOfOrder++;
   }
-  if (first < last) {
-    plan.range.startRecord = first;
-    plan.range.endRecord = last;
+  if (outOfOrder > 0) {
+    diagnostics.push({
+      code: 'DISCONTINUOUS',
+      severity: 'warning',
+      message: `${outOfOrder} data record${outOfOrder === 1 ? '' : 's'} start earlier than the record before it.`,
+      hint: 'Rows are written in file order, so the time column will not increase monotonically.',
+    });
   }
-  return starts;
+
+  return { starts, diagnostics };
 }
 
 async function writeSignalFiles(

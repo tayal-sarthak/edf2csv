@@ -38,6 +38,13 @@ export interface PlanInput {
   recordDuration: number;
   recordCount: number;
   hasAnnotationChannel: boolean;
+  /**
+   * True start time of each data record, supplied for discontinuous files. The
+   * requested time window is resolved against these rather than against
+   * `recordCount * recordDuration`, which for a file with gaps is the amount of
+   * data rather than the span of time it covers.
+   */
+  recordStarts?: Float64Array | null | undefined;
 }
 
 export interface PlanOptions {
@@ -81,6 +88,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     end: options.end,
     recordDuration: input.recordDuration,
     recordCount: input.recordCount,
+    recordStarts: input.recordStarts,
   });
 
   const writeSignals = options.annotationsOnly !== true;

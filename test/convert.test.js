@@ -204,6 +204,28 @@ describe('converting', () => {
     assert.equal(times[20], 10, 'the nine-second gap survives as a jump in time_s');
   });
 
+  it('honours a time window measured against a discontinuous file"s real span', async () => {
+    // discontinuous.edf holds 3 records positioned at 0s, 1s and 10s. Its span is
+    // 11 seconds even though it contains only 3 seconds of data, so a window that
+    // reaches past 3s must still pick up the record sitting at 10s.
+    const dir = await outDir();
+    await convert(fixture('discontinuous.edf'), { outputDir: dir, start: 1, end: 200 });
+    const rows = await readCsv(dir, 'signals.csv');
+    const times = rows.slice(1).map((r) => Number(r.split(',')[0]));
+
+    assert.equal(rows.length, 21, 'records at 1s and 10s, 10 samples each');
+    assert.equal(times.at(-1), 10.9, 'the record at 10s must not be clipped away');
+  });
+
+  it('can start a window inside a gap, past where the data would end if contiguous', async () => {
+    const dir = await outDir();
+    // Naively the file is "3 seconds long", so --start 5 would look out of range.
+    await convert(fixture('discontinuous.edf'), { outputDir: dir, start: 5 });
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.equal(rows.length, 11, 'just the record at 10s');
+    assert.equal(Number(rows[1].split(',')[0]), 10);
+  });
+
   it('exports annotations with onset, duration and text', async () => {
     const dir = await outDir();
     await convert(fixture('annotations.edf'), { outputDir: dir });

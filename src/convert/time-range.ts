@@ -126,23 +126,34 @@ export function resolveRange(options: {
   end?: number | undefined;
   recordDuration: number;
   recordCount: number;
+  /**
+   * True start time of each data record, for discontinuous files. When absent,
+   * records are assumed to sit end to end.
+   */
+  recordStarts?: Float64Array | null | undefined;
 }): ResolvedRange {
-  const total = options.recordCount * options.recordDuration;
-  const startSeconds = options.start ?? 0;
+  // For a continuous file the recording spans recordCount * recordDuration. A
+  // discontinuous one does not: a 10-second recording with a 95-second gap in the
+  // middle still ends at 105 seconds. Deriving the span from the records' real
+  // positions is what stops a requested window from being clipped back to the
+  // amount of *data* in the file and silently discarding everything past it.
+  const { earliest, latest } = span(options.recordStarts, options.recordCount, options.recordDuration);
 
   if (options.duration !== undefined && options.end !== undefined) {
     throw new TimeRangeError('Use either --duration or --end, not both.');
   }
 
+  const startSeconds = options.start ?? earliest;
+
   let endSeconds: number;
   if (options.duration !== undefined) endSeconds = startSeconds + options.duration;
   else if (options.end !== undefined) endSeconds = options.end;
-  else endSeconds = total;
+  else endSeconds = latest;
 
-  if (startSeconds >= total) {
+  if (startSeconds >= latest) {
     throw new TimeRangeError(
       `--start ${formatSeconds(startSeconds)} is at or past the end of this ` +
-        `${formatSeconds(total)} recording.`,
+        `${formatSeconds(latest)} recording.`,
     );
   }
   if (endSeconds <= startSeconds) {
@@ -152,17 +163,62 @@ export function resolveRange(options: {
     );
   }
 
-  const clampedEnd = Math.min(endSeconds, total);
-  const startRecord = Math.floor(startSeconds / options.recordDuration);
-  const endRecord = Math.min(options.recordCount, Math.ceil(clampedEnd / options.recordDuration));
+  const clampedEnd = Math.min(endSeconds, latest);
+  const { startRecord, endRecord } = selectRecords(options, startSeconds, clampedEnd);
 
   return {
     startSeconds,
     endSeconds: clampedEnd,
     startRecord,
     endRecord,
-    isWholeRecording: startSeconds === 0 && clampedEnd >= total,
+    isWholeRecording: startSeconds <= earliest && clampedEnd >= latest,
   };
+}
+
+function span(
+  recordStarts: Float64Array | null | undefined,
+  recordCount: number,
+  recordDuration: number,
+): { earliest: number; latest: number } {
+  if (!recordStarts || recordStarts.length === 0) {
+    return { earliest: 0, latest: recordCount * recordDuration };
+  }
+  let earliest = Infinity;
+  let latest = -Infinity;
+  for (const start of recordStarts) {
+    if (start < earliest) earliest = start;
+    if (start + recordDuration > latest) latest = start + recordDuration;
+  }
+  if (!Number.isFinite(earliest) || !Number.isFinite(latest)) {
+    return { earliest: 0, latest: recordCount * recordDuration };
+  }
+  return { earliest, latest };
+}
+
+/** Every record whose own time span overlaps the requested window. */
+function selectRecords(
+  options: { recordDuration: number; recordCount: number; recordStarts?: Float64Array | null | undefined },
+  startSeconds: number,
+  endSeconds: number,
+): { startRecord: number; endRecord: number } {
+  const starts = options.recordStarts;
+  if (!starts || starts.length === 0) {
+    return {
+      startRecord: Math.floor(startSeconds / options.recordDuration),
+      endRecord: Math.min(options.recordCount, Math.ceil(endSeconds / options.recordDuration)),
+    };
+  }
+
+  let first = options.recordCount;
+  let last = 0;
+  for (let i = 0; i < starts.length; i++) {
+    const begin = starts[i] ?? 0;
+    if (begin + options.recordDuration > startSeconds && begin < endSeconds) {
+      if (i < first) first = i;
+      if (i + 1 > last) last = i + 1;
+    }
+  }
+  return first < last ? { startRecord: first, endRecord: last } : { startRecord: 0, endRecord: 0 };
 }
 
 function formatSeconds(seconds: number): string {
