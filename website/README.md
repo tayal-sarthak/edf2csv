@@ -12,7 +12,7 @@ website/
 └── dist/             build output, gitignored
 ```
 
-The Markdown in `content/` is the documentation. It is written to be readable on its
+The Markdown in `content/` is the documentation. It's written to be readable on its
 own, in an editor or on a repository page, without the site around it. Each file
 carries frontmatter with a title, a one-line description and a sort order:
 
@@ -47,7 +47,7 @@ served from a domain root or from a subpath such as GitHub Pages without changes
 Documentation is inlined into the bundle at build time rather than fetched at
 runtime. That makes moving between pages instant and the deploy a plain pile of
 static files with no API behind it, at the cost of a larger initial download. The
-libraries are split into their own chunk so editing a page does not invalidate them
+libraries are split into their own chunk so editing a page doesn't invalidate them
 in anyone's cache.
 
 Every terminal block and CSV sample on the landing page is real output, captured from

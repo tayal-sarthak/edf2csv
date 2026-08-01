@@ -13,7 +13,7 @@ edf2csv is built as a command-line tool, but the parser and the converter undern
 
 Everything else in the API is a supporting part of those two: the scaling function that turns digital codes into physical units, the annotation decoder, the planner that decides which channels go into which file.
 
-The package is ESM only and needs Node 20 or newer. There is no CommonJS build, so `require("edf2csv")` will not work. TypeScript declarations ship with the package, so `import type` works with no `@types` install. There are no runtime dependencies.
+The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works with no `@types` install. There are no runtime dependencies.
 
 ```bash
 npm install edf2csv
@@ -60,9 +60,9 @@ class EdfFile {
 }
 ```
 
-`open` reads the header only. It does not touch the data records, so it returns immediately whatever the file's size. It opens a file handle that stays open, so **you must call `close()`**, ideally in a `finally` block. Calling `readRecords` or `readAnnotations` after `close()` throws an `EdfError` with code `UNREADABLE`.
+`open` reads the header only. It doesn't touch the data records, so it returns immediately whatever the file's size. It opens a file handle that stays open, so **you must call `close()`**, ideally in a `finally` block. Calling `readRecords` or `readAnnotations` after `close()` throws an `EdfError` with code `UNREADABLE`.
 
-Two properties deserve attention. `recordCount` is derived from the actual file size, not from the header's declared count, so a truncated recording reports what is really there and raises a `RECORD_COUNT_MISMATCH` diagnostic. `trailingBytes` counts the bytes after the last complete record, which are ignored.
+Two properties need care. `recordCount` is derived from the actual file size, not from the header's declared count, so a truncated recording reports what's really there and raises a `RECORD_COUNT_MISMATCH` diagnostic. `trailingBytes` counts the bytes after the last complete record, which are ignored.
 
 ### Printing a channel table
 
@@ -134,7 +134,7 @@ interface EdfHeader {
 }
 ```
 
-`startDateTime` is a UTC `Date`. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that cannot be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
+`startDateTime` is a UTC `Date`. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
 
 `continuity` normalises the BDF+ spelling: a file reserving `BDF+D` reports `'EDF+D'`, because the two mean the same thing.
 
@@ -159,7 +159,7 @@ interface EdfSignal {
 }
 ```
 
-`header.signals` holds every signal including annotation channels. `file.dataSignals` and `file.annotationSignals` are the two halves, split on `isAnnotations`. Match on `index` rather than on `label` if you need to be certain which channel you have: labels are free text and are not guaranteed unique.
+`header.signals` holds every signal including annotation channels. `file.dataSignals` and `file.annotationSignals` are the two halves, split on `isAnnotations`. Match on `index` rather than on `label` if you need to be certain which channel you've: labels are free text and aren't guaranteed unique.
 
 ### Diagnostic
 
@@ -189,7 +189,7 @@ STALE_OUTPUT           HEADER_BYTES_MISMATCH    NONPRINTABLE_LABEL
 
 `file.diagnostics` carries only the ones the header parser can raise. Conversion adds more, which is why `convert()` returns its own combined list.
 
-A problem serious enough that no trustworthy output is possible throws instead. That is `EdfError`:
+A problem serious enough that no trustworthy output is possible throws instead. That's `EdfError`:
 
 ```ts
 class EdfError extends Error {
@@ -227,7 +227,7 @@ interface RecordBatch {
 }
 ```
 
-Samples are not decoded for you. `sampleAt(batch, recordOffset, signal, sampleIndex)` returns the raw digital integer, handling the two byte layouts EDF and BDF use (BDF's 24-bit little-endian values are sign-extended correctly). `recordOffset` is the record's position **within the batch**, from 0 to `batch.recordCount - 1`, not its index in the file. Add `batch.firstRecordIndex` when you need the absolute index.
+Samples aren't decoded for you. `sampleAt(batch, recordOffset, signal, sampleIndex)` returns the raw digital integer, handling the two byte layouts EDF and BDF use (BDF's 24-bit little-endian values are sign-extended correctly). `recordOffset` is the record's position **within the batch**, from 0 to `batch.recordCount - 1`, not its index in the file. Add `batch.firstRecordIndex` when you need the absolute index.
 
 To get physical units, build a scaler once per signal and apply it per sample.
 
@@ -281,7 +281,7 @@ try {
 768 samples, mean 0.061, peak 122.161
 ```
 
-The `recordStart` arithmetic above assumes a continuous recording. For an EDF+D file the records are not contiguous in time, and only the per-record timekeeping annotation says where each one sits. Read `recordStarts` from `readAnnotations()` and use that array instead.
+The `recordStart` arithmetic above assumes a continuous recording. For an EDF+D file the records aren't contiguous in time, and only the per-record timekeeping annotation says where each one sits. Read `recordStarts` from `readAnnotations()` and use that array instead.
 
 `makeScaler` evaluates `gain * (offset + digital)`, EDFlib's arrangement of the spec formula. The spec-literal ordering, `(digital - digitalMin) * gain + physicalMin`, loses low bits to cancellation on a channel spanning plus or minus 800 uV: digital 0 comes out as 0.19536019536019467 when the exact value is 0.19536019536019536. The arrangement used here keeps the intermediate small and returns the correctly rounded result, which is also bit-for-bit what pyEDFlib and EDFbrowser produce. When the header contradicts itself (`digitalMax === digitalMin`, or a gain of zero) the scaler returns `physicalMin` for every sample, and the header parser has already raised `DEGENERATE_DIGITAL_RANGE` or `DEGENERATE_PHYSICAL_RANGE`.
 
@@ -319,7 +319,7 @@ for await (const batch of file.readRecords()) {
 
 The same applies to anything derived from the buffer without copying, including `annotationBytes()`, which returns a `subarray` of it. Decoded values are safe: numbers returned by `sampleAt` are copies by nature, and strings produced from the bytes are too. The rule is only about buffers and buffer views.
 
-Note also that a small `chunkBytes` does not change the results, only how often the buffer is refilled. The minimum batch is one record, so `chunkBytes: 1` still reads a whole record at a time.
+Note also that a small `chunkBytes` doesn't change the results, only how often the buffer is refilled. The minimum batch is one record, so `chunkBytes: 1` still reads a whole record at a time.
 
 ## Reading annotations
 
@@ -332,7 +332,7 @@ interface Annotation {
 }
 ```
 
-`readAnnotations()` returns every event in the file, the start time each record declares, and a count of entries that could not be decoded.
+`readAnnotations()` returns every event in the file, the start time each record declares, and a count of entries that couldn't be decoded.
 
 ```js
 import { EdfFile } from 'edf2csv';
@@ -363,15 +363,15 @@ try {
 record starts [ 0, 1, 2 ]
 ```
 
-Three things about this method are worth knowing.
+Three things to know about this method.
 
-It reads only the annotation channel, seeking straight to it inside each record instead of pulling whole records through memory. On a multi-gigabyte recording that is a few kilobytes of I/O rather than all of it.
+It reads only the annotation channel, seeking straight to it inside each record instead of pulling whole records through memory. On a multi-gigabyte recording that's a few kilobytes of I/O rather than all of it.
 
-It always scans the entire file, even when you only care about a window. Writers are not required to store an annotation in the record its onset falls in, and some put every annotation in the first record, so reading only a window's records would drop events that belong in it.
+It always scans the entire file, even when you only care about a window. Writers aren't required to store an annotation in the record its onset falls in, and some put every annotation in the first record, so reading only a window's records would drop events that belong in it.
 
 The returned annotations are sorted by `onset`, then by `recordIndex`. `recordStarts` has one entry per data record, `null` where the record carried no readable timekeeping annotation. The timekeeping entry itself is never returned as an annotation, because it has an onset and no text.
 
-For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel and returns `{ recordStart, annotations, malformed }`. Pair it with `file.annotationBytes(batch, recordOffset, signal)` if you are already streaming records and would rather not make a second pass.
+For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel and returns `{ recordStart, annotations, malformed }`. Pair it with `file.annotationBytes(batch, recordOffset, signal)` if you're already streaming records and would rather not make a second pass.
 
 ## convert: run a full conversion
 
@@ -379,7 +379,7 @@ For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIn
 function convert(inputPath: string, options?: ConvertOptions): Promise<ConvertResult>;
 ```
 
-This is exactly what the CLI calls. It opens the file, reads the annotation channel, builds a plan, creates the output directory, streams every rate group in a single pass over the data records, and writes `channels.csv`, `annotations.csv` when there is an annotation channel, and `metadata.json`.
+This is exactly what the CLI calls. It opens the file, reads the annotation channel, builds a plan, creates the output directory, streams every rate group in a single pass over the data records, and writes `channels.csv`, `annotations.csv` when there's an annotation channel, and `metadata.json`.
 
 ### ConvertOptions
 
@@ -409,7 +409,7 @@ interface ConversionProgress {
 
 `start`, `duration` and `end` are plain numbers of seconds here, not the `5m` or `00:30:00` strings the CLI accepts. Use `parseTimeSpec` if you want to accept those forms from your own users. Passing both `duration` and `end` throws a `TimeRangeError`, as does a window that starts at or past the end of the recording.
 
-`onProgress` fires once per batch of records read, not once per record, so on a small file it may fire only once. `bytesWritten` counts characters pushed to the signal writers, so it is zero until the first flush.
+`onProgress` fires once per batch of records read, not once per record, so on a small file it may fire only once. `bytesWritten` counts characters pushed to the signal writers, so it's zero until the first flush.
 
 `defaultOutputDir(inputPath)` gives the directory `convert` would choose on its own: the input filename with its extension replaced by `_csv`, next to the input. `defaultOutputDir('/data/recordings/sleep-study.edf')` is `/data/recordings/sleep-study_csv`.
 
@@ -482,9 +482,9 @@ Two channels were requested at two different rates, so two signal files came bac
 
 | Type | When |
 | --- | --- |
-| `EdfError` | The recording cannot be read or its header is unusable. Has `code` and `hint`. |
-| `ConversionError` | The output cannot be written. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE` or `WRITE_FAILED`. |
-| `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file does not have. |
+| `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
+| `ConversionError` | The output can't be written. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE` or `WRITE_FAILED`. |
+| `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
 
 ```js
@@ -508,11 +508,11 @@ try {
 
 `ChannelSelectionError` messages carry a suggestion when the term is close to a real label, and `EdfError` and `ConversionError` both carry a `hint` describing what to do. Both are worth surfacing to a user rather than swallowing.
 
-`WRITE_FAILED` means files were partially written. They are left on disk, incomplete, and should not be used.
+`WRITE_FAILED` means files were partially written. They are left on disk, incomplete, and shouldn't be used.
 
 ## Planning without converting
 
-`buildPlan` answers "what would a conversion produce" with no I/O beyond the header you already read. It is what powers the `--info` estimate.
+`buildPlan` answers "what would a conversion produce" with no I/O beyond the header you already read. It's what powers the `--info` estimate.
 
 ```ts
 function buildPlan(input: PlanInput, options?: PlanOptions): ConversionPlan;

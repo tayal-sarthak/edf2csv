@@ -6,19 +6,19 @@ order: 10
 
 ## Why this page exists
 
-You do not need to know any of this to run `edf2csv`. You need it when something looks wrong: a
+You don't need to know any of this to run `edf2csv`. You need it when something looks wrong: a
 channel that reads a thousand times too large, a recording dated 2085, two columns with the same
 name, a warning you want to understand rather than dismiss. Every diagnostic the tool prints comes
 from a specific field in a specific place, and knowing which field it was usually tells you what
 happened.
 
 EDF (European Data Format) was published in 1992 and is deliberately simple. A file is ASCII text
-for the metadata followed by raw binary integers for the samples. There is no compression, no
+for the metadata followed by raw binary integers for the samples. There's no compression, no
 index, and no length prefix on anything. Every position in the file can be computed with
 arithmetic, which is why a converter can stream a 40 MB recording without loading it.
 
 EDF+ (2003) added annotations, a way to mark a recording as discontinuous, and conventions for the
-identification fields. It did not change the layout. BDF is BioSemi's 24-bit variant and changes
+identification fields. It didn't change the layout. BDF is BioSemi's 24-bit variant and changes
 exactly two things. All three are handled by the same parser.
 
 ## The 256 byte fixed header
@@ -35,12 +35,12 @@ left-justified and padded with spaces to their full width.
 | 176 | 8 | start time | `hh.mm.ss` |
 | 184 | 8 | header bytes | Size of the whole header, which is `256 * (1 + ns)` |
 | 192 | 44 | reserved | Where `EDF+C` and `EDF+D` live |
-| 236 | 8 | number of data records | Or `-1` when the writer did not know |
+| 236 | 8 | number of data records | Or `-1` when the writer didn't know |
 | 244 | 8 | duration of a data record | Seconds, may be fractional |
 | 252 | 4 | number of signals (ns) | Including any annotations channel |
 
-That is the entire fixed header. Everything after byte 256 is per-signal header, and everything
-after that is data.
+That's the entire fixed header. Everything after byte 256 is per-signal header, and everything
+after that's data.
 
 ### Version
 
@@ -48,19 +48,19 @@ For EDF and EDF+ this field is the single character `0` padded with seven spaces
 information: there has only ever been one version.
 
 BDF uses it as a magic number instead. Byte 0 is `0xFF` (255, not a printable character) and bytes
-1 to 7 spell `BIOSEMI`. That is the only reliable way to tell a BDF file from an EDF file, and it
+1 to 7 spell `BIOSEMI`. That's the only reliable way to tell a BDF file from an EDF file, and it
 matters, because the two differ in how many bytes a sample takes. A parser that skips this check
 will read a BDF file as EDF and produce complete nonsense rather than an error.
 
 ### Patient and recording identification
 
-Two free-text fields of 80 bytes each. In plain EDF they are whatever the recording software felt
+Two free-text fields of 80 bytes each. In plain EDF they're whatever the recording software felt
 like writing. EDF+ specifies a structure for both: the patient field becomes a hospital code, sex,
 birth date and name separated by spaces, and the recording field starts with the literal word
 `Startdate` followed by the start date in `dd-MMM-yyyy` form.
 
-These fields routinely contain direct identifiers. If you are sharing converted data, look at what
-your files actually have in them. `--info` prints both fields, and they are copied verbatim into
+These fields routinely contain direct identifiers. If you're sharing converted data, look at what
+your files actually have in them. `--info` prints both fields, and they're copied verbatim into
 `metadata.json` as `patient_id` and `recording_id`.
 
 ```bash
@@ -81,7 +81,7 @@ Recording  Startdate 02-MAR-2002 PSG-1234/2002 NN Telemetry03
 
 The date field holds `dd.mm.yy`. Two digits for the year, which needed a rule the moment the format
 outlived the 1990s, and EDF has one: **85 to 99 mean 1985 to 1999, and 00 to 84 mean 2000 to 2084**.
-The format cannot express a date outside 1985 to 2084 at all. A file written in 2085 will read as
+The format can't express a date outside 1985 to 2084 at all. A file written in 2085 will read as
 1985.
 
 So `01.01.85` is 1 January 1985, and `02.03.02` is 2 March 2002. Note also that the date is
@@ -93,7 +93,7 @@ day-first: `05.06.09` is 5 June 2009, not 6 May.
 01.01.85  ->  1985-01-01
 ```
 
-There is no time zone. The instant is whatever local clock the recording hardware had. `edf2csv`
+There's no time zone. The instant is whatever local clock the recording hardware had. `edf2csv`
 reports it as UTC because it has to report it as something, and preserves the raw text of both
 fields in `metadata.json` as `start_date_raw` and `start_time_raw` so nothing is lost to
 interpretation.
@@ -106,20 +106,20 @@ rather than silently rolled forward into March, and then `--info` prints the raw
 
 ### The reserved field, where EDF+C and EDF+D live
 
-44 bytes at offset 192. In plain EDF they are blank. EDF+ puts one of two markers here, and this
+44 bytes at offset 192. In plain EDF they're blank. EDF+ puts one of two markers here, and this
 single field is what separates a plain EDF file from an EDF+ file:
 
 - `EDF+C` means **continuous**. Data records follow each other without gaps, so record `n` starts at
   `n * recordDuration` seconds.
-- `EDF+D` means **discontinuous**. Records are not contiguous in time. Where each record actually
+- `EDF+D` means **discontinuous**. Records aren't contiguous in time. Where each record actually
   sits must be read from the annotations channel.
 
 BDF+ writes `BDF+C` and `BDF+D` for the same two meanings. `edf2csv` treats the pairs as
-equivalent. BioSemi also writes `24BIT` in this field on plain BDF files, which is not a continuity
+equivalent. BioSemi also writes `24BIT` in this field on plain BDF files, which isn't a continuity
 marker and is ignored.
 
 A file with `EDF+D` gets a warning, because a converter that ignores this field will hand you a
-time axis that is quietly wrong.
+time axis that's quietly wrong.
 
 ```
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
@@ -131,8 +131,8 @@ warning: This is a discontinuous (EDF+D) recording: its data records are not con
 These three numbers determine the shape of everything that follows.
 
 **Number of data records** at offset 236 is how many records the writer intended to store. It may
-be `-1`, which the spec permits for a recording still in progress. It is also often simply wrong,
-because a recording that was interrupted leaves this field at its optimistic original value.
+be `-1`, which the spec permits for a recording still in progress. It's also often wrong, because
+a recording that was interrupted leaves this field at the value the writer set when it started.
 `edf2csv` never trusts it. The record count it uses is derived from the actual file size:
 
 ```
@@ -149,13 +149,13 @@ far the most common, but 0.1 s and 10 s both occur. This is the only field that 
 into a sampling rate.
 
 **Number of signals** at offset 252 is four bytes, so at most 9999 channels. It counts the
-annotations channel if there is one, which is why a file reported as "1 signal + 1 annotation
+annotations channel if there's one, which is why a file reported as "1 signal + 1 annotation
 channel" has `ns` of 2.
 
 ## The per-signal header is field-major
 
 This is the part people get wrong. After the fixed 256 bytes comes `ns * 256` more bytes of
-per-signal header, and it is **not** stored as one 256-byte block per signal. It is stored
+per-signal header, and it's **not** stored as one 256-byte block per signal. It's stored
 field-major: all `ns` labels, then all `ns` transducer strings, then all `ns` physical dimensions,
 and so on to the end.
 
@@ -173,12 +173,12 @@ offset 256          ns * 16 bytes    label
 ```
 
 So the label of signal `i` is at `256 + i * 16`, and its physical minimum is at
-`256 + ns * 104 + i * 8`. There is no run of bytes anywhere in the file that contains one signal's
+`256 + ns * 104 + i * 8`. There's no run of bytes anywhere in the file that contains one signal's
 complete header.
 
-The reason it is worth stating so bluntly is that signal-major is the intuitive guess, and with one
-signal the two layouts are byte-for-byte identical. A hand-written parser tested on a single-channel
-file passes, then reads a two-channel file and gets a label where it expected a transducer string.
+This matters because signal-major is the intuitive guess, and with one signal the two layouts are
+byte-for-byte identical. A hand-written parser tested on a single-channel file passes, then reads a
+two-channel file and gets a label where it expected a transducer string.
 
 Here are the first 64 bytes after the fixed header in a two-channel file:
 
@@ -196,13 +196,13 @@ have looked for the transducer of `ch1` at byte 16, and found `ch2`.
   reserves the exact label `EDF Annotations` (`BDF Annotations` in BDF+) for the annotations
   channel. Nothing enforces uniqueness.
 - **transducer type**, 80 bytes. What the electrode was, e.g. `AgAgCl electrode`. Usually blank.
-- **physical dimension**, 8 bytes. The unit. `uV`, `mV`, `degC`, `bpm`. Eight bytes is not enough
+- **physical dimension**, 8 bytes. The unit. `uV`, `mV`, `degC`, `bpm`. Eight bytes isn't enough
   room for anything careful, so this is where you find `uV` meaning microvolt in one file and
   `µV` in the next.
 - **physical minimum / maximum**, 8 bytes each. The two ends of the calibration, explained below.
 - **digital minimum / maximum**, 8 bytes each. The two ends of the ADC range, as integers.
 - **prefiltering**, 80 bytes. What analogue filtering was applied, e.g. `HP:0.1Hz LP:75Hz N:50Hz`.
-  Free text, so it is documentation, not something a program can act on.
+  Free text, so it's documentation, not something a program can act on.
 - **number of samples in each data record**, 8 bytes. Divided by the record duration, this is the
   channel's sampling rate.
 
@@ -241,7 +241,7 @@ Samples are **2-byte signed little-endian two's complement integers**, so the ra
 
 which is `0, 1, 2, 3, ...` and not `0, 256, 512`.
 
-Because every offset is computable, reading one channel out of forty does not require reading the
+Because every offset is computable, reading one channel out of forty doesn't require reading the
 other thirty-nine. The sample at record `r`, signal `s`, index `k` sits at
 
 ```
@@ -250,16 +250,16 @@ other thirty-nine. The sample at record `r`, signal `s`, index `k` sits at
 
 This is also why sampling rate is a property of the record structure rather than a stored number.
 A channel with 256 samples in a 1-second record is 256 Hz; a channel with 25 samples in a 0.1-second
-record is 250 Hz. A rate that cannot be written as an integer sample count over the file's single
-record duration cannot be expressed in EDF at all.
+record is 250 Hz. A rate that can't be written as an integer sample count over the file's single
+record duration can't be expressed in EDF at all.
 
 ## Digital to physical calibration
 
-The integers in the data records are raw ADC codes. They mean nothing until they are mapped onto
+The integers in the data records are raw ADC codes. They mean nothing until they're mapped onto
 physical units, and the four calibration fields in the signal header are that map.
 
 The mapping is a straight line through two points: `digitalMin` maps to `physicalMin`, and
-`digitalMax` maps to `physicalMax`. That is the whole model. There is no offset field, no per-record
+`digitalMax` maps to `physicalMax`. That's the whole model. There's no offset field, no per-record
 gain, nothing else.
 
 ```
@@ -269,7 +269,7 @@ physical = gain * (offset + digital)
 ```
 
 The second and third lines are EDFlib's arrangement of the same line, and `edf2csv` uses it because
-it is more accurate than the spec's literal `(digital - digitalMin) * gain + physicalMin`. Written
+it's more accurate than the spec's literal `(digital - digitalMin) * gain + physicalMin`. Written
 that way, a channel spanning plus or minus 800 uV computes a value near 800 and then subtracts 800,
 and the cancellation throws away low-order bits: digital 0 yields `0.19536019536019467` when the
 exact answer is `0.19536019536019536`. Keeping the intermediate small returns the correctly rounded
@@ -290,24 +290,24 @@ digital 1  ->  0.39072039072039073 * 1.5 = 0.5860805860805861
 ### What physical minimum and maximum actually mean
 
 They are the ends of the calibration, **not** the extremes of the recorded data. `physicalMin -800`
-does not promise that the file contains a sample at -800 uV, and it does not promise that no sample
+doesn't promise that the file contains a sample at -800 uV, and it doesn't promise that no sample
 goes below it either. It states only which physical value corresponds to `digitalMin`.
 
 Two things follow. First, `physicalMax - physicalMin` divided by `digitalMax - digitalMin` is the
 smallest physical step the channel can express, and `edf2csv` uses exactly that to choose how many
 decimal places to write, so two adjacent ADC codes never collapse to the same text. Second, a
 digital value outside the declared digital range converts to a physical value outside the declared
-physical range. `edf2csv` applies the line and does not clamp, because clamping would fabricate
-data that is not in the file.
+physical range. `edf2csv` applies the line and doesn't clamp, because clamping would fabricate
+data that isn't in the file.
 
 The pair can also be degenerate or inverted, and both happen in the wild:
 
-- `digitalMin == digitalMax` makes the line undefined. There is no honest conversion. `edf2csv`
+- `digitalMin == digitalMax` makes the line undefined, so there's nothing to compute. `edf2csv`
   writes the physical minimum for every sample and warns (`DEGENERATE_DIGITAL_RANGE`), so the
-  column is obviously suspect rather than quietly plausible.
+  column is flagged rather than passing as ordinary data.
 - `physicalMin == physicalMax` makes every sample the same value. Warned as
   `DEGENERATE_PHYSICAL_RANGE`.
-- `physicalMin > physicalMax` inverts the polarity of the channel. This is a legal line, it is just
+- `physicalMin > physicalMax` inverts the polarity of the channel. This is a legal line, it's just
   probably a mistake by the recording software. `edf2csv` converts exactly what the header says,
   inversion included, and warns (`INVERTED_PHYSICAL_RANGE`) so you can decide whether to trust it.
 
@@ -323,7 +323,7 @@ Nothing else moves. The fixed header is still 256 bytes, the signal header is st
 still `ns * 256` bytes, and the record layout is identical. Only `bytesPerSample` changes, which
 changes every byte offset into the data.
 
-Decoding a 24-bit sample needs sign extension, which most languages will not do for you. The
+Decoding a 24-bit sample needs sign extension, which most languages won't do for you. The
 trick is to load the three bytes into the top of a 32-bit word and shift back down:
 
 ```
@@ -341,7 +341,7 @@ BDF+ exists too and works exactly like EDF+, except that its markers are spelled
 EDF+ needed somewhere to put text events without changing the file layout, so it put them in a
 signal. A channel labelled `EDF Annotations` occupies the same slot in every data record as any
 other channel, has a `samplesPerRecord` like any other channel, and reserves
-`samplesPerRecord * bytesPerSample` bytes per record. Those bytes are not samples. They are UTF-8
+`samplesPerRecord * bytesPerSample` bytes per record. Those bytes aren't samples. They are UTF-8
 text.
 
 The text is a run of **Time-stamped Annotation Lists**, each terminated by a NUL byte, with the
@@ -360,13 +360,13 @@ Three control bytes do all the work:
 | `0x00` | TAL terminator | Ends one TAL, and pads the rest of the channel |
 
 Onsets and durations are seconds relative to the start of the recording, written as decimal text.
-The onset **must** carry an explicit sign, `+` or `-`. That is not decoration: it is how a reader
-tells a TAL from padding, and `edf2csv` rejects any chunk that does not start with one. A negative
+The onset **must** carry an explicit sign, `+` or `-`. That isn't decoration: it's how a reader
+tells a TAL from padding, and `edf2csv` rejects any chunk that doesn't start with one. A negative
 onset is legal and means an event before the recording's nominal start.
 
 The first TAL in every data record is special. It carries that record's own start time and no text,
-and that is how an `EDF+D` file states where each record actually sits in time. In an `EDF+C` file
-it is redundant but still required.
+and that's how an `EDF+D` file states where each record actually sits in time. In an `EDF+C` file
+it's redundant but still required.
 
 ### A byte-level example
 
@@ -409,7 +409,7 @@ A TAL may also carry several texts after one onset, by repeating `<text><0x14>`.
 that onset and duration. `edf2csv` emits one row per text.
 
 Two behaviours are worth knowing. A malformed TAL is skipped rather than thrown, and the number
-skipped is reported, because one bad annotation should not cost you an entire conversion. And the
+skipped is reported, because one bad annotation shouldn't cost you an entire conversion. And the
 annotations channel is always read across the **whole** file, even when you asked for a time
 window, because nothing in the spec obliges a writer to store an event in the record its onset falls
 in and some tools put every annotation in the first record.
@@ -433,12 +433,12 @@ The two columns then appear as `T8-P8_ch0` and `T8-P8_ch1`. When you want one sp
 `--channels` accepts `#0` and `#1` to address a channel by position rather than by name.
 
 **A channel labelled with a single hyphen.** Some recordings contain a channel whose entire label is
-`-`, usually a spare or disconnected input. It is a legal label, so it is preserved verbatim and the
+`-`, usually a spare or disconnected input. It's a legal label, so it's preserved verbatim and the
 column is called `-`. A completely empty label is different: it gets an `EMPTY_LABEL` warning and
 becomes `signal_<index>`, since a nameless column is worse than an ugly one.
 
 **A record count of -1.** The spec allows it for a recording still being written. The count is
-derived from the file size instead, and you are told:
+derived from the file size instead, and you're told:
 
 ```
 warning: The header does not say how many data records the file has (-1), which the spec allows
@@ -452,14 +452,14 @@ part-way through a record, the incomplete tail is dropped and reported as `TRAIL
 than being read as a short record full of garbage.
 
 **Comma decimal separators.** Software built in a locale that writes `0,5` sometimes writes header
-numbers that way, which the spec does not allow. A field with a comma and no dot is read as a
+numbers that way, which the spec doesn't allow. A field with a comma and no dot is read as a
 decimal point, and the file raises `COMMA_DECIMAL` so you can sanity-check the affected values in
 `channels.csv`.
 
 **NUL padding instead of space padding.** EDF says pad with spaces. Some writers pad with NUL bytes,
-which ordinary whitespace trimming does not remove, and a parser that only trims whitespace ends up
+which ordinary whitespace trimming doesn't remove, and a parser that only trims whitespace ends up
 unable to read the signal count of a perfectly good file. Both are trimmed here.
 
 **A header-bytes field that disagrees with the signal count.** Offset 184 should equal
-`256 * (1 + ns)`. When it does not, the computed value wins (it is the one the layout actually
+`256 * (1 + ns)`. When it doesn't, the computed value wins (it's the one the layout actually
 implies) and `HEADER_BYTES_MISMATCH` is raised.
