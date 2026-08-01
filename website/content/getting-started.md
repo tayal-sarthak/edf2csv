@@ -12,7 +12,7 @@ It runs entirely on your own machine, it doesn't alter the recorded values, and 
 
 ## Requirements
 
-Node 20 or newer, and nothing else. edf2csv has zero runtime dependencies, makes no network calls, and is MIT licensed. To check what you have:
+Node 20 or newer. edf2csv makes no network calls and is MIT licensed. Its only dependency is `@types/node`, which is TypeScript declarations and ships no executable code, so no third-party code runs during a conversion. To check what you have:
 
 ```bash
 node --version

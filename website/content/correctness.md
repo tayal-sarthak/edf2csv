@@ -254,7 +254,7 @@ The same `.gitignore` also reserves `test/fixtures/downloaded/` for large real r
 
 ## Running the suite yourself
 
-You need Node 20 or newer, and nothing else. There are no runtime dependencies, and the only development dependencies are TypeScript and the Node type definitions.
+You need Node 20 or newer, and nothing else. The package's only dependency is `@types/node`, which is TypeScript declarations rather than executable code, and its only development dependency is TypeScript itself.
 
 ```bash
 git clone https://github.com/tayal-sarthak/edf2csv.git

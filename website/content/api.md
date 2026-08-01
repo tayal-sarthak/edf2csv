@@ -13,7 +13,7 @@ edf2csv is built as a command-line tool, but the parser and the converter undern
 
 Everything else in the API is a supporting part of those two: the scaling function that turns digital codes into physical units, the annotation decoder, the planner that decides which channels go into which file.
 
-The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works with no `@types` install. There are no runtime dependencies.
+The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works without installing anything else. The only dependency is `@types/node`, which supplies the Node types those declarations refer to and contains no executable code.
 
 ```bash
 npm install edf2csv
