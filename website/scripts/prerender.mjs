@@ -127,6 +127,7 @@ function page(doc, docs, assets) {
     <link rel="icon" href="/favicon.svg" />
     <script>${THEME_SCRIPT}</script>
     <script type="application/ld+json">${jsonLd}</script>
+    <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
     <nav class="nav" data-scrolled="false">
@@ -193,6 +194,7 @@ function notFoundPage(docs, assets) {
     <link rel="stylesheet" href="${assets.css}" />
     <link rel="icon" href="/favicon.svg" />
     <script>${THEME_SCRIPT}</script>
+    <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
     <nav class="nav"><div class="shell nav__inner">
