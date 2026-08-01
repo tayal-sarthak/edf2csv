@@ -89,7 +89,7 @@ Resp oro-nasal,3,Resp oro-nasal,V,10,10,-1,1,...`,
   "tool": { "name": "edf2csv", "version": "0.1.0" },
   "recording": {
     "format": "EDF+ (continuous)",
-    "start_datetime": "2002-03-02T23:10:00.000Z",
+    "start_datetime_local": "2002-03-02T23:10:00",
     "data_records": 28800
   }
 }`,
