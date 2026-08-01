@@ -114,6 +114,17 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       written.push(...(await writeSignalFiles(file, plan, outputDir, timing.starts, options)));
     }
 
+    if (options.annotationsOnly === true && file.annotationSignals.length === 0) {
+      plan.diagnostics.push({
+        code: 'NO_ANNOTATIONS',
+        severity: 'warning',
+        message:
+          '--annotations-only was requested but this recording has no annotation channel, ' +
+          'so there are no events to export.',
+        hint: 'Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.',
+      });
+    }
+
     let annotationsWritten = 0;
     if (file.annotationSignals.length > 0) {
       const result = await writeAnnotationsCsv(outputDir, annotationData.annotations, plan);

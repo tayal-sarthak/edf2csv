@@ -317,6 +317,15 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
         else seenLabels.set(label, [i]);
       }
 
+      if (samplesPerRecord === 0) {
+        diagnostics.push({
+          code: 'NO_SAMPLES',
+          severity: 'warning',
+          message: `Signal ${i} ("${label}") carries no samples at all (0 per data record).`,
+          hint: 'It is described in channels.csv but left out of the converted data.',
+        });
+      }
+
       if (digitalMax === digitalMin) {
         diagnostics.push({
           code: 'DEGENERATE_DIGITAL_RANGE',

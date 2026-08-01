@@ -113,6 +113,28 @@ describe('channel selection', () => {
     await file.close();
   });
 
+  it('prefers a real label over positional syntax when a channel is named "#1"', async () => {
+    // A label may literally start with '#'. Treating it only as a position would
+    // make that channel impossible to select by name.
+    const file = await EdfFile.open(fixture('quirky-labels.edf'));
+    const renamed = file.header.signals.map((s, i) => (i === 2 ? { ...s, label: '#1' } : s));
+    const { signals } = selectChannels(renamed, ['#1']);
+    assert.deepEqual(signals.map((s) => s.index), [2], 'the labelled channel wins, not position 1');
+    await file.close();
+  });
+
+  it('suggests each candidate label only once', async () => {
+    const file = await EdfFile.open(fixture('quirky-labels.edf'));
+    try {
+      selectChannels(file.header.signals, ['T8-P9']);
+      assert.fail('should have thrown');
+    } catch (error) {
+      const hits = error.message.match(/"T8-P8"/g) ?? [];
+      assert.equal(hits.length, 1, 'the duplicated label must not be suggested twice');
+    }
+    await file.close();
+  });
+
   it('fails loudly on a typo rather than quietly dropping the channel', async () => {
     const file = await EdfFile.open(fixture('mixed-rates.edf'));
     assert.throws(

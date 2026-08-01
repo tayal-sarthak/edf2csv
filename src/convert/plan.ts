@@ -140,6 +140,9 @@ function groupByRate(
 ): RateGroup[] {
   const byRate = new Map<number, EdfSignal[]>();
   for (const signal of signals) {
+    // A channel with no samples has no sampling rate to group by, and would
+    // otherwise produce an empty "0hz" file. The header parser already warned.
+    if (signal.samplesPerRecord === 0) continue;
     const bucket = byRate.get(signal.samplingRate);
     if (bucket) bucket.push(signal);
     else byRate.set(signal.samplingRate, [signal]);

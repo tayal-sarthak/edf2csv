@@ -24,6 +24,7 @@ export type DiagnosticCode =
   | 'COMMA_DECIMAL'
   | 'LARGE_OUTPUT'
   | 'NO_SIGNAL_CHANNELS'
+  | 'NO_SAMPLES'
   | 'STALE_OUTPUT'
   | 'HEADER_BYTES_MISMATCH'
   | 'NONPRINTABLE_LABEL';

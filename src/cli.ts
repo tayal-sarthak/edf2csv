@@ -235,7 +235,12 @@ function splitChannels(raw: unknown): string[] | undefined {
   if (raw === undefined) return undefined;
   const list = Array.isArray(raw) ? (raw as string[]) : [String(raw)];
   const terms = list.flatMap((entry) => entry.split(',')).map((t) => t.trim()).filter((t) => t !== '');
-  return terms.length > 0 ? terms : undefined;
+  // Returning undefined here would mean "no --channels given" and convert everything,
+  // which is the opposite of what someone passing an empty list is asking for.
+  if (terms.length === 0) {
+    throw new OptionError('--channels was given but lists no channel names.');
+  }
+  return terms;
 }
 
 function optionalTime(raw: unknown, option: string): number | undefined {

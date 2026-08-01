@@ -78,7 +78,10 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
     const term = rawTerm.trim();
     if (term === '') continue;
 
-    if (term.startsWith('#')) {
+    // '#N' addresses a channel by position, but a label may literally be "#5".
+    // A real label always wins, so no channel becomes unreachable.
+    const literal = byLabel.get(term.toLowerCase());
+    if (term.startsWith('#') && (!literal || literal.length === 0)) {
       const index = Number(term.slice(1));
       const signal = candidates.find((s) => s.index === index);
       if (!signal) {
@@ -110,8 +113,11 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
 }
 
 function suggest(term: string, candidates: readonly EdfSignal[]): string {
-  const scored = candidates
-    .map((s) => ({ label: s.label, distance: editDistance(term.toLowerCase(), s.label.toLowerCase()) }))
+  // Duplicated labels would otherwise be suggested twice, which reads like two
+  // different options while naming the same thing.
+  const unique = [...new Set(candidates.map((s) => s.label))];
+  const scored = unique
+    .map((label) => ({ label, distance: editDistance(term.toLowerCase(), label.toLowerCase()) }))
     .filter((c) => c.label !== '' && c.distance <= Math.max(2, Math.floor(term.length / 3)))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, 3);
