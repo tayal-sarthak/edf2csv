@@ -415,7 +415,7 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
         `${recordCount}. Converting the ${recordCount} records that are present.`,
       hint:
         declaredRecordCount > recordCount
-          ? 'The recording looks truncated — it may have been cut short or copied incompletely.'
+          ? 'The recording looks truncated. It may have been cut short or copied incompletely.'
           : 'The file is longer than its header claims.',
     });
   }
@@ -445,7 +445,7 @@ export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'NO_SIGNAL_CHANNELS',
       severity: 'warning',
-      message: 'This file has no signal channels — it contains only EDF+ annotations.',
+      message: 'This file has no signal channels; it contains only EDF+ annotations.',
     });
   }
 

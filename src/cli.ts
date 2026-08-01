@@ -23,7 +23,8 @@ import { formatDiagnostics, formatInfo, formatSummary, summaryJson } from './cli
 
 const VERSION = '0.1.0';
 
-const USAGE = `edf2csv ${VERSION} — convert EDF and EDF+ recordings to CSV
+const USAGE = `edf2csv ${VERSION}
+Convert EDF, EDF+ and BDF recordings to CSV
 
 Usage
   edf2csv <recording.edf> [options]
@@ -48,8 +49,8 @@ Options
 
 Output
   A directory containing signals.csv, channels.csv, metadata.json, and
-  annotations.csv when the recording is EDF+. Channels recorded at different
-  sampling rates are written to separate files rather than resampled.
+  annotations.csv when the recording carries EDF+ annotations. Channels recorded
+  at different sampling rates are written to separate files, never resampled.
 
 Examples
   edf2csv recording.edf
