@@ -193,7 +193,7 @@ Real headers are sometimes self-contradictory. In each case the code does someth
 
 | Header condition | Behaviour |
 | --- | --- |
-| `digitalMin` equals `digitalMax` | The mapping is undefined. Every sample is written as the physical minimum, and a `DEGENERATE_DIGITAL_RANGE` warning is raised. |
+| `digitalMin` equals `digitalMax` | The mapping is undefined, so the scaler yields `NaN` and those cells are written empty rather than filled with a stand-in number. A `DEGENERATE_DIGITAL_RANGE` warning is raised. |
 | Gain is zero or not finite | Every sample converts to the same value, so the physical minimum is written. |
 | The derived offset overflows to non-finite | Only possible for an absurd calibration. The code falls back to the specification's literal ordering, which is less accurate but finite. |
 | `physicalMin` above `physicalMax` | Converted exactly as the header specifies, polarity inversion included, with an `INVERTED_PHYSICAL_RANGE` warning. Correcting the header would mean guessing about the recording. |
@@ -224,7 +224,7 @@ Most fixtures use a generator where the digital value equals the sample's global
 | `unknown-records.edf` | Declared record count of -1, 4 records present | The specification permits -1 for a recording still in progress. `RECORD_COUNT_UNKNOWN` is raised and the real count is used. |
 | `fractional-recdur.edf` | 25 samples per 0.1 s record | A rate of 250 Hz derived from a fractional record duration, rather than assuming one-second records. |
 | `quirky-labels.edf` | Two channels sharing the label `T8-P8`, a channel labelled `-`, and a channel with physical minimum above maximum | Duplicate labels get suffixed with the signal number, an odd but unique label is left alone, and an inverted range is honoured rather than corrected. Its plus or minus 800 uV calibration is the one used in the rounding test above. |
-| `degenerate-range.edf` | One channel with digital minimum equal to digital maximum, next to a normal one | The unscalable channel produces finite values and a warning, and doesn't contaminate the channel beside it. |
+| `degenerate-range.edf` | One channel with digital minimum equal to digital maximum, next to a normal one | The unscalable channel writes empty cells and a warning, never `NaN` as text or a stand-in number, and doesn't contaminate the channel beside it. |
 | `biosemi.bdf` | 24-bit BDF, including sample values no 16-bit field could hold | Three-byte samples, record sizing at three bytes per sample, and correct sign extension of negative 24-bit values. |
 | `biosemi-plus.bdf` | BDF+D, whose markers are spelled `BDF+D` and `BDF Annotations` | BioSemi's spelling of the EDF+ markers is recognised and normalised, and gaps and events are recovered from a discontinuous BDF file. |
 

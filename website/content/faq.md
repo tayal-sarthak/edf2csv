@@ -521,8 +521,8 @@ messages into the data.
 Pin the version wherever the tool is invoked, so a rerun a year from now produces the same bytes:
 
 ```bash
-npx edf2csv@0.1.0 sleep-study.edf
-npm install -g edf2csv@0.1.0
+npx edf2csv@0.2.0 sleep-study.edf
+npm install -g edf2csv@0.2.0
 ```
 
 Every conversion already records which version produced it. `metadata.json` opens with:
@@ -531,7 +531,7 @@ Every conversion already records which version produced it. `metadata.json` open
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.1.0"
+    "version": "0.2.0"
   }
 }
 ```
@@ -546,7 +546,7 @@ edf2csv sleep-study.edf --checksum
 For a methods section, name the tool, the version and the repository, and state the one
 non-obvious thing the conversion did:
 
-> EDF recordings were converted to CSV with edf2csv 0.1.0
+> EDF recordings were converted to CSV with edf2csv 0.2.0
 > (https://github.com/tayal-sarthak/edf2csv). Channels recorded at different sampling rates were
 > written to separate files and were not resampled.
 

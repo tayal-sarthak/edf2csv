@@ -334,7 +334,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           message:
             `Signal ${i} ("${label}") has digital minimum equal to digital maximum ` +
             `(${digitalMin}), so its values cannot be scaled.`,
-          hint: 'Its samples are written as the physical minimum. Treat this channel with suspicion.',
+          hint: 'Its cells are left empty rather than filled with a value the header cannot justify.',
         });
       } else if (physicalMax === physicalMin) {
         diagnostics.push({

@@ -152,11 +152,21 @@ describe('digital to physical conversion', () => {
     assert.equal(scale(0), 0.19536019536019536);
   });
 
-  it('falls back to the physical minimum when the digital range is degenerate', async () => {
+  it('yields NaN when the digital range is degenerate, rather than inventing a value', async () => {
+    // The header gives one calibration point twice, so there is no mapping and no
+    // physical value to report. Returning the physical minimum would fill the column
+    // with numbers that look like a flat recording to whoever opens the CSV next.
     const file = await load('degenerate-range.edf');
     const scale = makeScaler(file.dataSignals[0]);
-    assert.equal(scale(0), 0);
-    assert.ok(Number.isFinite(scale(123)), 'must not produce NaN or Infinity');
+    assert.ok(Number.isNaN(scale(0)));
+    assert.ok(Number.isNaN(scale(123)));
+  });
+
+  it('still scales the channel beside a degenerate one', async () => {
+    const file = await load('degenerate-range.edf');
+    const ok = file.dataSignals.find((s) => s.label === 'ok');
+    const scale = makeScaler(ok);
+    assert.ok(Number.isFinite(scale(0)), 'a valid channel must be unaffected');
   });
 
   it('honours an inverted physical range rather than silently correcting it', async () => {

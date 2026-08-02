@@ -329,7 +329,7 @@ a conversion reproducible six months later.
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "source": {
     "path": "/data/recordings/sleep-study.edf",
@@ -460,8 +460,8 @@ recording parsed cleanly.
 
 Read the diagnostics before you analyse the data. `MIXED_SAMPLING_RATES` explains why you have
 three signal files. `RECORD_COUNT_MISMATCH` says the recording is shorter than its header promised.
-`DEGENERATE_DIGITAL_RANGE` says a channel's calibration is self-contradictory and its values
-shouldn't be trusted. `DISCONTINUOUS` says the gaps in the time column are real.
+`DEGENERATE_DIGITAL_RANGE` says a channel's calibration is self-contradictory, which is why that
+column is empty. `DISCONTINUOUS` says the gaps in the time column are real.
 
 ## Leftovers from an earlier run
 

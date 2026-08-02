@@ -31,10 +31,16 @@ export type Scaler = (digital: number) => number;
 export function makeScaler(signal: EdfSignal): Scaler {
   const { digitalMin, digitalMax, physicalMin, physicalMax } = signal;
 
-  // A zero digital span leaves the mapping undefined — the header contradicts itself.
-  // Reporting the physical minimum is the least misleading answer, and the header
-  // parser has already raised DEGENERATE_DIGITAL_RANGE so the user is not misled.
-  if (digitalMax === digitalMin) return () => physicalMin;
+  // A zero digital span leaves the mapping undefined — the header contradicts itself,
+  // so there is no physical value for any sample on this channel.
+  //
+  // NaN rather than a stand-in number. Writing the physical minimum produces a column
+  // of plausible readings ("-100.000" repeated) that is indistinguishable from a real
+  // flat recording once the CSV is opened somewhere else, which is exactly the kind of
+  // invented data this tool exists to avoid. NaN carries through to an empty CSV cell
+  // and reads back as NaN in pandas, matching how a missing annotation duration is
+  // already written. DEGENERATE_DIGITAL_RANGE is raised alongside it.
+  if (digitalMax === digitalMin) return () => NaN;
 
   const gain = (physicalMax - physicalMin) / (digitalMax - digitalMin);
 

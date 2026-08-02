@@ -152,14 +152,16 @@ A channel declares the same value for its digital minimum and digital maximum.
 
 **Cause.** A header field filled in with a placeholder, or a channel that was configured but never properly calibrated. It's common on unused or dummy channels that acquisition software adds to fill out a montage.
 
-**What edf2csv does.** The digital-to-physical mapping is defined by two calibration points. With both points at the same digital value, the mapping doesn't exist, so there's nothing to compute. Every sample on that channel is written as the channel's physical minimum.
+**What edf2csv does.** The digital-to-physical mapping is defined by two calibration points. With both points at the same digital value the mapping doesn't exist, so there's no physical value to compute for any sample. Those cells are written empty.
 
 ```
 warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values cannot be scaled.
-         Its samples are written as the physical minimum. Treat this channel with suspicion.
+         Its cells are left empty rather than filled with a value the header cannot justify.
 ```
 
-**What to do.** Don't analyse that channel. The constant column in the CSV is a placeholder, not a measurement. If the channel matters to you, go back to the acquisition system for a correctly calibrated export. Otherwise exclude it with `--channels` and convert the rest:
+An empty field is the same convention `annotations.csv` uses for an absent duration, and it reads back as `NaN` in pandas and `NA` in R. Earlier versions wrote the channel's physical minimum instead; a column of repeated numbers is indistinguishable from a genuinely flat recording once the CSV is opened somewhere else, which is the sort of invented data this tool exists to avoid. Channels either side of the degenerate one are unaffected.
+
+**What to do.** Don't analyse that channel. If it matters to you, go back to the acquisition system for a correctly calibrated export. Otherwise exclude it with `--channels` and convert the rest:
 
 ```bash
 edf2csv recording.edf --channels "EEG Fpz-Cz,ECG"

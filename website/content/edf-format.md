@@ -303,8 +303,8 @@ data that isn't in the file.
 The pair can also be degenerate or inverted, and both happen in the wild:
 
 - `digitalMin == digitalMax` makes the line undefined, so there's nothing to compute. `edf2csv`
-  writes the physical minimum for every sample and warns (`DEGENERATE_DIGITAL_RANGE`), so the
-  column is flagged rather than passing as ordinary data.
+  leaves those cells empty and warns (`DEGENERATE_DIGITAL_RANGE`), rather than filling the column
+  with a stand-in number that would read as ordinary data.
 - `physicalMin == physicalMax` makes every sample the same value. Warned as
   `DEGENERATE_PHYSICAL_RANGE`.
 - `physicalMin > physicalMax` inverts the polarity of the channel. This is a legal line, it's just

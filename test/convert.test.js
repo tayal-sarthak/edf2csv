@@ -189,6 +189,24 @@ describe('converting', () => {
     assert.equal(rows.length, 21, '20 samples plus a header');
   });
 
+  it('leaves an unscalable channel empty instead of writing a stand-in number', async () => {
+    // "flat" declares digitalMin === digitalMax, so the header defines no mapping and
+    // there is no physical value for any of its samples. Writing the physical minimum
+    // would produce a column of numbers that reads as a real flat recording to anyone
+    // who opens the CSV later. The neighbouring channel must be unaffected.
+    const dir = await outDir();
+    await convert(fixture('degenerate-range.edf'), { outputDir: dir });
+
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.equal(rows[0], 'time_s,flat,ok');
+    for (const row of rows.slice(1)) {
+      const [, flat, ok] = row.split(',');
+      assert.equal(flat, '', `unscalable cell must be empty, got "${flat}"`);
+      assert.match(ok, /^-?\d+\.\d+$/u, 'the valid channel beside it still converts');
+    }
+    assert.ok(rows.length > 1, 'rows were written');
+  });
+
   it('records provenance in metadata.json', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });

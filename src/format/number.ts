@@ -25,6 +25,12 @@ const MAX_CACHED_SPAN = 1 << 16;
  * "-0.000", which looks like a distinct measurement but is not.
  */
 export function fixed(value: number, decimals: number): string {
+  // An undefined value becomes an empty cell rather than the text "NaN" or "Infinity".
+  // A channel whose header leaves the digital-to-physical mapping undefined scales to
+  // NaN, and an empty field is the CSV convention for "no value here" — the same one
+  // annotations.csv uses for an absent duration. Readers parse it back as NaN / NA
+  // rather than as a measurement.
+  if (!Number.isFinite(value)) return '';
   const text = value.toFixed(decimals);
   if (text.charCodeAt(0) !== 45 /* - */) return text;
   // Cheap check for "-0", "-0.0", "-0.000"...
