@@ -189,22 +189,31 @@ describe('converting', () => {
     assert.equal(rows.length, 21, '20 samples plus a header');
   });
 
-  it('leaves an unscalable channel empty instead of writing a stand-in number', async () => {
-    // "flat" declares digitalMin === digitalMax, so the header defines no mapping and
-    // there is no physical value for any of its samples. Writing the physical minimum
-    // would produce a column of numbers that reads as a real flat recording to anyone
-    // who opens the CSV later. The neighbouring channel must be unaffected.
+  it('empties an undefined mapping but keeps a defined-but-flat one', async () => {
+    // The distinction this pins is the whole risk of writing empty cells at all.
+    //
+    //   flat      digitalMin === digitalMax, so no mapping exists and no physical value
+    //             can be computed -> empty. Writing the physical minimum here would
+    //             produce a column indistinguishable from a real flat recording.
+    //   flatphys  physicalMin === physicalMax over a valid digital range. The mapping is
+    //             defined and merely flat, so 5 uV is a genuine reading -> still written.
+    //   ok        an ordinary channel, which must be untouched by either neighbour.
     const dir = await outDir();
     await convert(fixture('degenerate-range.edf'), { outputDir: dir });
 
     const rows = await readCsv(dir, 'signals.csv');
-    assert.equal(rows[0], 'time_s,flat,ok');
-    for (const row of rows.slice(1)) {
-      const [, flat, ok] = row.split(',');
-      assert.equal(flat, '', `unscalable cell must be empty, got "${flat}"`);
-      assert.match(ok, /^-?\d+\.\d+$/u, 'the valid channel beside it still converts');
+    assert.equal(rows[0], 'time_s,flat,flatphys,ok');
+
+    const body = rows.slice(1);
+    assert.ok(body.length > 0, 'rows were written');
+    for (const row of body) {
+      const cells = row.split(',');
+      assert.equal(cells.length, 4, 'an empty cell is still a cell');
+      const [, flat, flatphys, ok] = cells;
+      assert.equal(flat, '', `undefined mapping must be empty, got "${flat}"`);
+      assert.equal(flatphys, '5.000', 'a flat but defined mapping keeps its value');
+      assert.match(ok, /^-?\d+\.\d+$/u, 'an ordinary channel is unaffected');
     }
-    assert.ok(rows.length > 1, 'rows were written');
   });
 
   it('records provenance in metadata.json', async () => {

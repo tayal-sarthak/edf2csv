@@ -29,7 +29,17 @@ export function decodeLatin1(bytes: Uint8Array, start = 0, end = bytes.length): 
   return out;
 }
 
-const UTF8 = new TextDecoder();
+/*
+  `ignoreBOM: true` is the non-obvious part, and it means the opposite of how it reads: it tells the
+  decoder to treat a leading U+FEFF as ordinary text rather than as a byte-order mark to strip.
+
+  The default (`ignoreBOM: false`) removes a leading EF BB BF, which `Buffer.toString('utf8')` does
+  not. That is the single input class where the two disagree — everything else, including every
+  malformed sequence, already matches. No EDF file reaches it today, because the only caller guards
+  on the first byte being '+' or '-' before decoding a TAL, but this function is written to stand in
+  for Buffer's UTF-8 decoding and should not have a silent exception to that.
+*/
+const UTF8 = new TextDecoder('utf-8', { ignoreBOM: true });
 
 /** Decode bytes as UTF-8, substituting U+FFFD for malformed sequences as Buffer does. */
 export function decodeUtf8(bytes: Uint8Array): string {

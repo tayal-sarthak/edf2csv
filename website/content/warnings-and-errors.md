@@ -175,6 +175,8 @@ A channel declares the same value for its physical minimum and physical maximum,
 
 **What edf2csv does.** The mapping is well defined but flat, so every digital code converts to the same physical number. The channel is converted normally and produces a constant column.
 
+Note the difference from `DEGENERATE_DIGITAL_RANGE` above. There the mapping doesn't exist and the cells are left empty; here it exists and simply has no slope, so the value it gives is a real reading and is written as one.
+
 **What to do.** Treat the column as carrying no information. Distinct digital codes were recorded, but the header says they all mean the same physical value, so the distinction can't be recovered from the CSV. If you need the raw codes, the header calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and `physical_max` to work from.
 
 ### INVERTED_PHYSICAL_RANGE

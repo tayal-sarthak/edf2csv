@@ -92,13 +92,21 @@ export function generate() {
     talsForRecord: (record) => buildTal([0, 1, 10][record]),
   });
 
-  // digitalMin === digitalMax makes the conversion formula undefined.
+  // The two degenerate calibrations side by side, because they must NOT behave the same.
+  //
+  //   flat      digitalMin === digitalMax. The header gives one calibration point twice, so
+  //             there is no mapping and no physical value: written as empty cells.
+  //   flatphys  physicalMin === physicalMax over a valid digital range. The mapping exists and
+  //             is simply flat, so every code legitimately means 5 uV: written as a number.
+  //
+  // Keeping both in one file means one converted CSV shows the distinction directly.
   writeEdf({
     path: at('degenerate-range.edf'),
     numRecords: 1,
     recordDuration: 1,
     signals: [
       { label: 'flat', dimension: 'uV', physMin: 0, physMax: 0, digMin: 0, digMax: 0, samplesPerRecord: 4, gen: () => 0 },
+      { label: 'flatphys', dimension: 'uV', physMin: 5, physMax: 5, digMin: -100, digMax: 100, samplesPerRecord: 4, gen: ramp(4) },
       { label: 'ok', dimension: 'uV', physMin: -10, physMax: 10, digMin: -100, digMax: 100, samplesPerRecord: 4, gen: ramp(4) },
     ],
   });
