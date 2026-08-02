@@ -13,6 +13,8 @@
  *   +1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
  */
 
+import { decodeUtf8 } from './bytes.js';
+
 const SEP_TEXT = 0x14; // separates onset/duration from text, and text from text
 const SEP_DURATION = 0x15; // separates onset from duration
 const TAL_END = 0x00;
@@ -46,7 +48,7 @@ export interface DecodedRecordAnnotations {
  * returned so the caller can tell the user rather than losing them in silence.
  */
 export function decodeRecordAnnotations(
-  bytes: Buffer,
+  bytes: Uint8Array,
   recordIndex: number,
 ): DecodedRecordAnnotations {
   const annotations: Annotation[] = [];
@@ -82,12 +84,12 @@ interface ParsedTal {
   annotations: Annotation[];
 }
 
-function parseTal(chunk: Buffer, recordIndex: number): ParsedTal | null {
+function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   // The onset must be explicitly signed; anything else is not a TAL.
   const first = chunk[0];
   if (first !== 0x2b /* + */ && first !== 0x2d /* - */) return null;
 
-  const text = chunk.toString('utf8');
+  const text = decodeUtf8(chunk);
   const parts = text.split(TEXT_SEP_CHAR);
   const head = parts[0] ?? '';
 

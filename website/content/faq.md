@@ -221,10 +221,10 @@ No. It runs entirely on your machine. The code contains no network calls of any 
 upload, no download, no update check, no crash reporting, no telemetry, no usage counter. It
 reads the file you point it at and writes files into the output directory.
 
-Its only dependency is `@types/node`, which is TypeScript declarations and contains no executable
-code, so there's no third-party package running in the same process that could do any of the above.
-The only thing that touches the network is `npm` or `npx` when you install the tool, which happens
-once and is the package manager's doing rather than the tool's.
+It also installs no dependencies at all, so there's no third-party package running in the same
+process that could do any of the above. The only thing that touches the network is `npm` or `npx`
+when you install the tool, which happens once and is the package manager's doing rather than the
+tool's.
 
 This matters because clinical and research recordings frequently can't leave the machine or the
 network they're on.

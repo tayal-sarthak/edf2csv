@@ -34,6 +34,55 @@ async function cli(args) {
   }
 }
 
+describe('published type surface', () => {
+  // The package declares no dependencies, so a TypeScript consumer has no @types/node
+  // unless they install it themselves. If a Node-only type (Buffer, NodeJS.*, anything
+  // imported from node:*) reaches a .d.ts on the public entry graph, every one of those
+  // consumers gets "Cannot find name 'Buffer'" and the programmatic API stops
+  // typechecking. That regression is invisible from inside this repo, where @types/node
+  // is always present as a devDependency, so it is pinned here instead.
+  it('exposes no Node-only types from the public entry point', async () => {
+    const dist = path.join(ROOT, 'dist');
+    const strip = (source) => source.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/\/\/.*$/gmu, '');
+
+    const seen = new Set();
+    const offenders = [];
+    const queue = ['index.d.ts'];
+
+    while (queue.length > 0) {
+      const relative = queue.shift();
+      if (seen.has(relative)) continue;
+      seen.add(relative);
+
+      let source;
+      try {
+        source = await readFile(path.join(dist, relative), 'utf8');
+      } catch {
+        continue;
+      }
+      const code = strip(source);
+
+      if (/\bBuffer\b/u.test(code)) offenders.push(`${relative}: Buffer`);
+      if (/\bNodeJS\./u.test(code)) offenders.push(`${relative}: NodeJS.*`);
+      const nodeImport = /from\s+['"](node:[^'"]+)['"]/u.exec(code);
+      if (nodeImport) offenders.push(`${relative}: imports ${nodeImport[1]}`);
+
+      for (const match of code.matchAll(/from\s+['"](\.[^'"]+)['"]/gu)) {
+        const target = match[1].replace(/\.js$/u, '.d.ts');
+        queue.push(path.normalize(path.join(path.dirname(relative), target)));
+      }
+    }
+
+    assert.ok(seen.size > 5, `expected to walk the declaration graph, only saw ${seen.size} files`);
+    assert.deepEqual(offenders, [], `Node-only types reachable from index.d.ts:\n${offenders.join('\n')}`);
+  });
+
+  it('declares no runtime dependencies', async () => {
+    const pkg = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
+    assert.deepEqual(Object.keys(pkg.dependencies ?? {}), []);
+  });
+});
+
 describe('help and version', () => {
   it('prints usage to stdout and exits cleanly', async () => {
     const { code, stdout } = await cli(['--help']);

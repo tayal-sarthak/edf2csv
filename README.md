@@ -117,9 +117,7 @@ look at part of a recording, or a pipeline that speaks CSV.
 
 ## Notes
 
-Requires Node 20 or newer. MIT licensed. The only dependency is `@types/node`, which
-is TypeScript declarations and ships no executable code, so nothing third-party runs
-during a conversion.
+Requires Node 20 or newer. No dependencies at all, runtime or otherwise. MIT licensed.
 
 Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal, no
 AI, no network calls.

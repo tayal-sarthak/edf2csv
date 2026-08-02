@@ -13,7 +13,7 @@ edf2csv is built as a command-line tool, but the parser and the converter undern
 
 Everything else in the API is a supporting part of those two: the scaling function that turns digital codes into physical units, the annotation decoder, the planner that decides which channels go into which file.
 
-The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works without installing anything else. The only dependency is `@types/node`, which supplies the Node types those declarations refer to and contains no executable code.
+The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works without installing anything else — including `@types/node`, which the declarations deliberately avoid needing. Raw bytes are typed as `Uint8Array` rather than `Buffer` for that reason; a `Buffer` is still what arrives at runtime, since `Buffer` extends `Uint8Array`. The package has no dependencies.
 
 ```bash
 npm install edf2csv
@@ -50,7 +50,7 @@ class EdfFile {
   readRecords(options?: ReadRecordsOptions): AsyncGenerator<RecordBatch>;
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number;
   offsetOf(batch: RecordBatch, recordOffset: number, signal: EdfSignal): number;
-  annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Buffer;
+  annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Uint8Array;
   readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
@@ -223,7 +223,7 @@ interface ReadRecordsOptions {
 interface RecordBatch {
   firstRecordIndex: number;  // index of this batch's first record within the file
   recordCount: number;
-  data: Buffer;              // recordCount * header.recordBytes bytes
+  data: Uint8Array;          // recordCount * header.recordBytes bytes
 }
 ```
 
@@ -313,9 +313,11 @@ for await (const batch of file.readRecords()) {
 // CORRECT. Copy what you intend to keep.
 const kept = [];
 for await (const batch of file.readRecords()) {
-  kept.push(Buffer.from(batch.data));
+  kept.push(new Uint8Array(batch.data));
 }
 ```
+
+Use `new Uint8Array(batch.data)` rather than `batch.data.slice()`. `batch.data` is typed as a `Uint8Array`, and on a real `Uint8Array` those are the same thing — but the object you actually receive at runtime is a Node `Buffer`, whose `slice()` is an alias for `subarray()` and returns another view of the same memory rather than a copy. `new Uint8Array(...)` copies whichever of the two you are handed.
 
 The same applies to anything derived from the buffer without copying, including `annotationBytes()`, which returns a `subarray` of it. Decoded values are safe: numbers returned by `sampleAt` are copies by nature, and strings produced from the bytes are too. The rule is only about buffers and buffer views.
 
@@ -646,7 +648,7 @@ parseTimeSpec('90', '--start');       // 90, a bare number is seconds
 Header parsing, for bytes you already have in memory:
 
 ```ts
-function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo;
+function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo;
 
 interface EdfHeaderInfo {
   header: EdfHeader;

@@ -31,6 +31,7 @@
 
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
+import { decodeLatin1 } from './bytes.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
 export const ANNOTATIONS_LABEL = 'EDF Annotations';
@@ -97,8 +98,8 @@ export interface EdfHeaderInfo {
   diagnostics: Diagnostic[];
 }
 
-const dec = (buf: Buffer, start: number, len: number): string =>
-  buf.subarray(start, start + len).toString('latin1');
+const dec = (buf: Uint8Array, start: number, len: number): string =>
+  decodeLatin1(buf, start, start + len);
 
 /** EDF fields are space-padded; trailing NULs also occur in files written by sloppy tools. */
 const trimField = (s: string): string => s.replace(/[\0\s]+$/u, '').replace(/^\s+/u, '');
@@ -165,7 +166,7 @@ function resolveStartDateTime(dateRaw: string, timeRaw: string): Date | null {
  * @param buf   At least FIXED_HEADER_BYTES + ns * SIGNAL_HEADER_BYTES bytes.
  * @param fileSize Total size of the file on disk, used to derive the real record count.
  */
-export function parseHeader(buf: Buffer, fileSize: number): EdfHeaderInfo {
+export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   const diagnostics: Diagnostic[] = [];
   const sawComma = { value: false };
 

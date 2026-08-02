@@ -15,6 +15,7 @@ import { FIXED_HEADER_BYTES, SIGNAL_HEADER_BYTES, parseHeader } from './header.j
 import type { EdfHeader, EdfSignal } from './header.js';
 import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
+import { decodeLatin1, readInt16LE } from './bytes.js';
 
 /** Default read budget per batch. Large enough to amortise syscalls, small enough to stay cheap. */
 export const DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024;
@@ -29,7 +30,7 @@ export interface RecordBatch {
    * The buffer is reused between iterations. Copy anything you need to keep past
    * the current loop turn.
    */
-  data: Buffer;
+  data: Uint8Array;
 }
 
 export interface ReadRecordsOptions {
@@ -94,7 +95,7 @@ export class EdfFile {
       if (fixed.length === FIXED_HEADER_BYTES) {
         // Some writers NUL-pad this field instead of space-padding it, and String.trim
         // does not remove NULs — leaving the whole header unreadable for a valid file.
-        const ns = Number(fixed.subarray(252, 256).toString('latin1').replace(/[\0\s]/gu, ''));
+        const ns = Number(decodeLatin1(fixed, 252, 256).replace(/[\0\s]/gu, ''));
         if (Number.isInteger(ns) && ns > 0) {
           const total = FIXED_HEADER_BYTES + ns * SIGNAL_HEADER_BYTES;
           if (total <= info.size) {
@@ -190,7 +191,7 @@ export class EdfFile {
         ((data[position + 2] as number) << 24)
       ) >> 8;
     }
-    return batch.data.readInt16LE(position);
+    return readInt16LE(batch.data, position);
   }
 
   /** Byte offset of a signal's samples within a batch. */
@@ -199,7 +200,7 @@ export class EdfFile {
   }
 
   /** The annotation channel's raw bytes for one record in a batch. */
-  annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Buffer {
+  annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Uint8Array {
     const start = this.offsetOf(batch, recordOffset, signal);
     return batch.data.subarray(start, start + signal.samplesPerRecord * this.header.bytesPerSample);
   }
