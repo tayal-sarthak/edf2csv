@@ -3,6 +3,39 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.3
+
+### Fixed: a closing pipe could report success for a failed run
+
+The `EPIPE` handler set `process.exitCode = 0` unconditionally. Swallowing the error is right —
+`edf2csv recording.edf --info | head -5` is not a failure — but forcing the code to zero meant that
+if the pipe closed after the run had already failed, the failure was erased and the command reported
+success for a conversion that never happened. The handler now swallows the error without touching
+the exit code, so a real failure survives. Node still exits 0 on its own when nothing sets a code.
+
+### Fixed: polarity inversion was detected by the wrong test
+
+A channel's polarity is inverted when its gain is negative, and the gain is
+`(physicalMax - physicalMin) / (digitalMax - digitalMin)` — so it depends on the sign of both spans,
+not the physical pair alone. The check only looked at `physicalMax < physicalMin`, which was wrong in
+both directions:
+
+| digital | physical | gain | inverted | before | now |
+| --- | --- | --- | --- | --- | --- |
+| `-1000..1000` | `-100..100` | `+0.1` | no | silent | silent |
+| `1000..-1000` | `-100..100` | `-0.1` | **yes** | **silent** | warns |
+| `-1000..1000` | `100..-100` | `-0.1` | yes | warns | warns |
+| `1000..-1000` | `100..-100` | `+0.1` | **no** | **warns** | silent |
+
+A recording with its digital bounds reversed came back sign-flipped with no diagnostic at all, and
+one with both pairs reversed drew a warning saying its polarity was inverted when it wasn't. The
+test is now the sign of the gain, and the message names whichever pair is actually reversed. Sample
+values are unchanged in every case — only the diagnostic was wrong.
+
+### Docs
+
+`correctness.md` claimed 83 tests (32/31/20) against an actual 88 (33/33/22).
+
 ## 0.2.2
 
 ### Fixed: very low sampling rates were reported as "0 Hz"

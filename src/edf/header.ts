@@ -344,13 +344,26 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
             `Signal ${i} ("${label}") has physical minimum equal to physical maximum ` +
             `(${physicalMin}), so every sample converts to the same value.`,
         });
-      } else if (physicalMax < physicalMin) {
+      } else if ((physicalMax - physicalMin) * (digitalMax - digitalMin) < 0) {
+        /*
+          Polarity is inverted when the gain is negative, and the gain is
+          (physicalMax - physicalMin) / (digitalMax - digitalMin) — so it is the sign of the
+          two spans together that matters, not the physical pair alone.
+
+          Testing only `physicalMax < physicalMin` was wrong in both directions. A file with
+          its DIGITAL bounds reversed is just as inverted and drew no warning at all, handing
+          back sign-flipped EEG with nothing to indicate it. A file with BOTH pairs reversed
+          has a positive gain and is not inverted, yet was warned about — a message that was
+          simply untrue of that recording.
+        */
+        const reversed =
+          physicalMax < physicalMin
+            ? `physical minimum ${physicalMin} above physical maximum ${physicalMax}`
+            : `digital minimum ${digitalMin} above digital maximum ${digitalMax}`;
         diagnostics.push({
           code: 'INVERTED_PHYSICAL_RANGE',
           severity: 'warning',
-          message:
-            `Signal ${i} ("${label}") declares physical minimum ${physicalMin} above physical ` +
-            `maximum ${physicalMax}, which inverts its polarity.`,
+          message: `Signal ${i} ("${label}") declares ${reversed}, which inverts its polarity.`,
           hint: 'The values are converted exactly as the header specifies, inversion included.',
         });
       }

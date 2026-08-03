@@ -80,7 +80,11 @@ const EXIT_USAGE = 2;
 function ignoreBrokenPipe(stream: NodeJS.WriteStream): void {
   stream.on('error', (error: NodeJS.ErrnoException) => {
     if (error.code === 'EPIPE') {
-      process.exitCode = 0;
+      // A reader closing early (`edf2csv ... --info | head -5`) is not a failure, so the
+      // error is swallowed rather than thrown. It deliberately does NOT set an exit code:
+      // forcing 0 here would erase a real failure whenever the pipe happened to close
+      // after the run had already failed, reporting success for a conversion that did
+      // not happen. Node exits 0 on its own when nothing sets a code.
       return;
     }
     throw error;
