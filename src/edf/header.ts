@@ -513,5 +513,12 @@ export function describeFormat(header: EdfHeader): string {
 
 /** Render a sampling rate without trailing noise: 256, 0.5, 12.5. */
 export function formatRate(hz: number): string {
-  return Number.isInteger(hz) ? String(hz) : String(Number(hz.toFixed(6)));
+  if (Number.isInteger(hz)) return String(hz);
+  const rounded = Number(hz.toFixed(6));
+  // A rate below 5e-7 rounds away to "0", which reads as "this channel has no sampling
+  // rate" and made the mixed-rate warning contradict itself: it announced two different
+  // rates and then printed both as "0 Hz". Exponent form keeps a real rate legible, and
+  // keeps distinct rates distinct in the channel table and in output filenames.
+  if (rounded === 0) return hz.toExponential(3);
+  return String(rounded);
 }

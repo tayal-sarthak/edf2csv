@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.2
+
+### Fixed: very low sampling rates were reported as "0 Hz"
+
+`formatRate` rounded to six decimal places, so any rate below 5e-7 Hz printed as `0`. That reads as
+"this channel has no sampling rate", and it made the mixed-rate warning contradict itself — it
+announced two different rates and then printed both as `0 Hz`:
+
+```
+warning: Channels use 2 different sampling rates (0 Hz, 0 Hz).
+```
+
+Rates that would round away are now shown in exponent form (`1.000e-7 Hz`), in the warning, in the
+`--info` channel table, and in output filenames. Rates that already formatted sensibly are
+untouched: `256`, `0.5`, `12.5` and `0.333333` all render exactly as before, and every generated
+fixture except the pathological one converts byte-for-byte identically to 0.2.1.
+
 ## 0.2.1
 
 ### Fixed: two sampling rates could overwrite each other's output
