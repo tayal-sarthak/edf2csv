@@ -63,11 +63,18 @@ export function decodeRecordAnnotations(
     if (i > start) {
       const chunk = bytes.subarray(start, i);
       const parsed = parseTal(chunk, recordIndex);
+
+      // The timekeeping TAL is the one in first POSITION, whether or not it decodes.
+      // Clearing this flag only on a successful parse meant that an unreadable first TAL
+      // promoted the next ordinary annotation to timekeeping, and its onset silently
+      // became the record's start time — shifting every sample in that record. Leaving
+      // recordStart null instead is what the caller already handles, with a fallback
+      // timestamp and an ANNOTATION_DECODE_FAILED warning naming the record.
+      const isTimekeeping = isFirstTal;
+      isFirstTal = false;
+
       if (parsed) {
-        if (isFirstTal) {
-          recordStart = parsed.onset;
-          isFirstTal = false;
-        }
+        if (isTimekeeping) recordStart = parsed.onset;
         for (const annotation of parsed.annotations) annotations.push(annotation);
       } else {
         malformed++;

@@ -111,6 +111,50 @@ export function generate() {
     ],
   });
 
+  // Events sitting on and past the end of the recorded span.
+  //
+  // EDF+ does not oblige an annotation's onset to fall inside the data. A marker for the
+  // end of a recording sits at exactly `duration`, and the window for a whole-file
+  // conversion is [0, duration) — so filtering by it dropped those events with no time
+  // option given and no way to ask for them back.
+  const edgeSignal = { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s };
+  const edgeAnnotations = { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true };
+  writeEdf({
+    path: at('annotations-at-edges.edf'),
+    reserved: 'EDF+C',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [edgeSignal, edgeAnnotations],
+    talsForRecord: (r) =>
+      buildTal(
+        r,
+        r === 2
+          ? [
+              { onset: 2.5, duration: null, text: 'inside' },
+              { onset: 3, duration: null, text: 'at the end' },
+              { onset: 3.5, duration: null, text: 'past the end' },
+            ]
+          : [],
+      ),
+  });
+
+  // A record whose timekeeping TAL cannot be decoded, followed by a real event.
+  //
+  // The timekeeping TAL is the one in first position. Treating the first TAL that happened
+  // to PARSE as the timekeeping one let this record's start time become 1.5 — the onset of
+  // an ordinary annotation — shifting every sample in the record by half a second.
+  writeEdf({
+    path: at('annotations-bad-timekeeping.edf'),
+    reserved: 'EDF+D',
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [edgeSignal, edgeAnnotations],
+    talsForRecord: (r) =>
+      r === 1
+        ? `XX\x14\x00+1.5\x14event\x14\x00` // first TAL lacks the mandatory signed onset
+        : buildTal(r),
+  });
+
   // Two rates that round to the same filename slug.
   //
   // A rate is samplesPerRecord / recordDuration, and every channel shares the record

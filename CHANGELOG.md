@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.4
+
+Two silent data bugs in EDF+ annotation handling.
+
+### Fixed: annotations outside the recorded span were dropped from whole-file conversions
+
+EDF+ does not oblige an annotation's onset to fall inside the data. A marker for the end of a
+recording sits at exactly `duration`, and files carry markers ahead of the first record. Because a
+whole-file conversion resolves to the window `[0, duration)`, and annotations were filtered by that
+window unconditionally, those events were dropped from a plain `edf2csv recording.edf` with no time
+options given — and no flag could ask for them back. On a three-second test file carrying events at
+2.5 s, 3.0 s and 3.5 s, only the first survived.
+
+Annotations are now filtered only when a window was actually requested. Note the test is whether
+`--start`, `--end` or `--duration` was passed, not whether the resolved window happens to cover
+everything: `--end 3` on a three-second recording covers the whole file but is still an explicit
+request for `[0, 3)`, so an event at exactly 3 stays outside it.
+
+### Fixed: an unreadable timekeeping annotation could shift every sample in a record
+
+The first TAL of each data record carries that record's start time. The decoder treated the first
+TAL that successfully *parsed* as the timekeeping one, rather than the one in first *position* — so
+when a record's timekeeping TAL could not be decoded, the next ordinary annotation was promoted in
+its place and its onset became the record's start time.
+
+In the test fixture that moved a record from 1.0 s to 1.5 s, shifting every sample in it by half a
+second, with the only clue a generic "unreadable annotation entry" warning. The record now falls
+back to contiguous timing and raises the existing warning naming it, which is what the rest of the
+code already expected. The annotation is still exported as an event.
+
 ## 0.2.3
 
 ### Fixed: a closing pipe could report success for a failed run

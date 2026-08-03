@@ -134,7 +134,12 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
 
     let annotationsWritten = 0;
     if (file.annotationSignals.length > 0) {
-      const result = await writeAnnotationsCsv(outputDir, annotationData.annotations, plan);
+      const result = await writeAnnotationsCsv(
+        outputDir,
+        annotationData.annotations,
+        plan,
+        options.start !== undefined || options.end !== undefined || options.duration !== undefined,
+      );
       written.push(result);
       annotationsWritten = result.rows;
     }
@@ -415,10 +420,25 @@ async function writeAnnotationsCsv(
   outputDir: string,
   annotations: readonly Annotation[],
   plan: ConversionPlan,
+  windowRequested: boolean,
 ): Promise<WrittenFile> {
   const { startSeconds, endSeconds } = plan.range;
+
+  /*
+    Filter only when the caller actually asked for a window.
+
+    EDF+ does not oblige an annotation's onset to fall inside the data span: a marker for
+    the end of a recording sits at exactly `duration`, and files carry markers at negative
+    onsets ahead of the first record. The window on a whole-file conversion is
+    [0, duration), so filtering by it unconditionally dropped both from a plain
+    `edf2csv recording.edf` with no time options given, and no flag could ask for them back.
+
+    The test is whether a window was requested, not whether the resolved one happens to
+    cover everything: `--end 3` on a three-second recording resolves to the whole file but
+    is still an explicit request for [0, 3), and an event at exactly 3 belongs outside it.
+  */
   const inWindow = annotations
-    .filter((a) => a.onset >= startSeconds && a.onset < endSeconds)
+    .filter((a) => !windowRequested || (a.onset >= startSeconds && a.onset < endSeconds))
     .sort((a, b) => a.onset - b.onset || a.recordIndex - b.recordIndex);
 
   const lines = [csvRow(['onset_s', 'duration_s', 'description', 'record_index'])];

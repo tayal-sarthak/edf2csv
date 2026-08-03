@@ -241,6 +241,41 @@ describe('converting', () => {
     assert.deepEqual([...seen.entries()].sort(), [['slowA', 2], ['slowB', 4]]);
   });
 
+  it('keeps annotations on and past the end of the data when no window was asked for', async () => {
+    // Filtering to [0, duration) on a whole-file conversion dropped the events at 3.0 and
+    // 3.5 of a three-second recording, and no flag could bring them back.
+    const dir = await outDir();
+    await convert(fixture('annotations-at-edges.edf'), { outputDir: dir });
+
+    const rows = await readCsv(dir, 'annotations.csv');
+    assert.deepEqual(
+      rows.slice(1).map((r) => r.split(',')[0]),
+      ['2.5', '3', '3.5'],
+    );
+  });
+
+  it('still filters annotations when a window is requested', async () => {
+    const dir = await outDir();
+    await convert(fixture('annotations-at-edges.edf'), { outputDir: dir, start: 0, end: 3 });
+
+    const rows = await readCsv(dir, 'annotations.csv');
+    assert.deepEqual(rows.slice(1).map((r) => r.split(',')[0]), ['2.5'], 'half-open window');
+  });
+
+  it('does not let an ordinary annotation become a record start time', async () => {
+    // Record 1's timekeeping TAL is undecodable. The next TAL is a genuine event at 1.5s;
+    // treating it as the record start shifted every sample in that record by half a second.
+    const dir = await outDir();
+    await convert(fixture('annotations-bad-timekeeping.edf'), { outputDir: dir });
+
+    const times = (await readCsv(dir, 'signals.csv')).slice(1).map((r) => r.split(',')[0]);
+    assert.equal(times[4], '1.000', `record 1 must fall back to contiguous timing, got ${times[4]}`);
+
+    // The event is still exported as an event rather than consumed as timing.
+    const events = await readCsv(dir, 'annotations.csv');
+    assert.deepEqual(events.slice(1).map((r) => r.split(',')[0]), ['1.5']);
+  });
+
   it('records provenance in metadata.json', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });
