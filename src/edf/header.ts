@@ -463,7 +463,11 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     });
   }
 
-  const rates = new Set(dataSignals.map((s) => s.samplingRate));
+  // A channel declaring zero samples per record has no sampling rate to speak of — it is
+  // reported separately as NO_SAMPLES and no file is written for it. Counting its nominal
+  // 0 Hz as a rate made a single-rate recording warn that it used "2 different sampling
+  // rates (4 Hz, 0 Hz)" and claim it was splitting output it never split.
+  const rates = new Set(dataSignals.filter((s) => s.samplesPerRecord > 0).map((s) => s.samplingRate));
   if (rates.size > 1) {
     diagnostics.push({
       code: 'MIXED_SAMPLING_RATES',

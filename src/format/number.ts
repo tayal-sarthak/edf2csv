@@ -51,17 +51,26 @@ export function makeSampleFormatter(signal: EdfSignal, decimals: number): Sample
   const high = Math.max(signal.digitalMin, signal.digitalMax);
   const span = high - low + 1;
 
-  // Samples may fall outside the declared digital range in non-conforming files,
-  // so the cache covers the full int16 domain when the declared range is small.
   if (!Number.isFinite(span) || span <= 0 || span > MAX_CACHED_SPAN) {
     return (digital: number): string => fixed(scale(digital), decimals);
   }
 
-  const cacheLow = -32768;
-  const cache = new Array<string | undefined>(65536);
+  /*
+    The cache covers the channel's declared digital range, not the whole int16 domain.
+
+    Allocating 65536 slots regardless of span cost 512 KB of pointers per channel, which a
+    dense montage cannot afford: a 400-channel recording needed over 200 MB of cache alone
+    and died with a V8 out-of-memory fatal error before writing a row. Sizing to the
+    declared span makes the ordinary 12-bit channel 32 KB instead — the same 400 channels
+    now fit in about 13 MB.
+
+    Samples outside the declared range still occur in non-conforming files. They simply
+    miss the cache and are formatted directly, which produces identical text.
+  */
+  const cache = new Array<string | undefined>(span);
   return (digital: number): string => {
-    const slot = digital - cacheLow;
-    if (slot >= 0 && slot < 65536) {
+    const slot = digital - low;
+    if (slot >= 0 && slot < span) {
       const hit = cache[slot];
       if (hit !== undefined) return hit;
       const text = fixed(scale(digital), decimals);

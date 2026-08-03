@@ -111,6 +111,21 @@ export function generate() {
     ],
   });
 
+  // One real rate alongside a channel carrying no samples.
+  //
+  // A 0-sample channel has a nominal rate of 0 Hz, but no file is written for it and it is
+  // already reported as NO_SAMPLES. Counting that 0 Hz as a rate made this single-rate file
+  // warn that it used "2 different sampling rates (4 Hz, 0 Hz)".
+  writeEdf({
+    path: at('single-rate-empty-channel.edf'),
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'real', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'unused', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 0, gen: () => 0 },
+    ],
+  });
+
   // Events sitting on and past the end of the recorded span.
   //
   // EDF+ does not oblige an annotation's onset to fall inside the data. A marker for the

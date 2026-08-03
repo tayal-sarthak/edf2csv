@@ -276,6 +276,20 @@ describe('converting', () => {
     assert.deepEqual(events.slice(1).map((r) => r.split(',')[0]), ['1.5']);
   });
 
+  it('does not call a single-rate file mixed because of an empty channel', async () => {
+    const dir = await outDir();
+    const result = await convert(fixture('single-rate-empty-channel.edf'), { outputDir: dir });
+
+    const codes = result.diagnostics.map((d) => d.code);
+    assert.ok(!codes.includes('MIXED_SAMPLING_RATES'), `unexpected mixed-rate warning: ${codes}`);
+    assert.ok(codes.includes('NO_SAMPLES'), 'the empty channel is still reported');
+    assert.deepEqual(
+      result.files.map((f) => f.name).filter((n) => n.startsWith('signals')),
+      ['signals.csv'],
+      'one rate means one unsuffixed file',
+    );
+  });
+
   it('records provenance in metadata.json', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });

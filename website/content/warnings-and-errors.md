@@ -207,7 +207,7 @@ warning: Signal 0 ("ch1") carries no samples at all (0 per data record).
          It is described in channels.csv but left out of the converted data.
 ```
 
-**What to do.** Nothing, unless you expected data on that channel. One quirk to be aware of: a zero-sample channel has a sampling rate of 0 Hz, and that 0 Hz appears in the rate list of a `MIXED_SAMPLING_RATES` warning even though no file is written for it.
+**What to do.** Nothing, unless you expected data on that channel. A zero-sample channel is left out of the sampling-rate comparison entirely, so it can't make a single-rate recording look mixed — up to 0.2.4 its nominal 0 Hz was counted as a rate, and a file with one real rate warned that it used "2 different sampling rates (4 Hz, 0 Hz)".
 
 Note that `NO_SAMPLES` is also a fatal error code. As a warning it means one channel is empty; as an error it means every channel is, which leaves nothing to convert. See the fatal errors section below.
 

@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.5
+
+### Fixed: dense recordings ran out of memory before writing a row
+
+The per-channel cache that maps a digital code to its formatted text allocated 65,536 slots
+regardless of how wide the channel's declared digital range actually was — 512 KB of pointers each.
+A 400-channel montage therefore needed over 200 MB of cache alone and died with a V8 out-of-memory
+fatal error before producing any output.
+
+The cache is now sized to the channel's declared digital range, which is 4,096 entries for the
+ordinary 12-bit case: 32 KB instead of 512 KB, and roughly 13 MB instead of 205 MB across 400
+channels. That same 400-channel file now converts under a 96 MB heap cap.
+
+Samples outside the declared range still occur in non-conforming files. They miss the cache and are
+formatted directly, producing identical text — every generated fixture converts byte-for-byte
+identically to 0.2.4.
+
+### Fixed: an empty channel made a single-rate recording look mixed
+
+A channel declaring zero samples per record has a nominal rate of 0 Hz. It was counted alongside the
+real rates, so a recording with one rate and one unused channel warned:
+
+```
+warning: Channels use 2 different sampling rates (4 Hz, 0 Hz).
+```
+
+claiming it was splitting output that it never split — only `signals.csv` was ever written. Channels
+with no samples are now left out of the comparison. They are still reported separately as
+`NO_SAMPLES`, and genuinely mixed recordings still warn.
+
 ## 0.2.4
 
 Two silent data bugs in EDF+ annotation handling.
