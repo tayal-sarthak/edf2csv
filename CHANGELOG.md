@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.1
+
+### Fixed: two sampling rates could overwrite each other's output
+
+Output filenames are derived from the sampling rate rounded to six decimal places, so two distinct
+rates could resolve to the same name. Nothing checked for that, and both rate groups opened a write
+stream on the same path — the resulting CSV held interleaved rows from both channels under a header
+naming only one of them. Silent data loss.
+
+Distinct rates now always get distinct files; a collision falls back to `signals_<rate>hz_2.csv`.
+Ordinary recordings are unaffected and keep exactly the filenames they had.
+
+Reaching this needs a record duration over about eleven days, since rates come from
+`samplesPerRecord / recordDuration` and every channel shares that duration, so two rates can be no
+closer than `1 / recordDuration`. Absurd, but the header format permits it, and the failure mode was
+corruption rather than an error.
+
 ## 0.2.0
 
 Two breaking changes, both about not putting things in front of users that they did not ask for.

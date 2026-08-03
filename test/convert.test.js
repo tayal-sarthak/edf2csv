@@ -216,6 +216,31 @@ describe('converting', () => {
     }
   });
 
+  it('gives distinct rates distinct files even when their slugs collide', async () => {
+    // Both rates render as "0hz". Sharing the filename meant two write streams on one
+    // path: the rows interleaved and the header named only one of the two channels.
+    const dir = await outDir();
+    const result = await convert(fixture('rate-slug-collision.edf'), { outputDir: dir });
+
+    const signalFiles = result.files.map((f) => f.name).filter((n) => n.startsWith('signals'));
+    assert.equal(new Set(signalFiles).size, 2, `each rate needs its own file, got ${signalFiles}`);
+
+    // Every channel must appear in exactly one file, with only its own samples.
+    const seen = new Map();
+    for (const name of signalFiles) {
+      const rows = await readCsv(dir, name);
+      const columns = rows[0].split(',').slice(1);
+      assert.equal(columns.length, 1, `${name} should hold one channel, got ${columns}`);
+      seen.set(columns[0], rows.length - 1);
+      for (const row of rows.slice(1)) {
+        assert.equal(row.split(',').length, 2, `${name} has a row with the wrong column count`);
+      }
+    }
+
+    // slowA is 1 sample per record over 2 records; slowB is 2 per record over 2.
+    assert.deepEqual([...seen.entries()].sort(), [['slowA', 2], ['slowB', 4]]);
+  });
+
   it('records provenance in metadata.json', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });

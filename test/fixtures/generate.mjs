@@ -111,6 +111,23 @@ export function generate() {
     ],
   });
 
+  // Two rates that round to the same filename slug.
+  //
+  // A rate is samplesPerRecord / recordDuration, and every channel shares the record
+  // duration, so two rates can be no closer than 1 / recordDuration. Past about eleven
+  // days per record that gap falls under the slug's six decimal places and both channels
+  // want the same "signals_0hz.csv". Absurd, legal, and it used to corrupt the output:
+  // both groups wrote to one path and the rows interleaved under a single channel header.
+  writeEdf({
+    path: at('rate-slug-collision.edf'),
+    numRecords: 2,
+    recordDuration: 1e7,
+    signals: [
+      { label: 'slowA', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 1, gen: (r) => 100 * (r + 1) },
+      { label: 'slowB', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: (r, i) => -50 * (r + i + 1) },
+    ],
+  });
+
   // Header claims ten records; only four were written before the recording stopped.
   writeEdf({
     path: at('truncated.edf'),

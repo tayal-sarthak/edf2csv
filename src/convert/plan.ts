@@ -156,13 +156,34 @@ function groupByRate(
   const rates = [...byRate.keys()].sort((a, b) => b - a);
   const single = rates.length === 1;
 
+  /*
+    Two distinct rates can produce the same slug, because the slug rounds to six decimal
+    places. Rates come from samplesPerRecord / recordDuration and every channel shares the
+    record duration, so the closest two rates can be is 1 / recordDuration — which drops
+    below 1e-6 once a record is longer than about eleven days. Absurd, but the header
+    permits it, and the failure was silent and destructive: both groups opened a write
+    stream on the same path, so the file ended up holding interleaved rows from both
+    channels under a header naming only one of them.
+
+    Distinct rates therefore get distinct files, always. The suffix is only ever reached by
+    a collision, so ordinary recordings keep the names they have always had.
+  */
+  const used = new Set<string>();
+  const uniqueName = (rate: number): string => {
+    const base = `signals_${rateSlug(rate)}`;
+    let name = `${base}.csv`;
+    for (let n = 2; used.has(name); n++) name = `${base}_${n}.csv`;
+    used.add(name);
+    return name;
+  };
+
   return rates.map((rate) => {
     const members = byRate.get(rate) ?? [];
     const first = members[0];
     return {
       rate,
       samplesPerRecord: first ? first.samplesPerRecord : 0,
-      fileName: single ? 'signals.csv' : `signals_${rateSlug(rate)}.csv`,
+      fileName: single ? 'signals.csv' : uniqueName(rate),
       timeDecimals: timeDecimals(rate),
       channels: members.map((signal) => ({
         signal,
