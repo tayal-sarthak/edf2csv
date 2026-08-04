@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.8
+
+### Changed: a mistyped channel name is now an error under `--annotations-only` too
+
+Channel selection was skipped entirely when `--annotations-only` was given, since the selection has
+nothing to act on in that mode. The effect was that `--channels TYPO --annotations-only` exited 0 in
+silence, while the same typo without the flag was a usage error — and `--channels ""` stayed an error
+in both. A mistyped name was the one form of bad input the tool accepted quietly.
+
+The names are now validated in both modes. Everywhere else in the tool a term matching nothing is
+reported rather than ignored, and a flag that happens not to apply is a poor reason to make an
+exception. Valid selections behave exactly as before, and `--annotations-only` output is unchanged.
+
 ## 0.2.7
 
 ### Fixed: a failed sidecar write reported a raw filesystem error

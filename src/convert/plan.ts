@@ -94,9 +94,20 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   const writeSignals = options.annotationsOnly !== true;
 
   let chosen: EdfSignal[] = input.signals.filter((s) => !s.isAnnotations);
-  if (writeSignals && options.channels && options.channels.length > 0) {
+
+  /*
+    Channel names are checked even under --annotations-only, where the selection is not
+    otherwise used.
+
+    Skipping the check meant `--channels TYPO --annotations-only` exited 0 in silence while
+    the same typo without the flag was a usage error, and `--channels ""` stayed an error
+    in both — so a mistyped name was the one form of bad input the tool accepted quietly.
+    Everywhere else a term matching nothing is reported rather than ignored; a flag that
+    happens not to apply is a poor reason to make an exception.
+  */
+  if (options.channels && options.channels.length > 0) {
     const selection = selectChannels(input.signals, options.channels);
-    chosen = selection.signals;
+    if (writeSignals) chosen = selection.signals;
     for (const { term, matched } of selection.ambiguous) {
       diagnostics.push({
         code: 'DUPLICATE_LABEL',

@@ -180,7 +180,7 @@ A channel whose label really is `#5` is reachable. When a term begins with `#`, 
 
 ### Interaction with --annotations-only
 
-`--annotations-only` skips signal output entirely, so channel selection isn't resolved at all. A `--channels` term that would otherwise be a typo error is ignored in that mode.
+`--annotations-only` skips signal output entirely, so the selection has nothing to act on — but the names are still checked. A term matching no channel is a usage error in this mode too, so a typo is reported rather than silently accepted.
 
 ## Time range: --start, --duration, --end
 
