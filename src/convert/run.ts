@@ -236,32 +236,64 @@ async function assertInputDoesNotOverlapOutputs(
 }
 
 async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
-  const existing = await stat(dir).catch(() => null);
+  /*
+    Claim the directory with a single atomic mkdir rather than asking whether it exists
+    and then creating it.
 
-  // --force means "replace my previous output", not "write output files into
-  // whatever this happens to be". Pointing it at a regular file needs saying so.
-  if (existing && !existing.isDirectory()) {
-    throw new ConversionError(
-      'OUTPUT_UNWRITABLE',
-      `"${dir}" is a file, but the converted data needs a directory.`,
-      'Choose a directory with --out.',
-    );
-  }
-  if (existing && !force) {
-    throw new ConversionError(
-      'OUTPUT_EXISTS',
-      `"${dir}" already exists.`,
-      'Pass --force to overwrite it, or --out to choose a different directory.',
-    );
+    Checking first left a window between the two: two conversions started together both
+    saw "not there", both proceeded, and both opened write streams on the same signals.csv.
+    Neither reported anything — both exited 0, having half-written one file between them.
+    A non-recursive mkdir cannot do that. Exactly one caller creates the directory; every
+    other one gets EEXIST from the filesystem and takes the already-exists path below.
+
+    Parents are still created recursively, since --out ./a/b/c should work. Only the final
+    component is the claim.
+  */
+  const parent = path.dirname(dir);
+  if (parent && parent !== dir) {
+    await mkdir(parent, { recursive: true }).catch((cause: unknown) => {
+      throw new ConversionError(
+        'OUTPUT_UNWRITABLE',
+        `Cannot create "${dir}": ${describeFsError(cause)}.`,
+        'Check the path exists and that you have permission to write there.',
+      );
+    });
   }
 
-  await mkdir(dir, { recursive: true }).catch((cause: unknown) => {
-    throw new ConversionError(
-      'OUTPUT_UNWRITABLE',
-      `Cannot create "${dir}": ${describeFsError(cause)}.`,
-      'Check the path exists and that you have permission to write there.',
-    );
-  });
+  let claimed = true;
+  try {
+    await mkdir(dir);
+  } catch (cause: unknown) {
+    if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw new ConversionError(
+        'OUTPUT_UNWRITABLE',
+        `Cannot create "${dir}": ${describeFsError(cause)}.`,
+        'Check the path exists and that you have permission to write there.',
+      );
+    }
+    claimed = false;
+  }
+
+  if (!claimed) {
+    const existing = await stat(dir).catch(() => null);
+
+    // --force means "replace my previous output", not "write output files into
+    // whatever this happens to be". Pointing it at a regular file needs saying so.
+    if (existing && !existing.isDirectory()) {
+      throw new ConversionError(
+        'OUTPUT_UNWRITABLE',
+        `"${dir}" is a file, but the converted data needs a directory.`,
+        'Choose a directory with --out.',
+      );
+    }
+    if (!force) {
+      throw new ConversionError(
+        'OUTPUT_EXISTS',
+        `"${dir}" already exists.`,
+        'Pass --force to overwrite it, or --out to choose a different directory.',
+      );
+    }
+  }
 }
 
 /** Turn a Node filesystem error into something a person can act on. */

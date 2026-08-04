@@ -173,6 +173,31 @@ describe('file errors exit 1', () => {
   });
 });
 
+describe('concurrent runs', () => {
+  // Asking whether the directory exists and then creating it left a window where two
+  // conversions both saw "not there". Both proceeded, both opened write streams on the
+  // same signals.csv, and both exited 0 having written one file between them.
+  it('lets exactly one of several simultaneous runs claim an output directory', async () => {
+    const dir = await outDir();
+    const runs = await Promise.all(
+      Array.from({ length: 8 }, () => cli([fixture('mixed-rates.edf'), '--out', dir, '--quiet'])),
+    );
+
+    const winners = runs.filter((r) => r.code === 0);
+    assert.equal(winners.length, 1, `exactly one run may succeed, ${winners.length} did`);
+
+    for (const loser of runs.filter((r) => r.code !== 0)) {
+      assert.equal(loser.code, 1);
+      assert.match(loser.stderr, /already exists/);
+    }
+
+    // The surviving output must be one complete conversion, not a blend of eight.
+    const rows = (await readFile(path.join(dir, 'signals_256hz.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length, 769, '768 data rows plus a header');
+    assert.ok(rows.every((r) => r.split(',').length === 2), 'every row has the same column count');
+  });
+});
+
 describe('write failures', () => {
   it('reports an unwritable destination instead of dumping a stack trace', async () => {
     const dir = await outDir();

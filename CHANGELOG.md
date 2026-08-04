@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.6
+
+### Fixed: two conversions into the same directory both succeeded and corrupted the output
+
+The output directory was claimed by asking whether it existed and then creating it. Between those
+two steps sat a window in which a second conversion also saw "not there" — so both proceeded, both
+opened write streams on the same `signals.csv`, and both exited 0 having written one file between
+them. Nothing reported a problem. The check that is supposed to stop a second run from mixing into
+the first only worked when the two runs did not actually overlap.
+
+The directory is now claimed with a single non-recursive `mkdir`, which the filesystem makes atomic:
+exactly one caller creates it and every other gets `EEXIST` and takes the already-exists path. With
+eight simultaneous runs, one succeeds and seven exit 1 with the usual message. Parent directories are
+still created recursively, so `--out ./a/b/c` works as before, and `--force` is unaffected.
+
 ## 0.2.5
 
 ### Fixed: dense recordings ran out of memory before writing a row
