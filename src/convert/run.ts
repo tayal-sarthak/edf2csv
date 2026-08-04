@@ -391,6 +391,28 @@ async function streamSignalRows(
   return open.map((entry) => ({ name: entry.group.fileName, rows: entry.rows }));
 }
 
+/**
+ * Write one of the sidecar files, reporting a failure the way the signal writer does.
+ *
+ * These three used to call `writeFile` bare, so a failure escaped as whatever the
+ * filesystem said — `EISDIR: illegal operation on a directory, open '...'` with no hint
+ * and, more importantly, no mention that the signal files had already been written. The
+ * conversion stopped half-done and the message gave no sign of it.
+ */
+async function writeOutputFile(outputDir: string, name: string, contents: string): Promise<void> {
+  try {
+    await writeFile(path.join(outputDir, name), contents, 'utf8');
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    throw new ConversionError(
+      'WRITE_FAILED',
+      `Writing "${name}" to "${outputDir}" failed: ${detail}`,
+      'The files written so far are incomplete and should not be used. Free up space or ' +
+        'choose another destination with --out, then run the conversion again.',
+    );
+  }
+}
+
 async function writeChannelsCsv(
   outputDir: string,
   file: EdfFile,
@@ -444,7 +466,7 @@ async function writeChannelsCsv(
     );
   }
 
-  await writeFile(path.join(outputDir, 'channels.csv'), lines.join('\n') + '\n', 'utf8');
+  await writeOutputFile(outputDir, 'channels.csv', lines.join('\n') + '\n');
   return { name: 'channels.csv', rows: lines.length - 1 };
 }
 
@@ -485,7 +507,7 @@ async function writeAnnotationsCsv(
     );
   }
 
-  await writeFile(path.join(outputDir, 'annotations.csv'), lines.join('\n') + '\n', 'utf8');
+  await writeOutputFile(outputDir, 'annotations.csv', lines.join('\n') + '\n');
   return { name: 'annotations.csv', rows: inWindow.length };
 }
 
@@ -547,7 +569,7 @@ async function writeMetadata(
     })),
   };
 
-  await writeFile(path.join(outputDir, 'metadata.json'), JSON.stringify(metadata, null, 2) + '\n', 'utf8');
+  await writeOutputFile(outputDir, 'metadata.json', JSON.stringify(metadata, null, 2) + '\n');
 }
 
 async function sha256(filePath: string): Promise<string> {

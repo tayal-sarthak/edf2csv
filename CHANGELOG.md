@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.7
+
+### Fixed: a failed sidecar write reported a raw filesystem error
+
+`channels.csv`, `annotations.csv` and `metadata.json` were written with a bare `writeFile`, so a
+failure escaped as whatever the filesystem said and nothing else:
+
+```
+error: EISDIR: illegal operation on a directory, open '/path/out/channels.csv'
+```
+
+No hint, and — more importantly — no mention that the signal files had already been written, so the
+output directory was left half-complete with nothing saying so. The signal writer has always
+reported this properly; the three sidecars did not.
+
+They now go through the same path, naming the file that failed and stating that what is on disk is
+incomplete and should not be used.
+
 ## 0.2.6
 
 ### Fixed: two conversions into the same directory both succeeded and corrupted the output
