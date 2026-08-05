@@ -173,6 +173,21 @@ describe('file errors exit 1', () => {
   });
 });
 
+describe('terminal safety', () => {
+  // EDF identification fields and labels are free text copied out of the file and printed
+  // straight to stdout by --info. A header carrying ANSI escapes could drive the reader's
+  // terminal — \x1b[2J clears the screen — so control bytes are shown as escapes instead.
+  it('never writes raw control bytes to stdout', async () => {
+    const { code, stdout } = await cli([fixture('quirky-labels.edf'), '--info']);
+    assert.equal(code, 0);
+    const offending = [...stdout].filter((c) => {
+      const n = c.codePointAt(0);
+      return (n < 32 && n !== 10) || (n >= 127 && n <= 159);
+    });
+    assert.deepEqual(offending, [], 'control bytes must be escaped before reaching the terminal');
+  });
+});
+
 describe('stale output detection', () => {
   // Output filenames gained two shapes recently: a collision suffix (signals_0hz_2.csv) and
   // exponent rates (signals_1_000e-7hz.csv). Neither matched the pattern that recognises

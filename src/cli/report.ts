@@ -33,6 +33,27 @@ function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<num
     .join('\n');
 }
 
+/**
+ * Make header text safe to print to a terminal.
+ *
+ * EDF identification fields and channel labels are free text copied verbatim out of the
+ * file, and `--info` puts them straight on stdout. A header carrying ANSI escapes could
+ * therefore drive the reader's terminal — `\x1b[2J\x1b[H` clears the screen and homes the
+ * cursor, which is enough to hide the rest of the output or repaint it as something else.
+ * Nobody writes an EDF header that way on purpose, which is exactly why a file that does
+ * should not be trusted with the terminal.
+ *
+ * Control bytes are shown as their escape instead, so a corrupt field stays diagnosable
+ * rather than being silently swallowed. This affects display only: `channels.csv` and
+ * `metadata.json` still copy the field verbatim, and CSV quoting already makes that safe.
+ */
+function printable(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\u0000-\u001f\u007f-\u009f]/gu, (c) =>
+    `\\x${c.codePointAt(0)!.toString(16).padStart(2, '0')}`,
+  );
+}
+
 /** The `--info` view: what is in this recording, and what would converting it produce. */
 export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   const { header } = file;
@@ -54,8 +75,8 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     lines.push(`Time span  ${formatDuration(elapsedSpan)}  (includes discontinuities)`);
   }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
-  if (header.patientId) lines.push(`Patient    ${header.patientId}`);
-  if (header.recordingId) lines.push(`Recording  ${header.recordingId}`);
+  if (header.patientId) lines.push(`Patient    ${printable(header.patientId)}`);
+  if (header.recordingId) lines.push(`Recording  ${printable(header.recordingId)}`);
 
   const signals = file.dataSignals;
   lines.push('');
@@ -79,9 +100,9 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   for (const signal of signals) {
     rows.push([
       String(signal.index),
-      plan.columnNames.get(signal.index) ?? '',
-      signal.label,
-      signal.physicalDimension,
+      printable(plan.columnNames.get(signal.index) ?? ''),
+      printable(signal.label),
+      printable(signal.physicalDimension),
       `${formatRate(signal.samplingRate)} Hz`,
       `${signal.physicalMin} to ${signal.physicalMax}`,
       fileFor.get(signal.index) ?? '(not selected)',
@@ -107,8 +128,10 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
 export function formatDiagnostics(diagnostics: readonly Diagnostic[]): string {
   return diagnostics
     .map((d) => {
-      const head = `${d.severity === 'warning' ? 'warning' : 'note'}: ${d.message}`;
-      return d.hint ? `${head}\n         ${d.hint}` : head;
+      // Diagnostics quote channel labels, which come from the file, so they need the
+      // same treatment as the --info table.
+      const head = `${d.severity === 'warning' ? 'warning' : 'note'}: ${printable(d.message)}`;
+      return d.hint ? `${head}\n         ${printable(d.hint)}` : head;
     })
     .join('\n');
 }

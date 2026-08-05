@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.21
+
+### Fixed: a recording's header could drive your terminal
+
+EDF identification fields and channel labels are free text copied verbatim out of the file, and
+`--info` printed them straight to stdout. A header carrying ANSI escapes therefore reached the
+terminal as escapes:
+
+```
+Patient    <ESC>[31m<ESC>[2J<ESC>[H OWNED <ESC>[0m
+```
+
+`\x1b[2J\x1b[H` clears the screen and homes the cursor, which is enough to hide the rest of the
+output or repaint it as something else. Nobody writes an EDF header that way by accident, which is
+precisely why a file that does should not be trusted with the terminal.
+
+Control bytes are now shown as their escape (`\x1b[31m`) in the `--info` table, the `Patient` and
+`Recording` lines, and any warning that quotes a label — so a corrupt field stays diagnosable rather
+than being silently swallowed.
+
+This is display only. `channels.csv` and `metadata.json` still copy the field verbatim, as documented,
+and CSV quoting already made that safe: a label containing a carriage return was correctly quoted and
+parsed as one column all along.
+
 ## 0.2.20
 
 ### Improved: the `--info` size estimate is closer, and never promises less than it writes
