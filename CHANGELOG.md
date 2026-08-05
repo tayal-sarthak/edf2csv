@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.17
+
+### Fixed: a confusing error when the output path runs through a file
+
+Creating the output directory reports the obstacle rather than the errno when a parent of the
+requested path is a regular file:
+
+```
+before:  error: Cannot create "notes.txt/out": EEXIST: file already exists, mkdir 'notes.txt'
+after:   error: Cannot create "notes.txt/out": "notes.txt" is a file, not a directory.
+                Choose a destination whose parent directories are directories, with --out.
+```
+
+The old message named the parent under an `EEXIST`, which reads as "your destination already exists"
+— the opposite of the actual problem, and a nudge toward `--force`, which would not have helped. This
+came in with 0.2.6, where creating parents was split out from claiming the directory.
+
 ## 0.2.16
 
 ### Fixed: leftover output went unreported for two of the filename shapes this tool produces

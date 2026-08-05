@@ -267,13 +267,26 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
   */
   const parent = path.dirname(dir);
   if (parent && parent !== dir) {
-    await mkdir(parent, { recursive: true }).catch((cause: unknown) => {
+    try {
+      await mkdir(parent, { recursive: true });
+    } catch (cause: unknown) {
+      // A parent that is a regular file surfaces as EEXIST naming the parent, which reads
+      // as though the destination already exists rather than as "you cannot put a
+      // directory inside a file". Name the real obstacle instead of the errno.
+      const info = await stat(parent).catch(() => null);
+      if (info && !info.isDirectory()) {
+        throw new ConversionError(
+          'OUTPUT_UNWRITABLE',
+          `Cannot create "${dir}": "${parent}" is a file, not a directory.`,
+          'Choose a destination whose parent directories are directories, with --out.',
+        );
+      }
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
         `Cannot create "${dir}": ${describeFsError(cause)}.`,
         'Check the path exists and that you have permission to write there.',
       );
-    });
+    }
   }
 
   let claimed = true;
