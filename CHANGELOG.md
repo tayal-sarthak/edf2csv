@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.19
+
+### Fixed: the window error quoted parsed seconds for `--end` too
+
+0.2.18 made the past-the-end error quote `--start` as typed but left the other half of the same
+message converting values back to seconds:
+
+```
+$ edf2csv recording.edf --start 00:00:05 --end 00:00:02
+before:  error: The requested window ends at 2s, which is not after its start at 5s.
+after:   error: The requested window ends at 00:00:02, which is not after its start at 00:00:05.
+```
+
+Both ends of the window are now quoted as given. `--duration` is deliberately excluded: the end is
+computed from it rather than typed, so there is no original text to quote and the arithmetic result
+is the honest thing to show.
+
 ## 0.2.18
 
 ### Fixed: a rejected `--start` was quoted back as a value you never typed

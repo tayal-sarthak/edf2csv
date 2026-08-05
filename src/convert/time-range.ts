@@ -171,6 +171,8 @@ export function resolveRange(options: {
   startText?: string | undefined;
   duration?: number | undefined;
   end?: number | undefined;
+  /** The `--end` value exactly as typed, quoted back in the window error. */
+  endText?: string | undefined;
   recordDuration: number;
   recordCount: number;
   /**
@@ -206,9 +208,15 @@ export function resolveRange(options: {
     );
   }
   if (endSeconds <= startSeconds) {
+    // Quote whatever the caller actually gave, for the same reason as the error above. The
+    // end is only echoed when --end was passed: with --duration the end is computed here,
+    // so there is no typed value to quote and the arithmetic result is the honest thing.
+    const endShown = options.end !== undefined && options.endText !== undefined
+      ? options.endText
+      : formatSeconds(endSeconds);
+    const startShown = options.startText ?? formatSeconds(startSeconds);
     throw new TimeRangeError(
-      `The requested window ends at ${formatSeconds(endSeconds)}, which is not after its ` +
-        `start at ${formatSeconds(startSeconds)}.`,
+      `The requested window ends at ${endShown}, which is not after its start at ${startShown}.`,
     );
   }
 

@@ -54,6 +54,8 @@ export interface PlanOptions {
   startText?: string | undefined;
   duration?: number | undefined;
   end?: number | undefined;
+  /** The `--end` value exactly as typed, for error messages. */
+  endText?: string | undefined;
   annotationsOnly?: boolean | undefined;
   /** Force a fixed number of decimals instead of deriving it per channel. */
   decimals?: number | undefined;
@@ -89,6 +91,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     startText: options.startText,
     duration: options.duration,
     end: options.end,
+    endText: options.endText,
     recordDuration: input.recordDuration,
     recordCount: input.recordCount,
     recordStarts: input.recordStarts,
