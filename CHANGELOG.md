@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.9
+
+### Fixed: durations could print a time that cannot exist
+
+`formatDuration` split the value into hours, minutes and seconds first and rounded the leftover
+seconds afterwards, so a remainder just under a minute rounded up to a full 60 in place:
+
+```
+3599.9996 s  ->  "59m 60s"
+86399.9999 s ->  "23h 59m 60s"
+```
+
+Rounding now happens to the printed precision before the split, so the extra second carries into the
+minute where it belongs — `1h 00m 0s` and `24h 00m 0s`. A sweep of 400,000 durations produces no
+impossible output. This affects the `Duration` line in `--info` and the recording length quoted in
+error messages.
+
 ## 0.2.8
 
 ### Changed: a mistyped channel name is now an error under `--annotations-only` too

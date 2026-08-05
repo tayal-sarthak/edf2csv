@@ -117,9 +117,15 @@ export function formatBytes(bytes: number): string {
 /** Human-readable duration: 1h 05m 12s. */
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return `${seconds}s`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds - h * 3600 - m * 60;
+
+  // Round to the precision that will actually be printed BEFORE splitting into units.
+  // Splitting first left the remainder to be rounded on its own, so 3599.9996 s decomposed
+  // as 59 minutes and 59.9996 seconds and then printed as "59m 60s" — a duration that
+  // cannot exist. Rounding first carries the extra second into the minute where it belongs.
+  const total = Math.round(seconds * 1000) / 1000;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = Math.round((total - h * 3600 - m * 60) * 1000) / 1000;
   const sText = Number.isInteger(s) ? String(s) : s.toFixed(3).replace(/\.?0+$/u, '');
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${sText}s`;
   if (m > 0) return `${m}m ${sText}s`;
