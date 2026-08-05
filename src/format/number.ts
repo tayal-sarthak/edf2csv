@@ -31,6 +31,19 @@ export function fixed(value: number, decimals: number): string {
   // annotations.csv uses for an absent duration. Readers parse it back as NaN / NA
   // rather than as a measurement.
   if (!Number.isFinite(value)) return '';
+
+  // toFixed switches to exponent notation at 1e21, which would put "1e+21" in a column
+  // whose every other cell is plain fixed-decimal — and a reader parsing the column as
+  // decimal text has no reason to expect it. Reachable because EDF's 8-character physical
+  // range fields accept exponent form, so a header may legitimately say "1e30".
+  //
+  // Above 2^53 a double carries no fractional part anyway, so the integer expansion is
+  // exact rather than an approximation of one.
+  if (Math.abs(value) >= 1e21) {
+    const whole = BigInt(Math.trunc(value)).toString();
+    return decimals > 0 ? `${whole}.${'0'.repeat(decimals)}` : whole;
+  }
+
   const text = value.toFixed(decimals);
   if (text.charCodeAt(0) !== 45 /* - */) return text;
   // Cheap check for "-0", "-0.0", "-0.000"...

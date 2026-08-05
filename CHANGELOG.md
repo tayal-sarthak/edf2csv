@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.10
+
+### Fixed: very large values were written in exponent notation
+
+`toFixed` switches to exponent form at 1e21, so a physical value at or above that landed in the CSV
+as `1e+21` while every other cell in the column was plain fixed-decimal. A reader parsing that column
+as decimal text has no reason to expect it.
+
+It is reachable: EDF's physical range fields are eight ASCII characters and accept exponent form, so
+a header may legitimately declare `1e30`. Such values are now expanded in full. Above 2^53 a double
+carries no fractional part, so the expansion is exact rather than an approximation.
+
 ## 0.2.9
 
 ### Fixed: durations could print a time that cannot exist
