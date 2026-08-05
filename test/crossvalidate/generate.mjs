@@ -13,7 +13,7 @@
 import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { writeEdf } from '../fixtures/edf-writer.mjs';
+import { buildTal, writeEdf } from '../fixtures/edf-writer.mjs';
 
 export const OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'generated');
 
@@ -48,7 +48,18 @@ export function generate(seed = 7, count = 80) {
     if (digMax <= digMin || physMax <= physMin) continue;
 
     const samplesPerRecord = pick([1, 3, 7, 16, 64, 256]);
-    const name = `x${String(i).padStart(3, '0')}.edf`;
+
+    /*
+      Every fourth recording is BDF, where a sample is three bytes rather than two.
+
+      The 24-bit path is where a reader is most likely to be quietly wrong: the sign has to
+      be extended by hand, and a value that comes out unsigned is not obviously wrong on
+      inspection — it is a large positive number where a large negative one belongs. The
+      digital range is BioSemi's own, so the extremes exercise both ends of it.
+    */
+    const bdf = i % 4 === 3;
+    const recordDuration = pick([1, 2, 0.5]);
+    const name = `x${String(i).padStart(3, '0')}.${bdf ? 'bdf' : 'edf'}`;
 
     /*
       Both endpoints of the digital range appear in every recording, deliberately.
@@ -57,25 +68,71 @@ export function generate(seed = 7, count = 80) {
       are where a mapping derived a slightly different way shows the largest disagreement.
       Interior codes and a random sample fill in the rest.
     */
-    const codes = [digMin, digMax, 0, digMin + 1, digMax - 1, Math.round((digMin + digMax) / 2)];
+    const low = bdf ? -8388608 : digMin;
+    const high = bdf ? 8388607 : digMax;
+    const codes = [low, high, 0, low + 1, high - 1, Math.round((low + high) / 2)];
+
+    // Half the recordings carry EDF+/BDF+ events, so the annotation reader is compared too.
+    const annotated = i % 2 === 0;
+    const events = [
+      { onset: 0.25, duration: null, text: 'no duration' },
+      { onset: 0.5, duration: 1.5, text: 'with duration' },
+      { onset: 1, duration: 0, text: 'zero duration' },
+    ];
+
     writeEdf({
       path: path.join(OUT_DIR, name),
+      bdf,
+      reserved: bdf ? (annotated ? 'BDF+C' : '24BIT') : annotated ? 'EDF+C' : '',
       numRecords: int(1, 5),
-      recordDuration: pick([1, 2, 0.5]),
+      recordDuration,
+      /*
+        EDF+ specifies the identification fields, and pyEDFlib enforces them: it refuses a
+        file marked EDF+C whose recording field does not open with a Startdate matching the
+        header's own date. That strictness is the reason it is worth comparing against, so
+        the generated files meet it rather than working around it.
+      */
+      ...(annotated
+        ? {
+            startDate: '02.03.02',
+            startTime: '22.15.00',
+            patient: 'X F 02-MAY-1951 X',
+            recording: 'Startdate 02-MAR-2002 X X X',
+          }
+        : {}),
+      // A record's timekeeping TAL states where that record starts, which is its index
+      // times the record duration — not its index. Writing the index made every recording
+      // whose records are not one second long internally inconsistent, and pyEDFlib
+      // rejected exactly those outright rather than reading them wrongly.
+      ...(annotated
+        ? { talsForRecord: (record) => buildTal(record * recordDuration, record === 0 ? events : []) }
+        : {}),
       signals: [
         {
           label: `sig${i}`,
           dimension: 'uV',
           physMin,
           physMax,
-          digMin,
-          digMax,
+          digMin: low,
+          digMax: high,
           samplesPerRecord,
           gen: (record, sample) => {
             const step = (record * samplesPerRecord + sample) % (codes.length + 1);
-            return step < codes.length ? codes[step] : int(digMin, digMax);
+            return step < codes.length ? codes[step] : int(low, high);
           },
         },
+        ...(annotated
+          ? [{
+              label: bdf ? 'BDF Annotations' : 'EDF Annotations',
+              dimension: '',
+              physMin: -1,
+              physMax: 1,
+              digMin: bdf ? -8388608 : -32768,
+              digMax: bdf ? 8388607 : 32767,
+              samplesPerRecord: 60,
+              annotations: true,
+            }]
+          : []),
       ],
     });
     written.push(name);

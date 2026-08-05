@@ -58,6 +58,48 @@ def columns_of(path: str) -> tuple[list[str], list[list[str]]]:
     return (rows[0][1:], rows[1:]) if rows else ([], [])
 
 
+def compare_annotations(name: str, reader, out: str, mismatches: list[str]) -> int:
+    """Compare annotations.csv against pyEDFlib's own reading of the TALs.
+
+    The two disagree on one point by design: pyEDFlib reports a missing duration as -1.0,
+    while edf2csv leaves the cell empty, because a duration that was never recorded is not
+    a duration of minus one second. That difference is expected and is treated as a match.
+    """
+    onsets, durations, texts = reader.readAnnotations()
+    theirs = list(zip(onsets, durations, texts))
+
+    path = os.path.join(out, "annotations.csv")
+    ours: list[tuple[float, str, str]] = []
+    if os.path.isfile(path):
+        with open(path, newline="") as handle:
+            for row in csv.DictReader(handle):
+                ours.append((float(row["onset_s"]), row["duration_s"], row["description"]))
+
+    if len(theirs) != len(ours):
+        mismatches.append(f"{name}: {len(ours)} annotations, pyEDFlib read {len(theirs)}")
+        return 0
+
+    for k, ((onset, duration, text), (mine_onset, mine_duration, mine_text)) in enumerate(
+        zip(theirs, ours)
+    ):
+        # float() throughout: pyEDFlib hands back numpy scalars, which repr as
+        # "np.float64(0.25)" and make a mismatch harder to read than it needs to be.
+        onset, duration = float(onset), float(duration)
+        if abs(onset - mine_onset) > 1e-9:
+            mismatches.append(f"{name} annotation {k}: onset {onset!r} vs {mine_onset!r}")
+        if str(text) != mine_text:
+            mismatches.append(f"{name} annotation {k}: text {str(text)!r} vs {mine_text!r}")
+        absent = duration < 0
+        if absent:
+            if mine_duration != "":
+                mismatches.append(
+                    f"{name} annotation {k}: pyEDFlib has no duration, edf2csv wrote {mine_duration!r}"
+                )
+        elif mine_duration == "" or abs(duration - float(mine_duration)) > 1e-9:
+            mismatches.append(f"{name} annotation {k}: duration {duration!r} vs {mine_duration!r}")
+    return len(ours)
+
+
 def main() -> int:
     pyedflib = load()
 
@@ -68,8 +110,9 @@ def main() -> int:
         sys.stderr.write(f"{RECORDINGS} is missing. Run `npm run crossvalidate`.\n")
         return 1
 
-    names = sorted(n for n in os.listdir(RECORDINGS) if n.endswith(".edf"))
+    names = sorted(n for n in os.listdir(RECORDINGS) if n.endswith((".edf", ".bdf")))
     compared = 0
+    events = 0
     files = 0
     mismatches: list[str] = []
 
@@ -122,11 +165,15 @@ def main() -> int:
                                 f"pyEDFlib {theirs!r}, edf2csv {mine!r}"
                             )
                             break
+            events += compare_annotations(name, reader, out, mismatches)
             files += 1
         finally:
             reader.close()
 
-    sys.stdout.write(f"\nCompared {compared:,} sample values across {files} recordings.\n")
+    sys.stdout.write(
+        f"\nCompared {compared:,} sample values and {events:,} annotations "
+        f"across {files} recordings.\n"
+    )
     if mismatches:
         sys.stdout.write(f"{len(mismatches)} disagreed:\n")
         for line in mismatches[:20]:

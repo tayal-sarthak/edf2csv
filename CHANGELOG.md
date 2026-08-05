@@ -3,6 +3,43 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.5
+
+### The cross-check now covers BDF and annotations
+
+0.3.4 made the pyEDFlib comparison a command, but it only read `.edf` files carrying signal
+data. That left out the two places a reader is most likely to be quietly wrong.
+
+**24-bit BDF.** A BDF sample is three bytes, and the sign has to be extended by hand. A value
+that comes out unsigned is not obviously wrong to look at: it is a large positive number where
+a large negative one belongs, which is exactly the kind of mistake that survives review. A
+quarter of the generated recordings are now BDF over BioSemi's own digital range, with both
+extremes present in every one.
+
+**Annotations.** Half the recordings now carry EDF+ or BDF+ events, including one with no
+duration and one whose duration is zero, and `annotations.csv` is compared against pyEDFlib's
+own reading of the TALs — onset, duration and text. The two disagree on one point by design:
+pyEDFlib reports a missing duration as `-1.0` where edf2csv leaves the cell empty, a duration
+nobody recorded not being a duration of minus one second. That difference is expected and
+treated as agreement.
+
+```
+Compared 16,943 sample values and 120 annotations across 75 recordings.
+Every value agreed.
+```
+
+Both halves were confirmed capable of failing before being trusted: a one-part-in-a-million
+error in the gain, and a one-millisecond shift in every annotation onset. Each exits 1 and
+names the sample.
+
+Writing the recordings turned up a fault in the generator rather than in the tool. A record's
+timekeeping TAL states where that record begins, which is its index times the record duration —
+it was writing the index. Recordings whose records are not one second long were therefore
+internally inconsistent, and pyEDFlib rejected precisely those rather than reading them wrongly,
+which is a good argument for comparing against something strict.
+
+No behaviour of the tool changed in this release.
+
 ## 0.3.4
 
 ### Added: `npm run crossvalidate`, the pyEDFlib comparison as something you can run

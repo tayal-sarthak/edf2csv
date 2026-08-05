@@ -8,7 +8,7 @@ order: 7
 
 Correctness here covers three different things, verified three different ways.
 
-1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 77 generated recordings and compares every sample: **12,559 values, all in agreement**.
+1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 75 generated recordings and compares every sample and every event: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
@@ -20,11 +20,13 @@ npm run crossvalidate
 ```
 
 ```
-Compared 12,559 sample values across 77 recordings.
+Compared 16,943 sample values and 120 annotations across 75 recordings.
 Every value agreed.
 ```
 
 Without pyEDFlib installed it says so and exits 0 rather than pretending to have checked anything.
+
+A quarter of the recordings are BDF rather than EDF, where a sample is three bytes instead of two. The 24-bit path is where a reader is most likely to be quietly wrong: the sign has to be extended by hand, and a value that comes out unsigned is not obviously wrong to look at — it is a large positive number where a large negative one belongs. Half of them carry EDF+ or BDF+ events, so the annotation reader is compared too, including an event with no duration and one whose duration is zero. On that one point the two disagree by design: pyEDFlib reports a missing duration as `-1.0`, edf2csv leaves the cell empty, on the grounds that a duration nobody recorded is not a duration of minus one second.
 
 The recordings it generates are not the test fixtures. Those target the things real files get wrong, and pyEDFlib refuses several of them outright — a truncated file, a header whose digital range is a single point. What this needs is the opposite: ordinary well-formed recordings across a wide spread of calibrations, with digital spans from `-1..1` to `-32768..32767` and physical spans from `0.0001` to `99999`, giving gains from about 1e-9 to about 1e5. Both endpoints of the digital range appear in every recording, since `digitalMin` and `digitalMax` are the two points the header actually calibrates and where a mapping derived slightly differently disagrees most.
 
@@ -36,7 +38,13 @@ To confirm the check can fail, put a one-part-in-a-million error into the gain a
 x018.edf signals.csv "sig18" sample 0: pyEDFlib -249.99999999999997, edf2csv -250.000251
 ```
 
-It exits 1.
+Shifting every annotation onset by a millisecond does the same for the event half:
+
+```
+x010.edf annotation 0: onset 0.25 vs 0.251
+```
+
+Either exits 1.
 
 Below is how to reproduce the comparison on your own recordings.
 
