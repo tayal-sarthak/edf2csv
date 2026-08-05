@@ -504,9 +504,14 @@ async function convertOne(
   */
   const onInterrupt = (signal: NodeJS.Signals): void => {
     if (showProgress) process.stderr.write('\r\u001b[K');
+    // --stdout writes no directory, so there is none to warn about. Naming one anyway
+    // pointed at a path that was never created — the same "files that were never written"
+    // that 0.2.30 removed from this path's error message.
     process.stderr.write(
       `\ninterrupted (${signal}): the conversion stopped part way through.\n` +
-        `       Files already written to "${destination}" are incomplete and should not be used.\n`,
+        (toStdout
+          ? `       The CSV on stdout stops mid-recording and should not be used.\n`
+          : `       Files already written to "${destination}" are incomplete and should not be used.\n`),
     );
     // 128 + signal number, the conventional exit status for dying to a signal.
     process.exit(signal === 'SIGINT' ? 130 : 143);

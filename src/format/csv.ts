@@ -165,6 +165,20 @@ export class BufferedLineWriter {
     if (this.#ended) return;
     this.#ended = true;
     await this.flush();
+    /*
+      The reader is gone, so there is nothing to close and possibly nothing left to close it
+      on. Under --gzip this stream is the compressor, and the EPIPE forwarded from stdout
+      destroyed it — end() on a destroyed stream fails with ERR_STREAM_DESTROYED, which is
+      not EPIPE, so it escaped the hang-up guard and came back as a write failure:
+
+          edf2csv big.edf --stdout --gzip | head
+          error: Writing to stdout failed: Cannot call end after a stream was destroyed
+
+      Exactly the three symptoms 0.2.30 removed from the uncompressed path — exit 1 for a
+      routine shell idiom, a claim about files that were never written, and advice about disk
+      space — reappearing on the one path 0.3.1 said would behave identically.
+    */
+    if (this.#hungUp) return;
     // stdout must not be closed; ending it would break piping for the rest of the process.
     if (this.#stream === process.stdout || this.#stream === process.stderr) return;
     await new Promise<void>((resolve, reject) => {

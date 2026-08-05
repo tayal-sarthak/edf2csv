@@ -847,6 +847,43 @@ describe('--gzip', () => {
     assert.equal(stderr.toString(), 'false', 'stdout must still be open when the conversion returns');
   });
 
+  it('exits cleanly when a reader hangs up on a compressed stream', async () => {
+    // 0.2.30 made `--stdout | head` exit 0; 0.3.1 said compression would behave identically.
+    // It did not: the EPIPE forwarded from stdout destroys the compressor, and end() on a
+    // destroyed stream fails with ERR_STREAM_DESTROYED — not EPIPE, so it escaped the
+    // hang-up guard and came back as "Writing to stdout failed".
+    const { execFile: raw } = await import('node:child_process');
+    const shell = promisify(raw);
+    const { stdout } = await shell(
+      '/bin/bash',
+      ['-c', `"${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout --gzip 2>/dev/null | head -c 100 >/dev/null; echo "exit=${'$'}{PIPESTATUS[0]}"`],
+      { maxBuffer: 1 << 20 },
+    );
+    assert.match(stdout, /exit=0/u, 'a reader hanging up is not a failure, compressed or not');
+  });
+
+  it('refuses to overwrite the input with a compressed sidecar', async () => {
+    // The rate files come from the plan and carry .csv.gz; the sidecars were spelled out
+    // uncompressed, so a compressed run checked two names it would never write and missed
+    // the two it would. A recording sitting at <outdir>/channels.csv.gz was overwritten by
+    // its own conversion, with --force, and the run reported success.
+    for (const name of ['channels.csv.gz', 'annotations.csv.gz']) {
+      const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-clash-'));
+      temporaries.push(dir);
+      const target = path.join(dir, name);
+      await writeFile(target, await readFile(fixture('annotations.edf')));
+
+      const { code, stderr } = await cli([target, '--out', dir, '--gzip', '--force']);
+      assert.equal(code, 1, `${name} must be refused`);
+      assert.match(stderr, /is the same file as the input recording/u);
+      assert.deepEqual(
+        await readFile(target),
+        await readFile(fixture('annotations.edf')),
+        `${name} was overwritten by its own conversion`,
+      );
+    }
+  });
+
   it('does not call a compressed run stale on the next uncompressed one', async () => {
     // Leftovers are matched by name. If the pattern did not know about .gz, a rerun
     // without the flag would leave the old .csv.gz files sitting there unreported.

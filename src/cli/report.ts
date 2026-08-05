@@ -10,6 +10,7 @@ import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { formatBytes, formatDuration } from '../format/number.js';
 import type { ConversionPlan } from '../convert/plan.js';
+import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
 
 function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<number>): string {
@@ -216,8 +217,12 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
         bytes: plan.estimate.bytes,
         exceeds_spreadsheet_limit: plan.estimate.exceedsSpreadsheetLimit,
       },
+      // The plan's mixed-rate warning replaces the header parser's, as it does everywhere
+      // else. This was the one consumer left out of that when 0.3.2 made the warning follow
+      // --channels, so `--info --json` carried it twice: once counting the rates being
+      // converted and once counting every rate in the file, with the same code and severity.
       warnings: plan.diagnostics
-        .concat(file.diagnostics)
+        .concat(withoutFileRateWarning(file.diagnostics))
         .map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
     },
     null,

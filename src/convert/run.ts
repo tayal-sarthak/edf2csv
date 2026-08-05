@@ -159,7 +159,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     }
 
     const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
-    await assertInputDoesNotOverlapOutputs(inputPath, outputDir, file, plan);
+    await assertInputDoesNotOverlapOutputs(inputPath, outputDir, file, plan, options);
     await prepareOutputDir(outputDir, options.force === true);
 
     const written: WrittenFile[] = [];
@@ -184,7 +184,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       const result = await writeAnnotationsCsv(
         outputDir,
         annotationData.annotations,
-        requestedAnnotationWindow(options),
+        requestedAnnotationWindow(options, plan.range.recordingStartSeconds),
         options.gzip === true,
       );
       written.push(result);
@@ -273,10 +273,21 @@ async function assertInputDoesNotOverlapOutputs(
   outputDir: string,
   file: EdfFile,
   plan: ConversionPlan,
+  options: ConvertOptions,
 ): Promise<void> {
+  /*
+    The names this run will actually write, compressed ones included.
+
+    The rate files come from the plan and already carry `.csv.gz` under --gzip; the sidecars
+    were spelled out here and did not. So a compressed run checked two names it would never
+    write and missed the two it would: a recording sitting at <outdir>/channels.csv.gz was
+    overwritten by its own conversion, with --force, reported as a success. The same file
+    named signals.csv.gz was refused, which is what gives the oversight away.
+  */
+  const suffix = options.gzip === true ? '.csv.gz' : '.csv';
   const names = new Set(plan.groups.map((group) => group.fileName));
-  if (file.annotationSignals.length > 0) names.add('annotations.csv');
-  names.add('channels.csv');
+  if (file.annotationSignals.length > 0) names.add(`annotations${suffix}`);
+  names.add(`channels${suffix}`);
   names.add('metadata.json');
 
   const inputResolved = path.resolve(inputPath);
@@ -630,14 +641,25 @@ async function writeChannelsCsv(
 
   An end the caller did not give is unbounded, not "the end of the data": EDF+ lets an
   annotation sit past the last sample, which is exactly where an end-of-recording marker is.
+
+  `--duration` is measured from wherever the conversion actually starts. Anchoring it at 0
+  instead read the same absent `--start` two ways in two adjacent lines, and on a recording
+  that does not begin at zero the two windows did not even overlap: an EDF+D file whose first
+  record sits at 30 s converted its samples from [30, 35) while filtering annotations against
+  (-inf, 5), so every event inside the converted window was dropped and `annotations.csv` came
+  back empty. `resolveRange` has always defaulted the same missing start to the earliest
+  record, which is where this now takes it from.
 */
-function requestedAnnotationWindow(options: ConvertOptions): { from: number; to: number } {
+function requestedAnnotationWindow(
+  options: ConvertOptions,
+  recordingStart: number,
+): { from: number; to: number } {
   const from = options.start ?? -Infinity;
   const to =
     options.end !== undefined
       ? options.end
       : options.duration !== undefined
-        ? (options.start ?? 0) + options.duration
+        ? (options.start ?? recordingStart) + options.duration
         : Infinity;
   return { from, to };
 }

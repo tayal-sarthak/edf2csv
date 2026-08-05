@@ -352,6 +352,22 @@ describe('converting', () => {
     );
   });
 
+  it('measures --duration from where the recording starts, not from zero', async () => {
+    // The signal window and the annotation window read the same absent --start two ways:
+    // resolveRange took the earliest record, the annotation filter took 0. On a recording
+    // whose first record sits at 30 s the two do not overlap at all, so every event inside
+    // the converted span was dropped and annotations.csv came back with only its header.
+    const dir = await outDir();
+    await convert(fixture('late-start.edf'), { outputDir: dir, duration: 5 });
+
+    const signals = await readCsv(dir, 'signals.csv');
+    assert.match(signals[1], /^30\.000,/u, 'the samples start where the recording does');
+
+    const rows = await readCsv(dir, 'annotations.csv');
+    assert.equal(rows.length, 2, `expected the event inside the window, got ${rows}`);
+    assert.match(rows[1], /^30\.5,,inside the window/u);
+  });
+
   it('keeps annotations on and past the end of the data when no window was asked for', async () => {
     // Filtering to [0, duration) on a whole-file conversion dropped the events at 3.0 and
     // 3.5 of a three-second recording, and no flag could bring them back.

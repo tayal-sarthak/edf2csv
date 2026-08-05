@@ -170,6 +170,29 @@ export function generate() {
         : buildTal(r),
   });
 
+  // An EDF+D recording whose first record sits well after zero.
+  //
+  // --duration is measured from where the conversion starts, and the annotation filter
+  // anchored it at 0 instead. Signals came from [30, 35) while annotations were filtered
+  // against (-inf, 5) — disjoint windows, so every event inside the converted span was
+  // dropped and annotations.csv came back holding only its header.
+  writeEdf({
+    path: at('late-start.edf'),
+    reserved: 'EDF+D',
+    startDate: '02.03.02',
+    startTime: '22.15.00',
+    patient: 'X X X X',
+    recording: 'Startdate 02-MAR-2002 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ],
+    talsForRecord: (r) =>
+      buildTal([30, 31, 32][r], r === 0 ? [{ onset: 30.5, duration: null, text: 'inside the window' }] : []),
+  });
+
   // Enough channels that any message listing them all becomes unreadable.
   //
   // The header decides how many channels a file has, so any message that enumerates them is

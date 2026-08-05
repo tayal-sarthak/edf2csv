@@ -3,6 +3,92 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.8
+
+### Fixed: `--duration` dropped every annotation on a recording that starts after zero
+
+The signal window and the annotation window read the same absent `--start` two different
+ways. `resolveRange` defaults it to the earliest record, taken from the EDF+D timekeeping
+TALs; the annotation filter defaulted it to 0. On a recording whose first record sits at 30 s,
+`--duration 5` converted samples from [30, 35) while filtering annotations against
+`(-inf, 5)` — windows that do not overlap at all:
+
+```
+edf2csv late-start.edf --duration 5 --out ./converted
+```
+
+```
+signals.csv       30.000, 30.250, 30.500, …     every sample in the window
+annotations.csv   onset_s,duration_s,…          nothing but the header
+```
+
+Silent: the run exits 0 and writes a well-formed file, so nothing about the output says the
+events were lost. `--duration` is now measured from wherever the conversion actually starts.
+`--end` was never affected, since it names an absolute offset.
+
+### Fixed: `--stdout --gzip | head` reported a write failure
+
+0.2.30 made `edf2csv big.edf --stdout | head` exit 0. 0.3.1 said compression would behave
+identically. It did not:
+
+```
+$ edf2csv recording.edf --stdout --gzip | head -c 100
+error: Writing to stdout failed: Cannot call end after a stream was destroyed
+exit 1
+```
+
+The EPIPE forwarded from stdout destroys the compressor, and the writer's guard against
+closing stdout compares against `process.stdout` — which under `--gzip` is not the stream it
+holds. Calling `end()` on the destroyed compressor fails with `ERR_STREAM_DESTROYED`, which is
+not `EPIPE`, so it escaped the hang-up path and came back as a conversion failure. All three
+symptoms 0.2.30 removed — exit 1 for a routine shell idiom, a claim about files that were
+never written, advice about disk space — had reappeared on the one path 0.3.1 promised would
+match. The writer now stops at a hang-up whatever stream it is holding.
+
+### Fixed: `--gzip` could overwrite the recording it was reading
+
+The guard that stops an output from resolving to the input builds its list from the plan's
+file names, which carry `.csv.gz`, and then spelled out the two sidecars uncompressed. A
+compressed run therefore checked two names it would never write and missed the two it would.
+A recording sitting at `<outdir>/channels.csv.gz` was overwritten by its own conversion, with
+`--force`, and the run reported success. The same file named `signals.csv.gz` was refused,
+which is what gives the oversight away.
+
+### Fixed: `--info --json` carried the mixed-rate warning twice
+
+0.3.2 made that warning describe the conversion rather than the file, and reached every
+consumer but one. `--info --json` emitted both copies — same code, same severity, one counting
+the rates being converted and one counting every rate in the file. Anything matching on `code`
+saw it twice.
+
+### Fixed: interrupting `--stdout` named a directory that was never created
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Files already written to "recording_csv" are incomplete and should not be used.
+```
+
+`--stdout` writes no directory. It now says what is actually true — that the CSV on stdout
+stops mid-recording — which is the same "files that were never written" complaint 0.2.30
+fixed in this path's error message.
+
+### Documentation that had gone false
+
+- The correctness page said a non-finite gain writes the physical minimum. It has written
+  empty cells and raised `UNUSABLE_PHYSICAL_RANGE` since 0.2.15; the page was not updated
+  with the rest, and contradicted the warnings reference. The row covered two conditions
+  and is now two rows, since only the `gain === 0` half was ever true.
+- Its test transcript still showed 88 tests in 19 suites. It is 148 in 32, and the per-file
+  counts were stale too.
+- The sampling-rates page said the mixed-rate warning ignores `--channels`. 0.3.2 made it
+  follow the selection.
+- The warnings reference said `DISCONTINUOUS` can only be raised by a conversion. `--info`
+  raises it, because it has to read the record times to report the span correctly.
+
+All five code defects were found by an adversarial sweep of the subsystems: 51 agents raising
+findings and then trying to refute each other's, of which 18 survived and 24 did not. The rest
+are recorded and not yet addressed.
+
 ## 0.4.7
 
 ### Added: `npm run fuzz`, which damages real recordings and checks nothing crashes

@@ -278,7 +278,7 @@ Column names are derived from the whole file, not from your selection, so a give
 
 ## Timing, continuity and annotations
 
-These come from reading the EDF+ annotation channel and working out where each data record really sits in time. They can only be raised during a conversion, not by `--info`.
+These come from reading the EDF+ annotation channel and working out where each data record really sits in time. `--info` raises `DISCONTINUOUS` too, since it has to read those record times to report the span and the row estimate correctly; the other two need a conversion, which is the only thing that reads every annotation.
 
 ### DISCONTINUOUS
 

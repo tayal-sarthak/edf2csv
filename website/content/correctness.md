@@ -249,7 +249,8 @@ Real headers are sometimes self-contradictory. In each case the code does someth
 | Header condition | Behaviour |
 | --- | --- |
 | `digitalMin` equals `digitalMax` | The mapping is undefined, so the scaler yields `NaN` and those cells are written empty rather than filled with a stand-in number. A `DEGENERATE_DIGITAL_RANGE` warning is raised. |
-| Gain is zero or not finite | Every sample converts to the same value, so the physical minimum is written. |
+| Gain is zero | Every sample legitimately converts to the same value, so that value is written. |
+| Gain is not finite | The physical span overflowed a double, so there is no mapping at all: the cells are left empty and `UNUSABLE_PHYSICAL_RANGE` is raised. |
 | The derived offset overflows to non-finite | Only possible for an absurd calibration. The code falls back to the specification's literal ordering, which is less accurate but finite. |
 | `physicalMin` above `physicalMax` | Converted exactly as the header specifies, polarity inversion included, with an `INVERTED_PHYSICAL_RANGE` warning. Correcting the header would mean guessing about the recording. |
 
@@ -322,19 +323,19 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the three test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It finishes in about a second on a laptop:
 
 ```
-ℹ tests 88
-ℹ suites 19
-ℹ pass 88
+ℹ tests 148
+ℹ suites 32
+ℹ pass 148
 ℹ fail 0
 ```
 
-The 88 tests are split across three files by what they exercise:
+The 148 tests are split across three files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
-| `test/edf.test.js` | 33 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
-| `test/convert.test.js` | 33 | Time specifications, column naming, channel selection, rate grouping, and the contents of the written CSV files |
-| `test/cli.test.js` | 22 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
+| `test/edf.test.js` | 35 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
+| `test/convert.test.js` | 45 | Time specifications, column naming, channel selection, rate grouping, and the contents of the written CSV files |
+| `test/cli.test.js` | 68 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
 
 To run one file, build and generate first, then point the runner at it:
 

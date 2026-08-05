@@ -139,7 +139,7 @@ edf2csv recording.edf --channels "Temp rectal" --out ./temperature
   channels.csv  3  rows
 ```
 
-The mixed-rate warning still prints, because it describes the recording rather than your selection. It tells you the file contains channels at other rates that you aren't looking at.
+The mixed-rate warning describes the conversion rather than the recording, so narrowing to a single rate raises nothing at all — there is no split to explain. Narrowing to two of three rates reports those two. `--info` still lists every channel in the file, including the ones marked `(not selected)`, so nothing about the recording is hidden.
 
 One consequence to watch for: if you convert a mixed-rate recording and then a single-rate one into the same directory with `--force`, the old `signals_256hz.csv` isn't deleted and will sit next to the new `signals.csv`, both looking current. edf2csv warns about the leftovers and deletes nothing. Converting into a fresh directory avoids the situation.
 
