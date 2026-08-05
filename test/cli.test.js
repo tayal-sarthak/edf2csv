@@ -338,6 +338,15 @@ describe('--stdout', () => {
     assert.deepEqual(stdout.trimEnd().split('\n').length, 4, 'header plus the three real samples');
   });
 
+  it('refuses --json, since both would claim stdout', async () => {
+    // Together they wrote the CSV and then the summary object onto one stream, giving a
+    // document that parses as neither — and silently, since each half looked right alone.
+    const { code, stdout, stderr } = await cli([fixture('tiny.edf'), '--stdout', '--json']);
+    assert.equal(code, 2, 'a conflicting request is a usage error');
+    assert.equal(stdout, '');
+    assert.match(stderr, /both write to stdout/);
+  });
+
   it('refuses --annotations-only, which has no signal data to stream', async () => {
     const { code, stderr } = await cli([fixture('annotations.edf'), '--stdout', '--annotations-only']);
     assert.equal(code, 1);

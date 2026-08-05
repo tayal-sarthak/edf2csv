@@ -159,6 +159,17 @@ export async function main(argv: readonly string[]): Promise<number> {
   const strict = values['strict'] === true;
   const toStdout = values['stdout'] === true;
 
+  // Both of these claim stdout. Allowing them together wrote the CSV and then the summary
+  // object onto the same stream, producing a document that is neither valid CSV nor valid
+  // JSON — and silently, since each half looked right on its own.
+  if (toStdout && asJson) {
+    process.stderr.write(
+      '--stdout and --json both write to stdout, so they cannot be combined.\n' +
+        'Use --stdout for the CSV, or --json for the summary.\n',
+    );
+    return EXIT_USAGE;
+  }
+
   try {
     const channels = splitChannels(values['channels']);
     const start = optionalTime(values['start'], '--start');

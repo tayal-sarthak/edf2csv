@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.28
+
+### Fixed: `--stdout --json` wrote two documents onto one stream
+
+Both flags claim stdout, and 0.2.27 let them be combined. The result was the CSV immediately followed
+by the summary object:
+
+```
+time_s,ch1,ch2
+0.000,0.000,0.00000
+...
+{
+  "output_dir": "-",
+  "files": [ { "name": "signals.csv", "rows": 20 } ],
+```
+
+Parseable as neither, and silently so — each half looked correct on its own, so a pipeline reading
+either one would fail somewhere further downstream with no obvious cause.
+
+Passing both is now a usage error (exit 2) naming the conflict. Each flag alone is unchanged.
+
 ## 0.2.27
 
 ### Added: `--stdout` streams the CSV into a pipeline

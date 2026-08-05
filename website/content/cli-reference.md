@@ -309,6 +309,9 @@ error: --stdout needs exactly one table, but this recording produces 3 (its chan
 row count still goes to stderr, so stdout carries nothing but CSV, and the progress meter is never
 drawn in this mode.
 
+`--stdout` and `--json` cannot be combined: both write to stdout, and together they would produce a
+document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2).
+
 ## -q, --quiet
 
 Suppresses the closing summary and the progress meter. It doesn't suppress warnings or errors: a conversion that raises a warning about mixed sampling rates or a truncated file still says so on stderr under `--quiet`, because those describe your data rather than the tool's own status. A clean conversion under `--quiet` prints nothing at all and exits 0.
