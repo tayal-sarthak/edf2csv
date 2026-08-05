@@ -594,9 +594,28 @@ async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
       found.push({ path: file, name: path.relative(given, file) });
     }
   }
+  /*
+    One recording, however many ways it was named.
+
+    The walk already does this for links inside a folder, and the two halves disagreed:
+    `edf2csv study` converted a recording reached twice once, while `edf2csv a.edf a.edf`
+    refused the whole run for the collision it would cause. A shell makes the second easy
+    to produce by accident — `edf2csv *.edf recording.edf` — and there is nothing ambiguous
+    about it: it is one recording, and converting it once is what was meant.
+
+    A path that does not resolve keeps its own identity so that a file which is not there
+    still reports itself rather than being folded into another entry.
+  */
+  const byIdentity = new Map<string, Input>();
+  for (const entry of found) {
+    const identity = await realpath(entry.path).catch(() => `?${path.resolve(entry.path)}`);
+    if (!byIdentity.has(identity)) byIdentity.set(identity, entry);
+  }
+
   // A directory hands its entries back in whatever order the filesystem stored them.
-  found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return found;
+  const unique = [...byIdentity.values()];
+  unique.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return unique;
 }
 
 /**
@@ -634,9 +653,8 @@ async function walk(root: string): Promise<string[]> {
       if (info.isDirectory()) {
         queue.push(full);
       } else if (info.isFile() && /\.(edf|bdf)$/iu.test(entry.name)) {
-        const identity = await realpath(full).catch(() => full);
-        if (seen.has(identity)) continue;
-        seen.add(identity);
+        // Duplicates are collapsed once for the whole list in expandInputs; this only has
+        // to find them. The `seen` set here is for directory cycles.
         files.push(full);
       }
     }

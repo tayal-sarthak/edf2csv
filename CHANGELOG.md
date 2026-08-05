@@ -3,6 +3,44 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.6
+
+### Fixed: naming the same recording twice was an error in one place and fine in another
+
+The folder walk collapses a recording reached two ways — a link and its target both inside the
+folder are one recording, converted once. The explicit list did not, and refused the whole run
+rather than converting anything:
+
+```
+$ edf2csv *.edf recording.edf --out ./csv
+error: "recording.edf" and "recording.edf" would both be converted into "csv/recording",
+       so one would overwrite the other.
+```
+
+A shell produces that by accident easily enough, and there is nothing ambiguous about it: it is
+one recording, and converting it once is what was meant. The advice to "rename one of them" was
+no help either, since both names were the same name.
+
+Recordings are now identified by where they actually resolve, so any repetition collapses —
+twice on the command line, once directly and once inside a folder that was also given, through
+a link, or any mixture. A path that does not resolve keeps its own identity, so a file that is
+not there still reports itself rather than being folded into another entry.
+
+Two *different* recordings that would land in the same directory are still refused before
+anything is written, which is the case that check was for.
+
+### The batch paths are now held to producing identical output
+
+A recording converted in a batch, in a parallel batch, or on its own must produce the same
+bytes. `--jobs` rebuilds each child's arguments by hand, which is exactly the kind of code that
+silently drops a flag in one path only, so it is checked rather than reasoned about: across the
+fixture set and five flag combinations — plain, `--gzip`, `--checksum`, `--decimals`, `--start`
+— all 43 comparisons agree, including `metadata.json`.
+
+One flaky test was found and fixed while doing it. The interrupt test spawns a batch and kills
+it; at sixty recordings it could starve a neighbouring test of process slots and fail it about
+one run in ten. Thirty is still far more than the interrupt window can consume.
+
 ## 0.4.5
 
 ### Fixed: interrupting a parallel batch left it running

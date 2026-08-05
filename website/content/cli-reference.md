@@ -33,7 +33,9 @@ With `--out` the named directory becomes the parent and each recording gets its 
 
 A recording that cannot be read is reported and the rest still convert — one unreadable file in a folder of five hundred is a reason to name that file, not to discard the work already done. The closing line says how many succeeded, and the exit code is non-zero if any failed.
 
-Two recordings that would land in the same directory are refused before anything is written. This happens with the common layout of one folder per night, where `n1/rec.edf` and `n2/rec.edf` would both resolve to `<out>/rec`:
+A recording named more than once is converted once, however it was named — twice on the command line, or once directly and once inside a folder that was also given. A shell produces that by accident easily enough (`edf2csv *.edf recording.edf`), and it is not ambiguous.
+
+Two *different* recordings that would land in the same directory are refused before anything is written. This happens with the common layout of one folder per night, where `n1/rec.edf` and `n2/rec.edf` would both resolve to `<out>/rec`:
 
 ```
 error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.

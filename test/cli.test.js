@@ -461,9 +461,45 @@ describe('converting several recordings at once', () => {
   });
 
   it('refuses a batch on --stdout, which holds one table', async () => {
-    const { code, stderr } = await cli([fixture('tiny.edf'), fixture('tiny.edf'), '--stdout']);
+    // Two different recordings: naming the same one twice is one recording, not a batch.
+    const { code, stderr } = await cli([
+      fixture('tiny.edf'), fixture('annotations.edf'), '--stdout',
+    ]);
     assert.equal(code, 2);
     assert.match(stderr, /cannot take 2 recordings/u);
+  });
+
+  it('treats a recording named twice as one recording', async () => {
+    // The folder walk already collapsed a recording reached two ways, and the explicit
+    // list did not: it refused the whole run over the collision. A shell produces the
+    // second by accident — `edf2csv *.edf recording.edf` — and there is nothing ambiguous
+    // about it.
+    const dir = await stage({ 'a.edf': 'tiny.edf', 'b.edf': 'annotations.edf' });
+    const twice = await cli([
+      path.join(dir, 'a.edf'), path.join(dir, 'a.edf'),
+      '--out', path.join(dir, 'one'), '--quiet',
+    ]);
+    assert.equal(twice.code, 0, twice.stderr);
+    // One recording, so --out is the output directory itself rather than a parent.
+    assert.ok((await readdir(path.join(dir, 'one'))).includes('signals.csv'));
+
+    // A glob overlapping an explicit name is two recordings, not three.
+    const overlap = await cli([
+      path.join(dir, 'a.edf'), path.join(dir, 'b.edf'), path.join(dir, 'a.edf'),
+      '--out', path.join(dir, 'two'),
+    ]);
+    assert.equal(overlap.code, 0, overlap.stderr);
+    assert.match(overlap.stderr, /Converted 2 of 2 recordings/u);
+    assert.deepEqual((await readdir(path.join(dir, 'two'))).sort(), ['a', 'b']);
+
+    // Two DIFFERENT recordings that would land in the same directory are still refused.
+    const clash = await stage({ 'n1/rec.edf': 'tiny.edf', 'n2/rec.edf': 'mixed-rates.edf' });
+    const refused = await cli([
+      path.join(clash, 'n1', 'rec.edf'), path.join(clash, 'n2', 'rec.edf'),
+      '--out', path.join(clash, 'out'),
+    ]);
+    assert.equal(refused.code, 2);
+    assert.match(refused.stderr, /would both be converted into/u);
   });
 
   it('emits one JSON object per line for a batch, and the usual document for one', async () => {
@@ -640,14 +676,16 @@ describe('converting several recordings at once', () => {
     temporaries.push(dir);
     const source = await readFile(fixture('long-stream.edf'));
     const names = [];
-    for (let i = 0; i < 60; i++) {
+    // Enough that 400 ms cannot finish them, few enough not to starve the rest of
+    // the suite of process slots while it runs.
+    for (let i = 0; i < 30; i++) {
       const name = path.join(dir, `r${String(i).padStart(2, '0')}.edf`);
       await writeFile(name, source);
       names.push(name);
     }
 
     const { spawn } = await import('node:child_process');
-    const run = spawn(process.execPath, [CLI, ...names, '--out', path.join(dir, 'out'), '--jobs', '3'], {
+    const run = spawn(process.execPath, [CLI, ...names, '--out', path.join(dir, 'out'), '--jobs', '2'], {
       stdio: ['ignore', 'ignore', 'pipe'],
     });
     let stderr = '';
@@ -655,7 +693,7 @@ describe('converting several recordings at once', () => {
       stderr += chunk;
     });
 
-    // Long enough that conversions are certainly in flight, short enough that 60 of them
+    // Long enough that conversions are certainly in flight, short enough that they
     // cannot all have finished.
     await new Promise((resolve) => setTimeout(resolve, 400));
     run.kill('SIGINT');
