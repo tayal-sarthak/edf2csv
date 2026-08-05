@@ -144,6 +144,29 @@ export class EdfFile {
   async *readRecords(options: ReadRecordsOptions = {}): AsyncGenerator<RecordBatch> {
     this.#assertOpen();
 
+    /*
+      Record bounds have to be whole records.
+
+      A fractional `startRecord` was carried straight into `position = headerBytes +
+      record * recordBytes`, so reading from 1.5 began half a record in and every sample
+      after it was decoded from the wrong offset: on the two-channel test fixture it
+      returned channel 2's values under channel 1's signal, with no error. Clamping
+      silently would be no better, since a caller asking for record 1.5 has a bug the
+      library should name rather than paper over.
+    */
+    for (const [name, value] of [
+      ['startRecord', options.startRecord],
+      ['endRecord', options.endRecord],
+    ] as const) {
+      if (value !== undefined && !Number.isInteger(value)) {
+        throw new EdfError(
+          'BAD_HEADER_FIELD',
+          `readRecords: ${name} must be a whole record index, got ${value}.`,
+          'Record boundaries are the unit the file can be read in; a fractional index would decode samples from the middle of a record.',
+        );
+      }
+    }
+
     const start = Math.max(0, options.startRecord ?? 0);
     const end = Math.min(this.recordCount, options.endRecord ?? this.recordCount);
     if (start >= end) return;

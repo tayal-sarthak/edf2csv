@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.23
+
+### Fixed: a fractional record index read samples from the middle of a record
+
+`readRecords({ startRecord })` computed its file position as `headerBytes + record * recordBytes`
+without checking that the index was a whole record. A caller passing `1.5` therefore began reading
+half a record in, and every sample after it was decoded from the wrong offset.
+
+On the two-channel test fixture that returned channel 2's values under channel 1's signal — silently
+wrong data through the public API, with the batch count coming back as `0.5` records:
+
+```js
+for await (const b of file.readRecords({ startRecord: 1 }))    // [10,11,12,...]  correct
+for await (const b of file.readRecords({ startRecord: 1.5 }))  // [-10,-11,...]   channel 2's samples
+```
+
+`startRecord` and `endRecord` must now be whole numbers. Clamping silently would be no better: a
+caller asking for record 1.5 has a bug worth naming rather than papering over. Whole-number bounds
+outside the file are still clamped as before, so `startRecord: -5` and `endRecord: 99999` keep
+working.
+
 ## 0.2.22
 
 ### One invariant now covers a whole class of bug

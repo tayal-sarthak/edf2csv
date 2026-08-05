@@ -267,6 +267,36 @@ describe('BDF (BioSemi 24-bit)', () => {
   });
 });
 
+describe('record bounds', () => {
+  // A fractional index went straight into `headerBytes + record * recordBytes`, so
+  // reading from 1.5 began half a record in and decoded every sample from the wrong
+  // offset — returning channel 2's values under channel 1's signal, with no error.
+  it('rejects a fractional record index rather than reading from mid-record', async () => {
+    const file = await load('tiny.edf');
+    for (const options of [{ startRecord: 1.5 }, { endRecord: 0.5 }]) {
+      await assert.rejects(
+        async () => {
+          for await (const _ of file.readRecords(options)) break;
+        },
+        /whole record index/u,
+        `should reject ${JSON.stringify(options)}`,
+      );
+    }
+  });
+
+  it('still clamps whole-number bounds that fall outside the file', async () => {
+    const file = await load('tiny.edf');
+    const read = async (options) => {
+      let n = 0;
+      for await (const batch of file.readRecords(options)) n += batch.recordCount;
+      return n;
+    };
+    assert.equal(await read({ startRecord: -5 }), file.recordCount);
+    assert.equal(await read({ endRecord: 99999 }), file.recordCount);
+    assert.equal(await read({ startRecord: 1, endRecord: 1 }), 0);
+  });
+});
+
 describe('EDF+ annotations', () => {
   it('decodes onset, duration and text', async () => {
     const file = await load('annotations.edf');
