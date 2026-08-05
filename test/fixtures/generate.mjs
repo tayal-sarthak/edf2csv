@@ -170,6 +170,42 @@ export function generate() {
         : buildTal(r),
   });
 
+  // Two rates that survive the exponent fallback but collide at six decimals.
+  //
+  // 4 and 5 samples in a 4,000,000-second record are 1e-6 Hz and 1.25e-6 Hz. Both are above
+  // the threshold where a rate is shown in exponent form, and both round to "0.000001" — so
+  // the warning said the file used "2 different sampling rates (0.000001 Hz, 0.000001 Hz)".
+  writeEdf({
+    path: at('rate-decimal-collision.edf'),
+    numRecords: 2,
+    recordDuration: 4000000,
+    signals: [
+      { label: 'slow', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'slower', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 5, gen: (r, s) => r * 5 + s },
+    ],
+  });
+
+  // A bound that gains a digit when it is rounded for output.
+  //
+  // physicalMax is 999.9999 and the channel is written to two decimals, so the top code
+  // renders as "1000.00" — seven characters where flooring the bound suggests six. The
+  // estimate took its integer digits from the floor and came out under the real file. An
+  // unsigned channel is where it shows: a signed one has a sign allowance on every cell,
+  // and the positive half of the samples never spends it.
+  //
+  // Five records, not ten. The time column is budgeted from the exclusive end of the range,
+  // so a recording ending at 10 s reserves room for "10" but never writes past "9.950" — a
+  // spare character per row that cancelled the shortfall exactly and hid it. Ending at 5 s
+  // spends the whole budget, so the missing character in the value column is visible.
+  writeEdf({
+    path: at('rounding-bound.edf'),
+    numRecords: 5,
+    recordDuration: 1,
+    signals: [
+      { label: 'unsigned', dimension: 'uV', physMin: 0, physMax: 999.9999, digMin: 0, digMax: 100, samplesPerRecord: 20, gen: () => 100 },
+    ],
+  });
+
   // Output larger than a pipe buffer, so a reader hanging up mid-stream is reachable.
   //
   // The --stdout tests could not express the EPIPE case with the small fixtures: 434 bytes

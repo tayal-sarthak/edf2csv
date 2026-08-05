@@ -3,7 +3,7 @@
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -304,6 +304,34 @@ describe('--info', () => {
     assert.equal(code, 0);
     assert.match(stdout, /Would write 0 rows/);
     assert.ok(!stdout.includes('signals.csv'));
+  });
+
+  // The estimate exists so someone can decide whether a conversion is worth starting. Reading
+  // low is the one direction that makes it useless, so it is checked against every fixture
+  // rather than against the one calibration that happened to expose the last shortfall.
+  it('never reports a size the conversion then exceeds', async () => {
+    const names = (await readdir(path.join(ROOT, 'test', 'fixtures', 'generated')))
+      .filter((n) => /\.(edf|bdf)$/u.test(n))
+      // Deliberately damaged headers; they have nothing to estimate.
+      .filter((n) => !['truncated.edf', 'unknown-records.edf'].includes(n));
+    assert.ok(names.length > 10, `expected the generated fixtures, got ${names.length}`);
+
+    const short = [];
+    for (const name of names) {
+      const { code, stdout } = await cli([fixture(name), '--info', '--json']);
+      if (code !== 0) continue;
+      const dir = await outDir();
+      const { code: convert } = await cli([fixture(name), '--out', dir]);
+      if (convert !== 0) continue;
+
+      let actual = 0;
+      for (const file of await readdir(dir)) {
+        if (file.startsWith('signals')) actual += (await stat(path.join(dir, file))).size;
+      }
+      const estimate = JSON.parse(stdout).estimate.bytes;
+      if (estimate < actual) short.push(`${name}: said ${estimate}, wrote ${actual}`);
+    }
+    assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
   });
 });
 

@@ -11,7 +11,7 @@
 
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
-import { formatRate } from '../edf/header.js';
+import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, selectChannels } from './channels.js';
@@ -184,23 +184,30 @@ function groupByRate(
 
     Distinct rates therefore get distinct files, always. The suffix is only ever reached by
     a collision, so ordinary recordings keep the names they have always had.
+
+    Naming from the whole set of rates at once removes most of those collisions before the
+    suffix has to. Rounding each rate on its own gave 1e-6 Hz and 1.25e-6 Hz the same slug,
+    and the numbering below then produced signals_0_000001hz.csv and signals_0_000001hz_2.csv
+    — two files that no longer overwrite each other, but of which only one is named for the
+    rate it holds. The suffix stays as the backstop for anything this still cannot separate.
   */
+  const slugs = formatRates(rates).map((text) => `${text.replace('.', '_')}hz`);
   const used = new Set<string>();
-  const uniqueName = (rate: number): string => {
-    const base = `signals_${rateSlug(rate)}`;
+  const uniqueName = (index: number): string => {
+    const base = `signals_${slugs[index]}`;
     let name = `${base}.csv`;
     for (let n = 2; used.has(name); n++) name = `${base}_${n}.csv`;
     used.add(name);
     return name;
   };
 
-  return rates.map((rate) => {
+  return rates.map((rate, index) => {
     const members = byRate.get(rate) ?? [];
     const first = members[0];
     return {
       rate,
       samplesPerRecord: first ? first.samplesPerRecord : 0,
-      fileName: single ? 'signals.csv' : uniqueName(rate),
+      fileName: single ? 'signals.csv' : uniqueName(index),
       timeDecimals: timeDecimals(rate),
       channels: members.map((signal) => ({
         signal,
@@ -218,9 +225,23 @@ export function rateSlug(rate: number): string {
 
 /** Characters a fixed-decimal number of this magnitude occupies, sign included. */
 function widthOf(magnitude: number, decimals: number, signed = false): number {
-  const whole = Math.floor(Math.abs(magnitude));
-  const intDigits = !Number.isFinite(whole) || whole < 1 ? 1 : Math.floor(Math.log10(whole)) + 1;
-  return (signed ? 1 : 0) + intDigits + (decimals > 0 ? 1 + decimals : 0);
+  const size = Math.abs(magnitude);
+  const sign = signed ? 1 : 0;
+  const fraction = decimals > 0 ? 1 + decimals : 0;
+
+  /*
+    Cells are written with toFixed, which rounds. Taking the integer digits from the floor of
+    the bound therefore under-counted whenever rounding carried into a new digit: a channel
+    bounded at 9999.999 and written to zero decimals produces "10000", five characters where
+    the floor of 9999.999 suggests four. Every cell on such a channel was a byte short, and
+    `--info` reported 127 KB for a file that came out 131 KB.
+
+    Measuring the bound as rendered removes that. toFixed switches to exponential notation
+    past 1e21, so the arithmetic form still covers magnitudes beyond it.
+  */
+  if (!Number.isFinite(size)) return sign + 1 + fraction;
+  if (size < 1e21) return sign + size.toFixed(Math.min(decimals, 100)).length;
+  return sign + (Math.floor(Math.log10(size)) + 1) + fraction;
 }
 
 function estimateOutput(
@@ -258,9 +279,14 @@ function estimateOutput(
       channel spanning ±5 by four characters a cell and ran 30-55% high across the fixture
       set — on a number people use to decide whether a conversion is worth starting.
 
-      A cell can be no wider than its declared physical range allows, so that bound is what
-      is used. Most samples sit below the maximum, so this still reads slightly high, which
-      is the right direction for a size estimate to err in.
+      The channel's declared physical range is what bounds a cell, so that bound is what is
+      used. Most samples sit below it, so this still reads high, which is the direction a
+      size estimate should err in.
+
+      One case is outside the bound rather than under it: nothing obliges a recording to keep
+      its samples inside the digital range it declares, and one that does not maps outside the
+      physical range too. Such a file can convert larger than the estimate. Clamping the data
+      to make the estimate true is not a trade worth making — the samples are what they are.
     */
     const timeWidth = widthOf(range.endSeconds, group.timeDecimals);
     const cellWidth = group.channels.reduce(

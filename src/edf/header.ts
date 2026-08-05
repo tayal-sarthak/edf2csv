@@ -483,7 +483,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       severity: 'warning',
       message:
         `Channels use ${rates.size} different sampling rates ` +
-        `(${[...rates].sort((a, b) => b - a).map((r) => `${formatRate(r)} Hz`).join(', ')}).`,
+        `(${formatRates([...rates].sort((a, b) => b - a)).map((r) => `${r} Hz`).join(', ')}).`,
       hint: 'They are written to one file per rate so no channel is resampled.',
     });
   }
@@ -547,4 +547,25 @@ export function formatRate(hz: number): string {
   // keeps distinct rates distinct in the channel table and in output filenames.
   if (rounded === 0) return hz.toExponential(3);
   return String(rounded);
+}
+
+/**
+ * Renders a group of rates so that rates which differ read as differing.
+ *
+ * `formatRate` rounds to six decimals, which is what keeps an ordinary rate free of
+ * float noise — 30 samples in a 0.1-second record is 299.99999999999994 as a double,
+ * and belongs on screen as 300. Two rates separated by less than that round to one
+ * string, so a file carrying 1e-6 Hz and 1.25e-6 Hz warned that it used "2 different
+ * sampling rates (0.000001 Hz, 0.000001 Hz)" and named both files the same thing.
+ *
+ * That is the contradiction the exponent fallback above already removes for rates that
+ * round away to zero; this is the same one a step further out. On a collision every rate
+ * in the group switches to its shortest exact form, which is unique for distinct values,
+ * rather than only the pair that collided — one column in one notation reads better than
+ * two.
+ */
+export function formatRates(rates: readonly number[]): string[] {
+  const rounded = rates.map(formatRate);
+  const distinct = new Set(rates).size;
+  return new Set(rounded).size === distinct ? rounded : rates.map((hz) => String(hz));
 }

@@ -7,7 +7,7 @@
 
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
-import { describeFormat, formatRate, formatWallClock } from '../edf/header.js';
+import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { formatBytes, formatDuration } from '../format/number.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -97,13 +97,16 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   for (const group of plan.groups) {
     for (const channel of group.channels) fileFor.set(channel.signal.index, group.fileName);
   }
-  for (const signal of signals) {
+  // Rendered as a group so that two channels recorded at different rates never show the
+  // same figure in the RATE column, which is the one thing this table is asked to settle.
+  const rateText = formatRates(signals.map((signal) => signal.samplingRate));
+  for (const [row, signal] of signals.entries()) {
     rows.push([
       String(signal.index),
       printable(plan.columnNames.get(signal.index) ?? ''),
       printable(signal.label),
       printable(signal.physicalDimension),
-      `${formatRate(signal.samplingRate)} Hz`,
+      `${rateText[row]} Hz`,
       `${signal.physicalMin} to ${signal.physicalMax}`,
       fileFor.get(signal.index) ?? '(not selected)',
     ]);

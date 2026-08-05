@@ -241,6 +241,26 @@ describe('converting', () => {
     assert.deepEqual([...seen.entries()].sort(), [['slowA', 2], ['slowB', 4]]);
   });
 
+  it('names each rate file for the rate it actually holds', async () => {
+    // 1e-6 Hz and 1.25e-6 Hz both round to "0.000001" at six decimals, so both wanted the
+    // name signals_0_000001hz.csv. The numbered fallback kept them apart, but it did it by
+    // calling one of them signals_0_000001hz_2.csv — leaving the plain name on the file
+    // holding 1.25e-6 Hz, which is the one rate that name rules out.
+    const dir = await outDir();
+    const result = await convert(fixture('rate-decimal-collision.edf'), { outputDir: dir });
+
+    const named = new Map();
+    for (const file of result.files.filter((f) => f.name.startsWith('signals'))) {
+      const rows = await readCsv(dir, file.name);
+      named.set(rows[0].split(',')[1], file.name);
+    }
+    assert.deepEqual(
+      [...named.entries()].sort(),
+      [['slow', 'signals_0_000001hz.csv'], ['slower', 'signals_0_00000125hz.csv']],
+      'no numbered suffix, and each name states its own rate',
+    );
+  });
+
   it('keeps annotations on and past the end of the data when no window was asked for', async () => {
     // Filtering to [0, duration) on a whole-file conversion dropped the events at 3.0 and
     // 3.5 of a three-second recording, and no flag could bring them back.

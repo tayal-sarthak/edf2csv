@@ -3,7 +3,58 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
-## 0.2.33
+## 0.2.34
+
+### Fixed: `--info` could report a size the conversion then exceeded
+
+The estimate took a channel's integer digits from the floor of its physical bound, but cells
+are written with `toFixed`, which rounds. A channel bounded at 999.9999 and written to two
+decimals produces `1000.00` — seven characters where the floor suggests six — so every cell on
+such a channel was budgeted a byte short:
+
+```
+edf2csv sensor.edf --info   ->  Would write 200 rows, roughly 1.3 KB
+edf2csv sensor.edf --out .  ->  signals.csv is 1.4 KB
+```
+
+It showed on unsigned channels. A signed one budgets a sign on every cell and the positive half
+of its samples never spends it, and that slack absorbed the missing character.
+
+The bound is now measured as it renders. Across 40,000 generated calibrations the estimate went
+from 2,726 under-reports to none, and every fixture is now checked for it rather than the one
+calibration that exposed it.
+
+One case remains outside the estimate rather than under it, and is now documented as such:
+nothing obliges a recording to keep its samples inside the digital range it declares, and one
+that does not maps outside the physical range too. Clamping the data to make the estimate true
+is not a trade worth making.
+
+### Fixed: two different sampling rates could be reported as the same rate
+
+`formatRate` rounds to six decimals, which is what keeps 30 samples in a 0.1-second record on
+screen as `300` rather than `299.99999999999994`. Two rates closer than that then rendered
+identically, and a file carrying 1e-6 Hz and 1.25e-6 Hz said:
+
+```
+warning: Channels use 2 different sampling rates (0.000001 Hz, 0.000001 Hz).
+```
+
+Announcing two rates and printing one twice — the same contradiction the exponent fallback
+already removed for rates that round away to zero, one rounding step further out.
+
+The output filenames had the sharper version of it. Both rates wanted `signals_0_000001hz.csv`,
+and the numbering added in 0.2.2 kept them apart by calling one `signals_0_000001hz_2.csv` —
+which left the plain name on the file holding 1.25e-6 Hz, the one rate that name rules out.
+
+Rates shown together are now rendered together, and switch to their shortest exact form when
+rounding would collapse them. This affects the `--info` table, the mixed-rate warning and the
+output filenames. Ordinary recordings are unchanged: `signals_256hz.csv` is still
+`signals_256hz.csv`, and every fixture's CSV content is byte-identical to 0.2.33.
+
+### Added
+
+`formatRates(rates)` is exported alongside `formatRate` for callers rendering more than one rate
+at a time.
 
 ## 0.2.33
 
