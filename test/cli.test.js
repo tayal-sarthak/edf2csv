@@ -488,6 +488,50 @@ describe('converting several recordings at once', () => {
     JSON.parse(one.stdout);
   });
 
+  it('expands a folder to the recordings inside it, keeping their layout', async () => {
+    // Recordings arrive organised into folders, and a shell has no tidy way to reach them —
+    // which is why the recipes carried a `find` incantation. Passing the folder is the
+    // obvious thing to try, and it used to fail with "is a directory, not an EDF file".
+    const dir = await stage({
+      'study/night-1/rec.edf': 'tiny.edf',
+      'study/night-2/rec.edf': 'annotations.edf',
+      'study/top.bdf': 'biosemi.bdf',
+    });
+    await writeFile(path.join(dir, 'study', 'notes.txt'), 'not a recording');
+
+    // Not --quiet: the closing count is what proves notes.txt was left out of the list.
+    const { code, stderr } = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'csv')]);
+    assert.equal(code, 0);
+    assert.match(stderr, /Converted 3 of 3 recordings/u, 'notes.txt is not a recording');
+
+    // The layout is kept, which is also what keeps two recordings named rec.edf apart:
+    // flattening to <out>/rec would have made them collide and refused the whole run.
+    for (const expected of ['night-1/rec', 'night-2/rec', 'top']) {
+      const written = await readdir(path.join(dir, 'csv', ...expected.split('/')));
+      assert.ok(written.includes('signals.csv'), `${expected} should hold a conversion`);
+    }
+    // The two same-named recordings kept their own data.
+    const one = await readFile(path.join(dir, 'csv', 'night-1', 'rec', 'signals.csv'), 'utf8');
+    const two = await readFile(path.join(dir, 'csv', 'night-2', 'rec', 'signals.csv'), 'utf8');
+    assert.equal(one.split('\n')[0], 'time_s,ch1,ch2');
+    assert.equal(two.split('\n')[0], 'time_s,EEG Fpz-Cz');
+  });
+
+  it('says so when a folder holds no recordings', async () => {
+    const dir = await stage({ 'keep.edf': 'tiny.edf' });
+    await mkdir(path.join(dir, 'empty'), { recursive: true });
+    const { code, stderr } = await cli([path.join(dir, 'empty'), '--out', path.join(dir, 'x')]);
+    assert.equal(code, 2);
+    assert.match(stderr, /No EDF or BDF recordings found/u);
+  });
+
+  it('still reports a named file that does not exist', async () => {
+    // Expansion must not quietly drop a path just because it is not a directory.
+    const { code, stderr } = await cli([fixture('nope.edf'), '--quiet']);
+    assert.equal(code, 1);
+    assert.match(stderr, /no such file/u);
+  });
+
   it('produces the same files whether or not conversions run at once', async () => {
     // Converting is CPU-bound, so --jobs runs each recording in its own process. Whatever
     // that changes about ordering and buffering, it must not change a single byte written.

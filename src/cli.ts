@@ -11,6 +11,7 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { fork } from 'node:child_process';
 import path from 'node:path';
@@ -24,13 +25,14 @@ import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson } from './cli/report.js';
+import { listed } from './format/list.js';
 import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
 Convert EDF, EDF+ and BDF recordings to CSV
 
 Usage
-  edf2csv <recording.edf> [more.edf ...] [options]
+  edf2csv <recording.edf | folder> [more ...] [options]
 
 Options
   -i, --info             Show the recording's structure and estimated output size,
@@ -56,6 +58,8 @@ Options
   -V, --version          Show the version
 
 Several recordings
+  A folder is expanded to every .edf and .bdf inside it, at any depth, and the
+  layout is kept: recordings in sub-folders come out in sub-folders.
   Pass more than one and each is converted in turn. Without --out each lands
   beside itself as usual; with --out that directory becomes the parent and each
   recording gets its own inside it. A file that cannot be read is reported and
@@ -77,6 +81,7 @@ Examples
   edf2csv recording.edf --annotations-only
   edf2csv /data/*.edf --out ./converted
   edf2csv /data/*.edf --out ./converted --jobs auto
+  edf2csv /data/study --out ./converted --jobs auto
 `;
 
 /** A problem with how the command was invoked, as opposed to a problem with the file. */
@@ -164,7 +169,19 @@ export async function main(argv: readonly string[]): Promise<number> {
     return EXIT_USAGE;
   }
 
-  const inputs = positionals;
+  let expanded: Input[];
+  try {
+    expanded = await expandInputs(positionals);
+  } catch (error) {
+    return reportError(error);
+  }
+  if (expanded.length === 0) {
+    process.stderr.write(
+      `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${p}"`))}.\n`,
+    );
+    return EXIT_USAGE;
+  }
+  const inputs = expanded.map((entry) => entry.path);
   const batch = inputs.length > 1;
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
@@ -209,7 +226,7 @@ export async function main(argv: readonly string[]): Promise<number> {
 
   try {
     const outOption = typeof values['out'] === 'string' ? values['out'] : undefined;
-    const destinations = destinationsFor(inputs, outOption);
+    const destinations = destinationsFor(expanded, outOption);
     assertDistinct(inputs, destinations);
 
     const shared = {
@@ -504,6 +521,52 @@ async function convertOne(
   }
 }
 
+/** A recording to convert, and the path its output should be named after. */
+interface Input {
+  /** Where the recording is. */
+  path: string;
+  /**
+   * What to call its output, relative to `--out`.
+   *
+   * For a file named on the command line this is just its own name. For one found by
+   * expanding a directory it keeps the position it had inside that directory, so a study
+   * laid out as one folder per night comes out the same shape — and, more to the point, so
+   * that fifty recordings all named `rec.edf` do not all claim `<out>/rec`.
+   */
+  name: string;
+}
+
+/**
+ * Recordings to convert, with directories expanded to what is inside them.
+ *
+ * A directory yields every `.edf` and `.bdf` beneath it, at any depth. Recordings arrive
+ * organised into folders, and a shell has no tidy way to reach them — which is why the
+ * recipes here carried a `find` incantation to do it. Passing the folder is the obvious
+ * thing to try, and it used to fail with "is a directory, not an EDF file".
+ */
+async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
+  const found: Input[] = [];
+  for (const given of positionals) {
+    const info = await stat(given).catch(() => null);
+    if (info === null || !info.isDirectory()) {
+      // Anything that is not a directory is passed through untouched, so a file that does
+      // not exist still reports itself rather than vanishing from the list.
+      found.push({ path: given, name: path.basename(given) });
+      continue;
+    }
+    for (const entry of await readdir(given, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !/\.(edf|bdf)$/iu.test(entry.name)) continue;
+      // parentPath is the directory the entry was found in, which for a recursive read is
+      // below the one that was asked for.
+      const full = path.join(entry.parentPath ?? given, entry.name);
+      found.push({ path: full, name: path.relative(given, full) });
+    }
+  }
+  // A directory hands them back in whatever order the filesystem stored them.
+  found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return found;
+}
+
 /**
  * Where each recording's output goes.
  *
@@ -515,17 +578,17 @@ async function convertOne(
  * With no `--out` at all, every recording converts beside itself exactly as it would have
  * done alone, so a glob behaves like the shell loop it replaces.
  */
-function destinationsFor(inputs: readonly string[], out: string | undefined): string[] {
-  if (out === undefined) return inputs.map((input) => defaultOutputDir(input));
+function destinationsFor(inputs: readonly Input[], out: string | undefined): string[] {
+  if (out === undefined) return inputs.map((input) => defaultOutputDir(input.path));
   if (inputs.length === 1) return [out];
-  return inputs.map((input) => path.join(out, stemOf(input)));
+  return inputs.map((input) => path.join(out, stemOf(input.name)));
 }
 
-/** File name without its extension, keeping a leading dot: `.hidden.edf` -> `.hidden`. */
-function stemOf(file: string): string {
-  const base = path.basename(file);
-  const dot = base.lastIndexOf('.');
-  return dot > 0 ? base.slice(0, dot) : base;
+/** A name without its extension, keeping a leading dot: `.hidden.edf` -> `.hidden`. */
+function stemOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  const slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+  return dot > slash + 1 ? name.slice(0, dot) : name;
 }
 
 /**

@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.3
+
+### Added: a folder as input
+
+```bash
+edf2csv /data/study --out ./converted --jobs auto
+```
+
+Every `.edf` and `.bdf` inside is converted, at any depth. Recordings arrive organised into
+folders and a shell has no tidy way to reach them, which is why the recipes here carried a
+`find` incantation to do it. Passing the folder is the obvious thing to try, and until now it
+failed with "is a directory, not an EDF file".
+
+**The layout is kept.** A recording at `study/night-1/rec.edf` comes out at
+`converted/night-1/rec`. That is not only tidiness: one folder per night with the file always
+called `rec.edf` is a normal way to lay out a study, and flattening those onto their file names
+would have every one of them claim `converted/rec` — which 0.4.0 correctly refuses, so the
+whole run would have stopped before writing anything.
+
+Anything in the folder that is not a recording is skipped, and a folder holding none says so
+rather than converting nothing in silence:
+
+```
+No EDF or BDF recordings found in "/data/empty".
+```
+
+A path that is not a directory is passed through untouched, so a file named on the command line
+that does not exist still reports itself instead of quietly vanishing from the list.
+
+Folders and files can be mixed in one command, and everything else — `--jobs`, `--out`,
+`--channels`, the time window — applies to the lot.
+
 ## 0.4.2
 
 ### Added: `--jobs`, converting several recordings at once

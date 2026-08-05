@@ -12,7 +12,7 @@ order: 2
 edf2csv <recording.edf> [options]
 ```
 
-At least one input file is required, except with `--help` and `--version`. Pass several and each is converted in turn, so a glob does what a shell loop used to:
+At least one input is required, except with `--help` and `--version`. It can be a recording or a folder of them, and several can be given at once, so a glob does what a shell loop used to:
 
 ```bash
 edf2csv /data/recordings/*.edf --out /data/csv
@@ -38,6 +38,20 @@ Two recordings that would land in the same directory are refused before anything
 ```
 error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.
        Convert them separately, or rename one of them.
+```
+
+A folder is expanded to every `.edf` and `.bdf` inside it, at any depth, which is usually easier than getting a shell to do it:
+
+```bash
+edf2csv /data/study --out ./converted --jobs auto
+```
+
+The layout is kept — a recording at `study/night-1/rec.edf` comes out at `converted/night-1/rec` — which is also what keeps recordings apart. One folder per night with the file always called `rec.edf` is a normal way to organise a study, and flattening those onto their file names would have every one of them claim `converted/rec`.
+
+Anything in the folder that is not a recording is skipped, and a folder holding none says so rather than converting nothing in silence:
+
+```
+No EDF or BDF recordings found in "/data/empty".
 ```
 
 `--stdout` still takes a single recording, since one stream holds one table.

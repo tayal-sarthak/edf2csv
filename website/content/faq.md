@@ -437,7 +437,13 @@ row count of every file that was written.
 
 ## How do I convert a whole directory of recordings?
 
-Pass them all at once. Each is converted in turn, and `--out` names the parent they go under:
+Point it at the folder:
+
+```bash
+edf2csv /data/recordings --out /data/converted --jobs auto
+```
+
+Every `.edf` and `.bdf` inside is converted, at any depth, and each gets its own directory under `/data/converted` keeping the position it had. Naming the files individually works too:
 
 ```bash
 edf2csv /data/recordings/*.edf --out /data/converted
