@@ -16,7 +16,7 @@ import { createGzip, gzipSync } from 'node:zlib';
 import path from 'node:path';
 
 import { EdfFile } from '../edf/reader.js';
-import { describeFormat, formatWallClock } from '../edf/header.js';
+import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
@@ -134,8 +134,13 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       if (plan.groups.length !== 1) {
         throw new ConversionError(
           'OUTPUT_UNWRITABLE',
-          `--stdout needs exactly one table, but this recording produces ${plan.groups.length} ` +
-            `(its channels use ${plan.groups.length} different sampling rates).`,
+          // Naming the rates is the point: the hint says to narrow the selection, and this
+          // is what there is to narrow it to. The parenthetical used to repeat the count
+          // that had just been given — "produces 3 (its channels use 3 different sampling
+          // rates)" — which told nobody anything they could act on.
+          `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
+            `one for each sampling rate its channels use ` +
+            `(${formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`).join(', ')}).`,
           'Narrow it to one rate with --channels, or convert to a directory instead.',
         );
       }

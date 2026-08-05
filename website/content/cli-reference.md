@@ -240,7 +240,7 @@ error: --duration is empty. Try a value like 30s, 5m, or 00:30:00.
 The window is half-open: a sample at exactly the start offset is included, a sample at exactly the end offset isn't. A requested end past the end of the recording is clamped silently, so `--end 999h` on a two-hour file converts to the end. A start at or past the end of the recording is an error, because the result would be an empty file that looks like a successful conversion:
 
 ```
-error: --start 4h is at or past the end of this 2h 12m 30s recording.
+error: --start "4h" is at or past the end of this 2h 12m 30s recording.
 ```
 
 An end that isn't after the start is likewise an error.
@@ -355,7 +355,7 @@ stream holds one table. For the same reason it needs the recording to produce ex
 refuses a mixed-rate file rather than merging tables that have different row counts:
 
 ```
-error: --stdout needs exactly one table, but this recording produces 3 (its channels use 3 different sampling rates).
+error: --stdout needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
        Narrow it to one rate with --channels, or convert to a directory instead.
 ```
 

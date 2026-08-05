@@ -134,6 +134,26 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /one at a time/);
   });
 
+  it('quotes the time it was given, so the value has visible edges', async () => {
+    // The parse errors have always quoted the value; the range errors did not, and the
+    // value ran into the sentence. `--start "  5s  "` printed as `--start   5s   is at or
+    // past the end`, where the value looks like `5s   is` and the surrounding spaces —
+    // the actual reason a shell-built argument went wrong — cannot be seen at all.
+    const spaced = await cli([fixture('tiny.edf'), '--start', '  5s  ', '--info']);
+    assert.equal(spaced.code, 2);
+    assert.match(spaced.stderr, /--start " {2}5s {2}" is at or past the end/u);
+
+    // The typed form is echoed, not the seconds it parsed to.
+    const hours = await cli([fixture('tiny.edf'), '--start', '4h', '--info']);
+    assert.match(hours.stderr, /--start "4h" is at or past/u);
+    assert.ok(!hours.stderr.includes('14400'), 'never a value the user did not type');
+
+    // With no --start there is nothing typed to quote, so the parsed value is shown plainly.
+    const noStart = await cli([fixture('tiny.edf'), '--end', '0', '--info']);
+    assert.equal(noStart.code, 2);
+    assert.match(noStart.stderr, /ends at "0", which is not after its start at 0s/u);
+  });
+
   it('rejects an unparseable time', async () => {
     const { code, stderr } = await cli([fixture('tiny.edf'), '--start', 'banana']);
     assert.equal(code, 2);
@@ -524,6 +544,8 @@ describe('--stdout', () => {
     assert.equal(code, 1);
     assert.match(stderr, /exactly one table/);
     assert.match(stderr, /--channels/, 'the message should say how to narrow it');
+    // Naming the rates is what makes the advice actionable: these are what to narrow to.
+    assert.match(stderr, /256 Hz, 128 Hz, 1 Hz/u, 'the rates on offer must be listed');
   });
 
   it('accepts the same recording once narrowed to one rate', async () => {

@@ -200,10 +200,18 @@ export function resolveRange(options: {
   else endSeconds = latest;
 
   if (startSeconds >= latest) {
-    // Quote what was typed. Reporting the parsed seconds meant `--start 4h` came back as
-    // "--start 14400s is at or past the end", which reads as a value the user never gave.
+    /*
+      Quote what was typed. Reporting the parsed seconds meant `--start 4h` came back as
+      "--start 14400s is at or past the end", which reads as a value the user never gave.
+
+      In quotation marks, which the parse errors above have always used and this did not.
+      Without them the value ran into the sentence: `--start "  5s  "` printed as
+      `--start   5s   is at or past the end`, where the value appears to be `5s   is` and
+      the surrounding spaces — the actual reason a shell-built argument went wrong — are
+      invisible.
+    */
     throw new TimeRangeError(
-      `--start ${options.startText ?? formatSeconds(startSeconds)} is at or past the end of this ` +
+      `--start ${quoted(options.startText, startSeconds)} is at or past the end of this ` +
         `${formatSeconds(latest)} recording.`,
     );
   }
@@ -211,10 +219,11 @@ export function resolveRange(options: {
     // Quote whatever the caller actually gave, for the same reason as the error above. The
     // end is only echoed when --end was passed: with --duration the end is computed here,
     // so there is no typed value to quote and the arithmetic result is the honest thing.
-    const endShown = options.end !== undefined && options.endText !== undefined
-      ? options.endText
-      : formatSeconds(endSeconds);
-    const startShown = options.startText ?? formatSeconds(startSeconds);
+    const endShown =
+      options.end !== undefined && options.endText !== undefined
+        ? quoted(options.endText, endSeconds)
+        : formatSeconds(endSeconds);
+    const startShown = quoted(options.startText, startSeconds);
     throw new TimeRangeError(
       `The requested window ends at ${endShown}, which is not after its start at ${startShown}.`,
     );
@@ -278,6 +287,15 @@ function selectRecords(
     }
   }
   return first < last ? { startRecord: first, endRecord: last } : { startRecord: 0, endRecord: 0 };
+}
+
+/**
+ * The value as the caller typed it, in quotation marks, or the parsed seconds if they gave
+ * none. The marks show where the value begins and ends, which matters most for the values
+ * that went wrong because of what surrounds them.
+ */
+function quoted(text: string | undefined, seconds: number): string {
+  return text === undefined ? formatSeconds(seconds) : `"${text}"`;
 }
 
 function formatSeconds(seconds: number): string {

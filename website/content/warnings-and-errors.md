@@ -582,7 +582,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | A position that doesn't exist | `No channel at position #9.` |
 | An unparseable time value | `--start "banana" is not a time I understand.` |
 | `--duration` and `--end` together | `Use either --duration or --end, not both.` |
-| `--start` at or past the end of the recording | `--start 600s is at or past the end of this 2s recording.` |
+| `--start` at or past the end of the recording | `--start "600s" is at or past the end of this 2s recording.` |
 | A window that ends before it starts | `The requested window ends at 1s, which is not after its start at 5s.` |
 
 A term that matches no channel is an error rather than a silent omission, and the message suggests the closest labels in the file. Quietly dropping a channel you explicitly asked for would hand you a CSV missing data you believe is in it.

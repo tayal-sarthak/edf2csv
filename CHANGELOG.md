@@ -3,6 +3,50 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.6
+
+### Fixed: time errors did not show where the value they quote begins and ends
+
+The errors from parsing a time have always quoted what was typed. The errors from applying it
+did not, so the value ran into the sentence around it:
+
+```
+edf2csv recording.edf --start "  5s  "
+error: --start   5s   is at or past the end of this 2s recording.
+```
+
+Read back, the value appears to be `5s   is`, and the surrounding spaces — which are the whole
+reason a time assembled by a shell went wrong — cannot be seen at all. Both kinds of message
+now quote it the same way:
+
+```
+error: --start "  5s  " is at or past the end of this 2s recording.
+```
+
+Where nothing was typed there is nothing to quote, so a window rejected because of a computed
+end still reports the arithmetic plainly: `ends at "0", which is not after its start at 0s`.
+What is quoted is what the caller wrote, never a value derived from it — `--start 4h` has never
+reported itself as `14400s`.
+
+### The `--stdout` refusal now names the rates instead of restating its own count
+
+```
+--stdout needs exactly one table, but this recording produces 3 (its channels use 3 different sampling rates).
+       Narrow it to one rate with --channels, or convert to a directory instead.
+```
+
+The hint says to narrow the selection; the message spent its parenthetical repeating the number
+it had just given, and never said what there was to narrow to:
+
+```
+--stdout needs exactly one table, but this recording produces 3, one for each sampling rate its
+channels use (256 Hz, 128 Hz, 1 Hz).
+       Narrow it to one rate with --channels, or convert to a directory instead.
+```
+
+It follows the selection, like the mixed-rate warning did in 0.3.2: narrowing a three-rate
+recording to two reports those two.
+
 ## 0.3.5
 
 ### The cross-check now covers BDF and annotations
