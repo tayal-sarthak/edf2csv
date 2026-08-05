@@ -70,7 +70,7 @@ edf2csv sleep-study.edf --info
 ```
 File       sleep-study.edf
 Format     EDF+ (continuous)
-Recorded   2002-03-02 22:15:00 UTC
+Recorded   2002-03-02 22:15:00
 Duration   3s  (3 records of 1s)
 Size       1.5 KB
 Patient    MCH-0234567 F 02-MAY-1951 Haagse_Harry
@@ -93,10 +93,10 @@ day-first: `05.06.09` is 5 June 2009, not 6 May.
 01.01.85  ->  1985-01-01
 ```
 
-There's no time zone. The instant is whatever local clock the recording hardware had. `edf2csv`
-reports it as UTC because it has to report it as something, and preserves the raw text of both
-fields in `metadata.json` as `start_date_raw` and `start_time_raw` so nothing is lost to
-interpretation.
+There's no time zone. The instant is whatever local clock the recording hardware had, so `edf2csv`
+reports it without one — as a bare wall clock in `--info` and as `start_datetime_local` in
+`metadata.json`. Labelling it UTC would shift it by the reader's own offset. The raw text of both
+fields survives as `start_date_raw` and `start_time_raw` so nothing is lost to interpretation.
 
 A few practical details. The spec writes the separator as a dot, but real files use `-` and `/` in
 dates and `:` and `-` in times, and all of those are accepted. A seconds value of 60 (a leap

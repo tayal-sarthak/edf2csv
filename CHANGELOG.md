@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.12
+
+### Fixed: annotation channels were never pluralised
+
+A file carrying more than one `EDF Annotations` channel — which EDF+ permits — reported
+`2 annotation channel` in `--info`. The signal count beside it had been pluralised all along.
+
+### Docs: five claims that no longer matched the tool
+
+Corrected against the actual output rather than reworded:
+
+- Four `--info` examples showed `Recorded 2019-11-04 22:15:00 UTC`. The tool prints no ` UTC`, and
+  it should not: EDF stores a zone-less local wall clock, so labelling it UTC shifts it by the
+  reader's own offset. That is the same bug fixed in `metadata.json` when the field was renamed to
+  `start_datetime_local`; the `--info` examples and one paragraph of `edf-format.md` still carried
+  the old claim.
+- `--info ignores --annotations-only` was wrong in the other direction — it reflects the flag, so
+  the estimate describes the command you actually typed. The docs now say so.
+- The "reads the header only, returns in milliseconds" claims are now qualified: true for plain EDF
+  and continuous EDF+, with EDF+D named as the exception where the annotation channel must be
+  scanned to get the span right.
+- `INPUT_OUTPUT_COLLISION` is a live `ConversionError` code and was missing from the API reference's
+  enumeration.
+
 ## 0.2.11
 
 ### Fixed: `--info` read the annotation channel of every record

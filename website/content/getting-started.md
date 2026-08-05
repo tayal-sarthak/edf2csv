@@ -114,7 +114,7 @@ Machine-readable provenance: the tool version, the source path, size and modific
 
 ## Check a file before you convert it
 
-`--info` reads the header only and writes nothing, so it returns immediately whatever the file's size.
+`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way.
 
 ```bash
 edf2csv sleep-study.edf --info
@@ -123,7 +123,7 @@ edf2csv sleep-study.edf --info
 ```text
 File       sleep-study.edf
 Format     EDF
-Recorded   1985-01-01 00:00:00 UTC
+Recorded   1985-01-01 00:00:00
 Duration   3s  (3 records of 1s)
 Size       3.3 KB
 Patient    X X X X

@@ -508,6 +508,8 @@ try {
 }
 ```
 
+`ConversionError.code` is one of `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION` (an output file would resolve to the recording being read) or `WRITE_FAILED`.
+
 `ChannelSelectionError` messages carry a suggestion when the term is close to a real label, and `EdfError` and `ConversionError` both carry a `hint` describing what to do. Both are worth surfacing to a user rather than swallowing.
 
 `WRITE_FAILED` means files were partially written. They are left on disk, incomplete, and shouldn't be used.

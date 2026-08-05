@@ -66,7 +66,7 @@ If the destination path exists but is a regular file rather than a directory, th
 
 ## -i, --info
 
-Reads the header only, prints a description of the recording to stdout, and exits without writing anything. No data records are read, so it returns immediately whatever the file's size.
+Prints a description of the recording to stdout and exits without writing anything. `--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right.
 
 ```bash
 edf2csv sleep-study.edf --info
@@ -75,7 +75,7 @@ edf2csv sleep-study.edf --info
 ```
 File       sleep-study.edf
 Format     EDF+ (continuous)
-Recorded   2019-11-04 22:15:00 UTC
+Recorded   2019-11-04 22:15:00
 Duration   8h 12m 30s  (29550 records of 1s)
 Size       25.1 MB
 
@@ -95,7 +95,7 @@ Reading the table:
 - The `#` column is the channel's position in the file, counted over every channel including the annotation channel. That's why the numbering can skip, as it does above where channel 2 is `EDF Annotations`. Those `#` values are what the `#N` form of `--channels` addresses.
 - `COLUMN` is the CSV column header the channel will get, and `LABEL` is the raw label from the header. They differ only when a label is duplicated or empty (see below).
 - `OUTPUT` names the file the channel would land in, or `(not selected)` when `--channels` excludes it.
-- The row and byte estimates honour `--channels`, `--start`, `--duration`, `--end` and `--decimals`, so you can size a conversion before committing to it. `--info` ignores `--annotations-only`.
+- The row and byte estimates honour `--channels`, `--start`, `--duration`, `--end`, `--decimals` and `--annotations-only`, so the figures describe the command you actually typed. With `--annotations-only` the signal channels read `(not selected)` and the estimate is 0 rows, because that run would write no signal data.
 - If the recording has a `Patient` or `Recording` identification field, it's echoed above the table. EDF headers commonly carry patient identifiers, so treat `--info` output as sensitive before pasting it into a ticket.
 
 Warnings raised while parsing the header — mixed rates, a truncated file, a degenerate calibration — go to stderr, never into the table.

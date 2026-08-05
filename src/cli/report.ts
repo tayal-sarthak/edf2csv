@@ -59,7 +59,16 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
 
   const signals = file.dataSignals;
   lines.push('');
-  lines.push(`Channels   ${signals.length} signal${signals.length === 1 ? '' : 's'}${file.annotationSignals.length > 0 ? ` + ${file.annotationSignals.length} annotation channel` : ''}`);
+  // The signal count was pluralised but the annotation-channel count was not, so a file
+  // carrying two of them read "2 annotation channel". EDF+ permits more than one.
+  const annotationCount = file.annotationSignals.length;
+  const annotationPart =
+    annotationCount > 0
+      ? ` + ${annotationCount} annotation channel${annotationCount === 1 ? '' : 's'}`
+      : '';
+  lines.push(
+    `Channels   ${signals.length} signal${signals.length === 1 ? '' : 's'}${annotationPart}`,
+  );
   lines.push('');
 
   const rows: string[][] = [['#', 'COLUMN', 'LABEL', 'UNIT', 'RATE', 'RANGE', 'OUTPUT']];
