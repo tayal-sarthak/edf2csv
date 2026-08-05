@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.20
+
+### Improved: the `--info` size estimate is closer, and never promises less than it writes
+
+`--info` prints an estimated output size, which is the number people use to decide whether a
+conversion is worth starting. Every cell was budgeted at `decimals + 6` bytes regardless of the
+channel — six characters for a sign, integer digits and a decimal point, whatever the channel
+actually held. Across the fixture set that ran 30–55% high, and on one file it ran 15% *low*, which
+is the worse direction: the estimate promised less than the conversion wrote.
+
+Cell width is now derived from the channel's own declared physical range, and the row includes its
+real commas, newline and header. Across the same fixtures the worst deviation drops from 55% to 40%,
+typical files land within 5–25%, and nothing under-estimates any more.
+
+It still reads slightly high, because most samples sit well below their channel's maximum and print
+shorter than the bound allows. For a size estimate that is the right direction to err in.
+
 ## 0.2.19
 
 ### Fixed: the window error quoted parsed seconds for `--end` too

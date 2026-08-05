@@ -216,6 +216,13 @@ export function rateSlug(rate: number): string {
   return `${formatRate(rate).replace('.', '_')}hz`;
 }
 
+/** Characters a fixed-decimal number of this magnitude occupies, sign included. */
+function widthOf(magnitude: number, decimals: number, signed = false): number {
+  const whole = Math.floor(Math.abs(magnitude));
+  const intDigits = !Number.isFinite(whole) || whole < 1 ? 1 : Math.floor(Math.log10(whole)) + 1;
+  return (signed ? 1 : 0) + intDigits + (decimals > 0 ? 1 + decimals : 0);
+}
+
 function estimateOutput(
   groups: readonly RateGroup[],
   range: ResolvedRange,
@@ -243,10 +250,33 @@ function estimateOutput(
     rows += groupRows;
     if (groupRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
 
-    // A cell is roughly the sign, a few integer digits, the point and its decimals.
-    const timeWidth = group.timeDecimals + 6;
-    const cellWidth = group.channels.reduce((sum, c) => sum + c.decimals + 6, 0);
-    bytes += groupRows * (timeWidth + cellWidth + 1);
+    /*
+      Width per cell, from the channel's own calibration rather than a flat allowance.
+
+      The old `decimals + 6` budgeted six characters for the sign, integer part and decimal
+      point on every channel, whatever it actually held. That over-counted a millivolt
+      channel spanning ±5 by four characters a cell and ran 30-55% high across the fixture
+      set — on a number people use to decide whether a conversion is worth starting.
+
+      A cell can be no wider than its declared physical range allows, so that bound is what
+      is used. Most samples sit below the maximum, so this still reads slightly high, which
+      is the right direction for a size estimate to err in.
+    */
+    const timeWidth = widthOf(range.endSeconds, group.timeDecimals);
+    const cellWidth = group.channels.reduce(
+      (sum, c) =>
+        sum +
+        widthOf(
+          Math.max(Math.abs(c.signal.physicalMin), Math.abs(c.signal.physicalMax)),
+          c.decimals,
+          c.signal.physicalMin < 0 || c.signal.physicalMax < 0,
+        ),
+      0,
+    );
+    // One comma per channel, plus the newline.
+    bytes += groupRows * (timeWidth + cellWidth + group.channels.length + 1);
+    // The header row: the column names, their commas and a newline.
+    bytes += 'time_s'.length + group.channels.reduce((n, c) => n + c.column.length + 1, 0) + 1;
   }
 
   return { rows, bytes, exceedsSpreadsheetLimit: exceeds };
