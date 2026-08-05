@@ -97,6 +97,7 @@ Reading the table:
 - `OUTPUT` names the file the channel would land in, or `(not selected)` when `--channels` excludes it.
 - The row and byte estimates honour `--channels`, `--start`, `--duration`, `--end`, `--decimals` and `--annotations-only`, so the figures describe the command you actually typed. With `--annotations-only` the signal channels read `(not selected)` and the estimate is 0 rows, because that run would write no signal data.
 - If the recording has a `Patient` or `Recording` identification field, it's echoed above the table. EDF headers commonly carry patient identifiers, so treat `--info` output as sensitive before pasting it into a ticket.
+- Header text is free text from the file, so control bytes in it are printed as their escape (`\x1b`, `\x0d`) rather than sent to the terminal. A header carrying ANSI sequences would otherwise be able to clear your screen or repaint the output. `channels.csv` and `metadata.json` still record the field verbatim.
 
 Warnings raised while parsing the header — mixed rates, a truncated file, a degenerate calibration — go to stderr, never into the table.
 

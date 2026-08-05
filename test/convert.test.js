@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -288,6 +288,56 @@ describe('converting', () => {
       ['signals.csv'],
       'one rate means one unsuffixed file',
     );
+  });
+
+  it('reports exactly what it wrote, for every fixture and mode', async () => {
+    /*
+      One invariant covering a whole class of bug: what the run says it produced must match
+      what is on disk. Individual pieces of this have gone wrong before — two rate groups
+      claiming one filename, annotations counted but not written — and each was found only
+      because someone looked at that specific file. Checking the agreement directly means
+      the next such disagreement fails here instead.
+    */
+    const fixtures = (await readdir(FIXTURES)).filter((n) => /\.(edf|bdf)$/u.test(n));
+    assert.ok(fixtures.length > 10, 'fixtures should be generated before this runs');
+
+    for (const name of fixtures) {
+      for (const [mode, options] of [
+        ['plain', {}],
+        ['window', { start: 0, end: 1 }],
+        ['annotationsOnly', { annotationsOnly: true }],
+      ]) {
+        const dir = await outDir();
+        let result;
+        try {
+          result = await convert(path.join(FIXTURES, name), { outputDir: dir, ...options });
+        } catch {
+          continue; // a fixture that legitimately refuses this mode
+        }
+        const where = `${name} [${mode}]`;
+        const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
+
+        for (const written of result.files) {
+          const rows = await readCsv(dir, written.name);
+          assert.equal(rows.length - 1, written.rows, `${where}: ${written.name} row count`);
+        }
+
+        for (const group of metadata.conversion.rate_groups ?? []) {
+          const header = (await readCsv(dir, group.file))[0].split(',').slice(1);
+          assert.deepEqual(header, group.channels, `${where}: ${group.file} columns vs rate_groups`);
+          assert.equal(group.decimals.length, group.channels.length, `${where}: decimals length`);
+        }
+
+        const annotations = result.files.find((f) => f.name === 'annotations.csv');
+        if (annotations) {
+          assert.equal(
+            metadata.conversion.annotations_written,
+            annotations.rows,
+            `${where}: annotations_written vs annotations.csv`,
+          );
+        }
+      }
+    }
   });
 
   it('records provenance in metadata.json', async () => {

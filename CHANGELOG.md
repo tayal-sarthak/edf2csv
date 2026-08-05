@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.22
+
+### One invariant now covers a whole class of bug
+
+A test asserts that what a run *reports* matches what is actually on disk, across every generated
+fixture in three modes: each reported row count against the real file, each `rate_groups` entry
+against the real CSV header and decimal count, and `annotations_written` against `annotations.csv`.
+
+Pieces of this have gone wrong before — two rate groups claiming one filename in 0.2.1, annotations
+counted but not written in 0.2.4 — and each was caught only because someone looked at that particular
+file. Checking the agreement directly means the next such disagreement fails the suite instead of
+reaching a release. 96 tests now.
+
+### Docs
+
+The `--info` reference now states that control bytes in header text are printed as escapes rather
+than sent to the terminal, and that `channels.csv` and `metadata.json` still record the field
+verbatim — the behaviour introduced in 0.2.21.
+
 ## 0.2.21
 
 ### Fixed: a recording's header could drive your terminal
