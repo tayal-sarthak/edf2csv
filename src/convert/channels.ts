@@ -9,6 +9,7 @@
  */
 
 import type { EdfSignal } from '../edf/header.js';
+import { listed } from '../format/list.js';
 
 export class ChannelSelectionError extends Error {
   constructor(message: string) {
@@ -96,7 +97,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       if (!/^\d+$/u.test(position)) {
         throw new ChannelSelectionError(
           `"${term}" is not a channel position: a position is #0, #1, #2 and so on.\n` +
-            `This file has signal channels at #${candidates.map((s) => s.index).join(', #')}.`,
+            `This file has signal channels at ${listed(candidates.map((s) => `#${s.index}`))}.`,
         );
       }
       const index = Number(position);
@@ -104,7 +105,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       if (!signal) {
         throw new ChannelSelectionError(
           `No channel at position ${term}. This file has signal channels at ` +
-            `#${candidates.map((s) => s.index).join(', #')}.`,
+            `${listed(candidates.map((s) => `#${s.index}`))}.`,
         );
       }
       chosen.set(signal.index, signal);

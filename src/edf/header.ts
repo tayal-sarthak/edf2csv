@@ -31,6 +31,7 @@
 
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
+import { listed } from '../format/list.js';
 import { decodeLatin1 } from './bytes.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
@@ -483,7 +484,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       severity: 'warning',
       message:
         `Channels use ${rates.size} different sampling rates ` +
-        `(${formatRates([...rates].sort((a, b) => b - a)).map((r) => `${r} Hz`).join(', ')}).`,
+        `(${listed(formatRates([...rates].sort((a, b) => b - a)).map((r) => `${r} Hz`))}).`,
       hint: 'They are written to one file per rate so no channel is resampled.',
     });
   }

@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.7
+
+### Fixed: messages that list what the file contains could run to 1,500 characters
+
+Several messages enumerate something the recording controls — its sampling rates, its channel
+positions. On an ordinary file that is the useful part: the rates are exactly what `--channels`
+has to choose between, so naming them is the point. But how many there are is the header's
+decision, and a recording with 200 auxiliary channels produced this on one line:
+
+```
+warning: Channels use 200 different sampling rates (200 Hz, 199 Hz, 198 Hz, 197 Hz, 196 Hz, … 1 Hz).
+```
+
+1,545 characters. Nothing was wrong with the conversion — all 200 files were written correctly —
+but the sentence that mattered was buried under a wrapped wall of text.
+
+Four messages did this, and two were mine, added while making other messages more helpful:
+
+| message | was | now |
+| --- | --- | --- |
+| mixed-rate warning | 1,545 | 130 |
+| `--stdout` refusal (0.3.6) | 1,612 | 197 |
+| no channel at that position | 1,159 | 114 |
+| malformed position (0.3.3) | 1,130 | 85 |
+
+Each now shows the first eight and counts the rest — `and 192 more` — so the list is cut without
+pretending the tail is not there, and the true total is still stated up front. A `DUPLICATE_LABEL`
+warning, which lists every position sharing a label, got the same treatment.
+
+Recordings small enough to list in full are unchanged, down to the byte: three rates still print
+as `(256 Hz, 128 Hz, 1 Hz)`. The cap only ever fires where the alternative was unreadable.
+
 ## 0.3.6
 
 ### Fixed: time errors did not show where the value they quote begins and ends

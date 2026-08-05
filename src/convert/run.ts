@@ -20,6 +20,7 @@ import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
+import { listed } from '../format/list.js';
 import { fixed, makeSampleFormatter } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
@@ -140,7 +141,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           // rates)" — which told nobody anything they could act on.
           `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
             `one for each sampling rate its channels use ` +
-            `(${formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`).join(', ')}).`,
+            `(${listed(formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
           'Narrow it to one rate with --channels, or convert to a directory instead.',
         );
       }

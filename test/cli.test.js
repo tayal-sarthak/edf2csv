@@ -387,6 +387,41 @@ describe('--info', () => {
   });
 });
 
+describe('messages that enumerate what the file contains', () => {
+  // How many channels a recording has is the file's decision, so every message that lists
+  // them is as long as the file says. A 200-channel recording produced a 1,545-character
+  // warning on one line — nothing was wrong with the conversion, but the sentence that
+  // mattered was buried. Four messages did this, two of them added in 0.3.3 and 0.3.6.
+  const oneLine = (text) => text.trimEnd().split('\n')[0];
+
+  it('caps every list rather than letting the header set the length', async () => {
+    const many = fixture('many-rates.edf');
+
+    const info = await cli([many, '--info']);
+    const warning = info.stderr.split('\n').find((l) => l.includes('different sampling rates'));
+    assert.ok(warning.length < 200, `mixed-rate warning is ${warning.length} chars: ${warning}`);
+    assert.match(warning, /and 32 more/u, 'the remainder is counted, not dropped in silence');
+    assert.match(warning, /40 different sampling rates/u, 'the true total is still stated');
+
+    const stream = await cli([many, '--stdout']);
+    assert.ok(oneLine(stream.stderr).length < 250, `--stdout refusal: ${oneLine(stream.stderr)}`);
+
+    const missing = await cli([many, '--channels', '#999']);
+    assert.ok(oneLine(missing.stderr).length < 200, `position list: ${oneLine(missing.stderr)}`);
+    assert.match(missing.stderr, /and 32 more/u);
+
+    const malformed = await cli([many, '--channels', '#0x2']);
+    assert.ok(malformed.stderr.split('\n')[1].length < 200, 'the position hint is capped too');
+  });
+
+  it('leaves an ordinary recording listed in full', async () => {
+    // The list is the useful part when it fits: these rates are what --channels chooses between.
+    const { stderr } = await cli([fixture('mixed-rates.edf'), '--info']);
+    assert.match(stderr, /3 different sampling rates \(256 Hz, 128 Hz, 1 Hz\)/u);
+    assert.ok(!stderr.includes('more)'), 'nothing is summarised when everything fits');
+  });
+});
+
 describe('--gzip', () => {
   it('writes .csv.gz whose contents match an uncompressed run exactly', async () => {
     const plainDir = await outDir();

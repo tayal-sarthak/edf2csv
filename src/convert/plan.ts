@@ -13,6 +13,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
+import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, selectChannels } from './channels.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
@@ -122,7 +123,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         severity: 'warning',
         message:
           `"${term}" matches ${matched.length} channels (positions ` +
-          `${matched.map((s) => `#${s.index}`).join(', ')}); all of them were selected.`,
+          `${listed(matched.map((s) => `#${s.index}`))}); all of them were selected.`,
         hint: `Use --channels "#${matched[0]?.index ?? 0}" to pick just one.`,
       });
     }
@@ -157,7 +158,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       severity: 'warning',
       message:
         `Channels use ${groups.length} different sampling rates ` +
-        `(${formatRates(groups.map((g) => g.rate)).map((r) => `${r} Hz`).join(', ')}).`,
+        `(${listed(formatRates(groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
       hint: 'They are written to one file per rate so no channel is resampled.',
     });
   }

@@ -170,6 +170,21 @@ export function generate() {
         : buildTal(r),
   });
 
+  // Enough channels that any message listing them all becomes unreadable.
+  //
+  // The header decides how many channels a file has, so any message that enumerates them is
+  // as long as the file says. At 40 rates the mixed-rate warning ran past 300 characters on
+  // one line; a real file with 200 auxiliary channels produced 1,545.
+  writeEdf({
+    path: at('many-rates.edf'),
+    numRecords: 1,
+    recordDuration: 1,
+    signals: Array.from({ length: 40 }, (_, i) => ({
+      label: `ch${i + 1}`, dimension: 'uV', physMin: -100, physMax: 100,
+      digMin: -1000, digMax: 1000, samplesPerRecord: i + 1, gen: (r, s) => (r + s) % 1000,
+    })),
+  });
+
   // Two rates that survive the exponent fallback but collide at six decimals.
   //
   // 4 and 5 samples in a 4,000,000-second record are 1e-6 Hz and 1.25e-6 Hz. Both are above
