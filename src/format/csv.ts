@@ -39,6 +39,8 @@ export class BufferedLineWriter {
   #threshold: number;
   #bytesWritten = 0;
   #ended = false;
+  /** The reader closed the pipe; there is nowhere left to write, but this is not a failure. */
+  #hungUp = false;
   #failure: Error | null = null;
 
   constructor(stream: Writable, threshold: number = DEFAULT_FLUSH_THRESHOLD) {
@@ -47,7 +49,20 @@ export class BufferedLineWriter {
     // A stream with no 'error' listener throws asynchronously and takes the whole
     // process down with a raw stack trace. Capturing the error here lets the next
     // flush surface it as a normal failure with a usable message.
-    this.#stream.on('error', (error: Error) => {
+    this.#stream.on('error', (error: NodeJS.ErrnoException) => {
+      /*
+        EPIPE is the reader hanging up, not a write failure.
+
+        `edf2csv recording.edf --stdout | head -1` closes the pipe while the conversion is
+        still writing, and treating that as an error produced exit 1 and a message about
+        files that do not exist and disk space that is not the problem. A file stream
+        cannot raise EPIPE, so this only ever means "the consumer stopped reading", which
+        is what a shell pipeline does routinely and on purpose.
+      */
+      if (error.code === 'EPIPE') {
+        this.#hungUp = true;
+        return;
+      }
       this.#failure ??= error;
     });
   }
@@ -74,6 +89,9 @@ export class BufferedLineWriter {
 
   async flush(): Promise<void> {
     if (this.#failure) throw this.#failure;
+    // The reader hung up (see the EPIPE note above); there is nowhere left to write.
+    // Deliberately not `#ended`, which end() sets before its own final flush.
+    if (this.#hungUp) return;
     if (this.#parts.length === 0) return;
 
     const chunk = this.#parts.join('');
@@ -101,8 +119,16 @@ export class BufferedLineWriter {
         cleanup();
         resolve();
       };
-      const onError = (error: Error): void => {
+      const onError = (error: NodeJS.ErrnoException): void => {
         cleanup();
+        // A pipe closing while we wait for drain is the same benign hang-up as one
+        // closing during a write, and has to be handled here too: this listener is
+        // registered for the duration of the wait and sees the error first.
+        if (error.code === 'EPIPE') {
+          this.#hungUp = true;
+          resolve();
+          return;
+        }
         reject(error);
       };
       const onClose = (): void => {

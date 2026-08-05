@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.30
+
+### Fixed: `--stdout` piped into `head` reported a write failure
+
+The most ordinary thing you would do with `--stdout` broke it:
+
+```
+$ edf2csv big.edf --stdout | head -1
+time_s,ch1
+error: Writing to stdout failed: write EPIPE
+       The files written so far are incomplete and should not be used. Free up space or
+       choose another destination with --out, then run the conversion again.
+exit 1
+```
+
+Three things wrong at once — exit 1 for a routine shell idiom, a claim about files that were never
+written, and advice about disk space and `--out` that had nothing to do with it.
+
+`EPIPE` is the reader hanging up, not a write failure, and a file stream cannot raise it. The
+buffered writer now treats it as a clean end: writing stops, the run exits 0, and whatever the reader
+did take is intact. Genuine write failures — a full disk, an unwritable path — are unaffected and
+still exit 1 with their message.
+
+It needed handling in two places. The writer's `error` listener catches a pipe that closes during a
+write; a separate listener, registered only while waiting for `drain`, sees one that closes while the
+consumer is behind. Only the first was obvious, and a long conversion is precisely the case that
+reaches the second.
+
 ## 0.2.29
 
 ### Docs: the scripting advice caught up with `--strict`, `--info --json` and `--stdout`

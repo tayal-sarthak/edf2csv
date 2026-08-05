@@ -323,6 +323,21 @@ describe('--stdout', () => {
     assert.match(stderr, /20 rows to stdout/, 'the note belongs on stderr, not in the CSV');
   });
 
+  it('exits cleanly when the reader hangs up mid-stream', async () => {
+    // `edf2csv big.edf --stdout | head -1` closes the pipe while the conversion is still
+    // writing. Treating that as a write failure gave exit 1 plus advice about files that
+    // do not exist and disk space that is not the problem.
+    const { execFile: raw } = await import('node:child_process');
+    const shell = promisify(raw);
+    const { stdout } = await shell(
+      '/bin/bash',
+      ['-c', `"${process.execPath}" "${CLI}" "${fixture('mixed-rates.edf')}" --stdout --channels ECG 2>/dev/null | head -1; echo "exit=\${PIPESTATUS[0]}"`],
+      { maxBuffer: 1 << 20 },
+    );
+    assert.match(stdout, /exit=0/, 'a reader hanging up is not a failure');
+    assert.match(stdout, /^time_s,ECG/u, 'the header still made it through');
+  });
+
   it('refuses a recording that would need more than one table', async () => {
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--stdout']);
     assert.equal(code, 1);
