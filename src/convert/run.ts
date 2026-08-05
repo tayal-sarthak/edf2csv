@@ -497,9 +497,30 @@ function compressed(target: Writable, gzip: boolean): { stream: Writable; settle
   if (!gzip) return { stream: target, settled: Promise.resolve() };
   const compressor = createGzip();
   target.on('error', (error: Error) => compressor.destroy(error));
-  compressor.pipe(target);
-  // stdout is never closed by the writer, so nothing would resolve a wait on it.
-  return { stream: compressor, settled: target === process.stdout ? Promise.resolve() : finished(target) };
+
+  /*
+    pipe() ends its destination when the source ends, and stdout must survive the
+    conversion: the writer already refuses to close it, because a closed stdout breaks
+    every later write in the process. Nothing waits on stdout either — it is not this
+    tool's to finish.
+  */
+  const toStdout = target === process.stdout;
+  compressor.pipe(target, { end: !toStdout });
+  if (toStdout) return { stream: compressor, settled: Promise.resolve() };
+
+  /*
+    A failure under the compressor rejects both this promise and the writer's own end(),
+    and end() is the one awaited first. Without a handler attached here that rejection
+    belonged to nobody, and Node killed the process over it: `--gzip` into an unwritable
+    path printed a raw EISDIR stack trace instead of the ordinary "Writing to ... failed"
+    message and exit 1, which is what the same path does uncompressed.
+
+    Attaching the handler is enough to make it handled. Awaiting `settled` downstream still
+    reports the failure in the case where end() happened to succeed.
+  */
+  const settled = finished(target);
+  settled.catch(() => {});
+  return { stream: compressor, settled };
 }
 
 /**

@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.1
+
+### Fixed: `--gzip` turned a write failure into a crash
+
+Converting with `--gzip` into a path that could not be written printed a raw stack trace and
+took the process down, where the same conversion without the flag reports the problem and
+exits 1:
+
+```
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+[Error: EISDIR: illegal operation on a directory, open '.../signals.csv.gz']
+```
+
+The compressor sits between the writer and the file, so a failure below it arrives on a
+promise the writer does not own. Both that promise and the writer's own `end()` reject, and
+`end()` is awaited first — so the other rejection was attached to nothing, which Node treats
+as fatal. It is now attached, and a blocked destination reports the same message and the same
+exit code with or without compression.
+
+### Fixed: `--stdout --gzip` closed stdout behind itself
+
+`pipe()` ends its destination when the source ends, so the compressor closed stdout on its way
+out. The buffered writer has always refused to do that — a closed stdout breaks every later
+write in the process — and compression was going around it. It matters for callers using the
+library, where the conversion is one step of a longer program rather than the whole of it.
+
+Both are covered by tests, including one that asserts `process.stdout` is still open when
+`convert({ toStdout: true, gzip: true })` returns.
+
 ## 0.3.0
 
 ### Added: `--gzip`

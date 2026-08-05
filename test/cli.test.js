@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { gunzipSync } from 'node:zlib';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const run = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -380,6 +380,39 @@ describe('--gzip', () => {
     assert.equal(stdout[1], 0x8b, 'gzip magic byte 2');
     const text = gunzipSync(stdout).toString('utf8');
     assert.equal(text.split('\n')[0], 'time_s,ch1,ch2');
+  });
+
+  it('reports an unwritable destination the same way an uncompressed run does', async () => {
+    // The compressor sits between the writer and the file, so a failure below it arrives
+    // on a promise the writer does not own. With nothing attached to that promise Node
+    // treated the rejection as unhandled and killed the process: converting into a blocked
+    // path printed a raw EISDIR stack trace rather than the message and exit 1 that the
+    // same path produces without --gzip.
+    const dir = await outDir();
+    await mkdir(path.join(dir, 'signals.csv.gz'), { recursive: true });
+
+    const { code, stderr } = await cli([fixture('tiny.edf'), '--out', dir, '--gzip', '--force', '--quiet']);
+    assert.equal(code, 1, 'a write failure is exit 1, not a crash');
+    assert.match(stderr, /Writing to .* failed/u);
+    assert.ok(!stderr.includes('triggerUncaughtException'), 'no raw stack trace');
+  });
+
+  it('leaves stdout usable after compressing to it', async () => {
+    // pipe() ends its destination when the source ends. Letting the compressor end stdout
+    // would close it for the rest of the process, which is exactly what the writer already
+    // refuses to do for the uncompressed case.
+    const script = `
+      import { convert } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'dist', 'index.js')).href)};
+      await convert(${JSON.stringify(fixture('tiny.edf'))}, { toStdout: true, gzip: true });
+      process.stderr.write(String(process.stdout.writableEnded));
+    `;
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-gz-'));
+    temporaries.push(dir);
+    const file = path.join(dir, 'run.mjs');
+    await writeFile(file, script, 'utf8');
+
+    const { stderr } = await run(process.execPath, [file], { encoding: 'buffer' });
+    assert.equal(stderr.toString(), 'false', 'stdout must still be open when the conversion returns');
   });
 
   it('does not call a compressed run stale on the next uncompressed one', async () => {
