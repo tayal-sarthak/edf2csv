@@ -106,7 +106,7 @@ start 1985-01-01T00:00:00.000Z
 warning: [MIXED_SAMPLING_RATES] Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
 ```
 
-`describeFormat(header)` returns `"EDF"`, `"BDF"`, `"EDF+ (continuous)"` or `"EDF+ (discontinuous)"`. `formatRate(hz)` renders a rate without floating point noise: `256`, `0.5`, `12.5`.
+`describeFormat(header)` returns `"EDF"`, `"BDF"`, or one of `"EDF+ (continuous)"`, `"EDF+ (discontinuous)"`, `"BDF+ (continuous)"`, `"BDF+ (discontinuous)"` — a BDF+ file reports its own spelling, even though `continuity` normalises to the `EDF+` form. `formatRate(hz)` renders a rate without floating point noise: `256`, `0.5`, `12.5`.
 
 ### EdfHeader
 
@@ -290,7 +290,7 @@ Two related helpers, used to pick CSV precision:
 
 ```ts
 function quantizationStep(signal: EdfSignal): number;
-function decimalsForSignal(signal: EdfSignal, max?: number): number;  // max defaults to 15
+function decimalsForSignal(signal: EdfSignal, max?: number): number;  // max defaults to 20
 ```
 
 `quantizationStep` is the smallest physical change one digital unit can express. `decimalsForSignal` is two places past that step, capped at `max`, which is the precision at which no two adjacent digital codes round to the same text. A typical EEG channel lands on 3.

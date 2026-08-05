@@ -177,6 +177,17 @@ describe('terminal safety', () => {
   // EDF identification fields and labels are free text copied out of the file and printed
   // straight to stdout by --info. A header carrying ANSI escapes could drive the reader's
   // terminal — \x1b[2J clears the screen — so control bytes are shown as escapes instead.
+  it('never writes raw control bytes to stderr either', async () => {
+    // A fatal header error quotes the label that caused it, and an unparseable date is
+    // echoed raw — both are free text out of the file, and both reached the terminal.
+    const { stderr } = await cli([fixture('quirky-labels.edf'), '--info']);
+    const offending = [...stderr].filter((c) => {
+      const n = c.codePointAt(0);
+      return (n < 32 && n !== 10) || (n >= 127 && n <= 159);
+    });
+    assert.deepEqual(offending, []);
+  });
+
   it('never writes raw control bytes to stdout', async () => {
     const { code, stdout } = await cli([fixture('quirky-labels.edf'), '--info']);
     assert.equal(code, 0);

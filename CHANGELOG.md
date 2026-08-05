@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.32
+
+### Fixed: two paths where a header could still reach the terminal raw
+
+0.2.21 escaped control bytes in the `--info` table and in warnings, but two routes out of the tool
+were left carrying them:
+
+- **An unparseable start date.** When the date and time fields cannot be read, `--info` echoes them
+  verbatim and marks them `(unparseable)` — so a file whose date field held `\x1b[2J\x1b[H` cleared
+  the reader's screen while reporting that it could not read the date.
+- **Fatal header errors.** These quote the channel label that caused them. A recording declaring a
+  negative sample count under a label containing escapes cleared the screen on the way out, on
+  stderr, at exit 1.
+
+Both now go through the same escaping. Verified across `--info` and a conversion: zero raw control
+bytes on either stream.
+
+### Docs
+
+Two claims in the API reference had drifted from the code: `decimalsForSignal`'s `max` was documented
+as defaulting to 15 (raised to 20 in 0.2.13), and `describeFormat` was listed as returning four
+strings when it returns six — a BDF+ file reports `"BDF+ (continuous)"` or `"BDF+ (discontinuous)"`,
+its own spelling, even though `continuity` normalises to the `EDF+` form.
+
 ## 0.2.31
 
 ### Fixed: asking for more of a recording returned fewer annotations

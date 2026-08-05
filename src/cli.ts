@@ -20,7 +20,7 @@ import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
-import { formatDiagnostics, formatInfo, infoJson, formatSummary, summaryJson } from './cli/report.js';
+import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, summaryJson } from './cli/report.js';
 import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
@@ -324,7 +324,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     return EXIT_OK;
   } catch (error) {
     if (error instanceof EdfError || error instanceof ConversionError) {
-      process.stderr.write(`error: ${error.message}\n`);
+      process.stderr.write(`error: ${printable(error.message)}\n`);
       if (error.hint) process.stderr.write(`       ${error.hint}\n`);
       return EXIT_ERROR;
     }
@@ -333,7 +333,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       error instanceof TimeRangeError ||
       error instanceof OptionError
     ) {
-      process.stderr.write(`error: ${error.message}\n`);
+      process.stderr.write(`error: ${printable(error.message)}\n`);
       return EXIT_USAGE;
     }
     process.stderr.write(`error: ${message(error)}\n`);
@@ -372,8 +372,14 @@ function optionalDecimals(raw: unknown): number | undefined {
   return value;
 }
 
+/*
+  Error text is escaped for the same reason --info's table is: a fatal header error quotes
+  the channel label that caused it, and that label is free text out of the file. A recording
+  declaring a negative sample count under a label containing `\x1b[2J` cleared the reader's
+  screen on the way out.
+*/
 function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return printable(error instanceof Error ? error.message : String(error));
 }
 
 export { defaultOutputDir };

@@ -47,7 +47,7 @@ function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<num
  * rather than being silently swallowed. This affects display only: `channels.csv` and
  * `metadata.json` still copy the field verbatim, and CSV quoting already makes that safe.
  */
-function printable(text: string): string {
+export function printable(text: string): string {
   // eslint-disable-next-line no-control-regex
   return text.replace(/[\u0000-\u001f\u007f-\u009f]/gu, (c) =>
     `\\x${c.codePointAt(0)!.toString(16).padStart(2, '0')}`,
@@ -64,7 +64,7 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   lines.push(
     `Recorded   ${
       formatWallClock(header.startDateTime)?.replace('T', ' ') ??
-      `${header.startDateRaw} ${header.startTimeRaw} (unparseable)`
+      `${printable(header.startDateRaw)} ${printable(header.startTimeRaw)} (unparseable)`
     }`,
   );
   lines.push(
