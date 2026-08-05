@@ -1,6 +1,6 @@
 {
   "name": "edf2csv",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Convert EDF, EDF+ and BDF biosignal recordings (European Data Format) to CSV from the command line. Local, streaming, and never resamples or alters units.",
   "keywords": [
     "edf",
@@ -61,7 +61,8 @@
     "test": "npm run build && npm run fixtures && node --test test/*.test.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run clean && npm run build && npm test",
-    "crossvalidate": "npm run build && node test/crossvalidate/generate.mjs && python3 test/crossvalidate/compare.py"
+    "crossvalidate": "npm run build && node test/crossvalidate/generate.mjs && python3 test/crossvalidate/compare.py",
+    "fuzz": "npm run build && npm run fixtures && node test/fuzz/mutate.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

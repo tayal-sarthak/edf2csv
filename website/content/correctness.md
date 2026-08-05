@@ -10,9 +10,10 @@ Correctness here covers three different things, verified three different ways.
 
 1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 75 generated recordings and compares every sample and every event: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
-3. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
+3. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **4,000 runs over 1,000 corrupted recordings, all reported cleanly**.
+4. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and third are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and fourth are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib
@@ -46,7 +47,27 @@ x010.edf annotation 0: onset 0.25 vs 0.251
 
 Either exits 1.
 
-Below is how to reproduce the comparison on your own recordings.
+## Damaged files
+
+```bash
+npm run fuzz              # 300 recordings, the default seed
+npm run fuzz -- 99 800    # a different seed, more of them
+```
+
+```
+1200 runs over 300 corrupted recordings (seed 1).
+Every one exited cleanly with something to say.
+```
+
+A header is thirty-odd fields parsed out of bytes, and the ways one can be wrong are not a list anybody can write down. A test asserts the cases its author thought of, which are the cases the code already handles. Mutating real recordings asks a different question — is there *any* arrangement of bytes that gets past the checks — and it has the advantage of not sharing the author's assumptions.
+
+Damage is weighted toward the first kilobyte, where the fixed header and the start of the signal headers live, because that is where one byte changes the meaning of everything after it. A corrupted sample is only a different number; a corrupted sample count is a promise about the file's shape that the file no longer keeps. Each file is run four ways: `--info`, `--info --json`, a conversion, and a conversion with `--gzip`, which puts a compressor between the writer and the file and has its own failure routes.
+
+Runs are deterministic, so a crash found on one machine reproduces on another.
+
+It was confirmed capable of failing before being trusted: made to return an exit code outside 0, 1 and 2, it names the recording, the arguments and the message, and exits 1.
+
+Below is how to reproduce the pyEDFlib comparison on your own recordings.
 
 ## The cross-check against pyEDFlib
 

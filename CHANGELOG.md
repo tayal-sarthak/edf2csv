@@ -3,6 +3,50 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.7
+
+### Added: `npm run fuzz`, which damages real recordings and checks nothing crashes
+
+```bash
+npm run fuzz
+```
+
+```
+1200 runs over 300 corrupted recordings (seed 1).
+Every one exited cleanly with something to say.
+```
+
+A header is thirty-odd fields parsed out of bytes, and the ways one can be wrong are not a list
+anybody can write down. A test asserts the cases its author thought of, which are the cases the
+code already handles. Corrupting real recordings asks a different question — is there *any*
+arrangement of bytes that gets past the checks — and it has the advantage of not sharing the
+author's assumptions.
+
+The property is deliberately narrow: whatever a damaged file contains, the tool must exit 0, 1
+or 2 and say something. Not a stack trace, and not a hang.
+
+Damage is weighted toward the first kilobyte, where the fixed header and the start of the
+signal headers live, because that is where one byte changes the meaning of everything after it.
+A corrupted sample is only a different number; a corrupted sample count is a promise about the
+file's shape that the file no longer keeps. Each file is run four ways — `--info`,
+`--info --json`, a conversion, and a conversion with `--gzip`, which puts a compressor between
+the writer and the file and had a crash of its own as recently as 0.3.1.
+
+Runs are deterministic: the same seed produces the same files, so a crash found on one machine
+reproduces on another.
+
+**Nothing was found.** 4,000 runs across four seeds and 1,000 corrupted recordings all reported
+cleanly. Two attempts to prove the check could fail were themselves instructive: removing a
+header guard changed nothing, because a later check caught the same case, and forcing the
+generic error branch to misbehave changed nothing either, because corrupted files never reach
+it. The error handling turned out to be layered more thoroughly than expected. Making the
+branch they *do* reach return an out-of-range exit code produced the failure, with the
+recording, the arguments and the message named — so the check is known to work rather than
+assumed to.
+
+Like `npm run crossvalidate`, this is opt-in and not part of `npm test`, which stays fast and
+dependency-free.
+
 ## 0.4.6
 
 ### Fixed: naming the same recording twice was an error in one place and fine in another
