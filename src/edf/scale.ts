@@ -45,8 +45,15 @@ export function makeScaler(signal: EdfSignal): Scaler {
   const gain = (physicalMax - physicalMin) / (digitalMax - digitalMin);
 
   // A flat physical range makes every sample the same value, and would divide by
-  // zero in the offset below.
-  if (gain === 0 || !Number.isFinite(gain)) return () => physicalMin;
+  // zero in the offset below. That mapping is defined, so its constant is written.
+  if (gain === 0) return () => physicalMin;
+
+  // A non-finite gain is a different thing: the physical span overflowed a double, so
+  // there is no mapping at all. Returning physicalMin filled the column with one enormous
+  // constant — every distinct sample rendered as the same 300-digit number — and raised
+  // nothing. NaN takes the same route as a degenerate digital range: empty cells, plus
+  // UNUSABLE_PHYSICAL_RANGE from the header parser.
+  if (!Number.isFinite(gain)) return () => NaN;
 
   // Deriving the offset divides by the gain. For every realistic calibration that is
   // both safe and more accurate, but an absurd header (a huge physical range over a

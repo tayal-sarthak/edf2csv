@@ -336,7 +336,7 @@ Field by field:
 | `elapsed_ms` | Wall-clock time for the conversion |
 | `warnings` | One entry per diagnostic, each with a stable `code`, a `severity` of `"warning"` or `"info"`, and a human-readable `message`. Empty array when there's nothing to report |
 
-The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
+The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
 
 `--json` applies to conversions. `--info` always prints its table as text; combining the two gives you the `--info` table, not JSON. On failure, nothing is printed to stdout at all, so a parse failure and a non-zero exit code always coincide.
 

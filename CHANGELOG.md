@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.15
+
+### Fixed: a physical range too wide to represent was converted silently
+
+EDF's physical range fields are eight ASCII characters and accept exponent form, so a header may
+declare `-1e308` to `1e308`. The span of that range overflows a double, leaving no gain to compute —
+but the scaler treated a non-finite gain the same as a flat one and returned the physical minimum,
+so every distinct sample in the channel came out as the same 300-digit constant. No diagnostic was
+raised, in `--info` or in `metadata.json`.
+
+This is the same undefined-mapping case as `digitalMin === digitalMax`, and it now behaves the same
+way: the cells are left empty and a new `UNUSABLE_PHYSICAL_RANGE` warning names the channel. A
+genuinely flat range (`physicalMin === physicalMax`) is still a defined mapping and still writes its
+constant.
+
 ## 0.2.14
 
 ### Changed: a repeated unit in a time value is now an error

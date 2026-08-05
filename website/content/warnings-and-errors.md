@@ -53,6 +53,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `COMMA_DECIMAL` | A header number used a comma as its decimal separator |
 | `DEGENERATE_DIGITAL_RANGE` | A channel's digital minimum equals its digital maximum |
 | `DEGENERATE_PHYSICAL_RANGE` | A channel's physical minimum equals its physical maximum |
+| `UNUSABLE_PHYSICAL_RANGE` | A channel's physical range is too wide to represent |
 | `INVERTED_PHYSICAL_RANGE` | A channel's physical minimum sits above its physical maximum |
 | `NO_SAMPLES` | A channel declares zero samples per data record |
 | `EMPTY_LABEL` | A channel has a blank label |
@@ -178,6 +179,28 @@ A channel declares the same value for its physical minimum and physical maximum,
 Note the difference from `DEGENERATE_DIGITAL_RANGE` above. There the mapping doesn't exist and the cells are left empty; here it exists and simply has no slope, so the value it gives is a real reading and is written as one.
 
 **What to do.** Treat the column as carrying no information. Distinct digital codes were recorded, but the header says they all mean the same physical value, so the distinction can't be recovered from the CSV. If you need the raw codes, the header calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and `physical_max` to work from.
+
+### UNUSABLE_PHYSICAL_RANGE
+
+The distance between a channel's physical minimum and maximum overflows a double, so no gain can be
+computed from it.
+
+**Cause.** EDF's physical range fields are eight ASCII characters and accept exponent form, so a
+header can legitimately say `-1e308` to `1e308`. Real hardware does not, but generated or corrupted
+headers do.
+
+**What edf2csv does.** Treats it as an undefined mapping and leaves those cells empty, the same as
+`DEGENERATE_DIGITAL_RANGE`. Earlier versions wrote the physical minimum instead, which filled the
+column with one enormous constant — every distinct sample rendered as the same 300-digit number —
+and raised no diagnostic at all.
+
+```
+warning: Signal 0 ("huge") declares a physical range from -1e+308 to 1e+308, whose span is too large to represent, so its values cannot be scaled.
+         Its cells are left empty rather than filled with a value the header cannot justify.
+```
+
+**What to do.** Treat the channel as unreadable and check where the header came from. Channels
+either side of it are unaffected.
 
 ### INVERTED_PHYSICAL_RANGE
 

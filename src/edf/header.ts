@@ -327,7 +327,16 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         });
       }
 
-      if (digitalMax === digitalMin) {
+      if (!Number.isFinite(physicalMax - physicalMin)) {
+        diagnostics.push({
+          code: 'UNUSABLE_PHYSICAL_RANGE',
+          severity: 'warning',
+          message:
+            `Signal ${i} ("${label}") declares a physical range from ${physicalMin} to ` +
+            `${physicalMax}, whose span is too large to represent, so its values cannot be scaled.`,
+          hint: 'Its cells are left empty rather than filled with a value the header cannot justify.',
+        });
+      } else if (digitalMax === digitalMin) {
         diagnostics.push({
           code: 'DEGENERATE_DIGITAL_RANGE',
           severity: 'warning',
