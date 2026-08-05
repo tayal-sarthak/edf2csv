@@ -20,7 +20,7 @@ import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
-import { formatDiagnostics, formatInfo, formatSummary, summaryJson } from './cli/report.js';
+import { formatDiagnostics, formatInfo, infoJson, formatSummary, summaryJson } from './cli/report.js';
 import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
@@ -43,7 +43,7 @@ Options
       --checksum         Record a SHA-256 of the input in metadata.json
   -f, --force            Overwrite the output directory if it exists
   -q, --quiet            Suppress the summary; warnings and errors still print
-      --json             Print a machine-readable summary to stdout
+      --json             Print machine-readable JSON to stdout (works with --info too)
   -h, --help             Show this help
   -V, --version          Show the version
 
@@ -201,9 +201,13 @@ export async function main(argv: readonly string[]): Promise<number> {
           },
         );
         plan.diagnostics.push(...timing.diagnostics);
-        process.stdout.write(`${formatInfo(file, plan)}\n`);
+        process.stdout.write(
+          asJson ? `${infoJson(file, plan)}\n` : `${formatInfo(file, plan)}\n`,
+        );
+        // Under --json the warnings travel inside the document, exactly as they do for a
+        // conversion, so stderr stays empty and the whole result is one parseable thing.
         const diagnostics = [...file.diagnostics, ...plan.diagnostics];
-        if (diagnostics.length > 0) {
+        if (!asJson && diagnostics.length > 0) {
           process.stderr.write(`\n${formatDiagnostics(diagnostics)}\n`);
         }
       } finally {

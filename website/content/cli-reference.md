@@ -339,7 +339,7 @@ Field by field:
 
 The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
 
-`--json` applies to conversions. `--info` always prints its table as text; combining the two gives you the `--info` table, not JSON. On failure, nothing is printed to stdout at all, so a parse failure and a non-zero exit code always coincide.
+`--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout at all, so a parse failure and a non-zero exit code always coincide.
 
 To fail a batch job on any warning:
 

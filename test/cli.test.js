@@ -296,6 +296,21 @@ describe('--info', () => {
   });
 });
 
+describe('--info --json', () => {
+  it('describes the recording as JSON with warnings inside and stderr empty', async () => {
+    const { code, stdout, stderr } = await cli([fixture('mixed-rates.edf'), '--info', '--json']);
+    assert.equal(code, 0);
+    assert.equal(stderr, '', 'warnings belong in the document, not beside it');
+
+    const info = JSON.parse(stdout);
+    assert.equal(info.channels.length, 3);
+    assert.deepEqual(info.channels.map((c) => c.sampling_rate_hz), [256, 128, 1]);
+    assert.ok(info.estimate.rows > 0);
+    assert.ok(info.warnings.some((w) => w.code === 'MIXED_SAMPLING_RATES'));
+    assert.equal(info.data_records, 3);
+  });
+});
+
 describe('conversion', () => {
   it('keeps the human summary off stdout', async () => {
     const dir = await outDir();

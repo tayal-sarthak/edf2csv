@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.24
+
+### Added: `--info --json` describes a recording as JSON
+
+`--info` answers "what is in this recording and what would converting it cost" — which is exactly
+the question you want to ask across a directory of hundreds of recordings, and the aligned text table
+is the wrong shape for that. `--json` previously applied only to conversions, so a script either
+parsed the columns or converted files just to learn what was in them.
+
+```bash
+for f in /data/recordings/*.edf; do edf2csv "$f" --info --json; done \
+  | jq -r '[.path, .duration_seconds, (.channels|length), .estimate.rows] | @tsv'
+```
+
+The document carries the format, start time, record layout, every channel with its calibration and
+destination file, the row and size estimate, and the warnings. Field names match `metadata.json`
+where the two describe the same thing, so a survey and a conversion can be read by the same code.
+
+Warnings travel inside the document and stderr stays empty, matching how `--json` already behaved for
+conversions. Plain `--info` is unchanged, warnings still on stderr.
+
 ## 0.2.23
 
 ### Fixed: a fractional record index read samples from the middle of a record
