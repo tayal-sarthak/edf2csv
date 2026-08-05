@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.18
+
+### Fixed: a rejected `--start` was quoted back as a value you never typed
+
+The past-the-end error reported the parsed offset in seconds rather than the text given:
+
+```
+$ edf2csv recording.edf --start 4h
+before:  error: --start 14400s is at or past the end of this 2s recording.
+after:   error: --start 4h is at or past the end of this 2s recording.
+```
+
+`14400s` is correct arithmetic and a confusing thing to read, because it is not what was on the
+command line — the reader has to convert it back to check the tool understood them. Clock and
+compound forms were worse: `--start 00:45:00` came back as `2700s`.
+
+The message now quotes the value exactly as typed, for every accepted form. This also makes the
+example in the CLI reference true, which had shown `--start 4h` all along.
+
 ## 0.2.17
 
 ### Fixed: a confusing error when the output path runs through a file

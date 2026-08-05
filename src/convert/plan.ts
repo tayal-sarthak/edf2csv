@@ -50,6 +50,8 @@ export interface PlanInput {
 export interface PlanOptions {
   channels?: readonly string[] | undefined;
   start?: number | undefined;
+  /** The `--start` value exactly as typed, for error messages. */
+  startText?: string | undefined;
   duration?: number | undefined;
   end?: number | undefined;
   annotationsOnly?: boolean | undefined;
@@ -84,6 +86,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
 
   const range = resolveRange({
     start: options.start,
+    startText: options.startText,
     duration: options.duration,
     end: options.end,
     recordDuration: input.recordDuration,

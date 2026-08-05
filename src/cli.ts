@@ -192,6 +192,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           {
             channels,
             start,
+            startText: typeof values['start'] === 'string' ? values['start'] : undefined,
             duration,
             end,
             decimals,
@@ -238,6 +239,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       outputDir: typeof values['out'] === 'string' ? values['out'] : undefined,
       channels,
       start,
+      startText: typeof values['start'] === 'string' ? values['start'] : undefined,
       duration,
       end,
       decimals,

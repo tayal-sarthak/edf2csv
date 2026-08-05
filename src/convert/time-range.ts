@@ -167,6 +167,8 @@ export function countSamplesInRange(options: {
  */
 export function resolveRange(options: {
   start?: number | undefined;
+  /** The `--start` value exactly as typed, quoted back in the past-the-end error. */
+  startText?: string | undefined;
   duration?: number | undefined;
   end?: number | undefined;
   recordDuration: number;
@@ -196,8 +198,10 @@ export function resolveRange(options: {
   else endSeconds = latest;
 
   if (startSeconds >= latest) {
+    // Quote what was typed. Reporting the parsed seconds meant `--start 4h` came back as
+    // "--start 14400s is at or past the end", which reads as a value the user never gave.
     throw new TimeRangeError(
-      `--start ${formatSeconds(startSeconds)} is at or past the end of this ` +
+      `--start ${options.startText ?? formatSeconds(startSeconds)} is at or past the end of this ` +
         `${formatSeconds(latest)} recording.`,
     );
   }
