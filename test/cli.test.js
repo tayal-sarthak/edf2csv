@@ -296,6 +296,23 @@ describe('--info', () => {
   });
 });
 
+describe('documented flags', () => {
+  // The README keeps its own, friendlier option list rather than repeating --help
+  // verbatim, so the two drift silently: --strict and the reworded --json both shipped
+  // while the README still listed the old set. Descriptions may differ; the set of flags
+  // may not.
+  it('lists every flag the CLI accepts', async () => {
+    const { stdout: help } = await cli(['--help']);
+    const readme = await readFile(path.join(ROOT, 'README.md'), 'utf8');
+
+    const flags = [...help.matchAll(/^\s+(?:-\w, )?(--[a-z-]+)/gmu)].map((m) => m[1]);
+    assert.ok(flags.length > 10, `expected to find the flags in --help, got ${flags}`);
+
+    const missing = flags.filter((flag) => !readme.includes(flag));
+    assert.deepEqual(missing, [], `README's option list is missing: ${missing.join(', ')}`);
+  });
+});
+
 describe('--strict', () => {
   it('leaves a clean recording alone and fails one that warned', async () => {
     const clean = await cli([fixture('tiny.edf'), '--out', await outDir(), '--quiet', '--strict']);

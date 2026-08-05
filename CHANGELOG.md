@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.26
+
+### Fixed: the README's option list had fallen behind the CLI
+
+The README keeps its own, shorter option list rather than repeating `--help` verbatim, and nothing
+checked the two against each other. `--strict` and the reworded `--json` both shipped in the last two
+versions without it, and `--version` had never been listed at all.
+
+All three are there now, and a test asserts that every flag `--help` accepts appears in the README.
+It compares the *set of flags*, not the wording, so the README can stay friendlier than the help text
+while a newly added flag can no longer be forgotten. Adding that test is what turned up the missing
+`--version`.
+
 ## 0.2.25
 
 ### Added: `--strict` makes warnings fatal

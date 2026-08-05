@@ -61,8 +61,10 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --checksum         Put a SHA-256 of the input in metadata.json
   -f, --force            Overwrite the output folder
   -q, --quiet            Less output
-      --json             Machine-readable summary on stdout
+      --json             Machine-readable JSON on stdout (works with --info too)
+      --strict           Exit 1 if the recording raised any warning
   -h, --help             Help
+  -V, --version          Version
 ```
 
 Exit codes: `0` success, `1` the file couldn't be read or written, `2` the command
