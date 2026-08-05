@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.29
+
+### Docs: the scripting advice caught up with `--strict`, `--info --json` and `--stdout`
+
+The CLI reference and recipes still told people to shell out to `jq` for things the last four
+versions made single flags. Both now show the direct form first and keep `--json` for what it is
+still the right tool for — reacting to a *particular* warning rather than to any of them:
+
+```bash
+edf2csv recording.edf --out ./converted --strict          # was: --json | jq '.warnings | length'
+```
+
+Two new recipes, both run against the real CLI before being written down:
+
+- **Survey a directory without converting anything**, using `--info --json` piped through `jq -s` to
+  get one row per recording — format, duration, channel count, distinct rates, estimated rows and
+  warning codes. Nothing past the header is read for plain EDF and continuous EDF+, so it stays fast
+  over multi-gigabyte files.
+- **Pipe a conversion into another tool** with `--stdout`, including why a mixed-rate recording is
+  refused and how `--channels` resolves it.
+
+`ConvertOptions` in the API reference gained the `toStdout`, `startText` and `endText` fields it has
+actually accepted since 0.2.18.
+
 ## 0.2.28
 
 ### Fixed: `--stdout --json` wrote two documents onto one stream

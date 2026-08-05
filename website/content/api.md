@@ -400,7 +400,13 @@ interface ConvertOptions {
   outputDir?: string;             // defaults to defaultOutputDir(inputPath)
   force?: boolean;                // overwrite an existing output directory
   checksum?: boolean;             // record a SHA-256 of the input in metadata.json
+  toStdout?: boolean;             // stream the single table to stdout, write no files
   onProgress?: (progress: ConversionProgress) => void;
+
+  // Quoted back in time-range errors so they name the value the caller gave, not its
+  // parsed form. Optional; the parsed seconds are used when absent.
+  startText?: string;
+  endText?: string;
 }
 
 interface ConversionProgress {

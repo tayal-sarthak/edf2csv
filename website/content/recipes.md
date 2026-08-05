@@ -171,6 +171,51 @@ edf2csv sleep-study.edf --start 1h --duration 20m --info
 edf2csv sleep-study.edf --decimals 2 --info
 ```
 
+## Survey a directory without converting anything
+
+`--info --json` describes a recording as JSON, so a whole folder can be summarised in one pass
+without writing a byte:
+
+```bash
+for f in /data/recordings/*.edf; do
+  edf2csv "$f" --info --json
+done | jq -s -r '
+  .[] | [ (.path | split("/") | last),
+          .format,
+          .duration_seconds,
+          (.channels | length),
+          (.channels | map(.sampling_rate_hz) | unique | join("/")),
+          .estimate.rows,
+          ([.warnings[].code] | join(";")) ] | @tsv'
+```
+
+```text
+night-01.edf	EDF+ (continuous)	28800	5	1/10/100	3196800	MIXED_SAMPLING_RATES
+night-02.edf	EDF	3	2	10	20
+```
+
+Nothing is read past the header for plain EDF and continuous EDF+, so this stays fast over a
+directory of multi-gigabyte recordings. Find the ones that need attention before converting:
+
+```bash
+for f in /data/recordings/*.edf; do
+  edf2csv "$f" --info --strict >/dev/null 2>&1 || echo "needs a look: $f"
+done
+```
+
+## Pipe a conversion straight into another tool
+
+`--stdout` writes the signal CSV to stdout and creates no directory:
+
+```bash
+edf2csv sleep-study.edf --stdout --channels "EEG Fpz-Cz" |
+  duckdb -c "SELECT count(*), avg(\"EEG Fpz-Cz\") FROM read_csv('/dev/stdin')"
+```
+
+A stream holds one table, so this needs the recording to produce exactly one. A mixed-rate file is
+refused rather than merged; `--channels` narrowed to channels that share a rate is the usual fix. The
+row count goes to stderr, so stdout carries nothing but CSV.
+
 ## Convert a whole folder of recordings
 
 ```bash
@@ -254,12 +299,19 @@ converted/night-01	3	3	300
 converted/night-02	3	0	1155	MIXED_SAMPLING_RATES
 ```
 
-Make a pipeline stop on any warning by testing the array with `jq -e`, which exits non-zero when the expression is false:
+Make a pipeline stop on any warning with `--strict`, which exits 1 when the recording raised one. The output is still written, so you can look at what triggered it:
+
+```bash
+edf2csv recording.edf --out ./out --force --strict ||
+  echo "conversion raised warnings, check them before using the output" >&2
+```
+
+Reach for `--json` when you care about a specific warning rather than any of them:
 
 ```bash
 edf2csv recording.edf --out ./out --force --json |
-  jq -e '.warnings | length == 0' >/dev/null ||
-  echo "conversion raised warnings, check them before using the output" >&2
+  jq -e '[.warnings[].code] | index("DISCONTINUOUS") | not' >/dev/null ||
+  echo "this recording has gaps" >&2
 ```
 
 ## Extract only the annotations from a set of recordings

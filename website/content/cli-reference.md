@@ -368,12 +368,18 @@ The `code` values are stable identifiers meant for programmatic checks: `MIXED_S
 
 `--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout at all, so a parse failure and a non-zero exit code always coincide.
 
-To fail a batch job on any warning:
+To fail a batch job on any warning, use `--strict`:
+
+```bash
+edf2csv recording.edf --out ./converted --strict
+```
+
+`--json` is still the way to react to a *particular* warning rather than to any of them:
 
 ```bash
 edf2csv recording.edf --out ./converted --json > result.json || exit 1
-if [ "$(jq '.warnings | length' result.json)" -gt 0 ]; then
-  jq -r '.warnings[] | "\(.code): \(.message)"' result.json
+if jq -e '[.warnings[].code] | index("RECORD_COUNT_MISMATCH")' result.json >/dev/null; then
+  echo "recording is incomplete" >&2
   exit 1
 fi
 ```
