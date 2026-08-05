@@ -76,12 +76,12 @@ export function quantizationStep(signal: EdfSignal): number {
  * resolution the hardware actually recorded, without padding the file with digits
  * that carry no information.
  *
- * The ceiling is 15 rather than a tidier number because a channel calibrated in
+ * The ceiling is 20 rather than a tidier number because a channel calibrated in
  * volts rather than microvolts has a step near 1e-7, and one in tesla smaller
  * still. A lower cap would round genuinely different samples to the same text. It
  * costs nothing for ordinary channels, whose step lands them at three or four.
  */
-export function decimalsForSignal(signal: EdfSignal, max = 15): number {
+export function decimalsForSignal(signal: EdfSignal, max = 20): number {
   const step = quantizationStep(signal);
   if (!(step > 0) || !Number.isFinite(step)) return 3;
   const needed = Math.ceil(-Math.log10(step)) + 2;

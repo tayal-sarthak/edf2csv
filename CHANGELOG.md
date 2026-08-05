@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.13
+
+### Fixed: the precision ceiling collapsed distinct samples on the finest channels
+
+Decimal places are derived per channel so that two adjacent digital codes never round to the same
+text — that is the invariant the whole precision rule exists to hold. The ceiling was 15, which the
+comment beside it justified by pointing at channels calibrated in volts and tesla.
+
+Tesla was in fact fine. Femtotesla was not, which is the unit MEG is actually recorded in: a channel
+spanning ±1e-12 T over a 16-bit converter has a step near 3e-17 and needs 19 places, so at 15 it
+printed **96 of every 100 adjacent codes identically**. Distinct measurements became the same string,
+silently — exactly the outcome the rule is meant to prevent.
+
+The ceiling is now 20, and `--decimals` accepts 0–20 to match. Adjacent codes stay distinct from
+microvolts down to attotesla. Ordinary channels are untouched: a µV EEG channel still derives 3
+places and a volt-scale channel still derives 9.
+
 ## 0.2.12
 
 ### Fixed: annotation channels were never pluralised

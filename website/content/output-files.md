@@ -177,7 +177,7 @@ digital step:
 step = |physical_max - physical_min| / (digital_max - digital_min)
 ```
 
-`edf2csv` writes `ceil(-log10(step)) + 2` decimals, clamped to the range 0 to 15. The two extra
+`edf2csv` writes `ceil(-log10(step)) + 2` decimals, clamped to the range 0 to 20. The two extra
 places put rounding error well below the resolution the hardware recorded, so no two distinct
 digital codes round to the same text, without padding the file with digits that carry no
 information.
@@ -189,7 +189,7 @@ information.
 | Temp rectal | 34 to 40 degC | -2048 to 2047 | 0.001465 degC | 5 |
 | A1 (24-bit BDF) | -262144 to 262144 uV | -8388608 to 8388607 | 0.03125 uV | 4 |
 
-The upper clamp is 15 because a channel calibrated in volts rather than microvolts has a step near
+The upper clamp is 20 because a channel calibrated in volts rather than microvolts has a step near
 1e-7, and a magnetometer channel smaller still. A lower cap would round genuinely different samples
 to the same text.
 

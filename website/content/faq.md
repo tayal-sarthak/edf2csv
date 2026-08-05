@@ -341,7 +341,7 @@ If you need a fixed width across channels, for a downstream tool that insists on
 edf2csv sleep-study.edf --decimals 6
 ```
 
-`--decimals` accepts a whole number from 0 to 15 and applies to every channel. Setting it below
+`--decimals` accepts a whole number from 0 to 20 and applies to every channel. Setting it below
 what a channel needs discards resolution, which is why it isn't the default.
 
 ## Does it support BDF and BioSemi files?

@@ -178,13 +178,13 @@ The remaining 20 come from the gain itself. `gain` is the result of a division a
 
 On an ordinary microvolt channel you won't see the difference in a CSV.
 
-edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Even forcing the maximum with `--decimals 15` prints `0.195360195360195` from both forms.
+edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Even forcing the maximum with `--decimals 20` prints `0.195360195360195` from both forms.
 
 It matters for four reasons:
 
 - **It's what makes exact comparison possible.** Bit-identity with pyEDFlib is a property you either have or don't. Accepting a 32-unit error means the strongest available check degrades to a tolerance check, and a tolerance check can't tell a rounding difference from a genuine bug.
 - **The doubles are visible through the API.** `makeScaler` returns the value, not a formatted string, so anything built on the programmatic API gets the full double.
-- **Not every channel is in microvolts.** A channel calibrated in volts has a quantization step near 1e-7 and gets many more decimal places, which is why the precision cap is 15. The further right the printed digits go, the closer the discrepancy gets to visible.
+- **Not every channel is in microvolts.** A channel calibrated in volts has a quantization step near 1e-7 and gets many more decimal places, which is why the precision cap is 20. The further right the printed digits go, the closer the discrepancy gets to visible.
 - **It's free.** The better arrangement is one line, evaluated once per channel.
 
 ### The cases where the formula doesn't apply

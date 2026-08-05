@@ -31,7 +31,7 @@ done
 | `--duration` | | time | to the end | How much to convert, measured from `--start` |
 | `--end` | | time | end of the recording | Offset to stop at, instead of `--duration` |
 | `--annotations-only` | | none | off | Write only the EDF+ event list, no signal data |
-| `--decimals` | | integer 0 to 15 | derived per channel | Force a fixed number of decimal places |
+| `--decimals` | | integer 0 to 20 | derived per channel | Force a fixed number of decimal places |
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
 | `--force` | `-f` | none | off | Write into an output directory that already exists |
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
@@ -261,9 +261,9 @@ warning: --annotations-only was requested but this recording has no annotation c
 
 ## --decimals
 
-Takes a whole number from 0 to 15 and applies it to every signal column, replacing the per-channel precision edf2csv would otherwise derive.
+Takes a whole number from 0 to 20 and applies it to every signal column, replacing the per-channel precision edf2csv would otherwise derive.
 
-By default the precision is chosen per channel from its calibration. A channel's smallest expressible step is its physical range divided by its digital range, and the default is two places beyond that step, so two adjacent digital codes never round to the same text and no digits are written that carry no information. An ordinary microvolt EEG channel lands at 3 or 4 decimals; a channel calibrated in volts needs more, which is why the ceiling is 15.
+By default the precision is chosen per channel from its calibration. A channel's smallest expressible step is its physical range divided by its digital range, and the default is two places beyond that step, so two adjacent digital codes never round to the same text and no digits are written that carry no information. An ordinary microvolt EEG channel lands at 3 or 4 decimals; a channel calibrated in volts needs more, which is why the ceiling is 20.
 
 Use `--decimals` when you want a uniform column width across channels, or when you're willing to trade precision for file size. Note what you give up: `--decimals 2` on a channel whose step is 0.0076 uV maps several genuinely different digital codes onto the same printed value.
 
@@ -272,7 +272,7 @@ Use `--decimals` when you want a uniform column width across channels, or when y
 Out-of-range and non-integer values are usage errors. An empty value is rejected explicitly rather than read as zero, since `--decimals ""` would otherwise round every physical value to a whole number:
 
 ```
-error: --decimals must be a whole number between 0 and 15, got "16".
+error: --decimals must be a whole number between 0 and 20, got "16".
 error: --decimals needs a number, for example --decimals 3.
 ```
 
@@ -367,7 +367,7 @@ fi
 - An unparseable `--start`, `--duration` or `--end`, and passing `--duration` together with `--end`.
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
 - A `--channels` term that matches no channel, a `#N` position that doesn't exist, or `--channels` given with an empty list.
-- A `--decimals` value that's empty, not an integer, or outside 0 to 15.
+- A `--decimals` value that's empty, not an integer, or outside 0 to 20.
 
 The last two categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
 

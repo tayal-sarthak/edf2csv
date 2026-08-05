@@ -313,8 +313,8 @@ function optionalDecimals(raw: unknown): number | undefined {
     throw new OptionError('--decimals needs a number, for example --decimals 3.');
   }
   const value = Number(text);
-  if (!Number.isInteger(value) || value < 0 || value > 15) {
-    throw new OptionError(`--decimals must be a whole number between 0 and 15, got "${String(raw)}".`);
+  if (!Number.isInteger(value) || value < 0 || value > 20) {
+    throw new OptionError(`--decimals must be a whole number between 0 and 20, got "${String(raw)}".`);
   }
   return value;
 }

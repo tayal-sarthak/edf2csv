@@ -544,7 +544,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | No input file | Usage text is printed |
 | More than one input file | `Convert them one at a time, or use a shell loop.` |
 | `--channels` given with no names | `--channels was given but lists no channel names.` |
-| `--decimals` missing or out of range | `--decimals must be a whole number between 0 and 15` |
+| `--decimals` missing or out of range | `--decimals must be a whole number between 0 and 20` |
 | A channel name that matches nothing | `No channel named "ECQ". Did you mean "ECG"?` |
 | A position that doesn't exist | `No channel at position #9.` |
 | An unparseable time value | `--start "banana" is not a time I understand.` |
