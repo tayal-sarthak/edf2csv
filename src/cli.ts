@@ -15,7 +15,7 @@ import process from 'node:process';
 
 import { EdfError } from './edf/errors.js';
 import { EdfFile } from './edf/reader.js';
-import { buildPlan } from './convert/plan.js';
+import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
 import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
@@ -231,7 +231,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         );
         // Under --json the warnings travel inside the document, exactly as they do for a
         // conversion, so stderr stays empty and the whole result is one parseable thing.
-        const diagnostics = [...file.diagnostics, ...plan.diagnostics];
+        const diagnostics = [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics];
         if (!asJson && diagnostics.length > 0) {
           process.stderr.write(`\n${formatDiagnostics(diagnostics)}\n`);
         }

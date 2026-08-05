@@ -22,7 +22,7 @@ import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
 import { fixed, makeSampleFormatter } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
-import { buildPlan } from './plan.js';
+import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts } from './timing.js';
 import { sampleTimeIsInRange } from './time-range.js';
@@ -144,7 +144,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         outputDir: '-',
         files: written,
         annotationCount: 0,
-        diagnostics: [...file.diagnostics, ...plan.diagnostics],
+        diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics],
         plan,
         file,
         elapsedMs: Date.now() - startedAt,
@@ -193,7 +193,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       outputDir,
       files: written,
       annotationCount: annotationsWritten,
-      diagnostics: [...file.diagnostics, ...plan.diagnostics, ...stale],
+      diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics, ...stale],
       plan,
       file,
       elapsedMs: Date.now() - startedAt,
@@ -712,7 +712,7 @@ async function writeMetadata(
         decimals: g.channels.map((c) => c.decimals),
       })),
     },
-    notes: [...file.diagnostics, ...plan.diagnostics].map((d) => ({
+    notes: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics].map((d) => ({
       code: d.code,
       severity: d.severity,
       message: d.message,

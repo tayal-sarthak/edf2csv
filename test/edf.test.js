@@ -79,6 +79,8 @@ describe('header parsing', () => {
 describe('diagnostics', () => {
   it('warns about differing sampling rates', async () => {
     const file = await load('mixed-rates.edf');
+    // The file-level diagnostic describes the recording, and is what a caller reading a
+    // header without planning a conversion gets. A conversion reports its own; see convert.test.js.
     assert.ok(codes(file).includes('MIXED_SAMPLING_RATES'));
   });
 

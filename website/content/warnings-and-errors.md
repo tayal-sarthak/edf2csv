@@ -61,7 +61,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
 | `ANNOTATION_DECODE_FAILED` | Annotation text couldn't be decoded, or a record's timestamp is missing |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
-| `MIXED_SAMPLING_RATES` | Channels run at different rates, so several output files are written |
+| `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so several output files are written |
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
@@ -368,7 +368,17 @@ warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
-**What to do.** Load the files you need. Each has its own `time_s` column, so joining them is a matter of aligning on time. Note that when every channel shares a rate, a single `signals.csv` is written and this warning doesn't appear at all.
+**What to do.** Load the files you need. Each has its own `time_s` column, so joining them is a matter of aligning on time. When every channel shares a rate, a single `signals.csv` is written and this warning doesn't appear at all.
+
+**It describes the conversion, not the file.** `--channels` is taken into account, because the warning exists to explain why the output was split. Narrowing a three-rate recording to one channel writes one file and raises nothing; narrowing it to two rates reports two, not three.
+
+```bash
+edf2csv sleep-study.edf --channels ECG          # one file, no warning
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"
+#   warning: Channels use 2 different sampling rates (256 Hz, 128 Hz).
+```
+
+`parseHeader` is the exception, and deliberately: it reports what the header says, having no conversion to describe.
 
 ### NO_SIGNAL_CHANNELS
 

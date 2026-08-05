@@ -241,6 +241,32 @@ describe('converting', () => {
     assert.deepEqual([...seen.entries()].sort(), [['slowA', 2], ['slowB', 4]]);
   });
 
+  it('reports the rates it converted, not the ones in the file', async () => {
+    // The header parser sees every channel and knows nothing about --channels, so its
+    // mixed-rate warning described the recording rather than the run: selecting one channel
+    // out of a three-rate file announced "3 different sampling rates ... written to one file
+    // per rate" over a conversion that wrote one file.
+    const dir = await outDir();
+    const one = await convert(fixture('mixed-rates.edf'), { outputDir: dir, channels: ['ECG'] });
+    assert.equal(one.files.filter((f) => f.name.startsWith('signals')).length, 1);
+    assert.ok(
+      !one.diagnostics.some((d) => d.code === 'MIXED_SAMPLING_RATES'),
+      'nothing was split, so nothing should say it was',
+    );
+
+    const two = await convert(fixture('mixed-rates.edf'), {
+      outputDir: await outDir(),
+      channels: ['EEG Fpz-Cz', 'ECG'],
+    });
+    const warning = two.diagnostics.find((d) => d.code === 'MIXED_SAMPLING_RATES');
+    assert.ok(warning, 'two rates were written, so the split is worth reporting');
+    assert.match(warning.message, /2 different sampling rates \(256 Hz, 128 Hz\)/u);
+
+    const all = await convert(fixture('mixed-rates.edf'), { outputDir: await outDir() });
+    const unfiltered = all.diagnostics.find((d) => d.code === 'MIXED_SAMPLING_RATES');
+    assert.match(unfiltered.message, /3 different sampling rates/u, 'unchanged with no selection');
+  });
+
   it('names each rate file for the rate it actually holds', async () => {
     // 1e-6 Hz and 1.25e-6 Hz both round to "0.000001" at six decimals, so both wanted the
     // name signals_0_000001hz.csv. The numbered fallback kept them apart, but it did it by

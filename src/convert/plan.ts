@@ -138,6 +138,30 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     input.recordStarts,
   );
 
+  /*
+    The mixed-rate warning describes what this conversion does, not what the file holds.
+
+    The header parser raises its own, which is right for `parseHeader` — but it sees every
+    channel and knows nothing about `--channels`. Converting one channel out of a three-rate
+    recording therefore announced "3 different sampling rates ... written to one file per
+    rate" over a run that wrote one file, in the same output where `--info` had already
+    marked the other two "(not selected)". Selecting two of the three was wrong the other
+    way: still "3".
+
+    Callers combining these with a file's own diagnostics drop that copy in favour of this
+    one; see `withoutFileRateWarning`.
+  */
+  if (groups.length > 1) {
+    diagnostics.push({
+      code: 'MIXED_SAMPLING_RATES',
+      severity: 'warning',
+      message:
+        `Channels use ${groups.length} different sampling rates ` +
+        `(${formatRates(groups.map((g) => g.rate)).map((r) => `${r} Hz`).join(', ')}).`,
+      hint: 'They are written to one file per rate so no channel is resampled.',
+    });
+  }
+
   if (estimate.exceedsSpreadsheetLimit) {
     diagnostics.push({
       code: 'LARGE_OUTPUT',
@@ -222,6 +246,17 @@ function groupByRate(
       })),
     };
   });
+}
+
+/**
+ * A file's diagnostics with the header's mixed-rate warning removed.
+ *
+ * `buildPlan` raises that warning for the channels actually being converted, so keeping both
+ * would either duplicate it or contradict it. The header parser's copy stays where it is, for
+ * callers reading a header without planning a conversion.
+ */
+export function withoutFileRateWarning(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  return diagnostics.filter((d) => d.code !== 'MIXED_SAMPLING_RATES');
 }
 
 /** `256hz`, `12_5hz` — safe in a filename on every platform. */

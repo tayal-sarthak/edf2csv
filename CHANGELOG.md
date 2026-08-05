@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.2
+
+### Fixed: the mixed-rate warning described the file rather than the conversion
+
+`--channels` narrows what gets converted, but the warning explaining why output was split into
+one file per rate came from the header parser, which sees every channel and knows nothing about
+the selection. Converting one channel out of a three-rate recording produced one file and this:
+
+```
+warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+         They are written to one file per rate so no channel is resampled.
+```
+
+Neither sentence was true of that run — in output where `--info` had already marked the other
+two channels `(not selected)`. Selecting two of the three was wrong in the other direction:
+still "3".
+
+The warning is now raised from the conversion plan and counts the rates actually being written.
+One channel raises nothing, two rates report two, and a run with no selection is unchanged.
+
+`parseHeader` keeps its own copy, which is the right answer there: it is handed a header and has
+no conversion to describe. Only callers that plan one get the narrowed version.
+
 ## 0.3.1
 
 ### Fixed: `--gzip` turned a write failure into a crash
