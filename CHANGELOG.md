@@ -3,6 +3,54 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.1
+
+### Faster: large conversions run in about two thirds of the time
+
+A 19 MB recording converting to 168 MB of CSV took 1.90 s and now takes 1.35 s. The output is
+byte-identical — the 168 MB file compares equal, as does everything the fixtures produce across
+four flag combinations.
+
+Value cells were already cheap. A channel can only hold `digitalMax - digitalMin + 1` distinct
+readings, so a small cache of formatted strings serves millions of rows and `toFixed` runs a
+couple of thousand times for the whole conversion.
+
+The time column had no such luck. It rises monotonically, so no two rows share a string and it
+was formatted once per row — ten million calls on that file, and a third of the total time,
+more than reading the recording and writing the CSV put together.
+
+What repeats there is the offset *within* a record. Sample `s` sits at `s / rate` from the start
+of whichever record holds it, and a recording has only `samplesPerRecord` such offsets however
+long it runs. Splitting each one into whole seconds and printed fraction reduces the per-row
+work to an integer addition and a concatenation:
+
+```
+record starting at 42s, sample 7 of a 100 Hz record
+  ->  42 + 0 whole seconds, fraction ".070"  ->  "42.070"
+```
+
+The decomposition only holds for a record starting on a whole, non-negative second, which is
+what lets the fraction come entirely from the offset. Two cases therefore fall back to
+formatting the sum, and both were found by checking rather than by reasoning:
+
+- **A record starting mid-second** mixes the two fractions. Continuous recordings start every
+  record at `index * recordDuration`, so this only arises for a fractional record duration or a
+  discontinuous file whose stored start lands between seconds.
+- **A negative record start**, which appends the fraction the wrong way: −5 s plus half a
+  second is −4.5, but `"-5"` and `".500"` concatenate to −5.500. No recording starts before
+  zero, but an EDF+ timekeeping TAL is free to carry a negative onset, and that is reason
+  enough for the fast path to decline it.
+
+Checked against formatting the sum over 49,456 combinations — 29 sampling rates from 1e-6 Hz to
+2048 Hz, against record starts from 0 to 1e8 seconds, which is three years of continuous
+recording. Every one agrees.
+
+Past roughly 1e9 seconds the two answers separate, because the sum no longer fits its fraction
+into a double. Where they differ this one is right: 317 years in, sample 2 of a 999 Hz record
+is at 2/999 = 0.002002002…, which is `0.002002` at six places, and formatting the sum gives
+`0.002003`. Nothing real reaches that magnitude, and there is no case in which the change costs
+accuracy.
+
 ## 0.4.0
 
 ### Added: several recordings in one command

@@ -144,3 +144,79 @@ export function formatDuration(seconds: number): string {
   if (m > 0) return `${m}m ${sText}s`;
   return `${sText}s`;
 }
+
+/** A record can declare a great many samples; two arrays this size is the cost of caching. */
+const MAX_CACHED_OFFSETS = 1 << 20;
+
+/**
+ * Formats the time column, reusing the part of it that repeats.
+ *
+ * Every value cell is already cached — a channel has at most `digitalMax - digitalMin + 1`
+ * distinct readings, so the same handful of strings serve millions of rows. The time column
+ * had no such luck: it rises monotonically, so no two rows share a string and `toFixed` ran
+ * once per row. On a ten-million-row conversion that was a third of the total time, more
+ * than reading the file and writing the CSV put together.
+ *
+ * What repeats is the offset within a record. Sample `s` sits at `s / rate` from the start of
+ * whichever record holds it, and there are only `samplesPerRecord` such offsets in the whole
+ * recording. Splitting each into whole seconds and printed fraction turns the per-row work
+ * into one integer addition and a concatenation:
+ *
+ *     record starting at 42s, sample 7 of a 100 Hz record
+ *     -> 42 + 0 whole seconds, fraction ".070"  ->  "42.070"
+ *
+ * The decomposition is only valid when the record starts on a whole, non-negative second,
+ * which is what lets the fraction come entirely from the offset. A record starting at 0.5 s would mix the
+ * two, so those fall back to formatting the sum directly. Continuous recordings start every
+ * record at `index * recordDuration`, so this holds for all of them whose record duration is
+ * a whole number of seconds, and for discontinuous files it holds per record depending on
+ * where that record actually starts.
+ */
+export function makeTimeFormatter(
+  samplesPerRecord: number,
+  rate: number,
+  decimals: number,
+): (recordStart: number, sample: number) => string {
+  const direct = (recordStart: number, sample: number): string =>
+    fixed(recordStart + sample / rate, decimals);
+
+  if (
+    !(rate > 0) ||
+    !Number.isFinite(rate) ||
+    samplesPerRecord <= 0 ||
+    samplesPerRecord > MAX_CACHED_OFFSETS
+  ) {
+    return direct;
+  }
+
+  // Whole seconds and printed fraction of each offset, taken from the formatted offset
+  // itself so that an offset which rounds up to the next second (0.9996 at three places)
+  // carries that second rather than losing it.
+  const wholeOffset = new Float64Array(samplesPerRecord);
+  const fractionText: string[] = new Array<string>(samplesPerRecord);
+  for (let sample = 0; sample < samplesPerRecord; sample++) {
+    const text = fixed(sample / rate, decimals);
+    const dot = text.indexOf('.');
+    wholeOffset[sample] = dot === -1 ? Number(text) : Number(text.slice(0, dot));
+    fractionText[sample] = dot === -1 ? '' : text.slice(dot);
+  }
+
+  return (recordStart: number, sample: number): string => {
+    /*
+      Non-negative only. Appending a fraction to a negative whole part moves the time the
+      wrong way: a record at -5 s and an offset of half a second is -4.5, but "-5" and
+      ".500" concatenate to -5.500. Recording times start at zero, so this is unreachable
+      from a well-formed file — an EDF+ timekeeping TAL is free to carry a negative onset
+      though, and that is enough reason for the fast path to decline it.
+    */
+    if (
+      sample < 0 ||
+      sample >= samplesPerRecord ||
+      !Number.isInteger(recordStart) ||
+      recordStart < 0
+    ) {
+      return direct(recordStart, sample);
+    }
+    return `${recordStart + (wholeOffset[sample] as number)}${fractionText[sample] as string}`;
+  };
+}

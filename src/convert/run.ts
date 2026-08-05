@@ -21,7 +21,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
-import { fixed, makeSampleFormatter } from '../format/number.js';
+import { fixed, makeSampleFormatter, makeTimeFormatter } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
@@ -91,6 +91,7 @@ interface OpenGroup {
   group: RateGroup;
   writer: BufferedLineWriter;
   formatters: SampleFormatter[];
+  formatTime: (recordStart: number, sample: number) => string;
   rows: number;
   /** Resolves once a compressed stream's bytes have reached the file behind it. */
   settled: Promise<void>;
@@ -402,6 +403,7 @@ async function writeSignalFiles(
       group,
       writer,
       formatters: group.channels.map((c) => makeSampleFormatter(c.signal, c.decimals)),
+      formatTime: makeTimeFormatter(group.samplesPerRecord, group.rate, group.timeDecimals),
       rows: 0,
       settled,
     };
@@ -450,14 +452,14 @@ async function streamSignalRows(
       const recordStart = recordStarts ? (recordStarts[index] ?? index * recordDuration) : index * recordDuration;
 
       for (const entry of open) {
-        const { group, writer, formatters } = entry;
-        const { channels, rate, timeDecimals: tDecimals } = group;
+        const { group, writer, formatters, formatTime } = entry;
+        const { channels, rate } = group;
 
         for (let sample = 0; sample < group.samplesPerRecord; sample++) {
           const time = recordStart + sample / rate;
           if (!sampleTimeIsInRange(time, startSeconds, endSeconds)) continue;
 
-          let row = fixed(time, tDecimals);
+          let row = formatTime(recordStart, sample);
           for (let c = 0; c < channels.length; c++) {
             const channel = channels[c];
             const format = formatters[c];

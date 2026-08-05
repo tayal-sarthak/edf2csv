@@ -175,6 +175,71 @@ describe('planning', () => {
   });
 });
 
+describe('the time column', () => {
+  // Value cells are cached — a channel has only so many distinct readings — but the time
+  // column rises monotonically, so no two rows share a string and toFixed ran once per row.
+  // It was a third of the time on a ten-million-row conversion. What repeats is the offset
+  // within a record, and reusing that only works if it produces the identical string.
+  it('formats exactly as formatting the sum would', async () => {
+    const { fixed, makeTimeFormatter, timeDecimals } = await import('../dist/format/number.js');
+    const rates = [1, 2, 3, 4, 5, 7, 10, 25, 30, 50, 64, 100, 125, 128, 250, 256, 500, 512,
+      1000, 1024, 2048, 0.5, 0.1, 12.5, 2.5, 1 / 3, 1e-6, 3.7, 999];
+
+    let compared = 0;
+    for (const rate of rates) {
+      const decimals = timeDecimals(rate);
+      const perRecord = Math.max(1, Math.min(600, Math.round(rate) || 1));
+      const format = makeTimeFormatter(perRecord, rate, decimals);
+      // Up to 1e8 seconds — three years of continuous recording, past anything real.
+      for (const start of [0, 1, 2, 59, 60, 3599, 3600, 86400, 1e6, 1e7, 1e8]) {
+        for (let sample = 0; sample < perRecord; sample++) {
+          compared++;
+          assert.equal(
+            format(start, sample),
+            fixed(start + sample / rate, decimals),
+            `rate ${rate}, start ${start}, sample ${sample}`,
+          );
+        }
+      }
+    }
+    assert.ok(compared > 40_000, `expected a broad sweep, only compared ${compared}`);
+  });
+
+  it('is the more accurate of the two once a double runs out of digits', async () => {
+    // Past roughly 1e9 seconds the two answers separate, because `start + sample / rate`
+    // no longer fits the fraction into a double. 317 years into a recording, sample 2 of a
+    // 999 Hz record sits at 2/999 = 0.002002002..., which is 0.002002 at six places:
+    //
+    //   formatting the sum   10000000000.002003   the sum lost the digit
+    //   this formatter       10000000000.002002   correct
+    //
+    // Nothing real reaches that magnitude, and where the two differ this one is right, so
+    // there is no case in which the change costs accuracy.
+    const { fixed, makeTimeFormatter } = await import('../dist/format/number.js');
+    const format = makeTimeFormatter(999, 999, 6);
+    assert.equal(format(1e10, 2), '10000000000.002002');
+    assert.equal(fixed(1e10 + 2 / 999, 6), '10000000000.002003');
+  });
+
+  it('declines the cases its decomposition cannot express', async () => {
+    const { fixed, makeTimeFormatter } = await import('../dist/format/number.js');
+    const format = makeTimeFormatter(4, 4, 3);
+
+    // A negative record start: appending a fraction to a negative whole part moves the time
+    // the wrong way. -5 s plus half a second is -4.5, but "-5" and ".500" concatenate to
+    // -5.500. An EDF+ timekeeping TAL may carry a negative onset, so this has to fall back.
+    assert.equal(format(-5, 2), fixed(-5 + 0.5, 3));
+    assert.equal(format(-5, 2), '-4.500');
+
+    // A record that does not start on a whole second mixes the two fractions.
+    assert.equal(format(0.25, 2), fixed(0.75, 3));
+    assert.equal(format(0.25, 2), '0.750');
+
+    // A sample beyond the record's declared length has no cached offset.
+    assert.equal(format(1, 99), fixed(1 + 99 / 4, 3));
+  });
+});
+
 describe('converting', () => {
   it('writes the expected files and exact values', async () => {
     const dir = await outDir();
