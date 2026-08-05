@@ -44,6 +44,7 @@ Options
   -f, --force            Overwrite the output directory if it exists
   -q, --quiet            Suppress the summary; warnings and errors still print
       --json             Print machine-readable JSON to stdout (works with --info too)
+      --strict           Exit 1 if the recording raised any warning
   -h, --help             Show this help
   -V, --version          Show the version
 
@@ -116,6 +117,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         force: { type: 'boolean', short: 'f' },
         quiet: { type: 'boolean', short: 'q' },
         json: { type: 'boolean' },
+        strict: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
       },
@@ -151,6 +153,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const input = positionals[0] as string;
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
+  const strict = values['strict'] === true;
 
   try {
     const channels = splitChannels(values['channels']);
@@ -210,6 +213,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         if (!asJson && diagnostics.length > 0) {
           process.stderr.write(`\n${formatDiagnostics(diagnostics)}\n`);
         }
+        if (strict && diagnostics.length > 0) return EXIT_ERROR;
       } finally {
         await file.close();
       }
@@ -275,6 +279,24 @@ export async function main(argv: readonly string[]): Promise<number> {
       process.stdout.write(`${summaryJson(result)}\n`);
     } else if (!quiet) {
       process.stderr.write(`${formatSummary(result)}\n`);
+    }
+
+    /*
+      --strict turns any warning into a non-zero exit, for pipelines that would rather stop
+      than proceed on a recording the tool had something to say about.
+
+      The output is still written. A warning describes the recording, not a failure to
+      convert it — a truncated file converts correctly for the records that are there — so
+      destroying that work would be the wrong response. The exit code is the signal; what
+      to do about it is the caller's decision, and they still have the files to inspect.
+    */
+    if (strict && result.diagnostics.length > 0) {
+      process.stderr.write(
+        `\n--strict: ${result.diagnostics.length} warning${result.diagnostics.length === 1 ? '' : 's'} ` +
+          `raised, so this run is reported as a failure. The output was still written to ` +
+          `"${result.outputDir}".\n`,
+      );
+      return EXIT_ERROR;
     }
     return EXIT_OK;
   } catch (error) {

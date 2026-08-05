@@ -296,6 +296,27 @@ describe('--info', () => {
   });
 });
 
+describe('--strict', () => {
+  it('leaves a clean recording alone and fails one that warned', async () => {
+    const clean = await cli([fixture('tiny.edf'), '--out', await outDir(), '--quiet', '--strict']);
+    assert.equal(clean.code, 0, 'nothing to warn about, so nothing to fail');
+
+    const dir = await outDir();
+    const warned = await cli([fixture('mixed-rates.edf'), '--out', dir, '--quiet', '--strict']);
+    assert.equal(warned.code, 1);
+    assert.match(warned.stderr, /--strict/);
+
+    // The conversion is still complete; the exit code is the signal, not a rollback.
+    const rows = (await readFile(path.join(dir, 'signals_1hz.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length, 4, 'header plus the three real samples');
+  });
+
+  it('screens a file with --info without converting it', async () => {
+    assert.equal((await cli([fixture('tiny.edf'), '--info', '--strict'])).code, 0);
+    assert.equal((await cli([fixture('mixed-rates.edf'), '--info', '--strict'])).code, 1);
+  });
+});
+
 describe('--info --json', () => {
   it('describes the recording as JSON with warnings inside and stderr empty', async () => {
     const { code, stdout, stderr } = await cli([fixture('mixed-rates.edf'), '--info', '--json']);

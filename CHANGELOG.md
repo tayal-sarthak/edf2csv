@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.25
+
+### Added: `--strict` makes warnings fatal
+
+Warnings describe the recording rather than a failure to convert it, so they have never changed the
+exit code. That is the right default, but a pipeline that wants to stop on a truncated or
+discontinuous file had to run with `--json` and parse the `warnings` array — which the documentation
+said in as many words.
+
+```bash
+edf2csv recording.edf --strict || echo "check the warnings before using this"
+```
+
+Any warning now exits 1. **The output is still written**: a truncated file converts correctly for the
+records that are there, and destroying that work would be the wrong response to a warning. The exit
+code is the signal; the files are there to inspect.
+
+It works with `--info` too, which makes it a cheap way to screen a directory for recordings that
+need a closer look before anyone converts them.
+
 ## 0.2.24
 
 ### Added: `--info --json` describes a recording as JSON

@@ -35,7 +35,8 @@ done
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
 | `--force` | `-f` | none | off | Write into an output directory that already exists |
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
-| `--json` | | none | off | Print a machine-readable summary to stdout |
+| `--json` | | none | off | Print machine-readable JSON to stdout, for a conversion or for `--info` |
+| `--strict` | | none | off | Exit 1 if the recording raised any warning |
 | `--help` | `-h` | none | | Print usage to stdout and exit 0 |
 | `--version` | `-V` | none | | Print the version to stdout and exit 0 |
 
@@ -382,7 +383,15 @@ The last two categories require reading the file's header first, so exit 2 doesn
 - The output directory already exists and `--force` wasn't given, or the destination path is a regular file, or it can't be created.
 - A write fails partway through, for example because the disk fills. The message says explicitly that the files written so far are incomplete and must not be used.
 
-Warnings never change the exit code. A conversion that reports a truncated recording, mixed sampling rates or a discontinuous file still exits 0, because the output it produced is correct and complete for the data that was there. If you need warnings to be fatal, inspect the `warnings` array under `--json`.
+Warnings never change the exit code by default. A conversion that reports a truncated recording, mixed sampling rates or a discontinuous file still exits 0, because the output it produced is correct and complete for the data that was there.
+
+Pass `--strict` to turn any warning into exit 1:
+
+```bash
+edf2csv recording.edf --strict || echo "check the warnings before using this"
+```
+
+The output is still written. A warning describes the recording rather than a failure to convert it, so discarding the work would be the wrong response — the exit code is the signal, and the files are there to inspect. `--strict` works with `--info` too, which makes it a cheap way to screen a directory for recordings that need a closer look before anyone converts them.
 
 Errors are printed as a single `error:` line plus an optional indented hint. Node stack traces are never printed for any of the conditions above.
 
