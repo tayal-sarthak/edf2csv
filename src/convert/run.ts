@@ -418,8 +418,20 @@ async function streamSignalRows(
   const { recordDuration } = file.header;
   let recordsDone = 0;
 
+  /*
+    Every destination has hung up, so nothing formatted from here on could reach anyone.
+    `--stdout | head -1` is the usual way to arrive here: the reader takes one line and
+    closes the pipe while the conversion is still near the start of the recording.
+
+    Stopping also makes the reported row count mean what it says — rows that reached the
+    consumer, rather than rows the loop went on formatting into a discarded buffer.
+  */
+  const allHungUp = (): boolean => open.length > 0 && open.every((entry) => entry.writer.hungUp);
+
   for await (const batch of file.readRecords({ startRecord, endRecord })) {
+    if (allHungUp()) break;
     for (let r = 0; r < batch.recordCount; r++) {
+      if (allHungUp()) break;
       const index = batch.firstRecordIndex + r;
       const recordStart = recordStarts ? (recordStarts[index] ?? index * recordDuration) : index * recordDuration;
 
@@ -438,6 +450,7 @@ async function streamSignalRows(
             if (!channel || !format) continue;
             row += ',' + format(file.sampleAt(batch, r, channel.signal, sample));
           }
+          if (writer.hungUp) break;
           writer.pushLine(row);
           entry.rows++;
         }

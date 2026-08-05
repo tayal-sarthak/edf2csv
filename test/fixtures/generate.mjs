@@ -170,6 +170,20 @@ export function generate() {
         : buildTal(r),
   });
 
+  // Output larger than a pipe buffer, so a reader hanging up mid-stream is reachable.
+  //
+  // The --stdout tests could not express the EPIPE case with the small fixtures: 434 bytes
+  // of CSV fits in the pipe buffer, every write lands, and no hang-up ever happens. This
+  // one converts to about 2 MB.
+  writeEdf({
+    path: at('long-stream.edf'),
+    numRecords: 400,
+    recordDuration: 1,
+    signals: [
+      { label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048, digMax: 2047, samplesPerRecord: 256, gen: (r, s) => (r * 7 + s) % 2048 },
+    ],
+  });
+
   // Two rates that round to the same filename slug.
   //
   // A rate is samplesPerRecord / recordDuration, and every channel shares the record

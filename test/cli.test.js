@@ -349,6 +349,26 @@ describe('--stdout', () => {
     assert.match(stdout, /^time_s,ECG/u, 'the header still made it through');
   });
 
+  it('stops converting once the reader is gone', async () => {
+    // Exiting cleanly is only half of it. The first version of that fix returned early from
+    // flush() without clearing the buffer, so every later row was appended and never drained:
+    // a 165 MB conversion piped to `head -1` grew a 1.3 GB working set and died out of heap.
+    //
+    // This needs a recording whose CSV exceeds the pipe buffer. mixed-rates.edf converts to
+    // 434 bytes — every write lands, no hang-up ever happens, and the bug is unreachable.
+    const { execFile: raw } = await import('node:child_process');
+    const shell = promisify(raw);
+    const { stdout } = await shell(
+      '/bin/bash',
+      // stderr goes out on fd 3 — the outer stdout — so that the CSV keeps the pipe that
+      // head closes. Sending the CSV to /dev/null instead would never block and never hang up.
+      ['-c', `{ "${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout 2>&3 | head -1 >/dev/null; } 3>&1`],
+      { maxBuffer: 1 << 20 },
+    );
+    const written = Number(stdout.match(/Wrote ([\d,]+) rows/)[1].replaceAll(',', ''));
+    assert.ok(written < 102_400, `stopped after ${written} of 102,400 rows`);
+  });
+
   it('refuses a recording that would need more than one table', async () => {
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--stdout']);
     assert.equal(code, 1);

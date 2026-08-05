@@ -67,6 +67,11 @@ export class BufferedLineWriter {
     });
   }
 
+  /** True once the reader closed the pipe. Nothing more can reach the consumer. */
+  get hungUp(): boolean {
+    return this.#hungUp;
+  }
+
   /** Characters written to the stream so far, before any encoding expansion. */
   get charsWritten(): number {
     return this.#bytesWritten;
@@ -89,9 +94,23 @@ export class BufferedLineWriter {
 
   async flush(): Promise<void> {
     if (this.#failure) throw this.#failure;
-    // The reader hung up (see the EPIPE note above); there is nowhere left to write.
-    // Deliberately not `#ended`, which end() sets before its own final flush.
-    if (this.#hungUp) return;
+    /*
+      The reader hung up (see the EPIPE note above); there is nowhere left to write.
+
+      The buffer is DISCARDED rather than left in place. Returning without clearing it let
+      push() keep appending for the rest of the conversion with nothing ever draining it,
+      so `--stdout | head -1` on a 165 MB conversion grew to a 1.3 GB working set and died
+      with a heap out-of-memory under a 256 MB limit — worse than the error this replaced.
+      Bounded memory is the invariant this class exists to hold, and a hung-up reader is no
+      reason to abandon it.
+
+      Deliberately not `#ended`, which end() sets before its own final flush.
+    */
+    if (this.#hungUp) {
+      this.#parts = [];
+      this.#pending = 0;
+      return;
+    }
     if (this.#parts.length === 0) return;
 
     const chunk = this.#parts.join('');

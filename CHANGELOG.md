@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.33
+
+## 0.2.33
+
+### Fixed: `--stdout | head` ran out of heap on a large recording
+
+0.2.30 stopped `edf2csv big.edf --stdout | head -1` from failing with `EPIPE`, and on a small
+recording it did. On a large one it replaced a spurious error with a worse fault.
+
+When the reader hung up, `flush()` returned immediately — before the two lines every other path
+runs, which empty the buffer. Nothing else drained it, so the conversion carried on formatting
+rows and appending them for the rest of the file. A 19 MB recording converting to 165 MB of CSV
+grew a 1.3 GB working set, and under a 256 MB heap limit it aborted:
+
+```
+node --max-old-space-size=256 edf2csv huge.edf --stdout | head -1
+→ FATAL ERROR: JavaScript heap out of memory
+```
+
+Two changes. `flush()` now discards the buffer when the reader has hung up. And the conversion
+stops reading once every destination has hung up, rather than converting the rest of a recording
+nobody is listening to. On that same file: peak memory falls from 1.3 GB to 85 MB, and the note on
+stderr reports 71,200 rows instead of 10,000,000 — rows that reached the reader, not rows formatted
+into a buffer that was thrown away.
+
+The `--stdout` tests added in 0.2.27 could not have caught this. Their fixtures convert to a few
+hundred bytes, which fits in the pipe buffer: every write lands, no hang-up ever happens, and the
+bug is unreachable. A fixture that converts to 2 MB now covers it, and it fails against the 0.2.30
+code as written.
+
 ## 0.2.32
 
 ### Fixed: two paths where a header could still reach the terminal raw
