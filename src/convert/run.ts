@@ -163,8 +163,24 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   }
 }
 
-/** Files this tool produces, used to spot leftovers from an earlier conversion. */
-const OUTPUT_PATTERN = /^(signals(_[\w.]+hz)?\.csv|annotations\.csv|channels\.csv|metadata\.json)$/u;
+/*
+  Files this tool produces, used to spot leftovers from an earlier conversion.
+
+  The rate part has to allow every shape a filename can now take, not just the plain ones:
+
+    signals_256hz.csv         an integer rate
+    signals_12_5hz.csv        a fractional rate, decimal point written as an underscore
+    signals_1_000e-7hz.csv    a rate small enough to need exponent form  (0.2.2)
+    signals_0hz_2.csv         a second group whose rate slug collided    (0.2.1)
+
+  The previous `[\w.]+hz` matched neither of the last two — `-` and `+` are not word
+  characters, and the collision suffix falls after the `hz`. Both were introduced by
+  recent changes and both silently stopped being recognised as this tool's own output, so
+  leftovers of exactly those kinds went unreported: the one situation the warning exists
+  for. Requiring a digit after the underscore keeps a user's own `signals_notes.csv` out.
+*/
+const OUTPUT_PATTERN =
+  /^(signals(_\d[\w.+-]*hz(_\d+)?)?\.csv|annotations\.csv|channels\.csv|metadata\.json)$/u;
 
 /**
  * Detect output from a previous run that this one did not replace.

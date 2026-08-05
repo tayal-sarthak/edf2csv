@@ -3,7 +3,7 @@
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -170,6 +170,33 @@ describe('file errors exit 1', () => {
     assert.match(second.stderr, /--force/);
 
     assert.equal((await cli([fixture('tiny.edf'), '--out', dir, '--quiet', '--force'])).code, 0);
+  });
+});
+
+describe('stale output detection', () => {
+  // Output filenames gained two shapes recently: a collision suffix (signals_0hz_2.csv) and
+  // exponent rates (signals_1_000e-7hz.csv). Neither matched the pattern that recognises
+  // this tool's own files, so leftovers of exactly those kinds went unreported — the one
+  // situation the warning exists for.
+  it('recognises every filename shape it can produce, and ignores files it cannot', async () => {
+    const dir = await outDir();
+    await mkdir(dir, { recursive: true });
+
+    const leftovers = ['signals_256hz.csv', 'signals_0hz_2.csv', 'signals_1_000e-7hz.csv'];
+    const notOurs = ['signals_notes.csv', 'my_signals.csv'];
+    for (const name of [...leftovers, ...notOurs]) {
+      await writeFile(path.join(dir, name), '');
+    }
+
+    const { code, stderr } = await cli([fixture('tiny.edf'), '--out', dir, '--force']);
+    assert.equal(code, 0);
+
+    for (const name of leftovers) {
+      assert.match(stderr, new RegExp(name.replace(/[.]/gu, '\\.')), `${name} should be reported`);
+    }
+    for (const name of notOurs) {
+      assert.ok(!stderr.includes(name), `${name} is the user's file and must be left alone`);
+    }
   });
 });
 

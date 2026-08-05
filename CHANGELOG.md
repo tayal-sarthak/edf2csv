@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.16
+
+### Fixed: leftover output went unreported for two of the filename shapes this tool produces
+
+`STALE_OUTPUT` warns when files from an earlier conversion are still sitting in the output directory
+that this run did not rewrite — the guard against two runs being mistaken for one. It decides what
+counts as its own output by matching filenames, and that pattern had fallen behind two recent
+changes:
+
+| filename | added in | recognised before |
+| --- | --- | --- |
+| `signals_256hz.csv` | — | yes |
+| `signals_12_5hz.csv` | — | yes |
+| `signals_0hz_2.csv` | 0.2.1 collision suffix | **no** |
+| `signals_1_000e-7hz.csv` | 0.2.2 exponent rates | **no** |
+
+`-` is not a word character and the collision suffix falls after the `hz`, so both fell outside
+`[\w.]+hz`. Leftovers of exactly those two kinds — the ones produced by unusual recordings, where
+mixing two runs together is hardest to notice — were the ones that went unreported.
+
+The pattern now covers every shape the tool can produce, including a suffixed exponent rate. It still
+requires a digit after the underscore, so a file of your own named `signals_notes.csv` is left alone.
+
 ## 0.2.15
 
 ### Fixed: a physical range too wide to represent was converted silently
