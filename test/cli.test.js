@@ -488,6 +488,76 @@ describe('converting several recordings at once', () => {
     JSON.parse(one.stdout);
   });
 
+  it('produces the same files whether or not conversions run at once', async () => {
+    // Converting is CPU-bound, so --jobs runs each recording in its own process. Whatever
+    // that changes about ordering and buffering, it must not change a single byte written.
+    const dir = await stage({
+      'a.edf': 'tiny.edf',
+      'b.edf': 'annotations.edf',
+      'c.edf': 'mixed-rates.edf',
+      'd.edf': 'discontinuous.edf',
+    });
+    const names = ['a.edf', 'b.edf', 'c.edf', 'd.edf'].map((n) => path.join(dir, n));
+
+    assert.equal((await cli([...names, '--out', path.join(dir, 'one'), '--quiet'])).code, 0);
+    assert.equal(
+      (await cli([...names, '--out', path.join(dir, 'many'), '--quiet', '--jobs', '4'])).code,
+      0,
+    );
+
+    for (const recording of ['a', 'b', 'c', 'd']) {
+      const serial = path.join(dir, 'one', recording);
+      const parallel = path.join(dir, 'many', recording);
+      const files = (await readdir(serial)).filter((f) => f !== 'metadata.json').sort();
+      assert.deepEqual(files, (await readdir(parallel)).filter((f) => f !== 'metadata.json').sort());
+      for (const file of files) {
+        assert.deepEqual(
+          await readFile(path.join(parallel, file)),
+          await readFile(path.join(serial, file)),
+          `${recording}/${file} differs between a serial and a parallel run`,
+        );
+      }
+    }
+  });
+
+  it('names the recording in a failure even when a child produced it', async () => {
+    // A child converts one recording, so it prefixes nothing the way a batch does. The
+    // name has to survive anyway: the [n/m] header is not necessarily alongside in a log.
+    const dir = await stage({ 'good.edf': 'tiny.edf' });
+    await writeFile(path.join(dir, 'bad.edf'), 'not an edf');
+
+    for (const jobs of ['1', '2']) {
+      const { code, stderr } = await cli([
+        path.join(dir, 'good.edf'), path.join(dir, 'bad.edf'),
+        '--out', path.join(dir, `out-${jobs}`), '--jobs', jobs, '--quiet',
+      ]);
+      assert.equal(code, 1, `--jobs ${jobs}`);
+      assert.match(stderr, /error: .*bad\.edf: File is 10 bytes/u, `--jobs ${jobs} must name it`);
+    }
+  });
+
+  it('keeps one JSON object per line when conversions run at once', async () => {
+    // Each child sees a single recording and prints the indented document a single
+    // conversion prints; the batch has to put it back on one line.
+    const dir = await stage({ 'a.edf': 'tiny.edf', 'b.edf': 'annotations.edf' });
+    const { code, stdout } = await cli([
+      path.join(dir, 'a.edf'), path.join(dir, 'b.edf'),
+      '--out', path.join(dir, 'out'), '--json', '--jobs', '2',
+    ]);
+    assert.equal(code, 0);
+    const lines = stdout.trimEnd().split('\n');
+    assert.equal(lines.length, 2, `expected a line per recording, got ${stdout}`);
+    for (const line of lines) JSON.parse(line);
+  });
+
+  it('rejects a job count that is not a whole number of one or more', async () => {
+    for (const jobs of ['0', 'abc', '1.5', '']) {
+      const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, '--info']);
+      assert.equal(code, 2, `--jobs ${JSON.stringify(jobs)}`);
+      assert.match(stderr, /--jobs must be a whole number/u);
+    }
+  });
+
   it('reports warnings from every recording under --strict', async () => {
     const dir = await stage({ 'clean.edf': 'tiny.edf', 'mixed.edf': 'mixed-rates.edf' });
     const { code, stderr } = await cli([

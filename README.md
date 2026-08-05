@@ -60,6 +60,7 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --decimals <n>     Force a number of decimal places
       --checksum         Put a SHA-256 of the input in metadata.json
       --gzip             Compress every CSV, writing .csv.gz files
+  -j, --jobs <n>         Convert this many recordings at once, or "auto"
   -f, --force            Overwrite the output folder
   -q, --quiet            Less output
       --json             Machine-readable JSON on stdout (works with --info too)

@@ -11,6 +11,8 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
+import { cpus } from 'node:os';
+import { fork } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -43,6 +45,7 @@ Options
       --decimals <n>     Fix the decimal places instead of deriving them per channel
       --checksum         Record a SHA-256 of the input in metadata.json
       --gzip             Compress every CSV, writing .csv.gz files
+  -j, --jobs <n>         Convert this many recordings at once, or "auto" (default: 1)
   -f, --force            Overwrite the output directory if it exists
   -q, --quiet            Suppress the summary; warnings and errors still print
       --json             Print machine-readable JSON to stdout (works with --info too)
@@ -56,7 +59,8 @@ Several recordings
   Pass more than one and each is converted in turn. Without --out each lands
   beside itself as usual; with --out that directory becomes the parent and each
   recording gets its own inside it. A file that cannot be read is reported and
-  the rest still convert, with a non-zero exit at the end.
+  the rest still convert, with a non-zero exit at the end. --jobs converts
+  several at once, which is worth it for a folder of them.
 
 Output
   A directory containing signals.csv, channels.csv, metadata.json, and
@@ -72,6 +76,7 @@ Examples
   edf2csv recording.edf --start 30m --duration 5m
   edf2csv recording.edf --annotations-only
   edf2csv /data/*.edf --out ./converted
+  edf2csv /data/*.edf --out ./converted --jobs auto
 `;
 
 /** A problem with how the command was invoked, as opposed to a problem with the file. */
@@ -128,6 +133,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         decimals: { type: 'string' },
         checksum: { type: 'boolean' },
         gzip: { type: 'boolean' },
+        jobs: { type: 'string', short: 'j' },
         force: { type: 'boolean', short: 'f' },
         quiet: { type: 'boolean', short: 'q' },
         json: { type: 'boolean' },
@@ -218,6 +224,11 @@ export async function main(argv: readonly string[]): Promise<number> {
       gzip: values['gzip'] === true,
     };
 
+    // Validated before the --info branch, not inside the conversion path: a flag that
+    // cannot be honoured is a usage error whatever mode it was given in, and accepting
+    // "--jobs 0" in silence under --info is the kind of quiet that this tool avoids.
+    const jobs = toStdout ? 1 : parseJobs(values['jobs'], inputs.length);
+
     if (values['info'] === true) {
       const failures: number[] = [];
       let warnings = 0;
@@ -234,44 +245,100 @@ export async function main(argv: readonly string[]): Promise<number> {
       return strict && warnings > 0 ? EXIT_ERROR : EXIT_OK;
     }
 
-    const showProgress = !quiet && !asJson && !toStdout && process.stderr.isTTY === true;
+    // The meter redraws one line in place, which two conversions cannot share. Running them
+    // at once replaces it with the completion count each file prints as it lands.
+    const showProgress =
+      !quiet && !asJson && !toStdout && jobs === 1 && process.stderr.isTTY === true;
 
     const failures: number[] = [];
     let warnings = 0;
     let converted = 0;
 
-    for (const [index, input] of inputs.entries()) {
+    /** Convert input `index`, sending its output wherever the caller wants it. */
+    const runOne = async (index: number, emit: Emit): Promise<void> => {
+      const input = inputs[index] as string;
       const destination = destinations[index] as string;
       // Which recording this is, before anything it prints. Without it a batch produces a
       // stack of summaries and errors with nothing saying which file each belongs to.
       if (batch && !quiet && !asJson) {
-        process.stderr.write(`[${index + 1}/${inputs.length}] ${printable(input as string)}\n`);
+        emit('err', `[${index + 1}/${inputs.length}] ${printable(input)}\n`);
       }
       try {
-        warnings += await convertOne(input as string, destination, {
-          ...shared,
-          // With one input and no --out, convert() derives the default itself, exactly as
-          // it did before batches existed.
-          outputDir: outOption === undefined && !batch ? undefined : destination,
-          checksum: values['checksum'] === true,
-          force: values['force'] === true,
-          toStdout,
-          quiet,
-          asJson,
-          showProgress,
-          jsonIndent,
-        });
+        warnings += await convertOne(
+          input,
+          destination,
+          {
+            ...shared,
+            // With one input and no --out, convert() derives the default itself, exactly as
+            // it did before batches existed.
+            outputDir: outOption === undefined && !batch ? undefined : destination,
+            checksum: values['checksum'] === true,
+            force: values['force'] === true,
+            toStdout,
+            quiet,
+            asJson,
+            showProgress,
+            jsonIndent,
+          },
+          emit,
+        );
         converted++;
       } catch (error) {
-        failures.push(reportError(error, batch ? (input as string) : undefined));
         /*
           A batch keeps going. One unreadable recording among five hundred is a reason to
           report that file, not to abandon the ones already converted and refuse the rest.
           The exit code still reports the run as failed, and the closing line says how many
           of them made it, so nothing about the failure is quiet.
         */
-        if (!batch) return failures[0] as number;
+        failures.push(reportError(error, batch ? input : undefined, emit));
       }
+    };
+
+    if (jobs === 1) {
+      for (let index = 0; index < inputs.length; index++) {
+        await runOne(index, writeThrough);
+        // A single recording keeps the exit code it has always had rather than the batch's.
+        if (!batch && failures.length > 0) return failures[0] as number;
+      }
+    } else {
+      /*
+        Real processes, not concurrent promises.
+
+        Converting is almost entirely arithmetic and string building — 1.17 s of CPU for
+        1.24 s of wall clock on a 168 MB conversion — and Node runs that on one thread. An
+        in-process pool was tried first and gained 6% on eight recordings, which is the
+        overlap in the file reads and nothing else. Each conversion is already a whole
+        command, so each one gets its own process, which is what `xargs -P` would do by hand.
+
+        Workers take the next recording as they free up rather than splitting the list into
+        equal shares. Recordings in a folder differ wildly in length, and a fixed split
+        leaves every worker but one idle behind the longest file.
+
+        Each child's output is held until it exits, so two finishing together cannot
+        interleave one's summary with the other's warnings.
+      */
+      let next = 0;
+      const worker = async (): Promise<void> => {
+        for (let index = next++; index < inputs.length; index = next++) {
+          const input = inputs[index] as string;
+          const sink = buffered();
+          if (!quiet && !asJson) {
+            sink.emit('err', `[${index + 1}/${inputs.length}] ${printable(input)}\n`);
+          }
+          const child = await convertInChild(input, destinations[index] as string, values);
+          if (child.code === 0) converted++;
+          else failures.push(child.code);
+          // The child saw one recording, so it printed the indented document a single
+          // conversion prints. A batch is one object per line.
+          sink.emit('out', asJson ? compactJson(child.out) : child.out);
+          // The child converted a single recording, so it named no file in its errors the
+          // way a batch does. Naming it here keeps the two paths identical to a reader and
+          // to anything grepping a log, where the [n/m] header may not be alongside.
+          sink.emit('err', named(child.err, input));
+          sink.flush();
+        }
+      };
+      await Promise.all(Array.from({ length: jobs }, () => worker()));
     }
 
     if (batch && !quiet && !asJson) {
@@ -371,6 +438,7 @@ async function convertOne(
     toStdout: boolean;
     jsonIndent: number | null;
   },
+  emit: Emit = writeThrough,
 ): Promise<number> {
   const { quiet, asJson, showProgress, toStdout } = options;
   let lastTick = 0;
@@ -413,20 +481,20 @@ async function convertOne(
     if (showProgress) process.stderr.write('\r\u001b[K');
 
     if (result.diagnostics.length > 0 && !asJson) {
-      process.stderr.write(`${formatDiagnostics(result.diagnostics)}\n\n`);
+      emit('err', `${formatDiagnostics(result.diagnostics)}\n\n`);
     }
     if (asJson) {
       // One object per line, so a batch is JSON Lines — `jq` reads a record at a time
       // rather than waiting for the whole run to finish.
-      process.stdout.write(`${summaryJson(result, options.jsonIndent as number | null)}\n`);
+      emit('out', `${summaryJson(result, options.jsonIndent as number | null)}\n`);
     } else if (!quiet) {
       // With --stdout there is no directory to summarise, and the row count is the only
       // thing worth saying — on stderr, so the CSV on stdout stays clean.
       if (toStdout) {
         const rows = result.files[0]?.rows ?? 0;
-        process.stderr.write(`Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`);
+        emit('err', `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`);
       } else {
-        process.stderr.write(`${formatSummary(result)}\n`);
+        emit('err', `${formatSummary(result)}\n`);
       }
     }
     return result.diagnostics.length;
@@ -498,16 +566,106 @@ function worstOf(codes: readonly number[]): number {
 }
 
 /**
+ * Convert one recording in a separate process, and collect everything it printed.
+ *
+ * The arguments are rebuilt from the parsed options rather than sliced out of argv, so the
+ * child receives exactly the flags this run was given and nothing that only makes sense to
+ * the parent: not the other recordings, not --jobs, and not --info or --stdout, neither of
+ * which reaches this path.
+ */
+async function convertInChild(
+  input: string,
+  destination: string,
+  values: Record<string, unknown>,
+): Promise<{ code: number; out: string; err: string }> {
+  const args = [input, '--out', destination];
+  for (const flag of ['annotations-only', 'checksum', 'gzip', 'force', 'quiet', 'json', 'strict']) {
+    if (values[flag] === true) args.push(`--${flag}`);
+  }
+  for (const flag of ['start', 'duration', 'end', 'decimals']) {
+    if (typeof values[flag] === 'string') args.push(`--${flag}`, values[flag] as string);
+  }
+  // --channels is repeatable, and each term is passed as given so that a label containing a
+  // comma survives: joining them back into one list would split it in the child.
+  const channels = values['channels'];
+  if (channels !== undefined) {
+    for (const term of Array.isArray(channels) ? (channels as string[]) : [String(channels)]) {
+      args.push('--channels', term);
+    }
+  }
+
+  return new Promise((resolve) => {
+    const child = fork(fileURLToPath(import.meta.url), args, {
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    });
+    let out = '';
+    let err = '';
+    child.stdout?.setEncoding('utf8').on('data', (chunk: string) => {
+      out += chunk;
+    });
+    child.stderr?.setEncoding('utf8').on('data', (chunk: string) => {
+      err += chunk;
+    });
+    child.on('error', (error) => {
+      resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n` });
+    });
+    child.on('close', (code) => resolve({ code: code ?? EXIT_ERROR, out, err }));
+  });
+}
+
+/** Put the recording's name into the error lines a child produced. */
+function named(text: string, input: string): string {
+  return text.replace(/^error: /gmu, `error: ${printable(input)}: `);
+}
+
+/** Re-render a child's pretty-printed summary onto one line, leaving anything else alone. */
+function compactJson(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed === '') return '';
+  try {
+    return `${JSON.stringify(JSON.parse(trimmed))}\n`;
+  } catch {
+    // Not the document expected; passing it through unchanged beats losing it.
+    return text;
+  }
+}
+
+/**
+ * Where a conversion's output goes.
+ *
+ * Serial runs write straight through, which is what they have always done. Running several
+ * conversions at once needs the alternative: each one's lines are collected and released in
+ * a block when it finishes, so two recordings finishing together cannot interleave a summary
+ * with a warning belonging to the other file.
+ */
+type Emit = (stream: 'out' | 'err', text: string) => void;
+
+const writeThrough: Emit = (stream, text) => {
+  (stream === 'out' ? process.stdout : process.stderr).write(text);
+};
+
+/** Collects output so it can be released in one piece when a conversion finishes. */
+function buffered(): { emit: Emit; flush: () => void } {
+  const parts: [('out' | 'err'), string][] = [];
+  return {
+    emit: (stream, text) => parts.push([stream, text]),
+    flush: () => {
+      for (const [stream, text] of parts) writeThrough(stream, text);
+    },
+  };
+}
+
+/**
  * Report an error the way this command always has, and give the exit code it implies.
  *
  * `input` names the recording while a batch is running: several failures otherwise arrive
  * as a stack of messages with nothing saying which file each belongs to.
  */
-function reportError(error: unknown, input?: string): number {
+function reportError(error: unknown, input?: string, emit: Emit = writeThrough): number {
   const where = input === undefined ? '' : `${printable(input)}: `;
   if (error instanceof EdfError || error instanceof ConversionError) {
-    process.stderr.write(`error: ${where}${printableLines(error.message, '       ')}\n`);
-    if (error.hint) process.stderr.write(`       ${error.hint}\n`);
+    emit('err', `error: ${where}${printableLines(error.message, '       ')}\n`);
+    if (error.hint) emit('err', `       ${error.hint}\n`);
     return EXIT_ERROR;
   }
   if (
@@ -515,11 +673,29 @@ function reportError(error: unknown, input?: string): number {
     error instanceof TimeRangeError ||
     error instanceof OptionError
   ) {
-    process.stderr.write(`error: ${where}${printableLines(error.message, '       ')}\n`);
+    emit('err', `error: ${where}${printableLines(error.message, '       ')}\n`);
     return EXIT_USAGE;
   }
-  process.stderr.write(`error: ${where}${message(error, '       ')}\n`);
+  emit('err', `error: ${where}${message(error, '       ')}\n`);
   return EXIT_ERROR;
+}
+
+/**
+ * How many conversions to run at once.
+ *
+ * `auto` is one per core, less one, so a long batch does not take the machine over. A batch
+ * is the only place this means anything: a single recording is a single conversion however
+ * many jobs are asked for.
+ */
+function parseJobs(raw: unknown, inputs: number): number {
+  if (raw === undefined) return 1;
+  const text = String(raw).trim();
+  if (text === 'auto') return Math.max(1, Math.min(inputs, cpus().length - 1));
+  const value = Number(text);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${text}".`);
+  }
+  return Math.min(value, Math.max(1, inputs));
 }
 
 function splitChannels(raw: unknown): string[] | undefined {

@@ -3,6 +3,54 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.2
+
+### Added: `--jobs`, converting several recordings at once
+
+0.4.0 made a batch possible; this makes it use the machine. Eight recordings of 19 MB, each
+converting to 168 MB of CSV, on eight cores:
+
+| | wall clock |
+| --- | --- |
+| `--jobs 1` | 9.7 s |
+| `--jobs 2` | 5.6 s |
+| `--jobs 4` | 3.3 s |
+| `--jobs auto` | 3.8 s |
+
+```bash
+edf2csv /data/recordings/*.edf --out /data/csv --jobs auto
+```
+
+`auto` is one job per core less one, so a long batch leaves the machine usable. It is not
+always the fastest setting: past a point the conversions compete for the disk rather than the
+CPU, which is why it lands slightly behind `4` above.
+
+**Each conversion runs in its own process.** The first attempt used concurrent promises inside
+one process and gained 6%, which is the overlap in the file reads and nothing else — converting
+is almost entirely arithmetic and string building, 1.17 s of CPU for 1.24 s of wall clock, and
+Node runs that on one thread. Since each conversion is already a whole command, each one gets a
+whole process, which is what `xargs -P` would do by hand.
+
+The output is byte-identical to a serial run, and the tests check that across four recordings
+rather than asserting it.
+
+A recording's output is held until it finishes and then released in one piece, so two ending
+together cannot interleave one's summary with the other's warnings. They therefore appear in
+the order they finish rather than the order given, each announced by the `[n/m]` line naming
+it. `--json` is still one object per line: a child sees a single recording and prints the
+indented document a single conversion prints, so the batch puts it back on one line.
+
+A failure still names its recording. The child converted one file and prefixed nothing the way
+a batch does, so the parent puts the name in — the `[n/m]` header is not necessarily alongside
+in a log.
+
+`--stdout` ignores `--jobs`, since that path takes one recording anyway.
+
+### Fixed: an unusable `--jobs` was accepted in silence under `--info`
+
+Validation lived in the conversion path, so `--info --jobs 0` ignored the flag and printed the
+report. A flag that cannot be honoured is a usage error whatever mode it was given in.
+
 ## 0.4.1
 
 ### Faster: large conversions run in about two thirds of the time

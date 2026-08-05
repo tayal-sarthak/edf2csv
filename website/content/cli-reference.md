@@ -56,6 +56,7 @@ error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so 
 | `--decimals` | | integer 0 to 20 | derived per channel | Force a fixed number of decimal places |
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
 | `--gzip` | | none | off | Compress every CSV, writing `.csv.gz` files |
+| `--jobs` | `-j` | integer or `auto` | 1 | Convert this many recordings at once |
 | `--force` | `-f` | none | off | Write into an output directory that already exists |
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
 | `--json` | | none | off | Print machine-readable JSON to stdout, for a conversion or for `--info` |
@@ -312,6 +313,31 @@ Out-of-range and non-integer values are usage errors. An empty value is rejected
 error: --decimals must be a whole number between 0 and 20, got "16".
 error: --decimals needs a number, for example --decimals 3.
 ```
+
+## --jobs
+
+Converts several recordings at once. It only means anything for a batch — one recording is one conversion however many jobs are asked for.
+
+```bash
+edf2csv /data/recordings/*.edf --out /data/csv --jobs 4
+```
+
+Eight recordings of 19 MB, each converting to 168 MB of CSV, on an eight-core machine:
+
+| | wall clock |
+| --- | --- |
+| `--jobs 1` | 9.7 s |
+| `--jobs 2` | 5.6 s |
+| `--jobs 4` | 3.3 s |
+| `--jobs auto` | 3.8 s |
+
+`auto` is one job per core less one, so a long batch leaves the machine usable. It is not always the fastest setting: past a point the conversions compete for disk rather than CPU, which is why `auto` lands slightly behind `4` above. Start with `auto` and try a smaller number if the disk is the limit.
+
+Each conversion runs in its own process, because converting is almost entirely arithmetic and string building — 1.17 s of CPU for 1.24 s of wall clock — and Node runs that on a single thread. Doing it with concurrent promises inside one process was tried and gained 6%, which is the overlap in the file reads and nothing more.
+
+Output is held until a recording finishes and then released in one piece, so two conversions ending together cannot interleave one's summary with the other's warnings. Recordings therefore appear in the order they finish rather than the order given, and each is announced by the `[n/m]` line naming it. The converted files are byte-identical to a serial run.
+
+`--stdout` ignores it, since that path takes a single recording anyway.
 
 ## --gzip
 
