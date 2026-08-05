@@ -14,6 +14,7 @@ import { realpathSync } from 'node:fs';
 import { readdir, realpath, stat } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { fork } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -334,6 +335,31 @@ export async function main(argv: readonly string[]): Promise<number> {
         Each child's output is held until it exits, so two finishing together cannot
         interleave one's summary with the other's warnings.
       */
+      const running = new Map<ChildProcess, string>();
+
+      /*
+        Ctrl-C in a terminal reaches every process in the group, so the children would stop
+        anyway; a signal sent to this process alone does not, and that is how a batch gets
+        run from a script or a CI job. Interrupting one left four conversions writing
+        gigabytes into a directory their owner believed abandoned, and the last thing on
+        screen was a successful "Done in 1.6s" from whichever recording had just landed —
+        the run read as if it had finished.
+      */
+      const onInterrupt = (signal: NodeJS.Signals): void => {
+        const abandoned = [...running.values()];
+        for (const child of running.keys()) child.kill('SIGTERM');
+        process.stderr.write(
+          `\ninterrupted (${signal}): ${abandoned.length} conversion` +
+            `${abandoned.length === 1 ? '' : 's'} stopped part way through.\n` +
+            (abandoned.length > 0
+              ? `       Incomplete, and should not be used: ${listed(abandoned)}\n`
+              : ''),
+        );
+        process.exit(signal === 'SIGINT' ? 130 : 143);
+      };
+      process.once('SIGINT', onInterrupt);
+      process.once('SIGTERM', onInterrupt);
+
       let next = 0;
       const worker = async (): Promise<void> => {
         for (let index = next++; index < inputs.length; index = next++) {
@@ -342,7 +368,12 @@ export async function main(argv: readonly string[]): Promise<number> {
           if (!quiet && !asJson) {
             sink.emit('err', `[${index + 1}/${inputs.length}] ${printable(input)}\n`);
           }
-          const child = await convertInChild(input, destinations[index] as string, values);
+          const child = await convertInChild(
+            input,
+            destinations[index] as string,
+            values,
+            running,
+          );
           if (child.code === 0) converted++;
           else failures.push(child.code);
           // The child saw one recording, so it printed the indented document a single
@@ -355,7 +386,12 @@ export async function main(argv: readonly string[]): Promise<number> {
           sink.flush();
         }
       };
-      await Promise.all(Array.from({ length: jobs }, () => worker()));
+      try {
+        await Promise.all(Array.from({ length: jobs }, () => worker()));
+      } finally {
+        process.off('SIGINT', onInterrupt);
+        process.off('SIGTERM', onInterrupt);
+      }
     }
 
     if (batch && !quiet && !asJson) {
@@ -681,6 +717,7 @@ async function convertInChild(
   input: string,
   destination: string,
   values: Record<string, unknown>,
+  running: Map<ChildProcess, string>,
 ): Promise<{ code: number; out: string; err: string }> {
   const args = [input, '--out', destination];
   for (const flag of ['annotations-only', 'checksum', 'gzip', 'force', 'quiet', 'json', 'strict']) {
@@ -702,6 +739,7 @@ async function convertInChild(
     const child = fork(fileURLToPath(import.meta.url), args, {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     });
+    running.set(child, destination);
     let out = '';
     let err = '';
     child.stdout?.setEncoding('utf8').on('data', (chunk: string) => {
@@ -711,9 +749,13 @@ async function convertInChild(
       err += chunk;
     });
     child.on('error', (error) => {
+      running.delete(child);
       resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n` });
     });
-    child.on('close', (code) => resolve({ code: code ?? EXIT_ERROR, out, err }));
+    child.on('close', (code) => {
+      running.delete(child);
+      resolve({ code: code ?? EXIT_ERROR, out, err });
+    });
   });
 }
 

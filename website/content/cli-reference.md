@@ -353,6 +353,13 @@ Each conversion runs in its own process, because converting is almost entirely a
 
 Output is held until a recording finishes and then released in one piece, so two conversions ending together cannot interleave one's summary with the other's warnings. Recordings therefore appear in the order they finish rather than the order given, and each is announced by the `[n/m]` line naming it. The converted files are byte-identical to a serial run.
 
+Interrupting a parallel batch stops every conversion in flight and names the directories left half-written:
+
+```
+interrupted (SIGINT): 3 conversions stopped part way through.
+       Incomplete, and should not be used: out/r5, out/r6, out/r7
+```
+
 `--stdout` ignores it, since that path takes a single recording anyway.
 
 ## --gzip

@@ -3,6 +3,47 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.5
+
+### Fixed: interrupting a parallel batch left it running
+
+`--jobs` gives each conversion its own process. Interrupting the command stopped the one that
+was coordinating them and nothing else:
+
+```
+$ edf2csv /data/*.edf --out ./csv --jobs 4
+^C
+$ pgrep -f edf2csv
+8203  8204  8205  8206
+```
+
+Four conversions carried on writing gigabytes into a directory their owner believed abandoned.
+Ctrl-C at a terminal reaches every process in the group, so this did not show up by hand — a
+signal sent to the process alone does not, and that is how a batch runs from a script or a CI
+job.
+
+The interruption was also silent. The serial path has always said so:
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Files already written to "out/r2" are incomplete and should not be used.
+```
+
+The parallel path said nothing, and the last line on screen was a successful `Done in 1.6s`
+from whichever recording had just landed, so the run read as though it had finished.
+
+Both fixed. An interrupted batch now stops every conversion in flight and names each directory
+left half-written:
+
+```
+interrupted (SIGINT): 3 conversions stopped part way through.
+       Incomplete, and should not be used: out/r5, out/r6, out/r7
+```
+
+The exit status is 130 for SIGINT and 143 for SIGTERM, matching the serial path and the usual
+convention. Covered by a test that interrupts a real batch of sixty recordings and then checks
+that nothing outlived it.
+
 ## 0.4.4
 
 ### Fixed: a symlinked recording inside a folder was skipped without a word

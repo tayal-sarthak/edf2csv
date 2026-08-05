@@ -631,6 +631,51 @@ describe('converting several recordings at once', () => {
     for (const line of lines) JSON.parse(line);
   });
 
+  it('stops its children when interrupted, and says the output is incomplete', async () => {
+    // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
+    // signal sent to this process alone does not, which is how a batch runs from a script,
+    // and interrupting one left conversions writing into a directory believed abandoned —
+    // with a successful "Done in 1.6s" as the last thing on screen.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-int-'));
+    temporaries.push(dir);
+    const source = await readFile(fixture('long-stream.edf'));
+    const names = [];
+    for (let i = 0; i < 60; i++) {
+      const name = path.join(dir, `r${String(i).padStart(2, '0')}.edf`);
+      await writeFile(name, source);
+      names.push(name);
+    }
+
+    const { spawn } = await import('node:child_process');
+    const run = spawn(process.execPath, [CLI, ...names, '--out', path.join(dir, 'out'), '--jobs', '3'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    run.stderr.setEncoding('utf8').on('data', (chunk) => {
+      stderr += chunk;
+    });
+
+    // Long enough that conversions are certainly in flight, short enough that 60 of them
+    // cannot all have finished.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    run.kill('SIGINT');
+    const code = await new Promise((resolve) => run.on('close', resolve));
+
+    assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
+    assert.match(stderr, /interrupted \(SIGINT\)/u);
+    assert.match(stderr, /should not be used/u, 'the half-written directories must be named');
+
+    // Nothing may outlive the parent: give the kill a moment, then look for survivors.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const { execFile: raw } = await import('node:child_process');
+    const survivors = await new Promise((resolve) => {
+      raw('pgrep', ['-f', `${CLI} .*${path.basename(dir)}`], (_error, stdout) =>
+        resolve((stdout ?? '').trim()),
+      );
+    });
+    assert.equal(survivors, '', `conversions outlived the interrupted parent: ${survivors}`);
+  });
+
   it('rejects a job count that is not a whole number of one or more', async () => {
     for (const jobs of ['0', 'abc', '1.5', '']) {
       const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, '--info']);
