@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.11
+
+### Fixed: `--info` read the annotation channel of every record
+
+`--info` is documented as a header-only summary that returns immediately whatever the file's size.
+It did read only the header for plain EDF — but on any EDF+/BDF+ file it also called
+`readAnnotations()`, seeking into every data record in the file.
+
+That work was then discarded. Record start times have to be read from the annotation channel only in
+a discontinuous (EDF+D) recording; in a continuous one, record `n` starts at `n * recordDuration` and
+the scan's result is thrown away. On a 12 MB, 20,000-record EDF+C it cost 0.29 s, scaling with record
+count.
+
+The scan now happens only for EDF+D files, where the span and row estimate genuinely depend on it —
+that same file now reports in 0.059 s. Discontinuous recordings are unaffected and still report their
+true span including gaps. This also matches the documented diagnostics table, which already stated
+that `--info` cannot raise `ANNOTATION_DECODE_FAILED`.
+
 ## 0.2.10
 
 ### Fixed: very large values were written in exponent notation

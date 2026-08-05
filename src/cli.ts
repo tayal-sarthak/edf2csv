@@ -162,10 +162,24 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (values['info'] === true) {
       const file = await EdfFile.open(input);
       try {
-        const annotationData =
-          file.annotationSignals.length > 0
-            ? await file.readAnnotations()
-            : { annotations: [], recordStarts: [], malformed: 0 };
+        /*
+          Read the annotation channel only when the timing actually depends on it.
+
+          --info is documented as a header-only summary that returns immediately whatever
+          the file's size, but it called readAnnotations() on every EDF+/BDF+ file — a seek
+          into every data record. deriveRecordStarts discards that data unless the file is
+          EDF+D, where record start times are stored rather than arithmetic, so on a
+          continuous recording the whole scan was thrown away. It cost 0.29 s on a 12 MB
+          file and scaled with record count.
+
+          A discontinuous file still needs the scan: without it the reported span and row
+          estimate are wrong, which is a bug that has already been fixed once here.
+        */
+        const needsRecordStarts =
+          file.header.continuity === 'EDF+D' && file.annotationSignals.length > 0;
+        const annotationData = needsRecordStarts
+          ? await file.readAnnotations()
+          : { annotations: [], recordStarts: [], malformed: 0 };
         const timing = deriveRecordStarts(file, annotationData);
         const plan = buildPlan(
           {
