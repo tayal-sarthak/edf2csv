@@ -3,3 +3,4 @@ dist/
 test/fixtures/generated/
 website/src/generated/
 .DS_Store
+test/crossvalidate/generated/

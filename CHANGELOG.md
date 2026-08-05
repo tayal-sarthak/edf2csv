@@ -3,6 +3,48 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.4
+
+### Added: `npm run crossvalidate`, the pyEDFlib comparison as something you can run
+
+The README and the correctness page have both said the arithmetic is checked against an
+independent implementation. That was true, and it was done by hand, which meant nothing
+rechecked it when the code changed. It is now a command:
+
+```bash
+pip install pyedflib
+npm run crossvalidate
+```
+
+```
+Compared 12,559 sample values across 77 recordings.
+Every value agreed.
+```
+
+Why another implementation rather than another test: the digital-to-physical mapping is four
+numbers out of the header and one multiply. It is easy to get subtly wrong and nearly
+impossible to catch by reading, and a test written next to the code tends to encode the same
+misunderstanding the code has. pyEDFlib was written by other people from the same
+specification.
+
+The recordings it generates are deliberately not the test fixtures. Those target what real
+files get wrong, and pyEDFlib declines several of them — a truncated file, a header whose
+digital range is a single point. These are the opposite: ordinary well-formed recordings
+across a wide spread of calibrations, digital spans from `-1..1` to `-32768..32767` against
+physical spans from `0.0001` to `99999`, which puts the gain anywhere from about 1e-9 to 1e5.
+Both ends of the digital range appear in every one, because those are the two points the
+header actually calibrates and where two derivations of the same mapping differ most.
+
+The comparison runs at `--decimals 20` so that what is compared is two computations of a value
+rather than one of them against its printed form. The first attempt used 12, where a reading
+near 1e-5 keeps only seven significant digits and the rounding was larger than the
+disagreement being looked for.
+
+It is opt-in and not part of `npm test`, which stays dependency-free. Without pyEDFlib
+installed it says so and exits 0 rather than reporting a pass it did not earn. Putting a
+one-part-in-a-million error into the gain makes it exit 1 and name the sample, which is how
+it was confirmed to be capable of failing at all.
+
 ## 0.3.3
 
 ### Fixed: a mistyped channel position converted a different channel

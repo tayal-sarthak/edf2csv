@@ -8,11 +8,37 @@ order: 7
 
 Correctness here covers three different things, verified three different ways.
 
-1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib).
+1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 77 generated recordings and compares every sample: **12,559 values, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and third are what `npm test` runs. The first is an external comparison against another tool, described below, along with how to reproduce it on your own recordings.
+The second and third are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+
+```bash
+pip install pyedflib
+npm run crossvalidate
+```
+
+```
+Compared 12,559 sample values across 77 recordings.
+Every value agreed.
+```
+
+Without pyEDFlib installed it says so and exits 0 rather than pretending to have checked anything.
+
+The recordings it generates are not the test fixtures. Those target the things real files get wrong, and pyEDFlib refuses several of them outright — a truncated file, a header whose digital range is a single point. What this needs is the opposite: ordinary well-formed recordings across a wide spread of calibrations, with digital spans from `-1..1` to `-32768..32767` and physical spans from `0.0001` to `99999`, giving gains from about 1e-9 to about 1e5. Both endpoints of the digital range appear in every recording, since `digitalMin` and `digitalMax` are the two points the header actually calibrates and where a mapping derived slightly differently disagrees most.
+
+The comparison runs at `--decimals 20`, the most the tool will write, so what is being compared is two computations of a value rather than one of them against its printed form. At 12 decimal places a reading near 1e-5 carries only seven significant digits, and that rounding alone is larger than the disagreement being looked for.
+
+To confirm the check can fail, put a one-part-in-a-million error into the gain and rerun it:
+
+```
+x018.edf signals.csv "sig18" sample 0: pyEDFlib -249.99999999999997, edf2csv -250.000251
+```
+
+It exits 1.
+
+Below is how to reproduce the comparison on your own recordings.
 
 ## The cross-check against pyEDFlib
 
