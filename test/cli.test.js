@@ -517,6 +517,43 @@ describe('converting several recordings at once', () => {
     assert.equal(two.split('\n')[0], 'time_s,EEG Fpz-Cz');
   });
 
+  it('follows symbolic links, and survives a cycle of them', async () => {
+    // A recursive readdir reports a symlink as a symlink and never as a file, so a linked
+    // recording was skipped without a word — and "converted 3 of 3" then described the
+    // three it had noticed rather than what the folder held. Linking recordings into a
+    // working directory is ordinary, and naming the same link directly always worked,
+    // which made the omission harder to notice rather than easier.
+    const dir = await stage({ 'real/actual.edf': 'tiny.edf', 'study/plain.edf': 'annotations.edf' });
+    await mkdir(path.join(dir, 'study', 'sub'), { recursive: true });
+    await symlink(path.join(dir, 'real', 'actual.edf'), path.join(dir, 'study', 'link.edf'));
+    await symlink(path.join(dir, 'real'), path.join(dir, 'study', 'linkdir'));
+    // A cycle: study/sub/loop points back at study.
+    await symlink(path.join(dir, 'study'), path.join(dir, 'study', 'sub', 'loop'));
+
+    const { code, stderr } = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'csv')]);
+    assert.equal(code, 0, stderr);
+    // link.edf and linkdir/actual.edf are the same file reached two ways, so it converts
+    // once: plain.edf and the linked recording.
+    assert.match(stderr, /Converted 2 of 2 recordings/u);
+
+    const written = (await readdir(path.join(dir, 'csv'))).sort();
+    assert.deepEqual(written, ['link', 'plain'], `found ${written}`);
+    const linked = await readFile(path.join(dir, 'csv', 'link', 'signals.csv'), 'utf8');
+    assert.equal(linked.split('\n')[0], 'time_s,ch1,ch2', 'the link resolved to its target');
+  });
+
+  it('converts a recording reachable two ways only once', async () => {
+    const dir = await stage({ 'data/one.edf': 'tiny.edf' });
+    await symlink(path.join(dir, 'data', 'one.edf'), path.join(dir, 'data', 'alias.edf'));
+
+    const { code, stderr } = await cli([
+      path.join(dir, 'data'), '--out', path.join(dir, 'out'), '--quiet',
+    ]);
+    assert.equal(code, 0, stderr);
+    // One recording, so this is a single conversion and --out is the directory itself.
+    assert.ok((await readdir(path.join(dir, 'out'))).includes('signals.csv'));
+  });
+
   it('says so when a folder holds no recordings', async () => {
     const dir = await stage({ 'keep.edf': 'tiny.edf' });
     await mkdir(path.join(dir, 'empty'), { recursive: true });

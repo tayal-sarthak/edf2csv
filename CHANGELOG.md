@@ -3,6 +3,37 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.4
+
+### Fixed: a symlinked recording inside a folder was skipped without a word
+
+0.4.3 took a folder as input, and left out any recording that was a symbolic link. A recursive
+`readdir` reports a link as a link and never as a file, so the extension test never saw it:
+
+```
+study/
+  plain.edf
+  link.edf -> /data/real/actual.edf     skipped
+  linkdir  -> /data/real/               skipped, and everything inside it
+```
+
+The run then said `Converted 1 of 1 recordings` — describing what it had noticed rather than
+what the folder held. Linking recordings into a working directory is an ordinary way to arrange
+data, and naming the same link directly on the command line always worked, which made the
+omission harder to notice rather than easier. Converting fewer files than were asked for, and
+reporting a total that agrees with itself, is the failure this tool exists to avoid.
+
+Links are now followed, to recordings and to folders alike. Two consequences, both deliberate:
+
+- **A cycle terminates.** `study/sub/loop -> study` is legal and would otherwise be walked
+  forever. Directories are recorded by their resolved identity and visited once.
+- **A recording reachable two ways is converted once.** Where `find -L` lists both `link.edf`
+  and `linkdir/actual.edf`, this converts the one recording behind them. The alternative is
+  two output directories holding identical data, and a count that overstates what was there.
+
+The walk is written out rather than delegated to `readdir`'s recursive mode, which cannot
+express either of those.
+
 ## 0.4.3
 
 ### Added: a folder as input

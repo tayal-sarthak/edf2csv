@@ -48,6 +48,8 @@ edf2csv /data/study --out ./converted --jobs auto
 
 The layout is kept — a recording at `study/night-1/rec.edf` comes out at `converted/night-1/rec` — which is also what keeps recordings apart. One folder per night with the file always called `rec.edf` is a normal way to organise a study, and flattening those onto their file names would have every one of them claim `converted/rec`.
 
+Symbolic links are followed, both to recordings and to folders, since linking data into a working directory is a normal way to arrange it. A recording reachable two ways is converted once rather than twice, and a cycle of links terminates instead of running forever.
+
 Anything in the folder that is not a recording is skipped, and a folder holding none says so rather than converting nothing in silence:
 
 ```

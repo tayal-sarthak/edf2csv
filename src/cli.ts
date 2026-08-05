@@ -11,7 +11,7 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, realpath, stat } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { fork } from 'node:child_process';
 import path from 'node:path';
@@ -554,17 +554,58 @@ async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
       found.push({ path: given, name: path.basename(given) });
       continue;
     }
-    for (const entry of await readdir(given, { recursive: true, withFileTypes: true })) {
-      if (!entry.isFile() || !/\.(edf|bdf)$/iu.test(entry.name)) continue;
-      // parentPath is the directory the entry was found in, which for a recursive read is
-      // below the one that was asked for.
-      const full = path.join(entry.parentPath ?? given, entry.name);
-      found.push({ path: full, name: path.relative(given, full) });
+    for (const file of await walk(given)) {
+      found.push({ path: file, name: path.relative(given, file) });
     }
   }
-  // A directory hands them back in whatever order the filesystem stored them.
+  // A directory hands its entries back in whatever order the filesystem stored them.
   found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return found;
+}
+
+/**
+ * Every recording under a directory, following symbolic links.
+ *
+ * Written by hand rather than with a recursive `readdir` because that reports a symlink as
+ * a symlink and never as a file, so a linked recording was skipped without a word — and the
+ * closing "converted 3 of 3" then described the three it had noticed rather than what was in
+ * the folder. Data organised by linking recordings into a working directory is ordinary, and
+ * quietly converting fewer files than were asked for is the failure this tool exists to
+ * avoid. Naming the same link on the command line always worked, which made the omission
+ * harder to notice rather than easier.
+ *
+ * Following links means they can form a cycle, so directories are recorded by their resolved
+ * identity and visited once. A link to a file already reached another way is likewise
+ * converted once.
+ */
+async function walk(root: string): Promise<string[]> {
+  const files: string[] = [];
+  const seen = new Set<string>();
+  const queue = [root];
+
+  while (queue.length > 0) {
+    const directory = queue.pop() as string;
+    const real = await realpath(directory).catch(() => directory);
+    if (seen.has(real)) continue;
+    seen.add(real);
+
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      const full = path.join(directory, entry.name);
+      // stat, not the dirent: a dirent describes the link, and what matters is its target.
+      const info = await stat(full).catch(() => null);
+      if (info === null) continue;
+      if (info.isDirectory()) {
+        queue.push(full);
+      } else if (info.isFile() && /\.(edf|bdf)$/iu.test(entry.name)) {
+        const identity = await realpath(full).catch(() => full);
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        files.push(full);
+      }
+    }
+  }
+  return files;
 }
 
 /**
