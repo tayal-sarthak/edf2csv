@@ -208,6 +208,8 @@ The same parser handles all three flags. Values are case-insensitive.
 
 Recognised units are `h`, `hr`, `hrs`, `hour`, `hours`; `m`, `min`, `mins`, `minute`, `minutes`; `s`, `sec`, `secs`, `second`, `seconds`; and `ms` for milliseconds. Note that `m` is minutes and `ms` is milliseconds.
 
+Each unit may appear once. `1h30m20s` is fine and so is `1h30min`, but `1h1h` is rejected rather than summed to two hours — a repeated unit is a typo far more often than it is a request, and silently adding it up produces a window that is quietly the wrong length. Aliases count as the same unit, so `30m20min` is caught too.
+
 Two details of the unit form. A number must sit directly against its unit, with no space between them: `5min` is accepted and `5 min` isn't. Space between separate terms is fine, so `1h30m 15s` works. And a number must lead with a digit: `1.5h` is accepted, `.5` isn't.
 
 In the clock form, the minutes and seconds fields must be below 60, so `60:00` is rejected rather than read as an hour. The hours field is unbounded, which lets `100:00:00` express a long offset.

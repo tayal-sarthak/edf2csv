@@ -70,6 +70,8 @@ export function parseTimeSpec(input: string, optionName: string): number {
   let matched = 0;
   let consumed = 0;
   let match: RegExpExecArray | null;
+  // Which units have already been seen, so a repeat can be rejected rather than added.
+  const seen = new Set<number>();
   while ((match = UNIT_TOKEN.exec(text)) !== null) {
     const amount = Number(match[1]);
     const unit = match[2] ?? '';
@@ -79,6 +81,18 @@ export function parseTimeSpec(input: string, optionName: string): number {
         `${optionName} "${input}" uses an unknown unit "${unit}". Use h, m, s, or ms.`,
       );
     }
+
+    // "1h1h" is a typo, not a request for two hours. Summing repeated units silently
+    // turned a slip into a plausible window that was quietly the wrong length. Units are
+    // keyed by their scale so the aliases collapse together: "1h30min20m" is caught too.
+    if (seen.has(scale)) {
+      throw new TimeRangeError(
+        `${optionName} "${input}" gives the same unit twice. ` +
+          `Combine each unit once, as in 1h30m.`,
+      );
+    }
+    seen.add(scale);
+
     total += amount * scale;
     matched++;
     consumed += match[0].length;

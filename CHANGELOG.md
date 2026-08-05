@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.14
+
+### Changed: a repeated unit in a time value is now an error
+
+`--start 1h1h` was accepted and summed to two hours. A repeated unit is a typo far more often than a
+request, and summing it silently turned a slip into a plausible window of the wrong length — the sort
+of quiet wrong answer this tool tries hard not to give.
+
+Each unit may now appear once. `1h30m20s` and `1h30min` are unaffected; `1h1h`, `5m5m` and
+`30s10sec` are rejected with a message saying so. Aliases collapse to the same unit, so `30m20min` is
+caught as well.
+
 ## 0.2.13
 
 ### Fixed: the precision ceiling collapsed distinct samples on the finest channels
