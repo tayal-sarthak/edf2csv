@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.27
+
+### Added: `--stdout` streams the CSV into a pipeline
+
+The README has always named "a pipeline that speaks CSV" as a use case, but getting there meant
+converting to a directory and then reading the file back out.
+
+```bash
+edf2csv recording.edf --stdout | duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin')"
+```
+
+Only the samples are written — no `channels.csv`, `annotations.csv` or `metadata.json`, because a
+stream holds one table. For the same reason the recording has to produce exactly one, and a
+mixed-rate file is refused rather than merged:
+
+```
+error: --stdout needs exactly one table, but this recording produces 3 (its channels use 3 different sampling rates).
+       Narrow it to one rate with --channels, or convert to a directory instead.
+```
+
+Merging them would mean inventing rows for the slower channels, which is the one thing this tool
+exists not to do. Selecting channels that share a rate leaves one table and works.
+
+Row count and warnings go to stderr, so stdout carries nothing but CSV, and the progress meter is
+never drawn in this mode.
+
 ## 0.2.26
 
 ### Fixed: the README's option list had fallen behind the CLI

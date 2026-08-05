@@ -52,6 +52,14 @@ export interface ConvertOptions extends PlanOptions {
   force?: boolean | undefined;
   /** Record a SHA-256 of the input in metadata.json. Costs one extra read of the file. */
   checksum?: boolean | undefined;
+  /**
+   * Write the signal CSV to stdout instead of to a directory.
+   *
+   * Only valid when the conversion produces exactly one signal file: a mixed-rate
+   * recording becomes several tables, and merging them into one stream would mean
+   * inventing the samples this tool exists not to invent. No sidecar files are written.
+   */
+  toStdout?: boolean | undefined;
   onProgress?: ((progress: ConversionProgress) => void) | undefined;
 }
 
@@ -110,6 +118,34 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       options,
     );
     plan.diagnostics.push(...timing.diagnostics);
+
+    if (options.toStdout === true) {
+      if (!plan.writeSignals) {
+        throw new ConversionError(
+          'OUTPUT_UNWRITABLE',
+          '--stdout has no signal data to write because --annotations-only was given.',
+          'Drop one of the two flags.',
+        );
+      }
+      if (plan.groups.length !== 1) {
+        throw new ConversionError(
+          'OUTPUT_UNWRITABLE',
+          `--stdout needs exactly one table, but this recording produces ${plan.groups.length} ` +
+            `(its channels use ${plan.groups.length} different sampling rates).`,
+          'Narrow it to one rate with --channels, or convert to a directory instead.',
+        );
+      }
+      const written = await writeSignalFiles(file, plan, null, timing.starts, options);
+      return {
+        outputDir: '-',
+        files: written,
+        annotationCount: 0,
+        diagnostics: [...file.diagnostics, ...plan.diagnostics],
+        plan,
+        file,
+        elapsedMs: Date.now() - startedAt,
+      };
+    }
 
     const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
     await assertInputDoesNotOverlapOutputs(inputPath, outputDir, file, plan);
@@ -339,12 +375,15 @@ function describeFsError(cause: unknown): string {
 async function writeSignalFiles(
   file: EdfFile,
   plan: ConversionPlan,
-  outputDir: string,
+  outputDir: string | null,
   recordStarts: Float64Array | null,
   options: ConvertOptions,
 ): Promise<WrittenFile[]> {
   const open: OpenGroup[] = plan.groups.map((group) => {
-    const stream = createWriteStream(path.join(outputDir, group.fileName));
+    // A null directory means the single table goes to stdout. process.stdout is already a
+    // writable stream, so the same buffered writer and backpressure handling apply.
+    const stream =
+      outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName));
     const writer = new BufferedLineWriter(stream);
     writer.pushLine(csvRow(['time_s', ...group.channels.map((c) => c.column)]));
     return {
@@ -362,7 +401,7 @@ async function writeSignalFiles(
     const detail = cause instanceof Error ? cause.message : String(cause);
     throw new ConversionError(
       'WRITE_FAILED',
-      `Writing to "${outputDir}" failed: ${detail}`,
+      `Writing to ${outputDir === null ? 'stdout' : `"${outputDir}"`} failed: ${detail}`,
       'The files written so far are incomplete and should not be used. Free up space or ' +
         'choose another destination with --out, then run the conversion again.',
     );

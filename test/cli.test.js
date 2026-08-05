@@ -313,6 +313,38 @@ describe('documented flags', () => {
   });
 });
 
+describe('--stdout', () => {
+  it('streams the single table to stdout and writes nothing to disk', async () => {
+    const { code, stdout, stderr } = await cli([fixture('tiny.edf'), '--stdout']);
+    assert.equal(code, 0);
+    const rows = stdout.trimEnd().split('\n');
+    assert.equal(rows[0], 'time_s,ch1,ch2');
+    assert.equal(rows.length, 21, 'header plus 20 samples');
+    assert.match(stderr, /20 rows to stdout/, 'the note belongs on stderr, not in the CSV');
+  });
+
+  it('refuses a recording that would need more than one table', async () => {
+    const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--stdout']);
+    assert.equal(code, 1);
+    assert.match(stderr, /exactly one table/);
+    assert.match(stderr, /--channels/, 'the message should say how to narrow it');
+  });
+
+  it('accepts the same recording once narrowed to one rate', async () => {
+    const { code, stdout } = await cli([
+      fixture('mixed-rates.edf'), '--stdout', '--channels', 'Temp rectal',
+    ]);
+    assert.equal(code, 0);
+    assert.deepEqual(stdout.trimEnd().split('\n').length, 4, 'header plus the three real samples');
+  });
+
+  it('refuses --annotations-only, which has no signal data to stream', async () => {
+    const { code, stderr } = await cli([fixture('annotations.edf'), '--stdout', '--annotations-only']);
+    assert.equal(code, 1);
+    assert.match(stderr, /no signal data/);
+  });
+});
+
 describe('--strict', () => {
   it('leaves a clean recording alone and fails one that warned', async () => {
     const clean = await cli([fixture('tiny.edf'), '--out', await outDir(), '--quiet', '--strict']);

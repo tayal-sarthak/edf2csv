@@ -37,6 +37,7 @@ done
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
 | `--json` | | none | off | Print machine-readable JSON to stdout, for a conversion or for `--info` |
 | `--strict` | | none | off | Exit 1 if the recording raised any warning |
+| `--stdout` | | none | off | Write the signal CSV to stdout instead of a directory |
 | `--help` | `-h` | none | | Print usage to stdout and exit 0 |
 | `--version` | `-V` | none | | Print the version to stdout and exit 0 |
 
@@ -285,6 +286,28 @@ error: --decimals needs a number, for example --decimals 3.
 Computes a SHA-256 of the input file and records it in `metadata.json` under `source.sha256`. Without the flag that field is `null`.
 
 This costs one extra full read of the input. It's useful when the CSV outlives the source and you need to establish later which file it came from. The rest of `source` — resolved path, byte size, modification time — is recorded either way.
+
+## --stdout
+
+Writes the signal CSV to stdout and creates no directory, for feeding a conversion straight into
+something else:
+
+```bash
+edf2csv recording.edf --stdout | duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin')"
+```
+
+Only the samples are written — no `channels.csv`, `annotations.csv` or `metadata.json`, since a
+stream holds one table. For the same reason it needs the recording to produce exactly one, and
+refuses a mixed-rate file rather than merging tables that have different row counts:
+
+```
+error: --stdout needs exactly one table, but this recording produces 3 (its channels use 3 different sampling rates).
+       Narrow it to one rate with --channels, or convert to a directory instead.
+```
+
+`--channels` is usually the answer, since selecting channels that share a rate leaves one table. The
+row count still goes to stderr, so stdout carries nothing but CSV, and the progress meter is never
+drawn in this mode.
 
 ## -q, --quiet
 

@@ -45,6 +45,8 @@ Options
   -q, --quiet            Suppress the summary; warnings and errors still print
       --json             Print machine-readable JSON to stdout (works with --info too)
       --strict           Exit 1 if the recording raised any warning
+      --stdout           Write the signal CSV to stdout instead of a directory
+                         (single-rate recordings only)
   -h, --help             Show this help
   -V, --version          Show the version
 
@@ -118,6 +120,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         quiet: { type: 'boolean', short: 'q' },
         json: { type: 'boolean' },
         strict: { type: 'boolean' },
+        stdout: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
       },
@@ -154,6 +157,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
   const strict = values['strict'] === true;
+  const toStdout = values['stdout'] === true;
 
   try {
     const channels = splitChannels(values['channels']);
@@ -220,7 +224,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       return EXIT_OK;
     }
 
-    const showProgress = !quiet && !asJson && process.stderr.isTTY === true;
+    const showProgress = !quiet && !asJson && !toStdout && process.stderr.isTTY === true;
     let lastTick = 0;
 
     const destination =
@@ -256,6 +260,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       annotationsOnly: values['annotations-only'] === true,
       checksum: values['checksum'] === true,
       force: values['force'] === true,
+      toStdout,
       onProgress: showProgress
         ? (progress): void => {
             const now = Date.now();
@@ -278,7 +283,14 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (asJson) {
       process.stdout.write(`${summaryJson(result)}\n`);
     } else if (!quiet) {
-      process.stderr.write(`${formatSummary(result)}\n`);
+      // With --stdout there is no directory to summarise, and the row count is the only
+      // thing worth saying — on stderr, so the CSV on stdout stays clean.
+      if (toStdout) {
+        const rows = result.files[0]?.rows ?? 0;
+        process.stderr.write(`Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`);
+      } else {
+        process.stderr.write(`${formatSummary(result)}\n`);
+      }
     }
 
     /*
