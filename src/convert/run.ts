@@ -10,7 +10,9 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
+import { finished, pipeline } from 'node:stream/promises';
+import type { Writable } from 'node:stream';
+import { createGzip, gzipSync } from 'node:zlib';
 import path from 'node:path';
 
 import { EdfFile } from '../edf/reader.js';
@@ -89,6 +91,8 @@ interface OpenGroup {
   writer: BufferedLineWriter;
   formatters: SampleFormatter[];
   rows: number;
+  /** Resolves once a compressed stream's bytes have reached the file behind it. */
+  settled: Promise<void>;
 }
 
 export async function convert(inputPath: string, options: ConvertOptions = {}): Promise<ConvertResult> {
@@ -174,12 +178,13 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         outputDir,
         annotationData.annotations,
         requestedAnnotationWindow(options),
+        options.gzip === true,
       );
       written.push(result);
       annotationsWritten = result.rows;
     }
 
-    written.push(await writeChannelsCsv(outputDir, file, plan));
+    written.push(await writeChannelsCsv(outputDir, file, plan, options.gzip === true));
     await writeMetadata(outputDir, inputPath, file, plan, written, annotationsWritten, options);
 
     const stale = await findStaleOutput(outputDir, written);
@@ -206,6 +211,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     signals_256hz.csv         an integer rate
     signals_12_5hz.csv        a fractional rate, decimal point written as an underscore
     signals_1_000e-7hz.csv    a rate small enough to need exponent form  (0.2.2)
+    signals_256hz.csv.gz      any of the above, compressed                (0.3.0)
     signals_0hz_2.csv         a second group whose rate slug collided    (0.2.1)
 
   The previous `[\w.]+hz` matched neither of the last two — `-` and `+` are not word
@@ -215,7 +221,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   for. Requiring a digit after the underscore keeps a user's own `signals_notes.csv` out.
 */
 const OUTPUT_PATTERN =
-  /^(signals(_\d[\w.+-]*hz(_\d+)?)?\.csv|annotations\.csv|channels\.csv|metadata\.json)$/u;
+  /^(signals(_\d[\w.+-]*hz(_\d+)?)?\.csv(\.gz)?|annotations\.csv(\.gz)?|channels\.csv(\.gz)?|metadata\.json)$/u;
 
 /**
  * Detect output from a previous run that this one did not replace.
@@ -381,8 +387,9 @@ async function writeSignalFiles(
   const open: OpenGroup[] = plan.groups.map((group) => {
     // A null directory means the single table goes to stdout. process.stdout is already a
     // writable stream, so the same buffered writer and backpressure handling apply.
-    const stream =
+    const target =
       outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName));
+    const { stream, settled } = compressed(target, options.gzip === true);
     const writer = new BufferedLineWriter(stream);
     writer.pushLine(csvRow(['time_s', ...group.channels.map((c) => c.column)]));
     return {
@@ -390,6 +397,7 @@ async function writeSignalFiles(
       writer,
       formatters: group.channels.map((c) => makeSampleFormatter(c.signal, c.decimals)),
       rows: 0,
+      settled,
     };
   });
 
@@ -467,8 +475,31 @@ async function streamSignalRows(
     });
   }
 
-  for (const entry of open) await entry.writer.end();
+  for (const entry of open) {
+    await entry.writer.end();
+    // With --gzip the writer's stream is the compressor, whose end callback fires when the
+    // compressor is done rather than when the file behind it is. Awaiting only that would
+    // report success with the tail of the file still in flight.
+    await entry.settled;
+  }
   return open.map((entry) => ({ name: entry.group.fileName, rows: entry.rows }));
+}
+
+/**
+ * The stream rows are written to, plus a promise for the data reaching its destination.
+ *
+ * Compression sits between the writer and the file as a transform. Failures below it — a
+ * full disk, an unwritable path — surface on the file stream, where nothing is listening,
+ * so they are forwarded onto the compressor: that is the stream the writer watches, and
+ * routing them there keeps one error path rather than two.
+ */
+function compressed(target: Writable, gzip: boolean): { stream: Writable; settled: Promise<void> } {
+  if (!gzip) return { stream: target, settled: Promise.resolve() };
+  const compressor = createGzip();
+  target.on('error', (error: Error) => compressor.destroy(error));
+  compressor.pipe(target);
+  // stdout is never closed by the writer, so nothing would resolve a wait on it.
+  return { stream: compressor, settled: target === process.stdout ? Promise.resolve() : finished(target) };
 }
 
 /**
@@ -479,9 +510,16 @@ async function streamSignalRows(
  * and, more importantly, no mention that the signal files had already been written. The
  * conversion stopped half-done and the message gave no sign of it.
  */
-async function writeOutputFile(outputDir: string, name: string, contents: string): Promise<void> {
+async function writeOutputFile(
+  outputDir: string,
+  name: string,
+  contents: string,
+  gzip = false,
+): Promise<void> {
   try {
-    await writeFile(path.join(outputDir, name), contents, 'utf8');
+    // The sidecars are built in memory before being written, so compressing them in memory
+    // costs nothing extra. Only the signal tables are large enough to need a stream.
+    await writeFile(path.join(outputDir, name), gzip ? gzipSync(contents) : contents, gzip ? undefined : 'utf8');
   } catch (cause) {
     const detail = cause instanceof Error ? cause.message : String(cause);
     throw new ConversionError(
@@ -497,6 +535,7 @@ async function writeChannelsCsv(
   outputDir: string,
   file: EdfFile,
   plan: ConversionPlan,
+  gzip: boolean,
 ): Promise<WrittenFile> {
   const includedColumns = new Set(plan.groups.flatMap((g) => g.channels.map((c) => c.signal.index)));
   const fileFor = new Map<number, string>();
@@ -546,8 +585,9 @@ async function writeChannelsCsv(
     );
   }
 
-  await writeOutputFile(outputDir, 'channels.csv', lines.join('\n') + '\n');
-  return { name: 'channels.csv', rows: lines.length - 1 };
+  const name = gzip ? 'channels.csv.gz' : 'channels.csv';
+  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
+  return { name, rows: lines.length - 1 };
 }
 
 /*
@@ -577,6 +617,7 @@ async function writeAnnotationsCsv(
   outputDir: string,
   annotations: readonly Annotation[],
   window: { from: number; to: number },
+  gzip: boolean,
 ): Promise<WrittenFile> {
   const inWindow = annotations
     .filter((a) => a.onset >= window.from && a.onset < window.to)
@@ -594,8 +635,9 @@ async function writeAnnotationsCsv(
     );
   }
 
-  await writeOutputFile(outputDir, 'annotations.csv', lines.join('\n') + '\n');
-  return { name: 'annotations.csv', rows: inWindow.length };
+  const name = gzip ? 'annotations.csv.gz' : 'annotations.csv';
+  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
+  return { name, rows: inWindow.length };
 }
 
 async function writeMetadata(

@@ -59,6 +59,8 @@ export interface PlanOptions {
   annotationsOnly?: boolean | undefined;
   /** Force a fixed number of decimals instead of deriving it per channel. */
   decimals?: number | undefined;
+  /** Compress each CSV with gzip, giving every one of them a `.gz` name. */
+  gzip?: boolean | undefined;
 }
 
 export interface ConversionPlan {
@@ -126,7 +128,9 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     }
   }
 
-  const groups = writeSignals ? groupByRate(chosen, columnNames, options.decimals) : [];
+  const groups = writeSignals
+    ? groupByRate(chosen, columnNames, options.decimals, options.gzip === true)
+    : [];
   const estimate = estimateOutput(
     groups,
     range,
@@ -159,6 +163,7 @@ function groupByRate(
   signals: readonly EdfSignal[],
   columnNames: Map<number, string>,
   forcedDecimals: number | undefined,
+  gzip: boolean,
 ): RateGroup[] {
   const byRate = new Map<number, EdfSignal[]>();
   for (const signal of signals) {
@@ -191,12 +196,13 @@ function groupByRate(
     — two files that no longer overwrite each other, but of which only one is named for the
     rate it holds. The suffix stays as the backstop for anything this still cannot separate.
   */
+  const suffix = gzip ? '.csv.gz' : '.csv';
   const slugs = formatRates(rates).map((text) => `${text.replace('.', '_')}hz`);
   const used = new Set<string>();
   const uniqueName = (index: number): string => {
     const base = `signals_${slugs[index]}`;
-    let name = `${base}.csv`;
-    for (let n = 2; used.has(name); n++) name = `${base}_${n}.csv`;
+    let name = `${base}${suffix}`;
+    for (let n = 2; used.has(name); n++) name = `${base}_${n}${suffix}`;
     used.add(name);
     return name;
   };
@@ -207,7 +213,7 @@ function groupByRate(
     return {
       rate,
       samplesPerRecord: first ? first.samplesPerRecord : 0,
-      fileName: single ? 'signals.csv' : uniqueName(index),
+      fileName: single ? `signals${suffix}` : uniqueName(index),
       timeDecimals: timeDecimals(rate),
       channels: members.map((signal) => ({
         signal,

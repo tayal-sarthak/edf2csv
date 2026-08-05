@@ -41,6 +41,7 @@ Options
       --annotations-only Write only the EDF+ annotations, no signal data
       --decimals <n>     Fix the decimal places instead of deriving them per channel
       --checksum         Record a SHA-256 of the input in metadata.json
+      --gzip             Compress every CSV, writing .csv.gz files
   -f, --force            Overwrite the output directory if it exists
   -q, --quiet            Suppress the summary; warnings and errors still print
       --json             Print machine-readable JSON to stdout (works with --info too)
@@ -54,6 +55,8 @@ Output
   A directory containing signals.csv, channels.csv, metadata.json, and
   annotations.csv when the recording carries EDF+ annotations. Channels recorded
   at different sampling rates are written to separate files, never resampled.
+  With --gzip each CSV becomes a .csv.gz; metadata.json stays plain text so the
+  directory can still be read at a glance.
 
 Examples
   edf2csv recording.edf
@@ -116,6 +119,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         'annotations-only': { type: 'boolean' },
         decimals: { type: 'string' },
         checksum: { type: 'boolean' },
+        gzip: { type: 'boolean' },
         force: { type: 'boolean', short: 'f' },
         quiet: { type: 'boolean', short: 'q' },
         json: { type: 'boolean' },
@@ -216,6 +220,9 @@ export async function main(argv: readonly string[]): Promise<number> {
             endText: typeof values['end'] === 'string' ? values['end'] : undefined,
             decimals,
             annotationsOnly: values['annotations-only'] === true,
+            // --info reports the names a conversion would produce, so it needs the same
+            // flag: with --gzip those names end in .csv.gz.
+            gzip: values['gzip'] === true,
           },
         );
         plan.diagnostics.push(...timing.diagnostics);
@@ -270,6 +277,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       decimals,
       annotationsOnly: values['annotations-only'] === true,
       checksum: values['checksum'] === true,
+      gzip: values['gzip'] === true,
       force: values['force'] === true,
       toStdout,
       onProgress: showProgress

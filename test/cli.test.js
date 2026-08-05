@@ -7,6 +7,7 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const run = promisify(execFile);
@@ -332,6 +333,63 @@ describe('--info', () => {
       if (estimate < actual) short.push(`${name}: said ${estimate}, wrote ${actual}`);
     }
     assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
+  });
+});
+
+describe('--gzip', () => {
+  it('writes .csv.gz whose contents match an uncompressed run exactly', async () => {
+    const plainDir = await outDir();
+    const zipDir = await outDir();
+    assert.equal((await cli([fixture('annotations.edf'), '--out', plainDir, '--quiet'])).code, 0);
+    assert.equal((await cli([fixture('annotations.edf'), '--out', zipDir, '--gzip', '--quiet'])).code, 0);
+
+    const names = (await readdir(zipDir)).sort();
+    assert.deepEqual(
+      names,
+      ['annotations.csv.gz', 'channels.csv.gz', 'metadata.json', 'signals.csv.gz'],
+      'every CSV is compressed; metadata.json stays readable',
+    );
+
+    for (const csv of ['signals.csv', 'annotations.csv']) {
+      const expanded = gunzipSync(await readFile(path.join(zipDir, `${csv}.gz`))).toString('utf8');
+      const plain = await readFile(path.join(plainDir, csv), 'utf8');
+      assert.equal(expanded, plain, `${csv}.gz must decompress to the uncompressed output`);
+    }
+
+    // channels.csv is the one file that legitimately differs: it names the outputs.
+    const channels = gunzipSync(await readFile(path.join(zipDir, 'channels.csv.gz'))).toString('utf8');
+    assert.match(channels, /signals\.csv\.gz/u, 'channels.csv must name the file that was written');
+  });
+
+  it('reports the compressed names, and the estimate as a pre-compression size', async () => {
+    const { code, stdout } = await cli([fixture('tiny.edf'), '--info', '--gzip']);
+    assert.equal(code, 0);
+    assert.match(stdout, /signals\.csv\.gz/u, '--info must predict the name it would write');
+    assert.match(stdout, /before compression/u);
+
+    const plain = await cli([fixture('tiny.edf'), '--info']);
+    assert.ok(!plain.stdout.includes('before compression'), 'only qualified when compressing');
+  });
+
+  it('compresses the stream under --stdout', async () => {
+    // execFile decodes stdout as text by default, which would corrupt the gzip bytes.
+    const { stdout } = await run(process.execPath, [CLI, fixture('tiny.edf'), '--stdout', '--gzip'], {
+      encoding: 'buffer',
+    });
+    assert.equal(stdout[0], 0x1f, 'gzip magic byte 1');
+    assert.equal(stdout[1], 0x8b, 'gzip magic byte 2');
+    const text = gunzipSync(stdout).toString('utf8');
+    assert.equal(text.split('\n')[0], 'time_s,ch1,ch2');
+  });
+
+  it('does not call a compressed run stale on the next uncompressed one', async () => {
+    // Leftovers are matched by name. If the pattern did not know about .gz, a rerun
+    // without the flag would leave the old .csv.gz files sitting there unreported.
+    const dir = await outDir();
+    assert.equal((await cli([fixture('tiny.edf'), '--out', dir, '--gzip', '--quiet'])).code, 0);
+    const { code, stderr } = await cli([fixture('tiny.edf'), '--out', dir, '--force', '--quiet']);
+    assert.equal(code, 0);
+    assert.match(stderr, /signals\.csv\.gz/u, 'the superseded compressed file must be reported');
   });
 });
 

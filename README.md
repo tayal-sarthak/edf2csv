@@ -59,6 +59,7 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --annotations-only Just the EDF+ events
       --decimals <n>     Force a number of decimal places
       --checksum         Put a SHA-256 of the input in metadata.json
+      --gzip             Compress every CSV, writing .csv.gz files
   -f, --force            Overwrite the output folder
   -q, --quiet            Less output
       --json             Machine-readable JSON on stdout (works with --info too)

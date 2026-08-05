@@ -33,6 +33,7 @@ done
 | `--annotations-only` | | none | off | Write only the EDF+ event list, no signal data |
 | `--decimals` | | integer 0 to 20 | derived per channel | Force a fixed number of decimal places |
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
+| `--gzip` | | none | off | Compress every CSV, writing `.csv.gz` files |
 | `--force` | `-f` | none | off | Write into an output directory that already exists |
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
 | `--json` | | none | off | Print machine-readable JSON to stdout, for a conversion or for `--info` |
@@ -279,6 +280,50 @@ Out-of-range and non-integer values are usage errors. An empty value is rejected
 ```
 error: --decimals must be a whole number between 0 and 20, got "16".
 error: --decimals needs a number, for example --decimals 3.
+```
+
+## --gzip
+
+Compresses every CSV on the way out. Each one gains a `.gz` extension:
+
+```
+recording_csv/
+  signals.csv.gz
+  annotations.csv.gz
+  channels.csv.gz
+  metadata.json
+```
+
+CSV of sampled signal data compresses well — long runs of similar values in a fixed-width decimal format — so the saving is large. An hour of 100 Hz EEG that converts to 168 MB of CSV writes 26 MB with `--gzip`, about six times smaller, and the compression adds roughly a second per hundred megabytes.
+
+`metadata.json` is left as plain text. It is small, and it is the file you read to find out what the directory contains, which is awkward if reading it requires decompressing it first.
+
+The contents are byte-for-byte what an uncompressed run produces, so anything that reads gzip reads the output directly:
+
+```bash
+edf2csv recording.edf --out ./converted --gzip
+gunzip -c ./converted/signals.csv.gz | head -5
+```
+
+pandas takes it without any decompression step, inferring the codec from the extension:
+
+```python
+import pandas as pd
+signals = pd.read_csv('converted/signals.csv.gz')
+```
+
+R's `read.csv` and `readr::read_csv` do the same. DuckDB reads it with `read_csv('converted/signals.csv.gz')`.
+
+`--gzip` combines with `--stdout` to compress the stream:
+
+```bash
+edf2csv recording.edf --stdout --gzip > signals.csv.gz
+```
+
+`--info` reports the estimate as the size **before** compression, since what compression achieves depends on the data:
+
+```
+Would write 10,000,000 rows, roughly 160.1 MB before compression.
 ```
 
 ## --checksum

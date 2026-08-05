@@ -120,8 +120,12 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
         `No channel is resampled.`,
     );
   }
+  // The estimate counts the characters of the CSV, which is what --gzip then compresses.
+  // Reporting it as the size on disk would overstate a compressed conversion several-fold.
+  const compressing = plan.groups.some((group) => group.fileName.endsWith('.gz'));
   lines.push(
-    `Would write ${plan.estimate.rows.toLocaleString('en-US')} rows, roughly ${formatBytes(plan.estimate.bytes)}.`,
+    `Would write ${plan.estimate.rows.toLocaleString('en-US')} rows, roughly ` +
+      `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
   );
 
   return lines.join('\n');
@@ -180,6 +184,7 @@ export function infoJson(file: EdfFile, plan: ConversionPlan): string {
       })),
       estimate: {
         rows: plan.estimate.rows,
+        // Character count of the CSV. With --gzip the file on disk is smaller than this.
         bytes: plan.estimate.bytes,
         exceeds_spreadsheet_limit: plan.estimate.exceedsSpreadsheetLimit,
       },

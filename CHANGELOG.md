@@ -3,6 +3,58 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.0
+
+### Added: `--gzip`
+
+CSV is the point of this tool and also its main cost. An hour of 100 Hz EEG leaves as 168 MB of
+text. `--gzip` compresses each table as it is written:
+
+```bash
+edf2csv recording.edf --out ./converted --gzip
+```
+
+```
+converted/
+  signals.csv.gz        26 MB, from 168 MB
+  annotations.csv.gz
+  channels.csv.gz
+  metadata.json
+```
+
+Roughly six times smaller on real signal data — long runs of similar values in a fixed-width
+decimal format are close to the best case for gzip — for about a second per hundred megabytes.
+Nothing is buffered that was not buffered before: the compressor sits between the existing
+writer and the file, so memory stays flat on a recording of any size.
+
+The bytes are what an uncompressed run produces, so the usual readers need no extra step.
+`pandas.read_csv('signals.csv.gz')` infers the codec from the extension, as do R's `read.csv`
+and DuckDB's `read_csv`.
+
+`metadata.json` is deliberately left uncompressed. It is small, and it is the file you open to
+find out what a directory holds — which is a poor thing to have to decompress first.
+
+It combines with `--stdout`:
+
+```bash
+edf2csv recording.edf --stdout --gzip > signals.csv.gz
+```
+
+`--info` reports the estimate as the size before compression, and says so, because how much
+compression achieves depends on the data:
+
+```
+Would write 10,000,000 rows, roughly 160.1 MB before compression.
+```
+
+The package still declares no runtime dependencies; `zlib` ships with Node.
+
+### Fixed: a compressed run left behind by a later plain one is now reported
+
+The leftover-output check matches files by name, and did not know about `.csv.gz`. Converting
+with `--gzip` and then rerunning with `--force` and no flag left the old compressed files in
+place, unmentioned, next to the new plain ones.
+
 ## 0.2.34
 
 ### Fixed: `--info` could report a size the conversion then exceeded
