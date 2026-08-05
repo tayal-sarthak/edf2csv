@@ -128,11 +128,6 @@ describe('argument errors exit 2', () => {
     assert.equal(code, 2);
   });
 
-  it('rejects more than one input file', async () => {
-    const { code, stderr } = await cli([fixture('tiny.edf'), fixture('mixed-rates.edf')]);
-    assert.equal(code, 2);
-    assert.match(stderr, /one at a time/);
-  });
 
   it('quotes the time it was given, so the value has visible edges', async () => {
     // The parse errors have always quoted the value; the range errors did not, and the
@@ -384,6 +379,123 @@ describe('--info', () => {
       if (estimate < actual) short.push(`${name}: said ${estimate}, wrote ${actual}`);
     }
     assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
+  });
+});
+
+describe('converting several recordings at once', () => {
+  /** Copy fixtures into a fresh directory under the given names. */
+  async function stage(files) {
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-batch-'));
+    temporaries.push(dir);
+    for (const [name, source] of Object.entries(files)) {
+      await mkdir(path.dirname(path.join(dir, name)), { recursive: true });
+      await writeFile(path.join(dir, name), await readFile(fixture(source)));
+    }
+    return dir;
+  }
+
+  it('gives each recording its own directory under --out', async () => {
+    const dir = await stage({
+      'night-01.edf': 'tiny.edf',
+      'night-02.edf': 'annotations.edf',
+      'night-03.edf': 'mixed-rates.edf',
+    });
+    const { code } = await cli([
+      path.join(dir, 'night-01.edf'),
+      path.join(dir, 'night-02.edf'),
+      path.join(dir, 'night-03.edf'),
+      '--out', path.join(dir, 'converted'),
+      '--quiet',
+    ]);
+    assert.equal(code, 0);
+    assert.deepEqual(
+      (await readdir(path.join(dir, 'converted'))).sort(),
+      ['night-01', 'night-02', 'night-03'],
+      'one directory per recording, named after it',
+    );
+    // Each holds its own data rather than the last one to be written.
+    const first = await readFile(path.join(dir, 'converted', 'night-01', 'signals.csv'), 'utf8');
+    assert.equal(first.split('\n')[0], 'time_s,ch1,ch2');
+    const third = await readdir(path.join(dir, 'converted', 'night-03'));
+    assert.ok(third.includes('signals_256hz.csv'), 'the mixed-rate file still splits by rate');
+  });
+
+  it('converts each beside itself when no --out is given', async () => {
+    const dir = await stage({ 'a.edf': 'tiny.edf', 'b.edf': 'tiny.edf' });
+    const { code } = await cli([path.join(dir, 'a.edf'), path.join(dir, 'b.edf'), '--quiet']);
+    assert.equal(code, 0);
+    const entries = (await readdir(dir)).sort();
+    assert.deepEqual(entries, ['a.edf', 'a_csv', 'b.edf', 'b_csv'], 'the shell loop it replaces');
+  });
+
+  it('keeps going past a recording it cannot read, and says so', async () => {
+    const dir = await stage({ 'a.edf': 'tiny.edf', 'c.edf': 'annotations.edf' });
+    await writeFile(path.join(dir, 'b.edf'), 'not an edf at all');
+
+    const { code, stderr } = await cli([
+      path.join(dir, 'a.edf'), path.join(dir, 'b.edf'), path.join(dir, 'c.edf'),
+      '--out', path.join(dir, 'out'),
+    ]);
+    assert.equal(code, 1, 'the run failed even though most of it succeeded');
+    assert.match(stderr, /b\.edf: File is 17 bytes/u, 'the failure names its recording');
+    assert.match(stderr, /Converted 2 of 3 recordings; 1 failed/u);
+    assert.deepEqual(
+      (await readdir(path.join(dir, 'out'))).sort(),
+      ['a', 'c'],
+      'the readable recordings were still converted',
+    );
+  });
+
+  it('refuses before writing when two recordings would share a directory', async () => {
+    // Same file name in different folders is how recordings are usually organised, and both
+    // resolve to <out>/rec. Converting them in turn would leave one under the other's name.
+    const dir = await stage({ 'n1/rec.edf': 'tiny.edf', 'n2/rec.edf': 'mixed-rates.edf' });
+    const { code, stderr } = await cli([
+      path.join(dir, 'n1', 'rec.edf'),
+      path.join(dir, 'n2', 'rec.edf'),
+      '--out', path.join(dir, 'clash'),
+    ]);
+    assert.equal(code, 2);
+    assert.match(stderr, /would both be converted into/u);
+    await assert.rejects(readdir(path.join(dir, 'clash')), 'nothing may be written first');
+  });
+
+  it('refuses a batch on --stdout, which holds one table', async () => {
+    const { code, stderr } = await cli([fixture('tiny.edf'), fixture('tiny.edf'), '--stdout']);
+    assert.equal(code, 2);
+    assert.match(stderr, /cannot take 2 recordings/u);
+  });
+
+  it('emits one JSON object per line for a batch, and the usual document for one', async () => {
+    // Concatenated pretty-printed objects parse for a streaming reader but not line by
+    // line, and a batch is exactly where a record per line is wanted.
+    const dir = await stage({ 'a.edf': 'tiny.edf', 'b.edf': 'annotations.edf' });
+    const many = await cli([
+      path.join(dir, 'a.edf'), path.join(dir, 'b.edf'),
+      '--out', path.join(dir, 'out'), '--json',
+    ]);
+    assert.equal(many.code, 0);
+    const lines = many.stdout.trimEnd().split('\n');
+    assert.equal(lines.length, 2, 'one line per recording');
+    for (const line of lines) JSON.parse(line);
+
+    const info = await cli([path.join(dir, 'a.edf'), path.join(dir, 'b.edf'), '--info', '--json']);
+    assert.equal(info.stdout.trimEnd().split('\n').length, 2);
+
+    // A single recording still prints the indented document it always has.
+    const one = await cli([fixture('tiny.edf'), '--info', '--json']);
+    assert.ok(one.stdout.split('\n').length > 10, 'single-file output stays pretty-printed');
+    JSON.parse(one.stdout);
+  });
+
+  it('reports warnings from every recording under --strict', async () => {
+    const dir = await stage({ 'clean.edf': 'tiny.edf', 'mixed.edf': 'mixed-rates.edf' });
+    const { code, stderr } = await cli([
+      path.join(dir, 'clean.edf'), path.join(dir, 'mixed.edf'),
+      '--out', path.join(dir, 'out'), '--strict', '--quiet',
+    ]);
+    assert.equal(code, 1, 'a warning anywhere in the batch fails the run');
+    assert.match(stderr, /--strict: 1 warning/u);
   });
 });
 

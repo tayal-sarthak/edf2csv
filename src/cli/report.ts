@@ -155,6 +155,13 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
 /**
  * The `--info` view as JSON, for surveying files from a script.
  *
+ * `indent` is 2 for a single recording, matching what this has always printed, and null for
+ * a batch — several pretty-printed documents run together are readable by a streaming parser
+ * but not by anything that expects one record per line, and a batch is exactly where
+ * line-oriented reading is wanted. null rather than undefined because a default parameter
+ * takes effect when undefined is passed, which quietly restored the indentation this was
+ * meant to drop; JSON.stringify itself wants undefined, so it is translated at the call.
+ *
  * `--info` answers "what is in this recording and what would converting it cost", which
  * is exactly the question you want to ask across a directory of hundreds of recordings —
  * and the text table is the wrong shape for that. `--json` previously applied only to
@@ -164,7 +171,7 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
  * Field names match `metadata.json` where the two describe the same thing, so a survey and
  * a conversion can be read by the same code.
  */
-export function infoJson(file: EdfFile, plan: ConversionPlan): string {
+export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | null = 2): string {
   const { header } = file;
   const fileFor = new Map<number, string>();
   for (const group of plan.groups) {
@@ -214,7 +221,7 @@ export function infoJson(file: EdfFile, plan: ConversionPlan): string {
         .map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
     },
     null,
-    2,
+    indent ?? undefined,
   );
 }
 
@@ -242,7 +249,7 @@ export function formatSummary(result: ConvertResult): string {
   return lines.join('\n');
 }
 
-export function summaryJson(result: ConvertResult): string {
+export function summaryJson(result: ConvertResult, indent: number | null = 2): string {
   return JSON.stringify(
     {
       output_dir: result.outputDir,
@@ -254,6 +261,6 @@ export function summaryJson(result: ConvertResult): string {
       warnings: result.diagnostics.map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
     },
     null,
-    2,
+    indent ?? undefined,
   );
 }

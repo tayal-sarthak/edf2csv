@@ -12,13 +12,35 @@ order: 2
 edf2csv <recording.edf> [options]
 ```
 
-Exactly one input file is required, except with `--help` and `--version`. Two or more positional arguments are refused rather than converting the first one. To convert a folder, use a shell loop:
+At least one input file is required, except with `--help` and `--version`. Pass several and each is converted in turn, so a glob does what a shell loop used to:
 
 ```bash
-for f in /data/recordings/*.edf; do
-  edf2csv "$f" --out "/data/csv/$(basename "${f%.edf}")"
-done
+edf2csv /data/recordings/*.edf --out /data/csv
 ```
+
+```
+[1/3] night-01.edf
+Wrote /data/csv/night-01
+  signals.csv  8,640,000  rows
+  ...
+[2/3] night-02.edf
+...
+
+Converted 3 of 3 recordings.
+```
+
+With `--out` the named directory becomes the parent and each recording gets its own inside it, named after the file. Without `--out` each recording converts beside itself into `<name>_csv`, exactly as it would have done alone.
+
+A recording that cannot be read is reported and the rest still convert — one unreadable file in a folder of five hundred is a reason to name that file, not to discard the work already done. The closing line says how many succeeded, and the exit code is non-zero if any failed.
+
+Two recordings that would land in the same directory are refused before anything is written. This happens with the common layout of one folder per night, where `n1/rec.edf` and `n2/rec.edf` would both resolve to `<out>/rec`:
+
+```
+error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.
+       Convert them separately, or rename one of them.
+```
+
+`--stdout` still takes a single recording, since one stream holds one table.
 
 ## Flags at a glance
 

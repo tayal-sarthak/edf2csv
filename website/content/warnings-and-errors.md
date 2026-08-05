@@ -575,7 +575,8 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | --- | --- |
 | Unknown flag | Reported by the argument parser, followed by a pointer to `--help` |
 | No input file | Usage text is printed |
-| More than one input file | `Convert them one at a time, or use a shell loop.` |
+| Two recordings that would convert into the same directory | `"n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.` |
+| Several recordings with `--stdout` | `--stdout writes a single CSV, so it cannot take 3 recordings.` |
 | `--channels` given with no names | `--channels was given but lists no channel names.` |
 | `--decimals` missing or out of range | `--decimals must be a whole number between 0 and 20` |
 | A channel name that matches nothing | `No channel named "ECQ". Did you mean "ECG"?` |

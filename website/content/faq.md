@@ -437,8 +437,15 @@ row count of every file that was written.
 
 ## How do I convert a whole directory of recordings?
 
-One file at a time, in a shell loop. edf2csv takes exactly one input file, and passing more than
-one is a usage error with exit code 2:
+Pass them all at once. Each is converted in turn, and `--out` names the parent they go under:
+
+```bash
+edf2csv /data/recordings/*.edf --out /data/converted
+```
+
+Each recording gets its own directory inside `/data/converted`, named after the file. Leave `--out` off and each converts beside itself into `<name>_csv` instead.
+
+A file that cannot be read is reported and the rest still convert; the run exits non-zero and the closing line says how many succeeded. Before this was possible the answer here was a shell loop, which still works and is still the right tool when you want to do something between files:
 
 ```bash
 for f in /data/recordings/*.edf; do

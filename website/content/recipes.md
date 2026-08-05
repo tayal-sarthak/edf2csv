@@ -231,7 +231,13 @@ for f in /data/recordings/*.edf; do
 done
 ```
 
-edf2csv takes one input file per run, so batching is a shell loop. `--quiet` suppresses the per-file summary but still prints warnings, so a truncated or discontinuous file doesn't pass silently. Exit code 0 means the conversion completed, 1 means a problem with the file or the output directory, and 2 means a problem with the command line.
+The loop above is worth keeping when you want to act on each file as it finishes. When you only want the conversions, one command does it:
+
+```bash
+edf2csv /data/recordings/*.edf --out converted --quiet
+```
+
+`--quiet` suppresses the per-file summary but still prints warnings, so a truncated or discontinuous file doesn't pass silently. Exit code 0 means every recording converted, 1 means at least one had a problem with the file or the output directory, and 2 means a problem with the command line.
 
 Add `--force` if you're re-running over a folder you've already converted; without it an existing output directory is an error rather than something to be overwritten by accident.
 

@@ -3,6 +3,72 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.0
+
+### Added: several recordings in one command
+
+Passing more than one file used to be a usage error, and the documentation's answer to
+"how do I convert a directory" was a shell loop. Now:
+
+```bash
+edf2csv /data/recordings/*.edf --out /data/csv
+```
+
+```
+[1/3] night-01.edf
+Wrote /data/csv/night-01
+  signals.csv  8,640,000  rows
+[2/3] night-02.edf
+...
+
+Converted 3 of 3 recordings.
+```
+
+With `--out` the named directory becomes the parent and each recording gets its own inside it,
+named after the file. Without `--out` each converts beside itself into `<name>_csv`, exactly as
+it would have done alone — so a glob behaves like the loop it replaces, and a single file
+behaves like it always did, down to the byte.
+
+**One bad file does not end the run.** It is reported with its name and the rest still convert.
+One unreadable recording among five hundred is a reason to name that recording, not to discard
+the work already done and refuse the remainder. The exit code is still non-zero and the closing
+line says how many made it, so nothing is quiet about it:
+
+```
+[2/3] night-02.edf
+error: night-02.edf: File is 17 bytes; an EDF header alone needs at least 256.
+
+Converted 2 of 3 recordings; 1 failed.
+```
+
+**Two recordings that would land in the same place are refused before anything is written.**
+One folder per night is how these are usually organised, so `n1/rec.edf` and `n2/rec.edf` both
+resolve to `<out>/rec`. Converting them in turn would leave one recording's data sitting under
+the other's name with nothing to show for it:
+
+```
+error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.
+       Convert them separately, or rename one of them.
+```
+
+**`--json` over several recordings is JSON Lines** — one object per line, so `jq` reads a
+record at a time instead of waiting for the run to finish. A single recording still prints the
+indented document it always has. Emitting a batch in the single-file shape would have repeated
+0.2.28's mistake of putting two documents on one stream and leaving the caller to find the
+boundary.
+
+`--stdout` still takes one recording, since one stream holds one table. Passing several says so
+rather than concatenating them.
+
+`--strict` counts warnings across the whole run. `--info` accepts several too, printing each in
+turn.
+
+### A note on exit codes
+
+2 still means the command was wrong and 1 that something went wrong with a file. When both
+happen in one batch the result is 1: once a file has genuinely failed, the invocation cannot be
+the whole story. A single input has only ever one outcome, so its exit status is unchanged.
+
 ## 0.3.7
 
 ### Fixed: messages that list what the file contains could run to 1,500 characters
