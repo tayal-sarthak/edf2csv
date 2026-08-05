@@ -147,6 +147,37 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--decimals needs a number/);
   });
 
+  it('refuses a position that is not written in plain digits', async () => {
+    // Number() did the parsing and accepts far more than a position: #0x2 reached channel 2
+    // through hex, #0b1 channel 1, and a bare # was Number('') === 0. Each one selected a
+    // channel and exited 0, so a slip converted the wrong channel instead of failing.
+    for (const term of ['#', '#0x2', '#0b1', '#1e0', '# 2', '#2.0', '#+1']) {
+      const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--stdout', '--channels', term]);
+      assert.equal(code, 2, `${term} must be a usage error`);
+      assert.match(stderr, /is not a channel position/u, `${term} needs the position message`);
+    }
+    // A well-formed position that does not exist keeps its own, more specific message.
+    const missing = await cli([fixture('mixed-rates.edf'), '--stdout', '--channels', '#99']);
+    assert.equal(missing.code, 2);
+    assert.match(missing.stderr, /No channel at position #99/u);
+
+    // And the valid forms still work.
+    const ok = await cli([fixture('mixed-rates.edf'), '--stdout', '--channels', '#2']);
+    assert.equal(ok.code, 0);
+    assert.match(ok.stdout, /^time_s,Temp rectal/u);
+  });
+
+  it('prints a multi-line message as lines, not as an escape', async () => {
+    // Control bytes out of a header are escaped before reaching the terminal, and that
+    // escaping was applied to whole messages — including the newline in our own two-line
+    // ones, which arrived as the literal text "\x0a" in the middle of a sentence.
+    const { stderr } = await cli([fixture('mixed-rates.edf'), '--channels', 'ECQ']);
+    assert.ok(!stderr.includes('\\x0a'), `newline came through escaped: ${stderr}`);
+    const lines = stderr.trimEnd().split('\n');
+    assert.match(lines[0], /^error: No channel named "ECQ"/u);
+    assert.match(lines[1], /^ {7}Run with --info/u, 'the second line lines up under the first');
+  });
+
   it('rejects an unknown channel and suggests a real one', async () => {
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--channels', 'ECQ']);
     assert.equal(code, 2);

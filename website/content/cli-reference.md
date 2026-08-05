@@ -148,6 +148,15 @@ error: No channel at position #9. This file has signal channels at #0, #1, #2.
 
 The listed positions are signal channels only, so an annotation channel's index isn't offered even though it consumes a number.
 
+`N` has to be written in plain digits. `#2` is a position; `#0x2`, `#2.0`, `#1e0`, `# 2` and a bare `#` are not, and each is refused rather than resolved:
+
+```
+error: "#0x2" is not a channel position: a position is #0, #1, #2 and so on.
+       This file has signal channels at #0, #1, #2.
+```
+
+The point is that these used to be accepted. Anything that `Number()` could read became a position, so `#0x2` reached channel 2 through hexadecimal and a bare `#` became channel 0 — a mistyped term converted a different channel and exited 0 rather than saying anything.
+
 ### Duplicated labels
 
 EDF doesn't require labels to be unique, and real recordings break the assumption. Published scalp EEG collections routinely contain files with two separate channels both labelled `T8-P8`, and some carry a channel whose label is nothing but `-`. edf2csv handles this in two places.

@@ -82,7 +82,24 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
     // A real label always wins, so no channel becomes unreachable.
     const literal = byLabel.get(term.toLowerCase());
     if (term.startsWith('#') && (!literal || literal.length === 0)) {
-      const index = Number(term.slice(1));
+      /*
+        A position must be written in plain digits.
+
+        `Number()` was doing the parsing, and it accepts a great deal more than a position:
+        `#0x2` reached channel 2 through hex, `#0b1` channel 1 through binary, `#1e0` and
+        `#2.0` and `# 2` all landed somewhere, and `#` on its own became `Number('')`, which
+        is 0. Every one of them selected a channel and exited 0, so a slip did not fail —
+        it quietly converted a different channel than the one asked for, which for this tool
+        is the worst way to be wrong.
+      */
+      const position = term.slice(1);
+      if (!/^\d+$/u.test(position)) {
+        throw new ChannelSelectionError(
+          `"${term}" is not a channel position: a position is #0, #1, #2 and so on.\n` +
+            `This file has signal channels at #${candidates.map((s) => s.index).join(', #')}.`,
+        );
+      }
+      const index = Number(position);
       const signal = candidates.find((s) => s.index === index);
       if (!signal) {
         throw new ChannelSelectionError(

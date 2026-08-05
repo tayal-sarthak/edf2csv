@@ -3,6 +3,51 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.3.3
+
+### Fixed: a mistyped channel position converted a different channel
+
+`--channels "#2"` addresses a channel by position, and `Number()` was doing the parsing. It
+accepts a great deal more than a position:
+
+| written | reached | why |
+| --- | --- | --- |
+| `#0x2` | channel 2 | read as hexadecimal |
+| `#0b1` | channel 1 | read as binary |
+| `#1e0` | channel 1 | read as exponent notation |
+| `# 2` | channel 2 | leading space ignored |
+| `#2.0` | channel 2 | read as a float |
+| `#` | channel 0 | `Number('')` is 0 |
+
+Every one of them selected a channel and exited 0. Nothing looked wrong: the run reported
+success and wrote a `signals.csv` — of the wrong channel. For a tool whose point is that the
+numbers in the output are the numbers that were recorded, quietly converting a channel other
+than the one asked for is the worst available failure.
+
+A position must now be written in plain digits, and anything else is a usage error naming the
+positions that do exist. `#99` keeps its own more specific message, and `#2` is unaffected.
+
+### Fixed: two-line error messages arrived with a literal `\x0a` in them
+
+Control bytes coming out of a header are escaped before they reach the terminal, so that a
+recording carrying `\x1b[2J` cannot clear the screen. That escaping was applied to whole
+assembled messages, and several of ours are written on two lines:
+
+```
+error: No channel named "ECQ". Did you mean "ECG"?\x0aRun with --info to list the channels in this file.
+```
+
+Node's own option errors run to three lines and had the same treatment. Each line is now
+escaped separately and continuation lines are indented under the `error:` prefix:
+
+```
+error: No channel named "ECQ". Did you mean "ECG"?
+       Run with --info to list the channels in this file.
+```
+
+Nothing gained the ability to drive a terminal. A carriage return is still escaped, so no line
+can be repainted after it is printed; a newline can only add a line.
+
 ## 0.3.2
 
 ### Fixed: the mixed-rate warning described the file rather than the conversion

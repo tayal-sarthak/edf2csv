@@ -54,6 +54,27 @@ export function printable(text: string): string {
   );
 }
 
+/**
+ * The same protection for text that is meant to span lines.
+ *
+ * `printable` escapes newlines along with everything else, which is right for a channel
+ * label — one has no business containing a line break, and it would break the `--info`
+ * table's alignment. It is wrong for a whole message: several are written on two lines,
+ * and Node's own option errors run to three. Escaping those turned the break into text:
+ *
+ *     error: No channel named "ECQ". Did you mean "ECG"?\x0aRun with --info to list ...
+ *
+ * Each line is escaped on its own, so nothing here gains the ability to drive a terminal.
+ * A carriage return is still escaped, so no line can be repainted after it is printed —
+ * which is the property that mattered. A newline can only add a line, never overwrite one.
+ */
+export function printableLines(text: string, indent = ''): string {
+  return text
+    .split('\n')
+    .map((line, index) => (index === 0 ? '' : indent) + printable(line))
+    .join('\n');
+}
+
 /** The `--info` view: what is in this recording, and what would converting it produce. */
 export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   const { header } = file;
