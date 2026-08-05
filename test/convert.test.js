@@ -254,6 +254,22 @@ describe('converting', () => {
     );
   });
 
+  it('keeps edge annotations when the request is unbounded, however it is spelled', async () => {
+    // Filtering by the *resolved* window meant an unbounded request still lost events:
+    // --end 999h clamps to the recording, and --start 0 takes its end from it, so both
+    // filtered to [0, 3) and dropped the markers at 3.0 and 3.5 that a bare run keeps.
+    // Asking for more of a recording returned less of it.
+    for (const options of [{}, { end: 999 * 3600 }, { start: 0 }]) {
+      const dir = await outDir();
+      await convert(fixture('annotations-at-edges.edf'), { outputDir: dir, ...options });
+      assert.deepEqual(
+        (await readCsv(dir, 'annotations.csv')).slice(1).map((r) => r.split(',')[0]),
+        ['2.5', '3', '3.5'],
+        `unbounded request ${JSON.stringify(options)} should keep every event`,
+      );
+    }
+  });
+
   it('still filters annotations when a window is requested', async () => {
     const dir = await outDir();
     await convert(fixture('annotations-at-edges.edf'), { outputDir: dir, start: 0, end: 3 });

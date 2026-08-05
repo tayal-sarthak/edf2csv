@@ -173,8 +173,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       const result = await writeAnnotationsCsv(
         outputDir,
         annotationData.annotations,
-        plan,
-        options.start !== undefined || options.end !== undefined || options.duration !== undefined,
+        requestedAnnotationWindow(options),
       );
       written.push(result);
       annotationsWritten = result.rows;
@@ -538,29 +537,36 @@ async function writeChannelsCsv(
   return { name: 'channels.csv', rows: lines.length - 1 };
 }
 
+/*
+  The bounds an annotation is filtered against: what the caller actually asked for, not the
+  window that survived being clamped to the recording.
+
+  Filtering by the resolved window meant an unbounded request still lost events. `--end 999h`
+  on a three-second file clamps to 3, and `--start 0` gets its end from the recording, so
+  both filtered to [0, 3) and dropped the markers at 3.0 and 3.5 that a bare invocation
+  keeps — asking for more of a recording returned less of it.
+
+  An end the caller did not give is unbounded, not "the end of the data": EDF+ lets an
+  annotation sit past the last sample, which is exactly where an end-of-recording marker is.
+*/
+function requestedAnnotationWindow(options: ConvertOptions): { from: number; to: number } {
+  const from = options.start ?? -Infinity;
+  const to =
+    options.end !== undefined
+      ? options.end
+      : options.duration !== undefined
+        ? (options.start ?? 0) + options.duration
+        : Infinity;
+  return { from, to };
+}
+
 async function writeAnnotationsCsv(
   outputDir: string,
   annotations: readonly Annotation[],
-  plan: ConversionPlan,
-  windowRequested: boolean,
+  window: { from: number; to: number },
 ): Promise<WrittenFile> {
-  const { startSeconds, endSeconds } = plan.range;
-
-  /*
-    Filter only when the caller actually asked for a window.
-
-    EDF+ does not oblige an annotation's onset to fall inside the data span: a marker for
-    the end of a recording sits at exactly `duration`, and files carry markers at negative
-    onsets ahead of the first record. The window on a whole-file conversion is
-    [0, duration), so filtering by it unconditionally dropped both from a plain
-    `edf2csv recording.edf` with no time options given, and no flag could ask for them back.
-
-    The test is whether a window was requested, not whether the resolved one happens to
-    cover everything: `--end 3` on a three-second recording resolves to the whole file but
-    is still an explicit request for [0, 3), and an event at exactly 3 belongs outside it.
-  */
   const inWindow = annotations
-    .filter((a) => !windowRequested || (a.onset >= startSeconds && a.onset < endSeconds))
+    .filter((a) => a.onset >= window.from && a.onset < window.to)
     .sort((a, b) => a.onset - b.onset || a.recordIndex - b.recordIndex);
 
   const lines = [csvRow(['onset_s', 'duration_s', 'description', 'record_index'])];

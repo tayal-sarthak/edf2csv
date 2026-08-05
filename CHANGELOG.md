@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.2.31
+
+### Fixed: asking for more of a recording returned fewer annotations
+
+0.2.4 stopped a plain conversion from dropping events that sit at or past the last sample — an
+end-of-recording marker lives at exactly `duration`. But the filter used the window *after* it was
+clamped to the recording, so any request that extended past the data collapsed back onto `[0, duration)`:
+
+```
+edf2csv edges.edf                 ->  2.5, 3, 3.5     (all three)
+edf2csv edges.edf --end 999h      ->  2.5             two lost
+edf2csv edges.edf --start 0       ->  2.5             two lost
+```
+
+Both of those mean "everything", and both returned less than asking for nothing at all.
+
+Annotations are now filtered against the bounds actually given. An end the caller did not supply is
+unbounded rather than "the end of the data", so `--end 999h` and `--start 0` behave like a bare run.
+An explicit bound is unchanged: `--end 3` still keeps only the event at 2.5, because 3 is outside a
+half-open `[.., 3)`.
+
 ## 0.2.30
 
 ### Fixed: `--stdout` piped into `head` reported a write failure

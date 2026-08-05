@@ -314,7 +314,10 @@ to a fixed decimal count.
 Two things don't appear as rows. The timekeeping annotation that starts each data record carries
 the record's position in time and no text, so it's used for timing and not exported as an event.
 And annotations whose onset falls outside a requested `--start` / `--end` window are excluded, on
-the same half-open rule as the signal rows. The whole annotation channel is read even when a window
+the same half-open rule as the signal rows. The bounds are the ones you asked for rather than the
+window after it was clamped to the recording, so an end you did not give stays unbounded: `--end 999h`
+and `--start 0` both keep an event sitting at or past the last sample, exactly as a run with no time
+options does. The whole annotation channel is read even when a window
 was requested, because an event inside the window may be stored in a record outside it.
 
 If an annotation is malformed, it's skipped rather than aborting the conversion, and an
