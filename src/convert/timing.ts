@@ -105,9 +105,21 @@ export function deriveRecordStarts(
       spread out was timed as though they were contiguous and said nothing. The records are
       being read here anyway, so the contradiction costs nothing to notice — and it is the
       file, not the reader, that has to be wrong for this to fire.
+
+      Compared against what the file can express, not for equality. 0.4.41 asked whether the
+      two doubles were the same, which they are not: a recording of 0.1s records sitting at
+      0.1, 0.2, 0.3 ... is contiguous by construction, and 0.1 + 2 * 0.1 is
+      0.30000000000000004. Two of its eight records were reported as contradicting
+      continuity, on an ordinary file — and under --strict that was a failed run. The
+      smallest interval the recording distinguishes is one sample of its fastest channel;
+      anything below half of that is arithmetic, not a gap. `canCarry` has already refused
+      origins where the double spacing swamps that interval, so the representation error is
+      under the tolerance by construction rather than by hope.
     */
+    const tolerance = finestInterval(file) / 2;
     const contradicting = annotationData.recordStarts.filter(
-      (declared, i) => typeof declared === 'number' && declared !== contiguous[i],
+      (declared, i) =>
+        typeof declared === 'number' && Math.abs(declared - (contiguous[i] as number)) > tolerance,
     ).length;
     if (contradicting > 0) {
       diagnostics.push({
@@ -233,13 +245,25 @@ function originOf(recordStarts: readonly (number | null)[], recordDuration: numb
  */
 function canCarry(origin: number, file: EdfFile): boolean {
   if (!Number.isFinite(origin)) return false;
+  return origin + finestInterval(file) > origin;
+}
+
+/**
+ * The shortest span this recording can tell apart: one sample of its fastest channel.
+ *
+ * The time column is made of these, so nothing below one is a distinction the file is in a
+ * position to make — which is what makes it the right size for both the "can this origin
+ * still separate two samples" question and the "is this record really somewhere else"
+ * question.
+ */
+function finestInterval(file: EdfFile): number {
   let interval = file.header.recordDuration;
   for (const signal of file.header.signals) {
     if (signal.isAnnotations || !(signal.samplesPerRecord > 0)) continue;
     const step = file.header.recordDuration / signal.samplesPerRecord;
     if (step > 0 && step < interval) interval = step;
   }
-  return origin + interval > origin;
+  return interval;
 }
 
 /**

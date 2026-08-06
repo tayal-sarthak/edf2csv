@@ -194,6 +194,46 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // A perfectly ordinary contiguous EDF+C recording whose record duration is not a whole
+  // number of seconds.
+  //
+  // Records sit at 0.1, 0.2, 0.3 ... which is exactly where continuity puts them — but
+  // 0.1 + 2 * 0.1 is 0.30000000000000004, so a check written as an equality reported two of
+  // its eight records as contradicting continuity, and under --strict that was a failed run
+  // on a file with nothing wrong with it.
+  writeEdf({
+    path: at('contiguous-fractional.edf'),
+    reserved: 'EDF+C',
+    startDate: '01.01.20',
+    startTime: '00.00.00',
+    patient: 'X X X X',
+    recording: 'Startdate 01-JAN-2020 X X X',
+    numRecords: 8,
+    recordDuration: 0.1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+    talsForRecord: (r) => buildTal(Number(((r + 1) * 0.1).toFixed(4)), []),
+  });
+
+  // The same shape, but the records really do jump: 0.5s, 1.5s, then 10.5s under EDF+C.
+  writeEdf({
+    path: at('continuous-liar.edf'),
+    reserved: 'EDF+C',
+    startDate: '01.01.20',
+    startTime: '00.00.00',
+    patient: 'X X X X',
+    recording: 'Startdate 01-JAN-2020 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+    talsForRecord: (r) => buildTal([0.5, 1.5, 10.5][r], []),
+  });
+
   // An EDF+C recording whose FIRST timekeeping TAL is unreadable, twinned with EDF+D.
   //
   // Records sit at 0.5s, 1.5s and 2.5s. Record 0's timekeeping TAL writes its onset with a

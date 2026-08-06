@@ -779,6 +779,26 @@ describe('converting', () => {
     );
   });
 
+  it('measures a record against what the file can express, not against equality', async () => {
+    // 0.4.41 asked whether the declared start and the contiguous one were the same double.
+    // They are not: a recording of 0.1s records sitting at 0.1, 0.2, 0.3 ... is contiguous
+    // by construction, and 0.1 + 2 * 0.1 is 0.30000000000000004. Two of its eight records
+    // were reported as contradicting continuity on a file with nothing wrong with it — and
+    // under --strict that was a failed run.
+    const fine = await convert(fixture('contiguous-fractional.edf'), { outputDir: await outDir() });
+    assert.deepEqual(
+      fine.diagnostics.filter((d) => /marked continuous/u.test(d.message)),
+      [],
+      'an ordinary contiguous recording must raise nothing',
+    );
+
+    // A record that really is somewhere else is still caught: 0.5s, 1.5s, then 10.5s.
+    const lying = await convert(fixture('continuous-liar.edf'), { outputDir: await outDir() });
+    const notice = lying.diagnostics.find((d) => /marked continuous/u.test(d.message));
+    assert.ok(notice, `a nine-second jump must be reported: ${JSON.stringify(lying.diagnostics)}`);
+    assert.match(notice.message, /1 of its 3 data records/u);
+  });
+
   it('takes the origin from whichever record first states one', async () => {
     // Reading only recordStarts[0] meant a single unreadable timekeeping TAL threw the
     // origin away and timed the whole file from zero — while records 1 and 2, saying plainly
