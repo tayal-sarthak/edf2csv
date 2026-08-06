@@ -933,9 +933,33 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
     wrong in the safe direction: a refusal that names both recordings, not a silent merge.
   */
   const foldsCase = process.platform === 'darwin' || process.platform === 'win32';
+  /*
+    macOS filesystems fold Unicode normalisation as well as case.
+
+    HFS+ and APFS compare names in a normalised form, so `café` written as e + U+0301 and
+    `café` written as U+00E9 are one directory — while remaining two different JavaScript
+    strings, which is all this guard was comparing. Two recordings whose stems differ only
+    that way therefore both passed the check and both converted into the same place:
+
+      study/café.edf   (NFC)   ->  csv/café/signals.csv
+      study/café.bdf   (NFD)   ->  csv/café/signals_256hz.csv, _128hz, _1hz
+
+    one directory holding both, under a single metadata.json naming one of them, reported as
+    "Converted 2 of 2 recordings" and exit 0 under --force. Without --force the second run
+    happened to hit "already exists", which is the accidental save rather than the check
+    doing its job — and it named the wrong problem.
+
+    Not folded on Linux, where the two names are genuinely two directories and refusing them
+    would be inventing a collision that does not exist. Windows preserves normalisation too,
+    so only darwin. This is the same platform-shaped assumption the case fold above already
+    makes, and it has the same limit: a network or removable volume that normalises while the
+    running platform does not is not covered by either.
+  */
   const identity = (destination: string): string => {
     const resolved = path.resolve(destination);
-    return foldsCase ? resolved.toLowerCase() : resolved;
+    if (!foldsCase) return resolved;
+    const folded = resolved.toLowerCase();
+    return process.platform === 'darwin' ? folded.normalize('NFC') : folded;
   };
 
   const claimed = new Map<string, string>();

@@ -15,6 +15,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(ROOT, 'dist', 'cli.js');
 const fixture = (name) => path.join(ROOT, 'test', 'fixtures', 'generated', name);
 
+const exists = async (p) => stat(p).then(() => true, () => false);
+
 const temporaries = [];
 async function outDir() {
   const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-cli-'));
@@ -844,6 +846,33 @@ describe('converting several recordings at once', () => {
       assert.deepEqual((await readdir(path.join(dir, 'out'))).sort(), ['open', 'top']);
     } finally {
       await chmod(locked, 0o755);
+    }
+  });
+
+  it('refuses two names that a normalising filesystem would make one', async (t) => {
+    if (process.platform !== 'darwin') {
+      t.skip('only HFS+ and APFS fold normalisation; elsewhere these are two directories');
+      return;
+    }
+
+    // The duplicate-destination guard case-folded but never normalised, so `café` written as
+    // e + U+0301 and `café` written as U+00E9 stayed two JavaScript strings while being one
+    // directory on APFS. Two recordings therefore both passed the check and both converted
+    // into the same place: signals.csv from one beside signals_256hz.csv from the other,
+    // under a single metadata.json naming one of them, "Converted 2 of 2 recordings", exit 0.
+    // Different extensions are what let the two files coexist while their stems collide.
+    const dir = await stage({});
+    await mkdir(path.join(dir, 'study'), { recursive: true });
+    await writeFile(path.join(dir, 'study', 'caf\u00e9.edf'), await readFile(fixture('tiny.edf')));
+    await writeFile(path.join(dir, 'study', 'cafe\u0301.bdf'), await readFile(fixture('biosemi.bdf')));
+    assert.equal((await readdir(path.join(dir, 'study'))).length, 2, 'the two files must coexist');
+
+    for (const extra of [[], ['--force']]) {
+      const out = path.join(dir, `csv${extra.length}`);
+      const { code, stderr } = await cli([path.join(dir, 'study'), '--out', out, ...extra]);
+      assert.equal(code, 2, `expected a refusal${extra.length ? ' even with --force' : ''}`);
+      assert.match(stderr, /would both be converted into/u);
+      assert.equal(await exists(out), false, 'and nothing may be written');
     }
   });
 
