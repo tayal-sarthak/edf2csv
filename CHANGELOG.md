@@ -3,6 +3,41 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.18
+
+### Fixed: `--jobs` with `--strict` called a converted recording a failure
+
+```
+$ edf2csv study --out ./converted --strict            # one recording raises a warning
+Converted 2 of 2 recordings.
+--strict: 1 warning raised, so this run is reported as a failure. The output was still written.
+
+$ edf2csv study --out ./converted --strict --jobs 2   # the same two recordings
+--strict: 1 warning raised, so this run is reported as a failure. The output was still written.
+Converted 1 of 2 recordings; 1 failed.
+```
+
+Both recordings converted, both times, and both directories were written. The parallel run said
+one of them had not been.
+
+Two causes, one underneath the other. `--strict` was passed down to each child, so a child that
+merely warned exited 1 — and announced "this run is reported as a failure" about its own single
+file, which then leaked into the parent's output. The parent, seeing only an exit code, could
+not tell "converted, and raised warnings" from "did not convert", because under `--strict` those
+are the same code.
+
+`--strict` is a verdict on the whole run, and a child converting one recording is not the whole
+run. Children no longer receive it. Instead each reports what it did — how many recordings it
+converted and how many warnings they raised — over the channel `fork` already opens, and the
+parent applies `--strict` once, from the totals. `process.send` exists only in a forked process,
+so an ordinary invocation is untouched.
+
+Serial and parallel now produce the same count and the same single verdict. A recording that
+genuinely fails is still a failure: two good files and one unreadable one report "Converted 2 of
+3 recordings; 1 failed" and exit 1.
+
+Found by an adversarial sweep of the 0.4.x code.
+
 ## 0.4.17
 
 ### Fixed: a folder it could not read was skipped without a word

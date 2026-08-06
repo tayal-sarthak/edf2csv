@@ -814,6 +814,36 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('counts a warning as a conversion, however many jobs there are', async () => {
+    // An exit code cannot separate "converted, and raised warnings" from "did not convert",
+    // and under --strict those were the same code. The parent read it as a failure, so a
+    // parallel run of two recordings — one of which merely warned — reported
+    // "Converted 1 of 2 recordings; 1 failed" for a run in which both converted.
+    const dir = await stage({ 'study/clean.edf': 'tiny.edf', 'study/warns.edf': 'mixed-rates.edf' });
+
+    for (const jobs of ['1', '2']) {
+      const { code, stderr } = await cli([
+        path.join(dir, 'study'), '--out', path.join(dir, `out-${jobs}`), '--strict', '--jobs', jobs,
+      ]);
+      assert.equal(code, 1, `--strict fails the run either way (--jobs ${jobs})`);
+      assert.match(stderr, /Converted 2 of 2 recordings/u, `--jobs ${jobs} miscounted`);
+      assert.ok(!stderr.includes('failed'), `--jobs ${jobs}: nothing failed`);
+      // One verdict on the whole run, not one per child.
+      assert.equal(stderr.match(/--strict:/gu)?.length, 1, `--jobs ${jobs}: one verdict`);
+      assert.deepEqual((await readdir(path.join(dir, `out-${jobs}`))).sort(), ['clean', 'warns']);
+    }
+  });
+
+  it('still counts a real failure as a failure in parallel', async () => {
+    const dir = await stage({ 'study/good.edf': 'tiny.edf' });
+    await writeFile(path.join(dir, 'study', 'bad.edf'), 'not an edf');
+    const { code, stderr } = await cli([
+      path.join(dir, 'study'), '--out', path.join(dir, 'out'), '--jobs', '2',
+    ]);
+    assert.equal(code, 1);
+    assert.match(stderr, /Converted 1 of 2 recordings; 1 failed/u);
+  });
+
   it('reports warnings from every recording under --strict', async () => {
     const dir = await stage({ 'clean.edf': 'tiny.edf', 'mixed.edf': 'mixed-rates.edf' });
     const { code, stderr } = await cli([

@@ -405,8 +405,16 @@ export async function main(argv: readonly string[]): Promise<number> {
             values,
             running,
           );
-          if (child.code === 0) converted++;
-          else failures.push(child.code);
+          // The report says what the child actually did; the exit code says whether it
+          // got there. A child that converted and warned has a report and exits 0, since
+          // --strict is the parent's to apply.
+          if (child.report) {
+            converted += child.report.converted;
+            warnings += child.report.warnings;
+          } else if (child.code === 0) {
+            converted++;
+          }
+          if (child.code !== 0) failures.push(child.code);
           // The child saw one recording, so it printed the indented document a single
           // conversion prints. A batch is one object per line.
           sink.emit('out', asJson ? compactJson(child.out) : child.out);
@@ -431,6 +439,18 @@ export async function main(argv: readonly string[]): Promise<number> {
           `${failures.length > 0 ? `; ${failures.length} failed` : ''}.\n`,
       );
     }
+
+    /*
+      A parent that forked this process needs the counts, not just an exit status.
+
+      An exit code cannot separate "converted, and raised warnings" from "did not convert",
+      and under --strict those are the same code. The parent read it as a failure, so a
+      parallel run of two recordings — one of which merely warned — reported "Converted 1 of
+      2 recordings; 1 failed" for a run in which both converted, while the serial path said
+      "Converted 2 of 2". `process.send` exists only when this process was forked with a
+      channel, so nothing changes for an ordinary invocation.
+    */
+    process.send?.({ edf2csv: { converted, warnings } });
 
     if (unreadable.length > 0) failures.push(EXIT_ERROR);
     if (failures.length > 0) return worstOf(failures);
@@ -868,9 +888,21 @@ async function convertInChild(
   destination: string,
   values: Record<string, unknown>,
   running: Map<ChildProcess, string>,
-): Promise<{ code: number; out: string; err: string }> {
+): Promise<{
+  code: number;
+  out: string;
+  err: string;
+  report: { converted: number; warnings: number } | null;
+}> {
   const args = [input, '--out', destination];
-  for (const flag of ['annotations-only', 'checksum', 'gzip', 'force', 'quiet', 'json', 'strict']) {
+  /*
+    --strict is deliberately absent: it is a verdict on the whole run, and a child converting
+    one recording is not the whole run. Passing it down made each child announce "--strict: 1
+    warning raised, so this run is reported as a failure" about its own single file, and exit
+    1 for it, which the parent then counted as a conversion that had not happened. The parent
+    applies it once, from the counts the children report.
+  */
+  for (const flag of ['annotations-only', 'checksum', 'gzip', 'force', 'quiet', 'json']) {
     if (values[flag] === true) args.push(`--${flag}`);
   }
   for (const flag of ['start', 'duration', 'end', 'decimals']) {
@@ -892,6 +924,11 @@ async function convertInChild(
     running.set(child, destination);
     let out = '';
     let err = '';
+    let report: { converted: number; warnings: number } | null = null;
+    child.on('message', (message: unknown) => {
+      const payload = (message as { edf2csv?: { converted: number; warnings: number } })?.edf2csv;
+      if (payload) report = payload;
+    });
     child.stdout?.setEncoding('utf8').on('data', (chunk: string) => {
       out += chunk;
     });
@@ -900,11 +937,11 @@ async function convertInChild(
     });
     child.on('error', (error) => {
       running.delete(child);
-      resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n` });
+      resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n`, report });
     });
     child.on('close', (code) => {
       running.delete(child);
-      resolve({ code: code ?? EXIT_ERROR, out, err });
+      resolve({ code: code ?? EXIT_ERROR, out, err, report });
     });
   });
 }
