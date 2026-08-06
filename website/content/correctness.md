@@ -4,17 +4,19 @@ description: What edf2csv checks, how it is compared against pyEDFlib, why the c
 order: 7
 ---
 
-## Three separate claims
+## Five separate claims
 
-Correctness here covers three different things, verified three different ways.
+Correctness here covers five different things, verified five different ways. The list grew
+past the "three" this section used to promise as the batch and fuzz harnesses were added,
+and the heading did not.
 
-1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 75 generated recordings and compares every sample and every event: **16,943 values and 120 annotations, all in agreement**.
+1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes. Checked by `npm run fuzz:batch`.
-4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **4,000 runs over 1,000 corrupted recordings, all reported cleanly**.
+4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **1,200 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
 5. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and fifth are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and fifth are what `npm test` runs, and the third and fourth are the two fuzz commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib
@@ -22,7 +24,7 @@ npm run crossvalidate
 ```
 
 ```
-Compared 16,943 sample values and 120 annotations across 75 recordings.
+Compared 16,943 sample values bit for bit, and 120 annotations, across 75 recordings.
 Every value agreed.
 ```
 
@@ -349,19 +351,19 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the three test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It finishes in about a second on a laptop:
 
 ```
-ℹ tests 148
-ℹ suites 32
-ℹ pass 148
+ℹ tests 179
+ℹ suites 34
+ℹ pass 179
 ℹ fail 0
 ```
 
-The 148 tests are split across three files by what they exercise:
+The 179 tests are split across three files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 35 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
-| `test/convert.test.js` | 45 | Time specifications, column naming, channel selection, rate grouping, and the contents of the written CSV files |
-| `test/cli.test.js` | 68 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
+| `test/convert.test.js` | 59 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
+| `test/cli.test.js` | 85 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
 
 To run one file, build and generate first, then point the runner at it:
 
