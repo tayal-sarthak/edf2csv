@@ -119,6 +119,51 @@ describe('documentation and source agree on their lists', () => {
     assert.match(page, new RegExp(`The ${total} tests are split`, 'u'), 'the prose disagrees too');
   });
 
+  it('shows a metadata.json with the keys a conversion actually writes', async () => {
+    /*
+      output-files.md prints a whole metadata.json as its explanation of the format, and that
+      transcript is what someone reads before writing code against it. A key added to the
+      record and not to the page reads as a key that does not exist; one removed reads as a
+      key they can rely on. api.md had exactly that happen to its `window` object, which lost
+      two fields for several versions before anyone noticed.
+
+      The shape is checked, not the values: the sample describes an 8-hour sleep study that
+      is not in this repository, and rewriting it to match a two-record fixture would make it
+      a worse explanation.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-metadata-'));
+    let real;
+    try {
+      const out = path.join(base, 'out');
+      // Chosen to populate every part of the record the page shows: a discontinuous
+      // recording raises a diagnostic, so `notes` is not empty, and carries annotations, so
+      // `annotations_written` and the annotations file are both real. An empty array cannot
+      // say what its entries look like, and that is the half of the shape worth checking.
+      await run(process.execPath, [
+        CLI, path.join(ROOT, 'test/fixtures/generated/discontinuous.edf'),
+        '--out', out, '--checksum', '--quiet',
+      ]);
+      // readFile directly: `read` is relative to the repository root, and this is not.
+      real = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+
+    const page = await read('website/content/output-files.md');
+    const block = /```json\n(\{[\s\S]*?\n\})\n```/u.exec(page);
+    assert.ok(block, 'the metadata.json sample is gone from output-files.md');
+    const documented = JSON.parse(block[1]);
+
+    assert.deepEqual(
+      shapeOf(documented),
+      shapeOf(real),
+      'the metadata.json in output-files.md no longer has the keys a conversion writes',
+    );
+  });
+
   it('agrees with the CLI about what the exit codes are', async () => {
     // The reference states three codes and what each means. The meanings are prose, but the
     // set is not: a fourth code appearing with nothing said about it is the drift to catch.
@@ -134,6 +179,20 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 });
+
+/**
+ * An object's key structure, ignoring values and array length.
+ *
+ * Arrays are described by the shape of their first element, since what matters is which keys
+ * an entry has rather than how many entries a particular recording produced.
+ */
+function shapeOf(value) {
+  if (Array.isArray(value)) return value.length > 0 ? [shapeOf(value[0])] : [];
+  if (value === null || typeof value !== 'object') return typeof value;
+  const shape = {};
+  for (const key of Object.keys(value).sort()) shape[key] = shapeOf(value[key]);
+  return shape;
+}
 
 /**
  * The codes a page enumerates, from the one construct on it that is a list of them.
