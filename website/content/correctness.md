@@ -10,10 +10,11 @@ Correctness here covers three different things, verified three different ways.
 
 1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which converts 75 generated recordings and compares every sample and every event: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
-3. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **4,000 runs over 1,000 corrupted recordings, all reported cleanly**.
-4. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
+3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes. Checked by `npm run fuzz:batch`.
+4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **4,000 runs over 1,000 corrupted recordings, all reported cleanly**.
+5. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and fourth are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and fifth are what `npm test` runs. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib
@@ -46,6 +47,27 @@ x010.edf annotation 0: onset 0.25 vs 0.251
 ```
 
 Either exits 1.
+
+## Batches
+
+```bash
+npm run fuzz:batch              # 12 folder trees, the default seed
+npm run fuzz:batch -- 42 40     # a different seed, more trees
+```
+
+```
+12 folder trees, 49 recordings, 49 conversions (seed 1).
+Serial and parallel agreed, and every batch matched converting alone.
+```
+
+Converting a folder is the hardest part of this tool to reason about: the tree is walked, links are followed, destinations are derived from file names, and the conversions may run in any order across several processes. Rather than guess which arrangement breaks, this builds arrangements — nesting, names with spaces and non-ASCII characters, mixed-case extensions, symlinks, files that are not recordings — and checks four things that must hold whatever shape comes out:
+
+1. **Serial and parallel produce the same directories.** A difference between them is what a race looks like from outside.
+2. **Each recording's output equals converting it alone.** A batch may reorder the work; it may not change a byte of it.
+3. **The closing count matches the directories produced**, so "Converted 5 of 5" is a fact.
+4. **A non-zero exit comes with a message**, never a silent half-conversion.
+
+The first of those is how the collision fixed in 0.4.14 was found: one run produced `<out>/rec`, another `<out>/rec/inner`, from the same command over the same files. Putting that bug back makes this fail in two independent rounds and exit 1.
 
 ## Damaged files
 

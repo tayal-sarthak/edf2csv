@@ -3,6 +3,46 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.16
+
+### Added: `npm run fuzz:batch`, which builds folder trees and converts them
+
+```bash
+npm run fuzz:batch
+```
+
+```
+12 folder trees, 49 recordings, 49 conversions (seed 1).
+Serial and parallel agreed, and every batch matched converting alone.
+```
+
+Converting a folder is the hardest part of this tool to reason about. The tree is walked, links
+are followed, destinations are derived from file names, and the conversions may run in any order
+across several processes. Every batch bug so far came from an arrangement nobody thought to
+write a test for, so this builds arrangements instead — nesting, names with spaces and non-ASCII
+characters, mixed-case extensions, symlinks, files that are not recordings — and checks four
+things that must hold whatever comes out:
+
+1. **Serial and parallel produce the same directories.** A difference between them is what a
+   race looks like from outside.
+2. **Each recording's output equals converting it alone.** A batch may reorder the work; it may
+   not change a byte of it.
+3. **The closing count matches the directories produced**, so "Converted 5 of 5" is a fact
+   rather than a hope.
+4. **A non-zero exit comes with a message**, never a silent half-conversion.
+
+The first of those is not hypothetical: it is how 0.4.14 was found two versions ago. One run
+produced `<out>/rec` and another `<out>/rec/inner` from the same command over the same files,
+which is the whole signature of that bug. Putting it back makes this fail in two independent
+rounds and exit 1 — so the check is known to work rather than assumed to.
+
+Runs are deterministic: the same seed builds the same tree, so a failure reproduces on another
+machine. Like the other two harnesses it is opt-in and not part of `npm test`, which stays fast
+and dependency-free.
+
+There are now three: `npm run crossvalidate` for the arithmetic, `npm run fuzz` for damaged
+files, and this one for batches.
+
 ## 0.4.15
 
 ### Fixed: two recordings differing only in filename case merged into one directory
