@@ -847,6 +847,66 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('decides what --out means from what was named, not from what a folder held', async () => {
+    // 0.4.20 took this decision off the recording count; the flag it left behind answered
+    // "did any input come from a directory" rather than "was a directory named", which is
+    // the same thing only when the directory yielded something. So
+    // `edf2csv study named.edf --out csv` wrote csv/named/ while the study held recordings
+    // and csv/signals.csv once it held none: whether an unrelated folder happened to contain
+    // anything decided where a different recording's output went.
+    const dir = await stage({ 'study/night-01/rec.edf': 'tiny.edf', 'named.edf': 'tiny.edf' });
+    await mkdir(path.join(dir, 'blank'), { recursive: true });
+
+    const withRecordings = path.join(dir, 'a');
+    const full = await cli([
+      path.join(dir, 'study'), path.join(dir, 'named.edf'), '--out', withRecordings, '--quiet',
+    ]);
+    assert.equal(full.code, 0, full.stderr);
+
+    const withNone = path.join(dir, 'b');
+    const empty = await cli([
+      path.join(dir, 'blank'), path.join(dir, 'named.edf'), '--out', withNone, '--quiet',
+    ]);
+    assert.equal(empty.code, 0, empty.stderr);
+
+    // The named recording lands in the same place either way.
+    for (const out of [withRecordings, withNone]) {
+      assert.ok(
+        (await readdir(path.join(out, 'named'))).includes('signals.csv'),
+        `named.edf did not land in ${out}/named`,
+      );
+    }
+
+    // And naming one recording on its own still means the output directory itself.
+    const alone = path.join(dir, 'c');
+    await cli([path.join(dir, 'named.edf'), '--out', alone, '--quiet']);
+    assert.ok((await readdir(alone)).includes('signals.csv'));
+  });
+
+  it('passes a value beginning with a dash to its children unambiguously', async () => {
+    // Child argv was built as two arguments per option, so a value beginning with a dash was
+    // another option as far as the child's parser was concerned: `--out ./-nightly` reached
+    // it as `--out` followed by `-nightly`, and the child died on "Option '--out' argument is
+    // ambiguous" while the serial path converted the same command without complaint. A
+    // leading dash is not exotic — path.join produces one from a folder given as `.`.
+    const dir = await stage({ 'in/a.edf': 'tiny.edf', 'in/b.edf': 'tiny.edf' });
+    const awkward = path.join(dir, '-nightly');
+
+    const parallel = await cli([path.join(dir, 'in'), '--out', awkward, '--jobs', '2', '--quiet']);
+    assert.equal(parallel.code, 0, `--jobs refused a destination serial accepts:\n${parallel.stderr}`);
+    assert.deepEqual((await readdir(awkward)).sort(), ['a', 'b']);
+
+    // And it produces exactly what the serial path does.
+    const serial = path.join(dir, '-serial');
+    await cli([path.join(dir, 'in'), '--out', serial, '--quiet']);
+    for (const name of ['a', 'b']) {
+      assert.equal(
+        await readFile(path.join(serial, name, 'signals.csv'), 'utf8'),
+        await readFile(path.join(awkward, name, 'signals.csv'), 'utf8'),
+      );
+    }
+  });
+
   it('agrees with the conversion about where a recording starts', async () => {
     // --info reads one record's annotation bytes rather than scanning the file, which is
     // what keeps it a header read. It stopped at record 0, so the moment that record's

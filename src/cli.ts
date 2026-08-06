@@ -193,10 +193,12 @@ export async function main(argv: readonly string[]): Promise<number> {
 
   let expanded: Input[];
   let unreadable: string[];
+  let namedDirectory: boolean;
   try {
     const found = await expandInputs(positionals);
     expanded = found.inputs;
     unreadable = found.unreadable;
+    namedDirectory = found.namedDirectory;
   } catch (error) {
     return reportError(error);
   }
@@ -226,7 +228,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     An input going missing did it in reverse. This is the same count 0.4.20 took out of
     `--out` for the same reason.
   */
-  const batch = inputs.length > 1 || expanded.some((entry) => entry.fromDirectory);
+  const batch = inputs.length > 1 || namedDirectory;
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
   const strict = values['strict'] === true;
@@ -270,7 +272,7 @@ export async function main(argv: readonly string[]): Promise<number> {
 
   try {
     const outOption = typeof values['out'] === 'string' ? values['out'] : undefined;
-    const destinations = destinationsFor(expanded, outOption);
+    const destinations = destinationsFor(expanded, outOption, batch);
     assertDistinct(inputs, destinations);
 
     const shared = {
@@ -678,9 +680,19 @@ interface Input {
  */
 async function expandInputs(
   positionals: readonly string[],
-): Promise<{ inputs: Input[]; unreadable: string[] }> {
+): Promise<{ inputs: Input[]; unreadable: string[]; namedDirectory: boolean }> {
   const found: Input[] = [];
   const unreadable: string[] = [];
+  /*
+    Whether a directory was NAMED, which is not the same as whether one yielded anything.
+
+    `fromDirectory` on the inputs answers the second question, and using it for the first put
+    the 0.4.20 defect back one step along: `edf2csv study named.edf --out csv` wrote
+    csv/named/ while the study held recordings and csv/signals.csv once it held none, because
+    the surviving input then looked like a lone file. Whether some unrelated folder happens
+    to contain anything decided where a different recording's output went.
+  */
+  let namedDirectory = false;
   for (const given of positionals) {
     const info = await stat(given).catch(() => null);
     if (info === null || !info.isDirectory()) {
@@ -689,6 +701,7 @@ async function expandInputs(
       found.push({ path: given, name: path.basename(given), fromDirectory: false });
       continue;
     }
+    namedDirectory = true;
     const walked = await walk(given);
     unreadable.push(...walked.unreadable);
     for (const file of walked.files) {
@@ -736,7 +749,7 @@ async function expandInputs(
   const unique = [...byIdentity.values()];
   unique.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
-  return { inputs: unique, unreadable };
+  return { inputs: unique, unreadable, namedDirectory };
 }
 
 /**
@@ -874,10 +887,14 @@ async function walk(root: string): Promise<{ files: string[]; unreadable: string
  * sub-directory that could not be read — so where the data landed turned on the state of the
  * machine rather than on the command.
  */
-function destinationsFor(inputs: readonly Input[], out: string | undefined): string[] {
+function destinationsFor(
+  inputs: readonly Input[],
+  out: string | undefined,
+  /** True when a folder was named, or more than one recording was. See `batch` in `main`. */
+  batch: boolean,
+): string[] {
   if (out === undefined) return inputs.map((input) => defaultOutputDir(input.path));
-  const single = inputs.length === 1 && inputs[0]?.fromDirectory === false;
-  if (single) return [out];
+  if (!batch) return [out];
   return inputs.map((input) => path.join(out, stemOf(input.name)));
 }
 
@@ -1024,7 +1041,18 @@ async function convertInChild(
     `-lead.edf`. The child then failed on a file the parent had converted happily, so the
     same command converted two recordings serially and one under --jobs.
   */
-  const args = ['--out', destination];
+  /*
+    Option values go in the `--flag=value` form, never as two arguments.
+
+    Split across two arguments, a value beginning with a dash is another option as far as the
+    child's parser is concerned: `--out ./-nightly` reached it as `--out` followed by
+    `-nightly`, and the child died on "Option '--out' argument is ambiguous" while the serial
+    path converted the same command without complaint. A leading dash is not exotic —
+    `path.join` produces one from a folder given as `.`, and directories get named after
+    dates and flags often enough. Same failure 0.4.19 fixed for the recording's own path, on
+    everything that carries a value rather than on the positional.
+  */
+  const args = [`--out=${destination}`];
   /*
     --strict is deliberately absent: it is a verdict on the whole run, and a child converting
     one recording is not the whole run. Passing it down made each child announce "--strict: 1
@@ -1036,14 +1064,14 @@ async function convertInChild(
     if (values[flag] === true) args.push(`--${flag}`);
   }
   for (const flag of ['start', 'duration', 'end', 'decimals']) {
-    if (typeof values[flag] === 'string') args.push(`--${flag}`, values[flag] as string);
+    if (typeof values[flag] === 'string') args.push(`--${flag}=${values[flag] as string}`);
   }
   // --channels is repeatable, and each term is passed as given so that a label containing a
   // comma survives: joining them back into one list would split it in the child.
   const channels = values['channels'];
   if (channels !== undefined) {
     for (const term of Array.isArray(channels) ? (channels as string[]) : [String(channels)]) {
-      args.push('--channels', term);
+      args.push(`--channels=${term}`);
     }
   }
   args.push('--', input);
