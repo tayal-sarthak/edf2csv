@@ -356,3 +356,37 @@ describe('EDF+ annotations', () => {
     );
   });
 });
+describe('the read budget', () => {
+  it('sizes the buffer from the data rather than from the budget', async () => {
+    // The budget is a ceiling on how much to read at once, and the buffer was however many
+    // records would fit in it — whether or not the file had that many. An 848-byte fixture
+    // read with a 512 MB budget allocated 536,870,880 bytes for its two records, and every
+    // ordinary read of a small file reserved the full 8 MB default. Nothing was wrong with
+    // the data; the memory just had nothing to do with it.
+    const file = await EdfFile.open(fixture('tiny.edf'));
+    try {
+      for await (const batch of file.readRecords({ chunkBytes: 512 * 1024 * 1024 })) {
+        assert.equal(
+          batch.data.buffer.byteLength,
+          file.recordCount * file.header.recordBytes,
+          'the buffer is the size of what is being read',
+        );
+      }
+    } finally {
+      await file.close();
+    }
+  });
+
+  it('reads a window without reserving room for the whole recording', async () => {
+    const file = await EdfFile.open(fixture('long-stream.edf'));
+    try {
+      for await (const batch of file.readRecords({ startRecord: 10, endRecord: 12 })) {
+        assert.equal(batch.data.buffer.byteLength, 2 * file.header.recordBytes);
+        assert.equal(batch.recordCount, 2);
+      }
+    } finally {
+      await file.close();
+    }
+  });
+});
+

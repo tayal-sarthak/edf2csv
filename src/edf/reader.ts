@@ -267,7 +267,19 @@ export class EdfFile {
 
     const { recordBytes } = this.header;
     const budget = options.chunkBytes ?? DEFAULT_CHUNK_BYTES;
-    const perChunk = Math.max(1, Math.floor(budget / recordBytes));
+    /*
+      The budget is a ceiling, not an amount to reserve.
+
+      `Math.floor(budget / recordBytes)` is how many records would fit in it, and the buffer
+      was that many — whether or not the file had that many. A 848-byte fixture read with a
+      512 MB budget allocated 536,870,880 bytes for its two records, and every ordinary read
+      of a small file reserved the full 8 MB default. Nothing was wrong with the data; the
+      memory just had nothing to do with it.
+
+      Bounded by what is actually going to be read, so a batch of five hundred short
+      recordings costs five hundred short buffers rather than five hundred 8 MB ones.
+    */
+    const perChunk = Math.max(1, Math.min(Math.floor(budget / recordBytes), end - start));
     const buffer = Buffer.alloc(perChunk * recordBytes);
 
     for (let record = start; record < end; record += perChunk) {
