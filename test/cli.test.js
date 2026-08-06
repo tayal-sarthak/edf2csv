@@ -483,6 +483,32 @@ describe('converting several recordings at once', () => {
     await assert.rejects(readdir(path.join(dir, 'clash')), 'nothing may be written first');
   });
 
+  it('refuses before writing when one output would sit inside another', async () => {
+    // A recording named rec.edf beside a folder named rec is enough: the outputs are
+    // <out>/rec and <out>/rec/inner, which are not equal, so the duplicate check let both
+    // through. Each conversion claims its own directory with a non-recursive mkdir but
+    // creates its parents recursively, so whichever started second either found the
+    // directory the other had already made as a parent — and failed with "already exists" —
+    // or did not. Under --jobs that came out differently run to run.
+    const dir = await stage({ 'study/rec.edf': 'tiny.edf', 'study/rec/inner.edf': 'mixed-rates.edf' });
+
+    for (const jobs of ['1', '2']) {
+      const out = path.join(dir, `out-${jobs}`);
+      const { code, stderr } = await cli([path.join(dir, 'study'), '--out', out, '--jobs', jobs]);
+      assert.equal(code, 2, `--jobs ${jobs}`);
+      assert.match(stderr, /cannot sit inside another/u);
+      await assert.rejects(readdir(out), `--jobs ${jobs} wrote something before refusing`);
+    }
+  });
+
+  it('allows outputs that merely share a parent', async () => {
+    // Only nesting is refused. Siblings under one directory are the ordinary case.
+    const dir = await stage({ 'study/a.edf': 'tiny.edf', 'study/b.edf': 'annotations.edf' });
+    const { code } = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'out'), '--quiet']);
+    assert.equal(code, 0);
+    assert.deepEqual((await readdir(path.join(dir, 'out'))).sort(), ['a', 'b']);
+  });
+
   it('refuses a batch on --stdout, which holds one table', async () => {
     // Two different recordings: naming the same one twice is one recording, not a batch.
     const { code, stderr } = await cli([

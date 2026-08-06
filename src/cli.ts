@@ -746,6 +746,37 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
     }
     claimed.set(key, inputs[index] as string);
   }
+
+  /*
+    And refuse one destination sitting inside another.
+
+    A recording named `rec.edf` beside a folder named `rec` is enough: their outputs are
+    `<out>/rec` and `<out>/rec/inner`, which are not equal, so the check above let both
+    through. What happened next depended on which conversion got there first. Each creates
+    its own directory with a single non-recursive mkdir but its parents recursively, so
+    whichever started second either claimed a directory the other had already made as a
+    parent — failing with "already exists" — or did not. Five runs in twenty failed that way
+    under --jobs 2, converting one recording of two; the same command succeeded the other
+    fifteen times.
+
+    Sorting first puts an ancestor next to its descendant: anything sorting between them
+    shares the same prefix, and would be caught as its own adjacent pair.
+  */
+  const ordered = destinations
+    .map((destination, index) => ({ resolved: path.resolve(destination), destination, index }))
+    .sort((a, b) => (a.resolved < b.resolved ? -1 : a.resolved > b.resolved ? 1 : 0));
+
+  for (let i = 1; i < ordered.length; i++) {
+    const outer = ordered[i - 1] as (typeof ordered)[number];
+    const inner = ordered[i] as (typeof ordered)[number];
+    if (!inner.resolved.startsWith(outer.resolved + path.sep)) continue;
+    throw new OptionError(
+      `"${inputs[inner.index]}" would be converted into "${inner.destination}", which is ` +
+        `inside "${outer.destination}" — where "${inputs[outer.index]}" is converted.\n` +
+        `One recording's output cannot sit inside another's. Convert them separately, or ` +
+        `rename one of them.`,
+    );
+  }
 }
 
 /**

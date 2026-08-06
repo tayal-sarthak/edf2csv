@@ -3,6 +3,53 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.14
+
+### Fixed: two recordings whose output directories nest produced a different result each run
+
+0.4.0 refuses a batch in which two recordings would land in the same directory. It compared
+destinations for equality, which misses the case where one contains the other:
+
+```
+study/
+  rec.edf         ->  out/rec
+  rec/inner.edf   ->  out/rec/inner
+```
+
+A recording named `rec.edf` sitting beside a folder named `rec` is enough, and that is a normal
+thing to find in a study folder. The two paths are not equal, so both went through.
+
+What happened next depended on which conversion got there first. Each claims its own directory
+with a single non-recursive mkdir — the atomic claim that stops two conversions sharing one
+`signals.csv` — but creates its parents recursively. So whichever started second either found
+the directory the other had already made as a parent, and failed:
+
+```
+error: study/rec.edf: "out/rec" already exists.
+
+Converted 1 of 2 recordings; 1 failed.
+```
+
+or did not, and both succeeded. Under `--jobs 2`, **five runs in twenty failed and fifteen
+succeeded** — the same command over the same files. Serially it always worked, because the
+expanded list is sorted and `rec.edf` happens to sort before `rec/inner.edf`.
+
+A destination inside another destination is now refused up front, with nothing written:
+
+```
+error: "study/rec/inner.edf" would be converted into "out/rec/inner", which is inside
+       "out/rec" — where "study/rec.edf" is converted.
+       One recording's output cannot sit inside another's. Convert them separately, or
+       rename one of them.
+```
+
+Only nesting is refused; recordings that merely share a parent are the ordinary case and are
+unaffected.
+
+Found by a fuzzer that builds random folder trees and requires a batch to produce the same
+files serially and in parallel — the two disagreed, which is what a race looks like from
+outside.
+
 ## 0.4.13
 
 ### Fixed: `--info` disagreed with the conversion on a recording that starts mid-second
