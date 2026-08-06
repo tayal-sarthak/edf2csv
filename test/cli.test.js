@@ -1311,8 +1311,13 @@ describe('--stdout', () => {
   });
 
   it('refuses a recording that would need more than one table', async () => {
+    // Exit 2. Both --stdout refusals used to be 1, which means "the file or the destination
+    // is the problem" — but the answer to both is to change the flags, as the hints say in
+    // as many words, so a script reading the code went looking at the disk. --stdout --json
+    // was already 2 for exactly this reason. Exit 2 has always covered checks that need the
+    // header first: a --channels term matching nothing, a --start past the end.
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--stdout']);
-    assert.equal(code, 1);
+    assert.equal(code, 2, stderr);
     assert.match(stderr, /exactly one table/);
     assert.match(stderr, /--channels/, 'the message should say how to narrow it');
     // Naming the rates is what makes the advice actionable: these are what to narrow to.
@@ -1338,8 +1343,17 @@ describe('--stdout', () => {
 
   it('refuses --annotations-only, which has no signal data to stream', async () => {
     const { code, stderr } = await cli([fixture('annotations.edf'), '--stdout', '--annotations-only']);
-    assert.equal(code, 1);
+    assert.equal(code, 2, stderr);
     assert.match(stderr, /no signal data/);
+
+    // The distinction the two codes draw: a destination that genuinely cannot be written is
+    // still the destination's problem, and stays exit 1.
+    const parent = await outDir();
+    await mkdir(parent, { recursive: true });
+    const blocked = path.join(parent, 'file');
+    await writeFile(blocked, 'not a directory');
+    const unwritable = await cli([fixture('tiny.edf'), '--out', path.join(blocked, 'out')]);
+    assert.equal(unwritable.code, 1, unwritable.stderr);
   });
 });
 

@@ -21,7 +21,7 @@ import process from 'node:process';
 import { EdfError } from './edf/errors.js';
 import { EdfFile } from './edf/reader.js';
 import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
-import { ConversionError, convert, defaultOutputDir } from './convert/run.js';
+import { ConversionError, USAGE_ERROR_CODES, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
@@ -1101,7 +1101,11 @@ function reportError(error: unknown, input?: string, emit: Emit = writeThrough):
   if (error instanceof EdfError || error instanceof ConversionError) {
     emit('err', `error: ${where}${printableLines(error.message, '       ')}\n`);
     if (error.hint) emit('err', `       ${error.hint}\n`);
-    return EXIT_ERROR;
+    // A request the tool cannot carry out is the command line's problem, not the file's,
+    // whatever layer noticed it. See USAGE_ERROR_CODES.
+    return error instanceof ConversionError && USAGE_ERROR_CODES.has(error.code)
+      ? EXIT_USAGE
+      : EXIT_ERROR;
   }
   if (
     error instanceof ChannelSelectionError ||

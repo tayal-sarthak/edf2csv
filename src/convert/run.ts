@@ -42,7 +42,20 @@ export type ConversionErrorCode =
   | 'OUTPUT_UNWRITABLE'
   | 'INPUT_OUTPUT_COLLISION'
   | 'INPUT_UNREADABLE'
+  | 'UNSUPPORTED_REQUEST'
   | 'WRITE_FAILED';
+
+/**
+ * Codes that mean the command cannot be carried out as written, rather than that something
+ * about the file or the destination went wrong.
+ *
+ * The distinction is the one the exit codes draw: 1 is "the file or the destination is the
+ * problem", 2 is "the command line is the problem". A caller with a `--stdout` conflict is
+ * being told to change the flags — the hints say exactly that — so filing it under 1 sent
+ * scripts looking at the disk. Exit 2 already covers checks that need the header first,
+ * such as a `--channels` term matching nothing.
+ */
+export const USAGE_ERROR_CODES: ReadonlySet<ConversionErrorCode> = new Set(['UNSUPPORTED_REQUEST']);
 
 export class ConversionError extends Error {
   readonly code: ConversionErrorCode;
@@ -135,14 +148,14 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     if (options.toStdout === true) {
       if (!plan.writeSignals) {
         throw new ConversionError(
-          'OUTPUT_UNWRITABLE',
+          'UNSUPPORTED_REQUEST',
           '--stdout has no signal data to write because --annotations-only was given.',
           'Drop one of the two flags.',
         );
       }
       if (plan.groups.length !== 1) {
         throw new ConversionError(
-          'OUTPUT_UNWRITABLE',
+          'UNSUPPORTED_REQUEST',
           // Naming the rates is the point: the hint says to narrow the selection, and this
           // is what there is to narrow it to. The parenthetical used to repeat the count
           // that had just been given — "produces 3 (its channels use 3 different sampling

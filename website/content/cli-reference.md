@@ -556,8 +556,9 @@ fi
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
 - A `--channels` term that matches no channel, a `#N` position that doesn't exist, or `--channels` given with an empty list.
 - A `--decimals` value that's empty, not an integer, or outside 0 to 20.
+- `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate, which would produce more than one table.
 
-The last two categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
+The last three categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
 
 **Exit 1** covers everything else that stops the run:
 
