@@ -519,6 +519,50 @@ describe('converting several recordings at once', () => {
     await assert.rejects(readdir(out), 'nothing may be written before refusing');
   });
 
+  it('finds a nested destination even with a sibling sorting between them', async () => {
+    // The first version of this guard sorted resolved paths and compared neighbours, on the
+    // reasoning that an ancestor and its descendant end up adjacent. The separator is not
+    // the lowest character, so any sibling starting with one of the thirteen printable
+    // characters below '/' lands between them: with rec.edf, rec!x.edf and rec/inner.edf,
+    // '!' sorts between out/rec and out/rec/inner and the pair was never compared.
+    const dir = await stage({
+      'study/rec.edf': 'tiny.edf',
+      'study/rec!x.edf': 'annotations.edf',
+      'study/rec/inner.edf': 'mixed-rates.edf',
+    });
+    const { code, stderr } = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'out')]);
+    assert.equal(code, 2, stderr);
+    assert.match(stderr, /cannot sit inside another/u);
+  });
+
+  it('converts a recording whose name begins with a dash, however many jobs', async () => {
+    // The child received the recording as its first argument, so a path beginning with a
+    // dash parsed as an option — which `path.join` produces from a folder given as `.`,
+    // since `./-lead.edf` normalises to `-lead.edf`. Serial converted it, parallel did not.
+    const dir = await stage({ 'study/ok.edf': 'annotations.edf' });
+    await writeFile(path.join(dir, 'study', '-lead.edf'), await readFile(fixture('tiny.edf')));
+
+    for (const jobs of ['1', '2']) {
+      const { code, stderr } = await cli([
+        path.join(dir, 'study'), '--out', path.join(dir, `out-${jobs}`), '--jobs', jobs,
+      ]);
+      assert.equal(code, 0, `--jobs ${jobs}: ${stderr}`);
+      assert.match(stderr, /Converted 2 of 2 recordings/u, `--jobs ${jobs}`);
+    }
+  });
+
+  it('prints a file name containing a replacement pattern as it is', async () => {
+    // named() built its replacement as a string, so `$&` in a file name re-injected the text
+    // it had just matched: bad$&name.edf reported itself as "baderror: name.edf".
+    const dir = await stage({ 'study/good.edf': 'tiny.edf' });
+    await writeFile(path.join(dir, 'study', 'bad$&name.edf'), 'not an edf');
+
+    const { stderr } = await cli([
+      path.join(dir, 'study'), '--out', path.join(dir, 'out'), '--jobs', '2',
+    ]);
+    assert.match(stderr, /bad\$&name\.edf: File is 10 bytes/u, `name was mangled: ${stderr}`);
+  });
+
   it('allows outputs that merely share a parent', async () => {
     // Only nesting is refused. Siblings under one directory are the ordinary case.
     const dir = await stage({ 'study/a.edf': 'tiny.edf', 'study/b.edf': 'annotations.edf' });
@@ -807,10 +851,15 @@ describe('converting several recordings at once', () => {
   });
 
   it('rejects a job count that is not a whole number of one or more', async () => {
-    for (const jobs of ['0', 'abc', '1.5', '']) {
-      const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, '--info']);
-      assert.equal(code, 2, `--jobs ${JSON.stringify(jobs)}`);
-      assert.match(stderr, /--jobs must be a whole number/u);
+    // Checked in every mode, including the two where the value cannot be honoured anyway:
+    // --stdout converts one recording however many jobs are asked for, but a request that
+    // cannot be met is a usage error rather than something to accept in silence.
+    for (const mode of [['--info'], ['--stdout']]) {
+      for (const jobs of ['0', 'abc', '1.5', '']) {
+        const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, ...mode]);
+        assert.equal(code, 2, `--jobs ${JSON.stringify(jobs)} ${mode.join(' ')}`);
+        assert.match(stderr, /--jobs must be a whole number/u);
+      }
     }
   });
 

@@ -275,7 +275,11 @@ export async function main(argv: readonly string[]): Promise<number> {
     // Validated before the --info branch, not inside the conversion path: a flag that
     // cannot be honoured is a usage error whatever mode it was given in, and accepting
     // "--jobs 0" in silence under --info is the kind of quiet that this tool avoids.
-    const jobs = toStdout ? 1 : parseJobs(values['jobs'], inputs.length);
+    // Parsed before it is overridden: --stdout converts one recording however many jobs
+    // were asked for, but "--stdout --jobs 0" is still a request that cannot be honoured,
+    // and accepting it in silence is the thing 0.4.2 fixed for --info.
+    const requestedJobs = parseJobs(values['jobs'], inputs.length);
+    const jobs = toStdout ? 1 : requestedJobs;
 
     if (values['info'] === true) {
       const failures: number[] = [];
@@ -846,20 +850,38 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
     Sorting first puts an ancestor next to its descendant: anything sorting between them
     shares the same prefix, and would be caught as its own adjacent pair.
   */
-  const ordered = destinations
-    .map((destination, index) => ({ resolved: identity(destination), destination, index }))
-    .sort((a, b) => (a.resolved < b.resolved ? -1 : a.resolved > b.resolved ? 1 : 0));
+  /*
+    Each destination is checked against its own ancestors, by name.
 
-  for (let i = 1; i < ordered.length; i++) {
-    const outer = ordered[i - 1] as (typeof ordered)[number];
-    const inner = ordered[i] as (typeof ordered)[number];
-    if (!inner.resolved.startsWith(outer.resolved + path.sep)) continue;
-    throw new OptionError(
-      `"${inputs[inner.index]}" would be converted into "${inner.destination}", which is ` +
-        `inside "${outer.destination}" — where "${inputs[outer.index]}" is converted.\n` +
-        `One recording's output cannot sit inside another's. Convert them separately, or ` +
-        `rename one of them.`,
-    );
+    The first version of this sorted the resolved paths and compared neighbours, on the
+    reasoning that an ancestor and its descendant end up adjacent. They do not: the
+    separator is not the lowest character, so any sibling whose name begins with one of the
+    thirteen printable characters below '/' lands between them. With `rec.edf`, `rec!x.edf`
+    and `rec/inner.edf` in one folder, '!' sorts between `out/rec` and `out/rec/inner` and
+    the pair was never compared — three recordings converted, one of them inside another's
+    directory, reported as "Converted 3 of 3".
+
+    Walking up from each destination has no such gap. Output trees are shallow, so this is a
+    handful of string lookups per recording.
+  */
+  const byDestination = new Map<string, number>();
+  for (const [index, destination] of destinations.entries()) {
+    byDestination.set(identity(destination), index);
+  }
+
+  for (const [index, destination] of destinations.entries()) {
+    let ancestor = path.dirname(path.resolve(destination));
+    for (let parent = ''; ancestor !== parent; ancestor = path.dirname(ancestor)) {
+      parent = ancestor;
+      const owner = byDestination.get(identity(ancestor));
+      if (owner === undefined || owner === index) continue;
+      throw new OptionError(
+        `"${inputs[index]}" would be converted into "${destination}", which is inside ` +
+          `"${destinations[owner]}" — where "${inputs[owner]}" is converted.\n` +
+          `One recording's output cannot sit inside another's. Convert them separately, or ` +
+          `rename one of them.`,
+      );
+    }
   }
 }
 
@@ -894,7 +916,15 @@ async function convertInChild(
   err: string;
   report: { converted: number; warnings: number } | null;
 }> {
-  const args = [input, '--out', destination];
+  /*
+    The recording goes last, behind `--`.
+
+    As the first argument it was parsed as an option whenever its path began with a dash,
+    which `path.join` produces from a folder given as `.` — `./-lead.edf` normalises to
+    `-lead.edf`. The child then failed on a file the parent had converted happily, so the
+    same command converted two recordings serially and one under --jobs.
+  */
+  const args = ['--out', destination];
   /*
     --strict is deliberately absent: it is a verdict on the whole run, and a child converting
     one recording is not the whole run. Passing it down made each child announce "--strict: 1
@@ -916,6 +946,7 @@ async function convertInChild(
       args.push('--channels', term);
     }
   }
+  args.push('--', input);
 
   return new Promise((resolve) => {
     const child = fork(fileURLToPath(import.meta.url), args, {
@@ -948,7 +979,10 @@ async function convertInChild(
 
 /** Put the recording's name into the error lines a child produced. */
 function named(text: string, input: string): string {
-  return text.replace(/^error: /gmu, `error: ${printable(input)}: `);
+  // A function, not a string: `$&`, `$\'`, `` $` `` and `$1` in a replacement string are
+  // patterns, and a file may legitimately be called any of them. `bad$&name.edf` re-injected
+  // the text it had just matched and reported itself as `baderror: name.edf`.
+  return text.replace(/^error: /gmu, () => `error: ${printable(input)}: `);
 }
 
 /** Re-render a child's pretty-printed summary onto one line, leaving anything else alone. */

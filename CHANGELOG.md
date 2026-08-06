@@ -3,6 +3,67 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.19
+
+### Fixed: the nesting guard could be stepped past by a sibling
+
+0.4.14 refuses a batch where one recording's output directory would sit inside another's. It
+sorted the resolved destinations and compared neighbours, reasoning that an ancestor and its
+descendant end up adjacent. They do not. The separator is not the lowest character, so any
+sibling whose name begins with one of the thirteen printable characters below `/` lands between
+them:
+
+```
+study/
+  rec.edf        ->  out/rec
+  rec!x.edf      ->  out/rec!x     '!' is 33, '/' is 47
+  rec/inner.edf  ->  out/rec/inner
+```
+
+`out/rec!x` sorts between the pair, so the pair was never compared, and the run went ahead:
+`Converted 3 of 3 recordings`, one of them written inside another's directory — the exact
+outcome 0.4.14 was for.
+
+Each destination is now checked against its own ancestors by name, which has no such gap.
+Output trees are shallow, so it is a handful of lookups per recording.
+
+### Fixed: a recording whose name begins with a dash failed under `--jobs`
+
+```
+$ edf2csv . --out ../converted             # a folder holding -lead.edf and ok.edf
+Converted 2 of 2 recordings.
+
+$ edf2csv . --out ../converted --jobs 2
+Converted 1 of 2 recordings; 1 failed.
+```
+
+Each conversion runs in a child process that received the recording as its first argument, so a
+path beginning with a dash parsed as an option and the child rejected a file the parent had
+converted happily. `path.join` produces exactly that from a folder given as `.`: `./-lead.edf`
+normalises to `-lead.edf`. The recording is now passed last, behind `--`.
+
+### Fixed: a file name containing `$&` reported itself as something else
+
+The parent puts a recording's name into the errors its children produce. It built the
+replacement as a string, where `$&`, `` $` ``, `$'` and `$1` are patterns rather than text, and
+a file may legitimately be called any of them:
+
+```
+error: study/baderror: name.edf: File is 10 bytes; an EDF header alone needs at least 256.
+```
+
+That is `bad$&name.edf`, with `$&` replaced by the `error: ` it had just matched. The name is
+now inserted as data.
+
+### Fixed: `--stdout --jobs 0` was accepted
+
+`--stdout` converts one recording however many jobs are asked for, so the value was never
+parsed. A request that cannot be honoured is a usage error rather than something to accept in
+silence — which is what 0.4.2 established for `--info`.
+
+All four came from an adversarial sweep of the 0.4.x code, and three of the four are faults in
+work from earlier in the same batch.
+
 ## 0.4.18
 
 ### Fixed: `--jobs` with `--strict` called a converted recording a failure
