@@ -175,6 +175,43 @@ describe('planning', () => {
   });
 });
 
+describe('formatting a duration', () => {
+  it('never prints a component that cannot exist', async () => {
+    const { formatDuration } = await import('../dist/format/number.js');
+    // Past 2^53 the decomposition stops being arithmetic: `total - h*3600 - m*60` cannot be
+    // exact, and the error lands in the seconds field. A record duration of 1e300 printed
+    // "8.333333333333333e+296h 48m -2880s" — minus forty-eight seconds.
+    for (const seconds of [0, 1, 59.5, 3599.9996, 3600, 86400, 1e6, 1e9, 1e15, 9e15, 1e20, 3e300]) {
+      const text = formatDuration(seconds);
+      assert.ok(!/-\d/u.test(text), `${seconds} produced a negative component: ${text}`);
+      const minutes = /(\d+)m /u.exec(text);
+      if (minutes) assert.ok(Number(minutes[1]) < 60, `${seconds} -> ${text}`);
+      const secondsField = /(\d+(?:\.\d+)?)s$/u.exec(text);
+      if (secondsField && /[hm] /u.test(text)) {
+        assert.ok(Number(secondsField[1]) < 60, `${seconds} -> ${text}`);
+      }
+    }
+  });
+
+  it('says so rather than inventing a number it does not have', async () => {
+    const { formatDuration } = await import('../dist/format/number.js');
+    // These rendered as "NaNs" and "Infinitys".
+    for (const seconds of [Number.NaN, Infinity, -Infinity]) {
+      assert.equal(formatDuration(seconds), 'unknown');
+    }
+  });
+
+  it('is unchanged for durations a recording actually has', async () => {
+    const { formatDuration } = await import('../dist/format/number.js');
+    assert.equal(formatDuration(0), '0s');
+    assert.equal(formatDuration(59.5), '59.5s');
+    assert.equal(formatDuration(3600), '1h 00m 0s');
+    assert.equal(formatDuration(86400), '24h 00m 0s');
+    // Rounded before splitting, so this never becomes "59m 60s".
+    assert.equal(formatDuration(3599.9996), '1h 00m 0s');
+  });
+});
+
 describe('the time column', () => {
   // Value cells are cached — a channel has only so many distinct readings — but the time
   // column rises monotonically, so no two rows share a string and toFixed ran once per row.

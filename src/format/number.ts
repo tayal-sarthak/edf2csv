@@ -129,7 +129,25 @@ export function formatBytes(bytes: number): string {
 
 /** Human-readable duration: 1h 05m 12s. */
 export function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return `${seconds}s`;
+  // A duration that is not a number cannot be broken into hours and minutes, and saying so
+  // beats the alternative: the fallback below rendered these as "NaNs" and "Infinitys".
+  if (!Number.isFinite(seconds)) return 'unknown';
+
+  /*
+    Past 2^53 the decomposition stops being arithmetic and starts being noise.
+
+    `total - h * 3600 - m * 60` cannot be exact once `total` exceeds what a double can hold
+    as a whole number, and the error lands in the seconds field, where it shows up as a
+    value that cannot exist. A header declaring a record duration of 1e300 printed:
+
+        Duration   8.333333333333333e+296h 48m -2880s
+
+    Forty-eight minutes and minus forty-eight seconds, under an hours field in exponent
+    notation. The seconds are the honest form for a figure this size — nobody reads
+    285 million years as hours — and the record count and duration are printed beside it
+    anyway, so a corrupt header stays just as visible.
+  */
+  if (seconds < 0 || seconds >= Number.MAX_SAFE_INTEGER) return `${seconds}s`;
 
   // Round to the precision that will actually be printed BEFORE splitting into units.
   // Splitting first left the remainder to be rounded on its own, so 3599.9996 s decomposed

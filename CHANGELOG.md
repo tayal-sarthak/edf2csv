@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.12
+
+### Fixed: `--info` could print a duration that cannot exist
+
+A header declaring a record duration of `1e300` produced this:
+
+```
+Duration   8.333333333333333e+296h 48m -2880s  (3 records of 1e+300s)
+```
+
+Forty-eight minutes and minus forty-eight seconds, under an hours field in exponent notation.
+
+Past 2^53 the decomposition into hours and minutes stops being arithmetic and starts being
+noise: `total - h * 3600 - m * 60` cannot be exact once the total exceeds what a double holds
+as a whole number, and the error lands in the seconds field. It went wrong well before the
+absurd cases — 1e20 seconds printed `27777777777777772h 13m -780s`.
+
+Durations that large are now given in seconds, which is the honest form for a figure nobody
+reads as hours anyway — 2^53 seconds is 285 million years. The record count and record duration
+are printed beside it either way, so a corrupt header stays just as visible:
+
+```
+Duration   3e+300s  (3 records of 1e+300s)
+```
+
+A duration that is not a number now says `unknown` rather than `NaNs` or `Infinitys`.
+
+Everything a recording actually has is unchanged, including the rounding fix that keeps
+3599.9996 s from printing as `59m 60s`.
+
 ## 0.4.11
 
 ### Fixed: a recording that changed while being read was reported as a disk problem
