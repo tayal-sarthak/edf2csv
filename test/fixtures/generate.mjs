@@ -268,6 +268,20 @@ export function generate() {
     ],
   });
 
+  // Record starts past 1e21, where JavaScript stops writing numbers as digits.
+  //
+  // EDF's record-duration field is 8 characters and exponent form fits, so `1e21` is a
+  // legal thing for a header to say. Three records is then enough to reach the point where
+  // `String(n)` switches to exponent notation.
+  writeEdf({
+    path: at('exponent-time.edf'),
+    numRecords: 3,
+    recordDuration: 1e21,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+    ],
+  });
+
   // Output larger than a pipe buffer, so a reader hanging up mid-stream is reachable.
   //
   // The --stdout tests could not express the EPIPE case with the small fixtures: 434 bytes

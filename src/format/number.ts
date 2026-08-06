@@ -235,6 +235,21 @@ export function makeTimeFormatter(
     ) {
       return direct(recordStart, sample);
     }
-    return `${recordStart + (wholeOffset[sample] as number)}${fractionText[sample] as string}`;
+    const whole = recordStart + (wholeOffset[sample] as number);
+    /*
+      The same 1e21 cliff `fixed` guards against, arriving through the back door.
+
+      `${whole}` is the implicit Number-to-String conversion, which switches to exponent
+      notation at 1e21 exactly as `toFixed` does — and then the cached fraction is glued onto
+      the end of it, so the cell reads "1e+21.000". That is not a number in any notation:
+      pandas and R both parse it as NaN, and a column of ordinary decimals ends in a run of
+      them. A header may legitimately say `1e21` in its 8-character record-duration field, so
+      three records are enough to reach it.
+
+      The slow path already expands these with BigInt. One comparison per row keeps that
+      correct without giving up the cache for the other twenty million.
+    */
+    if (whole >= 1e21) return direct(recordStart, sample);
+    return `${whole}${fractionText[sample] as string}`;
   };
 }

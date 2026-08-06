@@ -274,6 +274,33 @@ describe('the time column', () => {
 
     // A sample beyond the record's declared length has no cached offset.
     assert.equal(format(1, 99), fixed(1 + 99 / 4, 3));
+
+    // Past 1e21 `${n}` writes exponent notation, and the cached fraction was glued onto the
+    // end of it: "1e+21.000". `fixed` has guarded values against that cliff since 0.3.x; the
+    // time column lost the guard when 0.4.1 stopped calling it once per row.
+    for (const start of [1e21, 2.5e21, 1e30]) {
+      assert.equal(format(start, 1), fixed(start + 1 / 4, 3));
+      assert.ok(!/e/iu.test(format(start, 1)), `exponent notation in ${format(start, 1)}`);
+    }
+  });
+
+  it('writes a time column no parser has to guess at, however late the record', async () => {
+    // EDF's record-duration field is 8 characters and accepts exponent form, so a header
+    // saying 1e21 is legal and three records reach the cliff. Every cell in the column has
+    // to be a number, not just the ones a well-behaved recording produces.
+    const { convert } = await import('../dist/index.js');
+    const out = await outDir();
+    await convert(fixture('exponent-time.edf'), { outputDir: out, quiet: true });
+
+    const rows = (await readFile(path.join(out, 'signals.csv'), 'utf8')).trim().split('\n');
+    assert.equal(rows[0], 'time_s,ch1');
+    for (const row of rows.slice(1)) {
+      const time = row.split(',')[0];
+      assert.ok(!/e/iu.test(time), `exponent notation in the time column: ${time}`);
+      assert.ok(Number.isFinite(Number(time)), `unparseable time cell: ${time}`);
+    }
+    // The column still rises, and the last record starts two record durations in.
+    assert.match(rows[rows.length - 1], /^2750000000000000000000\.000,/u);
   });
 });
 
