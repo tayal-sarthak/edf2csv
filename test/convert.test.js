@@ -284,6 +284,30 @@ describe('the time column', () => {
     }
   });
 
+  it('shares one offset cache across every table in a conversion', async () => {
+    // The cap was per rate group, and a file may hold as many rate groups as it has
+    // channels, so nothing bounded the total: twelve channels at twelve rates just under
+    // the cap — a 25 MB file — took 1.66 GB and 36 s, where a 92 MB file at one rate takes
+    // 283 MB; twenty-four of them never finished. Groups ask fastest-first, so the tables
+    // with the most rows to write get the cache and the ones that miss out are the ones
+    // that would have gained least.
+    const { makeTimeFormatter, newOffsetBudget, fixed } = await import('../dist/format/number.js');
+
+    assert.equal(newOffsetBudget().remaining, 1 << 20, 'one conversion, one budget');
+
+    const budget = { remaining: 100 };
+    const cached = makeTimeFormatter(80, 8, 3, budget);
+    assert.equal(budget.remaining, 20, 'a group that caches spends what it cached');
+    const uncached = makeTimeFormatter(80, 4, 3, budget);
+    assert.equal(budget.remaining, 20, 'a group that cannot fit spends nothing');
+
+    // Whether a group got the cache may not change a single cell.
+    for (const sample of [0, 1, 37, 79]) {
+      assert.equal(uncached(42, sample), fixed(42 + sample / 4, 3));
+      assert.equal(cached(42, sample), fixed(42 + sample / 8, 3));
+    }
+  });
+
   it('writes a time column no parser has to guess at, however late the record', async () => {
     // EDF's record-duration field is 8 characters and accepts exponent form, so a header
     // saying 1e21 is legal and three records reach the cliff. Every cell in the column has

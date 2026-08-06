@@ -167,6 +167,28 @@ export function formatDuration(seconds: number): string {
 const MAX_CACHED_OFFSETS = 1 << 20;
 
 /**
+ * How many cached offsets a conversion has left to spend.
+ *
+ * The cap used to be per rate group, and a file may hold as many rate groups as it has
+ * channels. Twelve channels at twelve rates just under the cap — a 25 MB file — took
+ * 1.66 GB and 36 seconds, where a 92 MB file at one rate takes 283 MB and finishes in a
+ * fraction of that; twenty-four of them never finished at all. A per-group limit is not a
+ * limit, since nothing bounds the number of groups.
+ *
+ * One budget for the whole conversion makes the single-group case identical to what it was
+ * and the many-group case bounded. Groups ask in order of rate, fastest first, so the cache
+ * goes to the tables with the most rows to write and the ones that miss out are the ones
+ * that would have gained least.
+ */
+export interface OffsetBudget {
+  remaining: number;
+}
+
+export function newOffsetBudget(): OffsetBudget {
+  return { remaining: MAX_CACHED_OFFSETS };
+}
+
+/**
  * Formats the time column, reusing the part of it that repeats.
  *
  * Every value cell is already cached — a channel has at most `digitalMax - digitalMin + 1`
@@ -194,6 +216,7 @@ export function makeTimeFormatter(
   samplesPerRecord: number,
   rate: number,
   decimals: number,
+  budget: OffsetBudget = newOffsetBudget(),
 ): (recordStart: number, sample: number) => string {
   const direct = (recordStart: number, sample: number): string =>
     fixed(recordStart + sample / rate, decimals);
@@ -202,10 +225,11 @@ export function makeTimeFormatter(
     !(rate > 0) ||
     !Number.isFinite(rate) ||
     samplesPerRecord <= 0 ||
-    samplesPerRecord > MAX_CACHED_OFFSETS
+    samplesPerRecord > budget.remaining
   ) {
     return direct;
   }
+  budget.remaining -= samplesPerRecord;
 
   // Whole seconds and printed fraction of each offset, taken from the formatted offset
   // itself so that an offset which rounds up to the next second (0.9996 at three places)

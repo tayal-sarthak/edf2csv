@@ -22,7 +22,12 @@ import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
-import { fixed, makeSampleFormatter, makeTimeFormatter } from '../format/number.js';
+import {
+  fixed,
+  makeSampleFormatter,
+  makeTimeFormatter,
+  newOffsetBudget,
+} from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
@@ -404,6 +409,8 @@ async function writeSignalFiles(
   recordStarts: Float64Array | null,
   options: ConvertOptions,
 ): Promise<WrittenFile[]> {
+  // One budget for every table in this conversion, not one per table: see OffsetBudget.
+  const offsets = newOffsetBudget();
   const open: OpenGroup[] = plan.groups.map((group) => {
     // A null directory means the single table goes to stdout. process.stdout is already a
     // writable stream, so the same buffered writer and backpressure handling apply.
@@ -416,7 +423,12 @@ async function writeSignalFiles(
       group,
       writer,
       formatters: group.channels.map((c) => makeSampleFormatter(c.signal, c.decimals)),
-      formatTime: makeTimeFormatter(group.samplesPerRecord, group.rate, group.timeDecimals),
+      formatTime: makeTimeFormatter(
+        group.samplesPerRecord,
+        group.rate,
+        group.timeDecimals,
+        offsets,
+      ),
       rows: 0,
       settled,
     };
