@@ -95,13 +95,15 @@ Below is how to reproduce the pyEDFlib comparison on your own recordings.
 
 pyEDFlib is the Python binding around EDFlib, the C library written by the author of the EDF+ specification. EDFbrowser uses the same library. It's the closest thing this format has to a reference implementation.
 
-On the recordings used for testing, 129,536 sample values came out of edf2csv and out of pyEDFlib bit-for-bit identical.
+On the 75 generated recordings this ships with, 16,943 sample values came out of edf2csv and out of pyEDFlib bit-for-bit identical, along with 120 annotations. Run `npm run crossvalidate` to reproduce it.
 
 ### What bit-for-bit means
 
 Both tools produce IEEE 754 double-precision floats. Bit-for-bit identical means the 64 bits are the same 64 bits: not equal to within a tolerance, not `numpy.allclose`, not agreeing to twelve decimal places. Zero differing bits, across every sample compared.
 
 The distinction is practical. A tolerance-based check has to pick a tolerance, and any tolerance loose enough to pass hides every bug smaller than itself. If a future change to the reading path swaps two bytes, sign-extends a 24-bit sample incorrectly, or reorders the arithmetic, an exact comparison fails immediately.
+
+Until 0.4.32 this page described that method and `npm run crossvalidate` did not use it. The checker converted with `--decimals 20` and parsed the cells back, which cannot be exact whatever the tolerance — a cell is a rounded decimal rendering, so reading it gives the nearest double to the printed digits rather than the double that was computed. It then accepted anything within `abs(reference) * 1e-9` and skipped empty cells without counting them. The checker now runs the dumper below and compares the 64 bits, and it is confirmed capable of failing: flipping the lowest mantissa bit of every scaled value is caught on the first sample of every recording, including cases the decimal rendering cannot show — `-1.0` against `-1.0000000000000002`, which the old tolerance passed without comment.
 
 Exact agreement is only possible because edf2csv performs the calibration in the same order EDFlib does, which is the subject of the next section.
 
@@ -164,7 +166,9 @@ print("first difference:", None if same.all() else int(np.argmax(~same)))
 
 Comparing the `uint64` view rather than the floats is deliberate: it's a comparison that approximate agreement can't satisfy.
 
-Two caveats. This comparison isn't part of `npm test`, because it needs a Python environment and real recordings, and real recordings aren't in the repository. And pyEDFlib refuses EDF+D files outright, so a discontinuous recording can't be cross-checked this way at all. For those files the check is against the generated fixtures, where the expected sample values are known by construction.
+The checked-in version of this dumper is `test/crossvalidate/dump-doubles.mjs`, which does every channel at once and is what `npm run crossvalidate` runs, so the method printed here and the one that executes are the same code.
+
+Two caveats. This comparison isn't part of `npm test`, because it needs a Python environment. And pyEDFlib refuses EDF+D files outright, so a discontinuous recording can't be cross-checked this way at all. For those files the check is against the generated fixtures, where the expected sample values are known by construction.
 
 ## The conversion formula and its arrangement
 

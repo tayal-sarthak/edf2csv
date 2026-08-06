@@ -95,12 +95,16 @@ before you rely on the output.
 
 ## Accuracy
 
-Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib). Across
-the recordings used for testing, 129,536 sample values were bit-for-bit identical:
-not equal to within a tolerance, but the same 64 bits.
+Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib), the Python
+binding around the C library written by the author of the EDF+ specification. Across the 75
+generated recordings, 16,943 sample values were bit-for-bit identical: not equal to within a
+tolerance, but the same 64 bits.
+
+That check needs Python, so it is a separate command from the test suite:
 
 ```bash
-npm test
+pip install pyedflib
+npm run crossvalidate
 ```
 
 ## When to use something else

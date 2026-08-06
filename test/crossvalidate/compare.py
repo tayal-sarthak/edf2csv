@@ -1,8 +1,8 @@
-"""Check edf2csv's physical values against pyEDFlib's, sample for sample.
+"""Check edf2csv's physical values against pyEDFlib's, bit for bit.
 
 The README and the correctness page both say the arithmetic is checked against an
-independent implementation. This is that check, so the claim is something anyone can rerun
-rather than something taken on trust.
+independent implementation, to the last bit. This is that check, so the claim is something
+anyone can rerun rather than something taken on trust.
 
     pip install pyedflib
     npm run crossvalidate
@@ -13,6 +13,15 @@ impossible to catch by reading. A test written alongside the code tends to encod
 misunderstanding as the code. pyEDFlib was written by other people, from the same
 specification, and disagrees loudly when either side is wrong.
 
+The comparison is on doubles, not on CSV text. This used to convert with `--decimals 20` and
+parse the cells back, which cannot be exact whatever the tolerance: a cell is a rounded
+decimal rendering, so reading it gives the nearest double to the printed digits rather than
+the double that was computed. The check then accepted anything within `abs(reference) * 1e-9`
+and skipped empty cells without counting them, while the correctness page said "zero
+differing bits ... not equal to within a tolerance". The page described a method the checker
+did not use. It now dumps the doubles through the public API — the recipe the page prints,
+checked in as dump-doubles.mjs — and compares the 64 bits of each value.
+
 Exits 0 when every value agrees, 1 on any mismatch, and 0 with a notice when pyEDFlib is not
 installed — this is opt-in and never part of `npm test`, which stays dependency-free.
 """
@@ -20,7 +29,9 @@ installed — this is opt-in and never part of `npm test`, which stays dependenc
 from __future__ import annotations
 
 import csv
+import json
 import os
+import struct
 import subprocess
 import sys
 import tempfile
@@ -30,12 +41,16 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 CLI = os.path.join(ROOT, "dist", "cli.js")
 RECORDINGS = os.path.join(HERE, "generated")
 
-# The most the tool will write, so that the CSV is not the limiting factor: the comparison
-# should be between two computations of a value, not between one of them and its printed
-# form. At 12 places a reading near 1e-5 carries only seven significant digits, and the
-# rounding alone exceeded the tolerance below.
-DECIMALS = "20"
-QUANTUM = 10 ** -int(DECIMALS)
+DUMPER = os.path.join(HERE, "dump-doubles.mjs")
+
+
+def bits(value: float) -> str:
+    """The 64 bits of a double, as hex. What "bit-for-bit identical" is checked on.
+
+    Comparing the numbers directly would make every NaN unequal to itself and -0.0 equal to
+    0.0, neither of which is the question being asked.
+    """
+    return struct.pack("<d", float(value)).hex()
 
 
 def load() -> object:
@@ -52,10 +67,31 @@ def load() -> object:
     return pyedflib
 
 
-def columns_of(path: str) -> tuple[list[str], list[list[str]]]:
-    with open(path, newline="") as handle:
-        rows = list(csv.reader(handle))
-    return (rows[0][1:], rows[1:]) if rows else ([], [])
+def dump_doubles(source: str, into: str, mismatches: list[str], name: str) -> list[dict] | None:
+    """Run the documented dumper and read back what it wrote, or report why it could not."""
+    run = subprocess.run(
+        ["node", DUMPER, source, into], capture_output=True, text=True
+    )
+    if run.returncode != 0:
+        mismatches.append(
+            f"{name}: dump-doubles.mjs exited {run.returncode}: {run.stderr.strip()[:200]}"
+        )
+        return None
+
+    with open(os.path.join(into, "channels.json")) as handle:
+        channels = json.load(handle)
+
+    for channel in channels:
+        with open(os.path.join(into, channel["file"]), "rb") as handle:
+            raw = handle.read()
+        if len(raw) != channel["samples"] * 8:
+            mismatches.append(
+                f"{name} \"{channel['label']}\": dumped {len(raw)} bytes for "
+                f"{channel['samples']} samples"
+            )
+            return None
+        channel["values"] = struct.unpack(f"<{channel['samples']}d", raw)
+    return channels
 
 
 def compare_annotations(name: str, reader, out: str, mismatches: list[str]) -> int:
@@ -120,58 +156,54 @@ def main() -> int:
         source = os.path.join(RECORDINGS, name)
         reader = pyedflib.EdfReader(source)
         try:
-            out = os.path.join(tempfile.mkdtemp(), "converted")
+            scratch = tempfile.mkdtemp()
+            channels = dump_doubles(source, os.path.join(scratch, "doubles"), mismatches, name)
+            if channels is None:
+                continue
+
+            for channel in channels:
+                # Addressed by the signal's own position in the file, not by its label:
+                # labels are free text and need not be unique, and matching on them let a
+                # duplicated label compare one channel against another's samples.
+                reference = reader.readSignal(channel["index"])
+                ours = channel["values"]
+                if len(reference) != len(ours):
+                    mismatches.append(
+                        f"{name} \"{channel['label']}\": {len(ours)} samples, "
+                        f"pyEDFlib has {len(reference)}"
+                    )
+                    continue
+
+                for k, (theirs, mine) in enumerate(zip(reference, ours)):
+                    compared += 1
+                    if bits(theirs) != bits(mine):
+                        mismatches.append(
+                            f"{name} \"{channel['label']}\" sample {k}: "
+                            f"pyEDFlib {float(theirs)!r} ({bits(theirs)}), "
+                            f"edf2csv {mine!r} ({bits(mine)})"
+                        )
+                        break
+
+            # Annotations still come from the CSV, which is where they are published; the
+            # values in it are decimal by nature rather than rounded from a double.
+            out = os.path.join(scratch, "converted")
             run = subprocess.run(
-                [
-                    "node", CLI, source,
-                    "--out", out, "--quiet", "--decimals", DECIMALS,
-                ],
+                ["node", CLI, source, "--out", out, "--quiet"],
                 capture_output=True,
                 text=True,
             )
             if run.returncode != 0:
-                mismatches.append(f"{name}: edf2csv exited {run.returncode}: {run.stderr.strip()[:200]}")
+                mismatches.append(
+                    f"{name}: edf2csv exited {run.returncode}: {run.stderr.strip()[:200]}"
+                )
                 continue
-
-            labels = [reader.getLabel(i).strip() for i in range(reader.signals_in_file)]
-            for output in sorted(f for f in os.listdir(out) if f.startswith("signals")):
-                header, rows = columns_of(os.path.join(out, output))
-                for position, column in enumerate(header):
-                    if column not in labels:
-                        continue
-                    reference = reader.readSignal(labels.index(column))
-                    ours = [row[position + 1] for row in rows]
-                    count = min(len(reference), len(ours))
-                    if count == 0:
-                        continue
-                    if len(reference) != len(ours):
-                        mismatches.append(
-                            f"{name} {output} \"{column}\": {len(ours)} samples, pyEDFlib has {len(reference)}"
-                        )
-                    for k in range(count):
-                        if ours[k] == "":
-                            continue
-                        theirs, mine = float(reference[k]), float(ours[k])
-                        compared += 1
-                        # pyEDFlib computes in float64 from the same four header numbers.
-                        # The tolerance is relative to the channel's own scale, so a
-                        # microvolt channel is not judged by a volt channel's standard,
-                        # plus half of the last decimal place, which is all a decimal
-                        # rendering can promise.
-                        tolerance = max(abs(theirs) * 1e-9, QUANTUM / 2)
-                        if abs(theirs - mine) > tolerance:
-                            mismatches.append(
-                                f"{name} {output} \"{column}\" sample {k}: "
-                                f"pyEDFlib {theirs!r}, edf2csv {mine!r}"
-                            )
-                            break
             events += compare_annotations(name, reader, out, mismatches)
             files += 1
         finally:
             reader.close()
 
     sys.stdout.write(
-        f"\nCompared {compared:,} sample values and {events:,} annotations "
+        f"\nCompared {compared:,} sample values bit for bit, and {events:,} annotations, "
         f"across {files} recordings.\n"
     )
     if mismatches:
