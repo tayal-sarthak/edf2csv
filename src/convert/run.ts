@@ -554,7 +554,7 @@ async function writeSignalFiles(
     throw new ConversionError(
       'WRITE_FAILED',
       `Writing to ${outputDir === null ? 'stdout' : `"${outputDir}"`} failed: ${detail}`,
-      writeHint(cause),
+      writeHint(cause, outputDir === null),
     );
   }
 }
@@ -852,25 +852,36 @@ async function writeAnnotationsCsv(
  * The errno is the one piece of the failure that names the cause, so it is what picks the
  * sentence. Anything unrecognised keeps the general form rather than guessing.
  */
-function writeHint(cause: unknown): string {
-  const preamble = 'The files written so far are incomplete and should not be used. ';
+function writeHint(cause: unknown, toStdout = false): string {
+  /*
+    The stdout path writes no files, and --out is the flag its user chose not to pass.
+
+    Both halves of this sentence were wrong there: "the files written so far" named files
+    that do not exist, and "choose another destination with --out" is advice for a different
+    command — the destination is whatever the shell redirected the stream to. Same class as
+    the disk-space hint this function replaced, one flag over.
+  */
+  const preamble = toStdout
+    ? 'What reached stdout before it failed is incomplete and should not be used. '
+    : 'The files written so far are incomplete and should not be used. ';
+  const elsewhere = toStdout ? 'redirect it somewhere else' : 'choose another with --out';
   const code = (cause as NodeJS.ErrnoException | null)?.code;
   switch (code) {
     case 'ENOSPC':
-      return `${preamble}The destination is out of space; free some up or choose another with --out.`;
+      return `${preamble}The destination is out of space; free some up or ${elsewhere}.`;
     case 'EDQUOT':
-      return `${preamble}You are over your disk quota on this filesystem; choose another destination with --out.`;
+      return `${preamble}You are over your disk quota on this filesystem; ${elsewhere}.`;
     case 'EACCES':
     case 'EPERM':
-      return `${preamble}You do not have permission to write there; choose another destination with --out.`;
+      return `${preamble}You do not have permission to write there; ${elsewhere}.`;
     case 'EROFS':
-      return `${preamble}That filesystem is mounted read-only; choose another destination with --out.`;
+      return `${preamble}That filesystem is mounted read-only; ${elsewhere}.`;
     case 'EISDIR':
-      return `${preamble}A directory is sitting where that file belongs; remove or rename it, or choose another destination with --out.`;
+      return `${preamble}A directory is sitting where that file belongs; remove or rename it, or ${elsewhere}.`;
     case 'ENOENT':
       return `${preamble}Part of that path no longer exists; make sure nothing is removing it while the conversion runs.`;
     case 'ENAMETOOLONG':
-      return `${preamble}That path is longer than the filesystem allows; choose a shorter destination with --out.`;
+      return `${preamble}That path is longer than the filesystem allows; ${toStdout ? 'redirect it somewhere shorter' : 'choose a shorter destination with --out'}.`;
     case 'EMFILE':
     case 'ENFILE':
       return `${preamble}Too many files are open; a recording with many sampling rates opens one output file per rate, so --channels narrows it.`;

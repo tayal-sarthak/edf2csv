@@ -637,6 +637,14 @@ The hint is chosen from what actually failed. Until 0.4.36 every write failure c
 
 The partly written files are left on disk either way. They are truncated at an arbitrary point and must not be analysed: fix what the hint names and run the conversion again from the start.
 
+Under `--stdout` the sentence changes, because that path writes no files and `--out` is the flag you chose not to pass:
+
+```
+error: Writing to stdout failed: ENOSPC: no space left on device, write
+       What reached stdout before it failed is incomplete and should not be used. The
+       destination is out of space; free some up or redirect it somewhere else.
+```
+
 ## Usage errors
 
 These mean the command was invoked in a way that can't be carried out. They exit **2** rather than 1, so a script can tell "you asked for something impossible" apart from "this recording is broken".

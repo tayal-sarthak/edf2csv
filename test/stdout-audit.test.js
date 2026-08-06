@@ -99,6 +99,28 @@ describe('--stdout onto a destination that fills up', () => {
     });
   });
 
+  it('does not tell a --stdout user about files, or about --out', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    // Filling the volume first means an ENOSPC is actually raised, which is the path the
+    // hint text comes from. Both halves of that hint were written for --out: "the files
+    // written so far" named files that do not exist on this path, and "choose another
+    // destination with --out" is advice for a different command — the destination is
+    // whatever the shell redirected the stream to.
+    await withSmallVolume(async () => {
+      await run('dd', ['if=/dev/zero', `of=${path.join(VOLUME, 'filler')}`, 'bs=1024', 'count=1560']);
+      const result = await toFile([fixture('long-stream.edf'), '--stdout'], path.join(VOLUME, 's.csv'));
+
+      assert.notEqual(result.code, 0, result.stderr);
+      assert.match(result.stderr, /What reached stdout before it failed is incomplete/u);
+      assert.ok(!/files written so far/u.test(result.stderr), 'no files were written');
+      assert.ok(!/with --out/u.test(result.stderr), '--out is the flag they chose not to pass');
+    });
+  });
+
   it('leaves a destination with room alone', async (t) => {
     if (!(await volumeAvailable())) {
       t.skip('needs hdiutil, which only macOS has');
