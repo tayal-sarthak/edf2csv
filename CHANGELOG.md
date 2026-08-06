@@ -3,6 +3,50 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.17
+
+### Fixed: a folder it could not read was skipped without a word
+
+A study folder holding three recordings, one of them inside a sub-directory without read
+permission:
+
+```
+$ edf2csv study --out ./converted
+[1/2] study/open/a.edf
+[2/2] study/top.edf
+
+Converted 2 of 2 recordings.
+$ echo $?
+0
+```
+
+Two of three, reported as two of two, and exit 0. The count agreed with itself and with
+nothing else. Whatever was inside that directory never entered the list, so nothing downstream
+had any way to know it existed.
+
+This is the failure 0.4.4 fixed for symbolic links, arriving by a different route: the walk
+caught the error from listing a directory and carried on with an empty list. Converting fewer
+recordings than were asked for while reporting success is the one outcome this tool exists to
+prevent.
+
+```
+$ edf2csv study --out ./converted
+error: study/locked: could not be read, so any recordings inside it were skipped.
+[1/2] study/open/a.edf
+[2/2] study/top.edf
+
+Converted 2 of 2 recordings.
+$ echo $?
+1
+```
+
+Everything readable is still converted — one locked sub-directory in a large tree is a reason
+to name it, not to refuse the rest — and it is reported before the conversions start, so it
+cannot be lost among the summaries. A file that looks like a recording but cannot be inspected
+is reported the same way. A broken symbolic link is not: it names nothing and is ordinary.
+
+Found by an adversarial sweep of the 0.4.x code.
+
 ## 0.4.16
 
 ### Added: `npm run fuzz:batch`, which builds folder trees and converts them

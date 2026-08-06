@@ -189,11 +189,23 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   let expanded: Input[];
+  let unreadable: string[];
   try {
-    expanded = await expandInputs(positionals);
+    const found = await expandInputs(positionals);
+    expanded = found.inputs;
+    unreadable = found.unreadable;
   } catch (error) {
     return reportError(error);
   }
+
+  // Reported before anything is converted, so it cannot be lost among the summaries, and
+  // counted against the run so the exit code does not call a partial sweep a success.
+  for (const entry of unreadable) {
+    process.stderr.write(
+      `error: ${printable(entry)}: could not be read, so any recordings inside it were skipped.\n`,
+    );
+  }
+
   if (expanded.length === 0) {
     process.stderr.write(
       `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${p}"`))}.\n`,
@@ -277,6 +289,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           failures.push(reportError(error, batch ? (input as string) : undefined));
         }
       }
+      if (unreadable.length > 0) failures.push(EXIT_ERROR);
       if (failures.length > 0) return worstOf(failures);
       return strict && warnings > 0 ? EXIT_ERROR : EXIT_OK;
     }
@@ -419,6 +432,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       );
     }
 
+    if (unreadable.length > 0) failures.push(EXIT_ERROR);
     if (failures.length > 0) return worstOf(failures);
 
     /*
@@ -617,8 +631,11 @@ interface Input {
  * recipes here carried a `find` incantation to do it. Passing the folder is the obvious
  * thing to try, and it used to fail with "is a directory, not an EDF file".
  */
-async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
+async function expandInputs(
+  positionals: readonly string[],
+): Promise<{ inputs: Input[]; unreadable: string[] }> {
   const found: Input[] = [];
+  const unreadable: string[] = [];
   for (const given of positionals) {
     const info = await stat(given).catch(() => null);
     if (info === null || !info.isDirectory()) {
@@ -627,7 +644,9 @@ async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
       found.push({ path: given, name: path.basename(given) });
       continue;
     }
-    for (const file of await walk(given)) {
+    const walked = await walk(given);
+    unreadable.push(...walked.unreadable);
+    for (const file of walked.files) {
       found.push({ path: file, name: path.relative(given, file) });
     }
   }
@@ -652,7 +671,7 @@ async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
   // A directory hands its entries back in whatever order the filesystem stored them.
   const unique = [...byIdentity.values()];
   unique.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  return unique;
+  return { inputs: unique, unreadable };
 }
 
 /**
@@ -670,8 +689,9 @@ async function expandInputs(positionals: readonly string[]): Promise<Input[]> {
  * identity and visited once. A link to a file already reached another way is likewise
  * converted once.
  */
-async function walk(root: string): Promise<string[]> {
+async function walk(root: string): Promise<{ files: string[]; unreadable: string[] }> {
   const files: string[] = [];
+  const unreadable: string[] = [];
   const seen = new Set<string>();
   const queue = [root];
 
@@ -681,12 +701,33 @@ async function walk(root: string): Promise<string[]> {
     if (seen.has(real)) continue;
     seen.add(real);
 
-    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    /*
+      A directory that cannot be listed is reported, not stepped over.
+
+      Skipping it in silence meant a folder holding three recordings, one of them inside a
+      sub-directory without read permission, converted two and said "Converted 2 of 2
+      recordings" — a total that agreed with itself and with nothing else. That is the same
+      failure 0.4.4 fixed for symbolic links, arriving by a different route: converting fewer
+      recordings than were asked for and reporting success.
+    */
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch {
+      unreadable.push(directory);
+      continue;
+    }
+
     for (const entry of entries) {
       const full = path.join(directory, entry.name);
       // stat, not the dirent: a dirent describes the link, and what matters is its target.
       const info = await stat(full).catch(() => null);
-      if (info === null) continue;
+      if (info === null) {
+        // A broken link is ordinary and names nothing; anything else that cannot be
+        // inspected is only worth mentioning if it looks like a recording.
+        if (/\.(edf|bdf)$/iu.test(entry.name)) unreadable.push(full);
+        continue;
+      }
       if (info.isDirectory()) {
         queue.push(full);
       } else if (info.isFile() && /\.(edf|bdf)$/iu.test(entry.name)) {
@@ -696,7 +737,7 @@ async function walk(root: string): Promise<string[]> {
       }
     }
   }
-  return files;
+  return { files, unreadable };
 }
 
 /**
