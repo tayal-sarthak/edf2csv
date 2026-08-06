@@ -19,6 +19,14 @@ import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
 import { decodeLatin1, readInt16LE } from './bytes.js';
 
+/**
+ * How far `readOrigin` looks for a record that states its own start time.
+ *
+ * Enough that one or two unreadable timekeeping entries at the top of a file cost nothing,
+ * few enough that `--info` stays a header read rather than a scan.
+ */
+const RECORDS_SEARCHED_FOR_ORIGIN = 16;
+
 /** Default read budget per batch. Large enough to amortise syscalls, small enough to stay cheap. */
 export const DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024;
 
@@ -327,31 +335,47 @@ export class EdfFile {
    * window's records would drop those entirely.
    */
   /**
-   * Where the first data record starts, from its own timekeeping TAL.
+   * Where this continuous recording begins, from the first record that says.
    *
-   * One record's worth of annotation bytes rather than the whole channel. A continuous
+   * A few records' worth of annotation bytes rather than the whole channel. A continuous
    * recording's origin is the fraction of a second by which its first record follows the
    * header's start time, and `--info` needs that to place a requested window — but it does
    * not need the events, and finding one number by reading every record costs a seek per
    * record across the whole file, which is the scan `--info` was deliberately spared.
    *
+   * It reads on past record 0 because a conversion does. This used to stop there, so the
+   * moment one timekeeping TAL was unreadable the two disagreed: the conversion took the
+   * origin from record 1 and timed the file from 0.5s, while `--info` found nothing at
+   * record 0 and reported a recording starting at zero — the same file described two ways by
+   * one tool. Records are contiguous, so record `i` beginning at `t` puts the origin at
+   * `t - i * duration`, and any one of them settles it.
+   *
+   * The bound is what keeps this cheap: a file whose first `RECORDS_SEARCHED_FOR_ORIGIN`
+   * timekeeping entries are all unreadable reports an origin of zero here, and converting it
+   * raises ANNOTATION_DECODE_FAILED for every one of them.
+   *
    * Returns null when there is nothing to read it from, in which case the origin is zero.
    */
-  async readFirstRecordStart(): Promise<number | null> {
+  async readOrigin(): Promise<number | null> {
     this.#assertOpen();
 
     const channel = this.annotationSignals[0];
     if (!channel || this.recordCount === 0) return null;
 
-    const { headerBytes, bytesPerSample } = this.header;
+    const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
     const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
     if (buffer.length === 0) return null;
 
-    const offset = headerBytes + channel.byteOffsetInRecord;
-    const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
-    if (bytesRead < buffer.length) return null;
+    const searched = Math.min(this.recordCount, RECORDS_SEARCHED_FOR_ORIGIN);
+    for (let record = 0; record < searched; record++) {
+      const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
+      const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
+      if (bytesRead < buffer.length) return null;
 
-    return decodeRecordAnnotations(buffer, 0).recordStart;
+      const start = decodeRecordAnnotations(buffer, record).recordStart;
+      if (start !== null) return start - record * recordDuration;
+    }
+    return null;
   }
 
   async readAnnotations(): Promise<{

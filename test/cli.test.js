@@ -847,6 +847,28 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('agrees with the conversion about where a recording starts', async () => {
+    // --info reads one record's annotation bytes rather than scanning the file, which is
+    // what keeps it a header read. It stopped at record 0, so the moment that record's
+    // timekeeping entry was unreadable the two halves of the tool disagreed: the conversion
+    // took the origin from record 1 and timed the file from 0.5s, while --info found nothing
+    // at record 0 and reported a recording starting at zero.
+    //
+    // --start 3 is where that shows: --info refused it as past the end of a 3s recording
+    // while the conversion wrote two rows for it.
+    const window = ['--start', '3'];
+    const info = await cli([fixture('lost-timekeeping.edf'), '--info', ...window]);
+    assert.equal(info.code, 0, `--info refused a window the conversion accepts:\n${info.stderr}`);
+    assert.match(info.stdout, /Would write 2 rows/u);
+
+    const dir = await outDir();
+    const converted = await cli([fixture('lost-timekeeping.edf'), '--out', dir, ...window, '--quiet']);
+    assert.equal(converted.code, 0, converted.stderr);
+    const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length - 1, 2, 'and the estimate was right about how many');
+    assert.match(rows[1], /^3\.000,/u, 'timed from the origin the other records establish');
+  });
+
   it('treats a directory as an input rather than as a mistake', async () => {
     // The CLI reference described the pre-folder contract for a long time after folders
     // became inputs: "The input path must be a regular file that can be read. A directory,

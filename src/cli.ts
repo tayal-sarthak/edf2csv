@@ -532,7 +532,7 @@ async function showInfo(
           annotations: [],
           recordStarts:
             file.header.continuity === 'EDF+C' && hasAnnotations
-              ? [await file.readFirstRecordStart()]
+              ? [await file.readOrigin()]
               : [],
           malformed: 0,
         };
