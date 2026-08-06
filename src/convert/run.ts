@@ -520,8 +520,7 @@ async function writeSignalFiles(
     throw new ConversionError(
       'WRITE_FAILED',
       `Writing to ${outputDir === null ? 'stdout' : `"${outputDir}"`} failed: ${detail}`,
-      'The files written so far are incomplete and should not be used. Free up space or ' +
-        'choose another destination with --out, then run the conversion again.',
+      writeHint(cause),
     );
   }
 }
@@ -657,8 +656,7 @@ async function writeOutputFile(
     throw new ConversionError(
       'WRITE_FAILED',
       `Writing "${name}" to "${outputDir}" failed: ${detail}`,
-      'The files written so far are incomplete and should not be used. Free up space or ' +
-        'choose another destination with --out, then run the conversion again.',
+      writeHint(cause),
     );
   }
 }
@@ -781,6 +779,48 @@ async function writeAnnotationsCsv(
   const name = gzip ? 'annotations.csv.gz' : 'annotations.csv';
   await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
   return { name, rows: inWindow.length };
+}
+
+/**
+ * What to try next, chosen from what actually went wrong.
+ *
+ * Every write failure carried the same advice — "Free up space or choose another destination
+ * with --out" — which fits exactly one errno. A directory sitting where signals.csv belongs
+ * came back telling the reader to free up disk space, and so did a read-only volume, a
+ * permission denial and a path too long for the filesystem. Wrong advice is worse than none:
+ * it sends someone to check `df` on a disk that is fine, and the thing that is actually
+ * wrong stays unexamined.
+ *
+ * The errno is the one piece of the failure that names the cause, so it is what picks the
+ * sentence. Anything unrecognised keeps the general form rather than guessing.
+ */
+function writeHint(cause: unknown): string {
+  const preamble = 'The files written so far are incomplete and should not be used. ';
+  const code = (cause as NodeJS.ErrnoException | null)?.code;
+  switch (code) {
+    case 'ENOSPC':
+      return `${preamble}The destination is out of space; free some up or choose another with --out.`;
+    case 'EDQUOT':
+      return `${preamble}You are over your disk quota on this filesystem; choose another destination with --out.`;
+    case 'EACCES':
+    case 'EPERM':
+      return `${preamble}You do not have permission to write there; choose another destination with --out.`;
+    case 'EROFS':
+      return `${preamble}That filesystem is mounted read-only; choose another destination with --out.`;
+    case 'EISDIR':
+      return `${preamble}A directory is sitting where that file belongs; remove or rename it, or choose another destination with --out.`;
+    case 'ENOENT':
+      return `${preamble}Part of that path no longer exists; make sure nothing is removing it while the conversion runs.`;
+    case 'ENAMETOOLONG':
+      return `${preamble}That path is longer than the filesystem allows; choose a shorter destination with --out.`;
+    case 'EMFILE':
+    case 'ENFILE':
+      return `${preamble}Too many files are open; a recording with many sampling rates opens one output file per rate, so --channels narrows it.`;
+    case 'EPIPE':
+      return `${preamble}Whatever was reading the output closed it before the conversion finished.`;
+    default:
+      return `${preamble}Check the destination and run the conversion again.`;
+  }
 }
 
 /** Data rows across every signal table, so "nothing was written" is one question. */

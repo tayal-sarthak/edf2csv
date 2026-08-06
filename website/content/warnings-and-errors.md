@@ -594,14 +594,28 @@ Filesystem failures are translated into plain language rather than passed throug
 
 ### WRITE_FAILED
 
-Writing one of the signal files failed part way through, most often because the disk filled up.
+Writing one of the output files failed part way through, most often because the disk filled up.
 
 ```
 error: Writing to "recording_csv" failed: ENOSPC: no space left on device
-       The files written so far are incomplete and should not be used. Free up space or choose another destination with --out, then run the conversion again.
+       The files written so far are incomplete and should not be used. The destination is out of space; free some up or choose another with --out.
 ```
 
-The partly written files are left on disk. They are truncated at an arbitrary point and must not be analysed. Free up space or pick another destination and run the conversion again from the start.
+The hint is chosen from what actually failed. Until 0.4.36 every write failure carried the disk-space advice, which fits exactly one errno — a directory sitting where `signals.csv` belongs, a read-only volume, a permission denial and a path too long for the filesystem all came back telling you to free up space. Wrong advice is worse than none: it sends you to check `df` on a disk that is fine while the real cause stays unexamined.
+
+| Cause | What the hint says |
+| --- | --- |
+| `ENOSPC` | The destination is out of space |
+| `EDQUOT` | You are over your disk quota on this filesystem |
+| `EACCES`, `EPERM` | You do not have permission to write there |
+| `EROFS` | That filesystem is mounted read-only |
+| `EISDIR` | A directory is sitting where that file belongs |
+| `ENOENT` | Part of that path no longer exists — something is removing it while the conversion runs |
+| `ENAMETOOLONG` | That path is longer than the filesystem allows |
+| `EMFILE`, `ENFILE` | Too many files are open; a recording with many sampling rates opens one output file per rate, so `--channels` narrows it |
+| anything else | Check the destination and run the conversion again |
+
+The partly written files are left on disk either way. They are truncated at an arbitrary point and must not be analysed: fix what the hint names and run the conversion again from the start.
 
 ## Usage errors
 

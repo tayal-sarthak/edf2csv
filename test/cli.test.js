@@ -1330,6 +1330,40 @@ describe('documented flags', () => {
   });
 });
 
+describe('write failures', () => {
+  it('advises on what actually failed, not on disk space every time', async () => {
+    // Every write failure carried the same hint — "Free up space or choose another
+    // destination with --out" — which fits exactly one errno. A directory sitting where
+    // signals.csv belongs came back telling the reader to free up disk space, and so did a
+    // read-only volume and a permission denial. Wrong advice is worse than none: it sends
+    // someone to check `df` on a disk that is fine while the real cause stays unexamined.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-write-'));
+    temporaries.push(dir);
+    await writeFile(path.join(dir, 'a.edf'), await readFile(fixture('tiny.edf')));
+
+    const blocked = path.join(dir, 'out');
+    await mkdir(path.join(blocked, 'signals.csv'), { recursive: true });
+    const isDirectory = await cli([path.join(dir, 'a.edf'), '--out', blocked, '--force']);
+    assert.equal(isDirectory.code, 1, isDirectory.stderr);
+    assert.match(isDirectory.stderr, /A directory is sitting where that file belongs/u);
+    assert.ok(!/Free up space/u.test(isDirectory.stderr), 'the disk is not the problem here');
+
+    const readonly = path.join(dir, 'ro');
+    await mkdir(readonly, { recursive: true });
+    await chmod(readonly, 0o500);
+    try {
+      const denied = await cli([path.join(dir, 'a.edf'), '--out', readonly, '--force']);
+      assert.equal(denied.code, 1, denied.stderr);
+      assert.match(denied.stderr, /You do not have permission to write there/u);
+    } finally {
+      await chmod(readonly, 0o700);
+    }
+
+    // The part that must not change: whatever the cause, the output is not to be used.
+    assert.match(isDirectory.stderr, /incomplete and should not be used/u);
+  });
+});
+
 describe('--stdout', () => {
   it('streams the single table to stdout and writes nothing to disk', async () => {
     const { code, stdout, stderr } = await cli([fixture('tiny.edf'), '--stdout']);
