@@ -194,6 +194,26 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // Control characters in a label and in a unit.
+  //
+  // `--info` has escaped these since it was written, because an ANSI escape in a header can
+  // drive the reader's terminal. The CSV passes them through, which is right — losing what
+  // the header says is not an improvement — but nothing said so, and `cat signals.csv` on a
+  // channel labelled ESC[2J clears the terminal. A tab is in here too: harmless to a
+  // terminal, but it makes a column name that cannot be typed or matched reliably.
+  const ESC = String.fromCharCode(27);
+  writeEdf({
+    path: at('control-labels.edf'),
+    numRecords: 1,
+    recordDuration: 1,
+    signals: [
+      { label: `${ESC}[2Jgone`, dimension: `${ESC}[31mV`, physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: () => 100 },
+      { label: `bell${String.fromCharCode(7)}x`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: () => 200 },
+      { label: `tab${String.fromCharCode(9)}sep`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: () => 300 },
+      { label: 'plain', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: () => 400 },
+    ],
+  });
+
   // A duplicated label whose disambiguating suffix is another channel's actual label.
   //
   // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from

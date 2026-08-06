@@ -99,6 +99,18 @@ export interface EdfHeaderInfo {
   diagnostics: Diagnostic[];
 }
 
+/**
+ * A byte the terminal treats as an instruction rather than as text.
+ *
+ * C0 and C1, plus DEL. Tab is included deliberately: it is harmless to a terminal but it
+ * makes a CSV column name that cannot be typed or matched reliably, which is the other half
+ * of what this warning is for.
+ */
+function isControlCharacter(character: string): boolean {
+  const code = character.codePointAt(0) as number;
+  return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+}
+
 const dec = (buf: Uint8Array, start: number, len: number): string =>
   decodeLatin1(buf, start, start + len);
 
@@ -341,6 +353,40 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     byteOffsetInRecord += samplesPerRecord * bytesPerSample;
 
     if (!isAnnotations) {
+      /*
+        A label is free text out of the file, and it becomes a column name in signals.csv.
+
+        `--info` has escaped control bytes since it was written, because an ANSI escape in a
+        header can drive the reader's terminal — `\x1b[2J` clears the screen. The CSV had no
+        such protection and needed none for correctness: quoting makes any byte safe for a
+        parser, and this still passes the label through exactly as the file gives it, because
+        losing what the header says is not an improvement.
+
+        What was missing is the sentence saying so. A recording whose channel is labelled
+        `\x1b[2Jgone` converted with no warning at all, and `cat signals.csv` then cleared
+        the terminal — while a script referencing that column by name carried an invisible
+        control character in it. NONPRINTABLE_LABEL has been declared and documented as
+        reserved since 0.1; this is it doing its job.
+      */
+      const control = [...label, ...physicalDimension].filter(isControlCharacter);
+      if (control.length > 0) {
+        const shown = [...new Set(control)]
+          .map((c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`)
+          .join(', ');
+        diagnostics.push({
+          code: 'NONPRINTABLE_LABEL',
+          severity: 'warning',
+          message:
+            `Signal ${i}'s label or unit contains ${control.length} control ` +
+            `character${control.length === 1 ? '' : 's'} (${shown}), which will appear in the ` +
+            `CSV column name exactly as the header has them.`,
+          hint:
+            'Address the channel by position with --channels "#' +
+            `${i}" rather than by name, since the name cannot be typed. Printing the CSV to a ` +
+            'terminal may do more than print it.',
+        });
+      }
+
       if (label === '') {
         diagnostics.push({
           code: 'EMPTY_LABEL',

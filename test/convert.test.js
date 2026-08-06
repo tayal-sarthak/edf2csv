@@ -112,6 +112,41 @@ describe('column naming', () => {
     assert.deepEqual(await readCsv(commas, 'signals.csv'), await readCsv(dots, 'signals.csv'));
   });
 
+  it('names a channel whose label carries control characters', async () => {
+    // --info has escaped these since it was written, because an ANSI escape in a header can
+    // drive the reader's terminal. The CSV passes them through, which is right — losing what
+    // the header says is not an improvement — but nothing said so, and `cat signals.csv` on
+    // a channel labelled ESC[2J clears the terminal, while a script referencing that column
+    // by name carries an invisible control character in it. NONPRINTABLE_LABEL has been
+    // declared and documented as reserved since 0.1; this is it doing its job.
+    const dir = await outDir();
+    const result = await convert(fixture('control-labels.edf'), { outputDir: dir });
+
+    const raised = result.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+    assert.equal(raised.length, 3, `expected one per affected signal: ${raised.length}`);
+    assert.match(raised[0].message, /Signal 0's label or unit contains 2 control characters/u);
+    assert.match(raised[0].message, /\\x1b/u, 'the bytes are named, escaped');
+    assert.match(raised[1].message, /\\x07/u);
+    // A tab is harmless to a terminal but makes a column name nobody can type reliably.
+    assert.match(raised[2].message, /\\x09/u);
+    assert.match(raised[0].hint, /--channels "#0"/u, 'the way to address it is given');
+
+    // The label still reaches the CSV exactly as the header has it: this warns, it does not
+    // rewrite. The fourth channel has nothing wrong with it and raises nothing.
+    const header = (await readCsv(dir, 'signals.csv'))[0];
+    assert.ok(header.includes(String.fromCharCode(27)), 'the escape is still in the column');
+    assert.ok(header.includes('plain'));
+  });
+
+  it('leaves an ordinary label alone', async () => {
+    for (const name of ['tiny.edf', 'mixed-rates.edf', 'quirky-labels.edf', 'annotations.edf']) {
+      const file = await EdfFile.open(fixture(name));
+      const noisy = file.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+      await file.close();
+      assert.deepEqual(noisy, [], `${name} should not raise NONPRINTABLE_LABEL`);
+    }
+  });
+
   it('checks the suffix against the file, not only against the label it disambiguates', async () => {
     // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from
     // landing on a label some other channel already had. T8, T8, T8_ch0 — all three legal —

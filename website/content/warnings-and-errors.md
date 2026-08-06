@@ -65,6 +65,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
+| `NONPRINTABLE_LABEL` | A channel's label or unit contains control characters |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
 
@@ -466,13 +467,32 @@ edf2csv study.edf --start 2 --end 10    # asks for a span that holds no records 
 
 It is a warning rather than an error because a batch of five hundred recordings shouldn't stop for the one whose gap lines up with the window. Pass `--strict` to make it a failure.
 
+### NONPRINTABLE_LABEL
+
+A channel's label or unit contains control characters, which become part of the column name in `signals.csv`.
+
+**Cause.** A writer that copied a field out of another system without sanitising it, a header edited by a script, or a corrupt file whose label bytes are not text at all. EDF fields are free text and nothing enforces that they are printable.
+
+```
+warning: Signal 0's label or unit contains 2 control characters (\x1b), which will appear
+         in the CSV column name exactly as the header has them.
+         Address the channel by position with --channels "#0" rather than by name, since
+         the name cannot be typed. Printing the CSV to a terminal may do more than print it.
+```
+
+**What edf2csv does.** Passes the label through exactly as the header has it. Losing what the file says is not an improvement, and CSV quoting keeps the row parseable whatever the bytes are — the warning exists so that you know, not because anything is rewritten. `--info` is the exception: it escapes them for display, since an ANSI escape in a header could otherwise drive your terminal.
+
+**What to do.** Address the channel by position (`--channels "#0"`) rather than by name. Be careful about printing the CSV to a terminal — `\x1b[2J` clears the screen, so `cat signals.csv` can hide the rest of your session's output. `head`, `less -R` off, or opening the file in an editor are all safe. A tab (`\x09`) is harmless to a terminal but still makes a column name that is hard to match reliably in a script.
+
+Raised for every affected channel, so a file with three of them gets three warnings.
+
 ## Codes that exist but are never raised
 
-Two codes are declared in the source but aren't raised anywhere in the current version, so you won't see them.
+One code is declared in the source but isn't raised anywhere in the current version, so you won't see it.
 
-`NONSTANDARD_UNIT` was reserved for reporting a physical dimension outside the set the specification recommends. `NONPRINTABLE_LABEL` was reserved for reporting control characters or other non-printable bytes in a channel label.
+`NONSTANDARD_UNIT` was reserved for reporting a physical dimension outside the set the specification recommends. That case still converts correctly today: the unit string is passed through verbatim into `channels.csv`, exactly as it appears in the header. It is listed here only so that the reference is complete, and so that seeing it in the source isn't mistaken for a behaviour you should expect.
 
-Both cases still convert correctly today: the unit string and the label are passed through verbatim into `channels.csv` and into the column names, exactly as they appear in the header. They are listed here only so that the reference is complete, and so that seeing them in the source isn't mistaken for a behaviour you should expect.
+`NONPRINTABLE_LABEL` was in this section until 0.4.37, which implemented it — see above.
 
 ## Fatal errors: the recording can't be read
 
