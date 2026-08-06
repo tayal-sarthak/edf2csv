@@ -847,6 +847,33 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('treats a directory as an input rather than as a mistake', async () => {
+    // The CLI reference described the pre-folder contract for a long time after folders
+    // became inputs: "The input path must be a regular file that can be read. A directory,
+    // a missing path or a special file is a file error (exit 1), not a usage error." Every
+    // clause of that is now wrong for a directory, and the exit codes it gives are wrong
+    // too — an empty folder is 2, not 1. This pins what the documentation now says.
+    const dir = await stage({ 'study/rec.edf': 'tiny.edf' });
+
+    const folder = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'csv'), '--quiet']);
+    assert.equal(folder.code, 0, `a folder of recordings converts: ${folder.stderr}`);
+
+    await mkdir(path.join(dir, 'nothing'), { recursive: true });
+    const empty = await cli([path.join(dir, 'nothing'), '--out', path.join(dir, 'x')]);
+    assert.equal(empty.code, 2, 'a folder holding none is the command being wrong');
+
+    const missing = await cli([path.join(dir, 'absent.edf'), '--out', path.join(dir, 'y')]);
+    assert.equal(missing.code, 1, 'a named file that is not there is still a file error');
+
+    // The library still refuses a directory, which is what the reference now says.
+    const { EdfFile, EdfError } = await import('../dist/index.js');
+    await assert.rejects(EdfFile.open(path.join(dir, 'study')), (error) => {
+      assert.ok(error instanceof EdfError);
+      assert.match(error.message, /is a directory, not an EDF file/u);
+      return true;
+    });
+  });
+
   it('says so when a folder holds no recordings', async () => {
     const dir = await stage({ 'keep.edf': 'tiny.edf' });
     await mkdir(path.join(dir, 'empty'), { recursive: true });

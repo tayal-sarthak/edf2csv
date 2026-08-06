@@ -573,15 +573,19 @@ An acquisition that was started and stopped immediately produces exactly this. S
 
 ### UNREADABLE
 
-The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when the path is a directory, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected.
+The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected.
 
 ```
 error: Cannot read "recording.edf": no such file
 ```
 
+There is one more form of this error that the command line no longer reaches:
+
 ```
 error: "/data/recordings" is a directory, not an EDF file.
 ```
+
+`EdfFile.open` still raises it, since the library takes one recording and a directory is not one. The CLI expands a directory into the recordings inside it instead, so from the command line a folder is an input rather than a mistake — see [Several recordings](/cli-reference#synopsis).
 
 The mid-conversion case works differently. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
 

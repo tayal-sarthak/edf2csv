@@ -99,7 +99,13 @@ Short options are single letters and the version flag is a capital `V`. Unknown 
 
 ## Input, output directory and overwriting
 
-The input path must be a regular file that can be read. A directory, a missing path or a special file is a file error (exit 1), not a usage error.
+An input can be a recording or a folder of them, and several can be given at once. A recording that cannot be read is a file error (exit 1); a folder holding none is a usage error (exit 2), since the command as written asked for nothing:
+
+```
+No EDF or BDF recordings found in "/data/empty".
+```
+
+Anything that is not a directory is passed to the reader as given, so a missing path or a special file reports itself rather than being skipped.
 
 `-o, --out <dir>` sets the destination. Without it, the output directory is the input file's name with its extension replaced by `_csv`, created next to the input: `/data/recordings/sleep-study.edf` becomes `/data/recordings/sleep-study_csv`. The directory is created if it doesn't exist, including missing parents.
 
@@ -582,7 +588,7 @@ The last three categories require reading the file's header first, so exit 2 doe
 
 **Exit 1** covers everything else that stops the run:
 
-- The input can't be read: it doesn't exist, permission is denied, it's a directory, or it isn't a regular file.
+- The input can't be read: it doesn't exist, permission is denied, or it isn't a regular file. (A directory is not in this list: a directory is expanded to the recordings inside it. A folder holding none is exit 2.)
 - The file isn't usable as EDF: smaller than a 256-byte header, a header field that isn't a number, zero or negative signal count, a non-positive record duration, no complete data record, or no channel carrying any samples.
 - The file changes size mid-read, which happens when a recording is still being written.
 - The output directory already exists and `--force` wasn't given, or the destination path is a regular file, or it can't be created.
