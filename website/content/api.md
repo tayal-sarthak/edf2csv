@@ -481,14 +481,18 @@ window {
   endSeconds: 2,
   startRecord: 1,
   endRecord: 2,
-  isWholeRecording: false
+  isWholeRecording: false,
+  recordingStartSeconds: 0,
+  recordingEndSeconds: 3
 }
-estimate { rows: 257, bytes: 6165, exceedsSpreadsheetLimit: false }
-warning: [MIXED_SAMPLING_RATES] Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+estimate { rows: 257, bytes: 5172, exceedsSpreadsheetLimit: false }
+warning: [MIXED_SAMPLING_RATES] Channels use 2 different sampling rates (256 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
 Two channels were requested at two different rates, so two signal files came back. `channels.csv` still has a row for all three channels in the recording, with `converted` set to `no` for the one that was filtered out.
+
+The warning names two rates rather than the file's three, because it describes the conversion rather than the recording: the header parser raises its own, which counts every channel and knows nothing about `channels`. `convert` drops that copy in favour of this one — see `withoutFileRateWarning`.
 
 ### Errors from convert
 
@@ -604,7 +608,7 @@ try {
 signals_256hz.csv  256 Hz  1 channels
 signals_128hz.csv  128 Hz  1 channels
 signals_1hz.csv  1 Hz  1 channels
-{ rows: 1155, bytes: 28095, exceedsSpreadsheetLimit: false }
+{ rows: 1155, bytes: 22749, exceedsSpreadsheetLimit: false }
 ```
 
 `estimate.rows` is the total data rows across every signal file. `estimate.bytes` is an approximation of their combined size, good enough to warn on and not meant to be exact. `exceedsSpreadsheetLimit` is true when any single file would pass 1,048,576 rows including the header.

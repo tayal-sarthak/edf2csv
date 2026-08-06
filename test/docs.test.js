@@ -87,6 +87,38 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('states a test count the suite can produce', async () => {
+    /*
+      The correctness page prints the runner's summary and a per-file table, and both had
+      been wrong for a long stretch of the 0.4 line — 148 against 179, then 179 against 197.
+      A number nobody can reproduce is worse than no number, on a page whose subject is what
+      has actually been verified.
+
+      Counted from the files rather than by running the suite inside itself. `it(` at the
+      start of a line is how every test here is written, and a count that drifts from the
+      runner's would be caught by the summary in the same table.
+    */
+    const table = /\| `test\/([a-z-]+\.test\.js)` \| (\d+) \|/gu;
+    const page = await read('website/content/correctness.md');
+    const claimed = new Map(
+      [...page.matchAll(table)].map((m) => [m[1], Number(m[2])]),
+    );
+    assert.ok(claimed.size >= 3, `the per-file table is gone: found ${claimed.size} rows`);
+
+    let total = 0;
+    for (const [file, count] of claimed) {
+      const source = await read(path.join('test', file));
+      const actual = (source.match(/^\s*it\(/gmu) ?? []).length;
+      assert.equal(actual, count, `${file} has ${actual} tests, the page says ${count}`);
+      total += actual;
+    }
+
+    const summary = /ℹ tests (\d+)/u.exec(page);
+    assert.ok(summary, 'the runner summary is gone from the page');
+    assert.equal(Number(summary[1]), total, `the summary and the table disagree`);
+    assert.match(page, new RegExp(`The ${total} tests are split`, 'u'), 'the prose disagrees too');
+  });
+
   it('agrees with the CLI about what the exit codes are', async () => {
     // The reference states three codes and what each means. The meanings are prose, but the
     // set is not: a fourth code appearing with nothing said about it is the drift to catch.

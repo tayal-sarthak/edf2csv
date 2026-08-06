@@ -137,7 +137,7 @@ Channels   3 signals
 2  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     signals_1hz.csv
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
-Would write 1,155 rows, roughly 27.4 KB.
+Would write 1,155 rows, roughly 22.2 KB.
 ```
 
 Anything the tool noticed is printed after the table, on stderr:
