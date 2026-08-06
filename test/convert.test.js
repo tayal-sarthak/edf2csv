@@ -89,6 +89,29 @@ describe('column naming', () => {
     await file.close();
   });
 
+  it('reads a comma decimal separator in every numeric field, the signal count included', async () => {
+    // EdfFile.open worked out how much header to read with its own Number(), which tolerated
+    // the NUL padding sloppy writers emit but not the comma decimal separator that
+    // COMMA_DECIMAL exists to accept — and which the documentation lists this field among.
+    // The signal headers were therefore never read, and the file died on a message that
+    // refuted itself: "needs a 768-byte header, but the file is only 848 bytes".
+    const file = await EdfFile.open(fixture('comma-decimal.edf'));
+    assert.equal(file.header.signals.length, 2, 'the signal headers were read');
+    assert.equal(file.header.recordDuration, 1);
+    assert.ok(
+      file.diagnostics.some((d) => d.code === 'COMMA_DECIMAL'),
+      'the unusual separator is still reported',
+    );
+    await file.close();
+
+    // And it converts to exactly what the same file with dots converts to.
+    const commas = await outDir();
+    const dots = await outDir();
+    await convert(fixture('comma-decimal.edf'), { outputDir: commas, quiet: true });
+    await convert(fixture('tiny.edf'), { outputDir: dots, quiet: true });
+    assert.deepEqual(await readCsv(commas, 'signals.csv'), await readCsv(dots, 'signals.csv'));
+  });
+
   it('checks the suffix against the file, not only against the label it disambiguates', async () => {
     // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from
     // landing on a label some other channel already had. T8, T8, T8_ch0 — all three legal —

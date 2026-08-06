@@ -11,7 +11,7 @@ import type { FileHandle } from 'node:fs/promises';
 
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
-import { FIXED_HEADER_BYTES, SIGNAL_HEADER_BYTES, parseHeader } from './header.js';
+import { FIXED_HEADER_BYTES, SIGNAL_HEADER_BYTES, parseHeader, peekSignalCount } from './header.js';
 import type { EdfHeader, EdfSignal } from './header.js';
 import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
@@ -90,13 +90,14 @@ export class EdfFile {
         if (bytesRead < fixed.length) throw changedWhileReading(0, fixed.length, bytesRead);
       }
 
-      // The signal count decides how much more header there is to read.
+      // The signal count decides how much more header there is to read. Read by the header
+      // parser itself, so the two cannot disagree about which files are readable: this used
+      // to have its own Number(), which tolerated the NUL padding sloppy writers emit but
+      // not the comma decimal separator that COMMA_DECIMAL exists to accept.
       let headerBuffer = fixed;
       if (fixed.length === FIXED_HEADER_BYTES) {
-        // Some writers NUL-pad this field instead of space-padding it, and String.trim
-        // does not remove NULs — leaving the whole header unreadable for a valid file.
-        const ns = Number(decodeLatin1(fixed, 252, 256).replace(/[\0\s]/gu, ''));
-        if (Number.isInteger(ns) && ns > 0) {
+        const ns = peekSignalCount(fixed);
+        if (ns !== null) {
           const total = FIXED_HEADER_BYTES + ns * SIGNAL_HEADER_BYTES;
           if (total <= info.size) {
             headerBuffer = Buffer.alloc(total);

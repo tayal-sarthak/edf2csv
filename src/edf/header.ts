@@ -105,17 +105,43 @@ const dec = (buf: Uint8Array, start: number, len: number): string =>
 /** EDF fields are space-padded; trailing NULs also occur in files written by sloppy tools. */
 const trimField = (s: string): string => s.replace(/[\0\s]+$/u, '').replace(/^\s+/u, '');
 
+/**
+ * How many signals the fixed header says there are, read exactly as `parseHeader` will.
+ *
+ * `EdfFile.open` needs this before it can know how much header to read, and it used to work
+ * it out with its own `Number(...)` — which was NUL-tolerant but not comma-tolerant, unlike
+ * every other numeric field here. A header written with a comma decimal separator, which
+ * COMMA_DECIMAL exists to accept and which the documentation lists this field among, was
+ * therefore never given its signal headers at all, and the file died on a message that
+ * contradicted itself: "needs a 768-byte header, but the file is only 848 bytes".
+ *
+ * Sharing the parse is what keeps the two from disagreeing again about which files are
+ * readable. Null means "not a usable count", and the caller reads no further header — the
+ * real error then comes from `parseHeader`, which is the one place that decides.
+ */
+export function peekSignalCount(fixed: Uint8Array): number | null {
+  const count = Number(normaliseNumberField(dec(fixed, 252, 4)).text);
+  return Number.isInteger(count) && count > 0 ? count : null;
+}
+
+/** A numeric header field, trimmed and with a comma decimal separator turned into a dot. */
+function normaliseNumberField(raw: string): { text: string; sawComma: boolean } {
+  const text = trimField(raw);
+  // Some writers emit a comma decimal separator despite the spec requiring '.'.
+  if (text.includes(',') && !text.includes('.')) {
+    return { text: text.replace(',', '.'), sawComma: true };
+  }
+  return { text, sawComma: false };
+}
+
 function parseNumberField(
   raw: string,
   field: string,
   { integer = false, sawComma }: { integer?: boolean; sawComma?: { value: boolean } } = {},
 ): number {
-  let text = trimField(raw);
-  // Some writers emit a comma decimal separator despite the spec requiring '.'.
-  if (text.includes(',') && !text.includes('.')) {
-    text = text.replace(',', '.');
-    if (sawComma) sawComma.value = true;
-  }
+  const normalised = normaliseNumberField(raw);
+  const text = normalised.text;
+  if (normalised.sawComma && sawComma) sawComma.value = true;
   if (text === '') {
     throw new EdfError('BAD_HEADER_FIELD', `Header field "${field}" is empty.`);
   }
@@ -221,8 +247,18 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   if (buf.length < expectedHeaderBytes) {
     throw new EdfError(
       'FILE_TOO_SMALL',
+      /*
+        Which of the two is actually short.
+
+        The file size was quoted either way, so a caller that had read too little — the
+        signal count parsed one way here and another way there — produced arithmetic that
+        refuted itself: "needs a 768-byte header, but the file is only 848 bytes". A reader
+        following that looks for a truncation that is not there.
+      */
       `File declares ${signalCount} signals, which needs a ${expectedHeaderBytes}-byte header, ` +
-        `but the file is only ${fileSize} bytes.`,
+        (fileSize < expectedHeaderBytes
+          ? `but the file is only ${fileSize} bytes.`
+          : `but only ${buf.length} bytes of it were handed to the parser.`),
     );
   }
   if (headerBytes !== expectedHeaderBytes) {

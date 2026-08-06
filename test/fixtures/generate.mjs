@@ -6,7 +6,7 @@
  * is fully reproducible from this file.
  */
 
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildTal, writeEdf } from './edf-writer.mjs';
@@ -467,6 +467,22 @@ export function generate() {
     talsForRecord: (record) =>
       buildTal(record, record === 0 ? [{ onset: 0.25, duration: null, text: 'Start' }] : []),
   });
+
+  /*
+    A header whose numeric fields use a comma decimal separator.
+
+    Written by patching a finished file, because the fields are at fixed offsets and the
+    writer has no reason to emit anything the spec forbids. The signal-count field at 252 is
+    the one that mattered: EdfFile.open read it with its own Number(), which tolerated the
+    NUL padding sloppy writers emit but not the comma every other numeric field here accepts,
+    so it never read the signal headers and the file died on a message that contradicted
+    itself — "needs a 768-byte header, but the file is only 848 bytes".
+  */
+  const commaSource = readFileSync(at('tiny.edf'));
+  const commaHeader = Buffer.from(commaSource);
+  Buffer.from('2,0 ', 'latin1').copy(commaHeader, 252);        // number of signals
+  Buffer.from('1,0     ', 'latin1').copy(commaHeader, 244);    // record duration
+  writeFileSync(at('comma-decimal.edf'), commaHeader);
 
   return OUT_DIR;
 }
