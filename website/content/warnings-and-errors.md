@@ -276,6 +276,16 @@ edf2csv recording.edf --channels "#0,ECG"
 
 Column names are derived from the whole file, not from your selection, so a given channel always produces the same column name whether you convert one channel or all of them. That means `T8-P8_ch0` is stable across runs and safe to reference in downstream scripts.
 
+The suffix is checked against every other label in the file, not just against the one it disambiguates. A file that carries `T8`, `T8` and a third channel genuinely labelled `T8_ch0` would otherwise produce two columns called `T8_ch0`; instead the two that collide take their own positions as well, and the channel that lost its own label is named:
+
+```
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so its column is "T8_ch0_ch2".
+         Column names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+No two columns in `signals.csv` ever share a name, so the `channels.csv` join always resolves.
+
 ## Timing, continuity and annotations
 
 These come from reading the EDF+ annotation channel and working out where each data record really sits in time. `--info` raises `DISCONTINUOUS` too, since it has to read those record times to report the span and the row estimate correctly; the other two need a conversion, which is the only thing that reads every annotation.

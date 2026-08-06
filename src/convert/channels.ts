@@ -41,11 +41,65 @@ export function buildColumnNames(signals: readonly EdfSignal[]): Map<number, str
     const duplicated = (counts.get(base) ?? 0) > 1;
     names.set(signal.index, duplicated ? `${base}_ch${signal.index}` : base);
   }
+
+  /*
+    The suffix has to be checked against the file, not only against the label it disambiguates.
+
+    Counting collisions on the raw label alone made the suffix a guess: `_ch<index>` is unique
+    among the channels sharing that label, and nothing stopped it from landing on a label some
+    other channel already had. A file labelled T8, T8, T8_ch0 — all three legal, since EDF
+    labels are free text and nothing enforces uniqueness — produced
+
+        time_s,T8_ch0,T8_ch1,T8_ch0
+
+    two columns with one name, while the warning beside it said the suffix kept them
+    "distinguishable". channels.csv listed the same name against two signal indices, so the
+    join it exists for could not resolve it either, and `df["T8_ch0"]` in pandas or R returns
+    one of the two with nothing to say which.
+
+    Anything still shared after the first pass takes its own position as well. That is unique
+    by construction, so the loop settles immediately in practice; the bound is there because
+    a second round could in principle land on yet another literal label.
+  */
+  for (let round = 0; round < 8; round++) {
+    const taken = new Map<string, number>();
+    for (const name of names.values()) taken.set(name, (taken.get(name) ?? 0) + 1);
+
+    const clashing = [...names].filter(([, name]) => (taken.get(name) ?? 0) > 1);
+    if (clashing.length === 0) break;
+    for (const [index, name] of clashing) names.set(index, `${name}_ch${index}`);
+  }
   return names;
 }
 
 function baseName(signal: EdfSignal): string {
   return signal.label === '' ? `signal_${signal.index}` : signal.label;
+}
+
+/**
+ * Channels whose column name was pushed off their own label to keep the header unique.
+ *
+ * A channel genuinely labelled `T8_ch0` loses that name when another label's disambiguating
+ * suffix wants it, and the resulting column is the one thing in the output that no longer
+ * matches the file. Silence there is what made the collision hard to see in the first place:
+ * the only warning raised was about the *other* label.
+ */
+export function renamedByCollision(
+  signals: readonly EdfSignal[],
+  columnNames: ReadonlyMap<number, string>,
+): EdfSignal[] {
+  const counts = new Map<string, number>();
+  for (const signal of signals) {
+    if (signal.isAnnotations) continue;
+    const base = baseName(signal);
+    counts.set(base, (counts.get(base) ?? 0) + 1);
+  }
+  return signals.filter(
+    (signal) =>
+      !signal.isAnnotations &&
+      (counts.get(baseName(signal)) ?? 0) === 1 &&
+      columnNames.get(signal.index) !== baseName(signal),
+  );
 }
 
 export interface ChannelSelection {

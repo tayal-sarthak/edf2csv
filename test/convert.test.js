@@ -88,6 +88,36 @@ describe('column naming', () => {
     assert.equal(names.get(2), '-', 'a unique label is left alone even if it is odd');
     await file.close();
   });
+
+  it('checks the suffix against the file, not only against the label it disambiguates', async () => {
+    // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from
+    // landing on a label some other channel already had. T8, T8, T8_ch0 — all three legal —
+    // produced `time_s,T8_ch0,T8_ch1,T8_ch0`: two columns with one name, while the warning
+    // beside it promised the suffix kept them distinguishable. channels.csv listed the same
+    // name against two signal indices, so the join it exists for could not resolve it
+    // either, and df["T8_ch0"] returns one of the two with nothing to say which.
+    const file = await EdfFile.open(fixture('label-suffix-collision.edf'));
+    const names = buildColumnNames(file.header.signals);
+    await file.close();
+
+    assert.equal(new Set(names.values()).size, names.size, `not unique: ${[...names.values()]}`);
+    assert.equal(names.get(1), 'T8_ch1', 'a name nothing contests is left where it was');
+
+    // The channel that lost its own label to another's suffix is named in a warning, since
+    // its column is the one thing in the output that no longer matches the file.
+    const dir = await outDir();
+    const result = await convert(fixture('label-suffix-collision.edf'), { outputDir: dir });
+    const notice = result.diagnostics.find((d) => /also the column name/u.test(d.message));
+    assert.ok(notice, `the renamed channel must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.message, /Signal 2 is labelled "T8_ch0"/u);
+
+    // Every column resolves to exactly one channel, in signals.csv and in channels.csv both.
+    const header = (await readCsv(dir, 'signals.csv'))[0].split(',');
+    assert.equal(new Set(header).size, header.length, `duplicate columns: ${header}`);
+    const columns = (await readCsv(dir, 'channels.csv')).slice(1).map((row) => row.split(',')[0]);
+    assert.deepEqual(columns, header.slice(1), 'channels.csv describes the columns written');
+    assert.equal(new Set(columns).size, columns.length);
+  });
 });
 
 describe('channel selection', () => {

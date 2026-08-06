@@ -194,6 +194,24 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // A duplicated label whose disambiguating suffix is another channel's actual label.
+  //
+  // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from
+  // landing on a label some other channel already had. All three of these are legal — EDF
+  // labels are free text and nothing enforces uniqueness — and they produced the header
+  // `time_s,T8_ch0,T8_ch1,T8_ch0`: two columns, one name, while the warning beside it
+  // promised the suffix kept them distinguishable.
+  writeEdf({
+    path: at('label-suffix-collision.edf'),
+    numRecords: 1,
+    recordDuration: 1,
+    signals: [
+      { label: 'T8', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: (r, s) => 100 + s },
+      { label: 'T8', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: (r, s) => 200 + s },
+      { label: 'T8_ch0', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: (r, s) => 300 + s },
+    ],
+  });
+
   // EDF+C recordings whose timekeeping annotations sit past what a double can space out.
   //
   // A double's values grow further apart the larger they get: at 1e16 the gap is 2 seconds,

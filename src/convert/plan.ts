@@ -15,7 +15,7 @@ import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
-import { buildColumnNames, selectChannels } from './channels.js';
+import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
 import type { ResolvedRange } from './time-range.js';
 
@@ -88,6 +88,20 @@ export const SPREADSHEET_ROW_LIMIT = 1_048_576;
 export function buildPlan(input: PlanInput, options: PlanOptions = {}): ConversionPlan {
   const diagnostics: Diagnostic[] = [];
   const columnNames = buildColumnNames(input.signals);
+
+  // A channel whose own label was taken by another channel's disambiguating suffix. The
+  // duplicate-label warning is about the labels that collided; this is about the channel
+  // that lost its name to them, which is the one whose column no longer matches the file.
+  for (const signal of renamedByCollision(input.signals, columnNames)) {
+    diagnostics.push({
+      code: 'DUPLICATE_LABEL',
+      severity: 'warning',
+      message:
+        `Signal ${signal.index} is labelled "${signal.label}", which is also the column name ` +
+        `another channel's "_ch" suffix produces, so its column is "${columnNames.get(signal.index)}".`,
+      hint: 'Column names are unique; look this channel up in channels.csv by its signal_index.',
+    });
+  }
 
   const range = resolveRange({
     start: options.start,
