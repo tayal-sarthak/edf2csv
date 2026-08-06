@@ -43,6 +43,7 @@ export type ConversionErrorCode =
   | 'INPUT_OUTPUT_COLLISION'
   | 'INPUT_UNREADABLE'
   | 'UNSUPPORTED_REQUEST'
+  | 'CALLBACK_FAILED'
   | 'WRITE_FAILED';
 
 /**
@@ -60,8 +61,8 @@ export const USAGE_ERROR_CODES: ReadonlySet<ConversionErrorCode> = new Set(['UNS
 export class ConversionError extends Error {
   readonly code: ConversionErrorCode;
   readonly hint: string | undefined;
-  constructor(code: ConversionErrorCode, message: string, hint?: string) {
-    super(message);
+  constructor(code: ConversionErrorCode, message: string, hint?: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'ConversionError';
     this.code = code;
     this.hint = hint;
@@ -506,6 +507,11 @@ async function writeSignalFiles(
       The reader's message and its advice are kept; only the note about partial output is
       added, since that much is true of either failure.
     */
+    // A ConversionError arrived already saying what went wrong — a callback that threw, say.
+    // Wrapping it again turned "the onProgress callback threw" into `Writing to "out"
+    // failed: the onProgress callback threw`, under a hint about checking the destination.
+    if (cause instanceof ConversionError) throw cause;
+
     if (cause instanceof EdfError) {
       const where = outputDir === null ? 'stdout' : `"${outputDir}"`;
       throw new ConversionError(
@@ -578,11 +584,35 @@ async function streamSignalRows(
       recordsDone++;
     }
 
-    options.onProgress?.({
-      recordsDone,
-      recordsTotal: endRecord - startRecord,
-      bytesWritten: open.reduce((sum, g) => sum + g.writer.charsWritten, 0),
-    });
+    if (options.onProgress) {
+      /*
+        A caller's callback is the caller's, and its failures are not the destination's.
+
+        This ran inside the same try that turns a stream failure into WRITE_FAILED, so a
+        progress callback that threw came back as `Writing to "out" failed: caller bug`,
+        advising the reader to check a destination that was working perfectly. It is the
+        same misattribution the write hints had until 0.4.36, one layer up.
+
+        The original is kept as `cause`, so the stack that actually matters survives, and
+        the conversion still stops — the callback threw, and carrying on writing into a
+        directory whose owner has just failed is not an improvement.
+      */
+      try {
+        options.onProgress({
+          recordsDone,
+          recordsTotal: endRecord - startRecord,
+          bytesWritten: open.reduce((sum, g) => sum + g.writer.charsWritten, 0),
+        });
+      } catch (cause) {
+        throw new ConversionError(
+          'CALLBACK_FAILED',
+          `The onProgress callback threw: ${cause instanceof Error ? cause.message : String(cause)}`,
+          'This is the caller\'s callback, not the recording or the destination. Whatever was ' +
+            'written before it threw is incomplete and should not be used.',
+          { cause },
+        );
+      }
+    }
   }
 
   for (const entry of open) {

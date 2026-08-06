@@ -223,6 +223,75 @@ describe('an empty result', () => {
   });
 });
 
+describe('what the library says about itself', () => {
+  it('keeps the answer about the input changing after the file is closed', async () => {
+    // convert() closes the file before it returns, and changedSinceOpen() returned false on
+    // a closed handle — so result.file.changedSinceOpen() denied the very change the
+    // INPUT_CHANGED diagnostic in the same result object had just reported. One object, two
+    // answers. False is not something a closed descriptor can know.
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { copyFileSync } = await import('node:fs');
+
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-closed-'));
+    temporaries.push(scratch);
+    const signals = [{
+      label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100,
+      digMin: -1000, digMax: 1000, samplesPerRecord: 256, gen: (r, s) => (r + s) % 1000,
+    }];
+    const small = path.join(scratch, 'small.edf');
+    const large = path.join(scratch, 'large.edf');
+    const live = path.join(scratch, 'live.edf');
+    writeEdf({ path: small, numRecords: 2000, recordDuration: 1, signals });
+    writeEdf({ path: large, numRecords: 3000, recordDuration: 1, signals });
+    copyFileSync(small, live);
+
+    let swapped = false;
+    const changed = await convert(live, {
+      outputDir: await outDir(),
+      quiet: true,
+      onProgress: () => {
+        if (swapped) return;
+        swapped = true;
+        copyFileSync(large, live);
+      },
+    });
+    assert.ok(changed.diagnostics.some((d) => d.code === 'INPUT_CHANGED'));
+    assert.equal(await changed.file.changedSinceOpen(), true, 'the result must agree with itself');
+
+    const still = await convert(fixture('tiny.edf'), { outputDir: await outDir(), quiet: true });
+    assert.equal(await still.file.changedSinceOpen(), false);
+  });
+
+  it('blames the caller when the caller\'s callback is what failed', async () => {
+    // onProgress ran inside the same try that turns a stream failure into WRITE_FAILED, so a
+    // callback that threw came back as `Writing to "out" failed: caller bug`, advising the
+    // reader to check a destination that was working perfectly. The same misattribution the
+    // write hints carried until 0.4.36, one layer up.
+    const { ConversionError } = await import('../dist/index.js');
+    const thrown = new Error('caller bug');
+
+    await assert.rejects(
+      convert(fixture('long-stream.edf'), {
+        outputDir: await outDir(),
+        quiet: true,
+        onProgress: () => {
+          throw thrown;
+        },
+      }),
+      (error) => {
+        assert.ok(error instanceof ConversionError, `got ${error}`);
+        assert.equal(error.code, 'CALLBACK_FAILED', 'not a write failure');
+        assert.match(error.message, /The onProgress callback threw: caller bug/u);
+        assert.ok(!/Writing to/u.test(error.message), 'the destination is not the problem');
+        assert.match(error.hint, /not the recording or the destination/u);
+        // The stack that matters is the caller's, so it is kept rather than flattened.
+        assert.equal(error.cause, thrown);
+        return true;
+      },
+    );
+  });
+});
+
 describe('option checking', () => {
   it('rejects a value the command line would reject, and writes nothing', async () => {
     // The CLI has always validated these; the library did not, so the same value behaved

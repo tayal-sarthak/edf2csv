@@ -64,6 +64,8 @@ export class EdfFile {
 
   #handle: FileHandle;
   #closed = false;
+  /** The last answer `changedSinceOpen` computed, so it survives the file being closed. */
+  #changed: boolean | null = null;
 
   private constructor(init: {
     path: string;
@@ -126,10 +128,31 @@ export class EdfFile {
    * claim that the output describes the file as it now stands that stops being true.
    */
   async changedSinceOpen(): Promise<boolean> {
-    if (this.#closed) return false;
+    /*
+      A closed file remembers its last answer rather than inventing a new one.
+
+      Returning false once closed asserted "it did not change", which is not something a
+      closed descriptor can know — and `convert()` closes the file before it returns, so
+      `result.file.changedSinceOpen()` denied the very change the INPUT_CHANGED diagnostic
+      in the same result object had just reported. One object, two answers.
+
+      `convert()` always asks before closing, so the cached answer is the true one. A caller
+      who closed the file without ever asking gets an error, which is the same treatment
+      every other method on a closed file gets.
+    */
+    if (this.#closed) {
+      if (this.#changed !== null) return this.#changed;
+      throw new EdfError(
+        'UNREADABLE',
+        `"${this.path}" is closed, and whether it changed while it was open was never checked.`,
+        'Ask before closing the file. A ConvertResult carries the answer already, since ' +
+          'convert() checks it on the way out.',
+      );
+    }
     const now = await this.#handle.stat().catch(() => null);
-    if (now === null) return false;
-    return now.size !== this.fileSize || now.mtimeMs !== this.modifiedAtOpenMs;
+    if (now === null) return this.#changed ?? false;
+    this.#changed = now.size !== this.fileSize || now.mtimeMs !== this.modifiedAtOpenMs;
+    return this.#changed;
   }
 
   static async open(path: string): Promise<EdfFile> {

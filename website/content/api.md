@@ -443,6 +443,8 @@ interface ConvertResult {
 
 `result.file` is closed before `convert` returns. Its `header`, `recordCount` and `diagnostics` are plain data and stay readable, but `readRecords` and `readAnnotations` on it throw `UNREADABLE`. Open the file yourself with `EdfFile.open` if you want to keep reading after converting.
 
+`changedSinceOpen()` is the exception: it keeps working on a closed file, because `convert` asks it on the way out and caches the answer. So `await result.file.changedSinceOpen()` agrees with whether the result carries an `INPUT_CHANGED` diagnostic. (It returned `false` on a closed file until 0.4.38, which had the result contradicting itself.) Calling it on a file you closed yourself without ever asking throws `UNREADABLE`, since a closed descriptor cannot answer it.
+
 ### A conversion with options
 
 ```js
@@ -495,10 +497,12 @@ Two channels were requested at two different rates, so two signal files came bac
 | Type | When |
 | --- | --- |
 | `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
-| `ConversionError` | The output can't be written, or the request can't be carried out. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST` or `WRITE_FAILED`. |
+| `ConversionError` | The output can't be written, the request can't be carried out, or your own callback threw. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST`, `CALLBACK_FAILED` or `WRITE_FAILED`. |
 | `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, or a `start`, `duration` or `end` that is not a non-negative finite number of seconds. |
 | `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
+
+`CALLBACK_FAILED` means your `onProgress` threw. It carries the original error as `cause`, so the stack that matters survives, and the conversion stops — carrying on writing into a directory whose owner has just failed is not an improvement. Until 0.4.38 this came back as `WRITE_FAILED` reading `Writing to "out" failed: <your message>`, advising you to check a destination that was working perfectly.
 
 `OptionError` is raised before the output directory is created, so a rejected option leaves nothing on disk. The command line has always rejected these values; until 0.4.33 the library did not, and `decimals: NaN` quietly wrote whole numbers into a column you had asked for decimals in.
 
