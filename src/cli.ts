@@ -11,7 +11,7 @@
 import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
-import { readdir, realpath, stat } from 'node:fs/promises';
+import { lstat, readdir, realpath, stat } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { fork } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
@@ -712,17 +712,52 @@ async function expandInputs(
 
     A path that does not resolve keeps its own identity so that a file which is not there
     still reports itself rather than being folded into another entry.
+
+    Which of the names survives is decided by the names themselves, not by the order they
+    turned up in. Keeping the first arrival meant the output directory was named by argument
+    order — `edf2csv data/one.edf data/alias.edf` wrote out/one and the same two swapped
+    wrote out/alias — and a shell orders a glob however it likes. Inside a folder it was the
+    order `readdir` returned, which differs between filesystems, so copying a study to
+    another machine could rename its output. A recording that is not a link is preferred over
+    a link to it, since that is the name the recording actually has; two of a kind are
+    settled by the path that sorts first.
   */
-  const byIdentity = new Map<string, Input>();
+  const identified: { entry: Input; identity: string; link: boolean }[] = [];
   for (const entry of found) {
     const identity = await realpath(entry.path).catch(() => `?${path.resolve(entry.path)}`);
-    if (!byIdentity.has(identity)) byIdentity.set(identity, entry);
+    const own = await lstat(entry.path).catch(() => null);
+    identified.push({ entry, identity, link: own?.isSymbolicLink() ?? false });
+  }
+
+  const byIdentity = new Map<string, Input>();
+  const winners = new Map<string, (typeof identified)[number]>();
+  for (const candidate of identified) {
+    const held = winners.get(candidate.identity);
+    if (held !== undefined && !outnames(candidate, held)) continue;
+    winners.set(candidate.identity, candidate);
+    byIdentity.set(candidate.identity, candidate.entry);
   }
 
   // A directory hands its entries back in whatever order the filesystem stored them.
   const unique = [...byIdentity.values()];
   unique.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+
   return { inputs: unique, unreadable };
+}
+
+/**
+ * Which of two names for one recording the output should be called after.
+ *
+ * A name the recording actually has beats a link pointing at it, and two of a kind are
+ * settled by sort order. Both are properties of the names, so the answer does not move when
+ * a shell expands a glob differently or a filesystem enumerates a folder in another order.
+ */
+function outnames(
+  candidate: { entry: Input; link: boolean },
+  held: { entry: Input; link: boolean },
+): boolean {
+  if (candidate.link !== held.link) return !candidate.link;
+  return candidate.entry.path < held.entry.path;
 }
 
 /**

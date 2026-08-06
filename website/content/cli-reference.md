@@ -43,6 +43,8 @@ error: study/night-02: could not be read, so any recordings inside it were skipp
 
 A recording named more than once is converted once, however it was named — twice on the command line, or once directly and once inside a folder that was also given. A shell produces that by accident easily enough (`edf2csv *.edf recording.edf`), and it is not ambiguous.
 
+Which of the names its output is called after is decided by the names, not by the order they arrived in: a name the recording actually has beats a symbolic link pointing at it, and two links are settled by the one that sorts first. So `edf2csv data/one.edf data/alias.edf` and the same two swapped both write `out/one`, and a study copied to a machine whose filesystem enumerates the folder differently still produces the same directory names.
+
 Two *different* recordings that would land in the same directory are refused before anything is written. This happens with the common layout of one folder per night, where `n1/rec.edf` and `n2/rec.edf` would both resolve to `<out>/rec`:
 
 ```

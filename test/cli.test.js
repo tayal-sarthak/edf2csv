@@ -683,9 +683,12 @@ describe('converting several recordings at once', () => {
     // once: plain.edf and the linked recording.
     assert.match(stderr, /Converted 2 of 2 recordings/u);
 
+    // The two ways in are `link.edf`, which is a link, and `linkdir/actual.edf`, which is a
+    // real file inside a linked folder. The name that is not a link wins, so the output
+    // keeps the shape the folder has rather than flattening it under the link's name.
     const written = (await readdir(path.join(dir, 'csv'))).sort();
-    assert.deepEqual(written, ['link', 'plain'], `found ${written}`);
-    const linked = await readFile(path.join(dir, 'csv', 'link', 'signals.csv'), 'utf8');
+    assert.deepEqual(written, ['linkdir', 'plain'], `found ${written}`);
+    const linked = await readFile(path.join(dir, 'csv', 'linkdir', 'actual', 'signals.csv'), 'utf8');
     assert.equal(linked.split('\n')[0], 'time_s,ch1,ch2', 'the link resolved to its target');
   });
 
@@ -697,10 +700,50 @@ describe('converting several recordings at once', () => {
       path.join(dir, 'data'), '--out', path.join(dir, 'out'), '--quiet',
     ]);
     assert.equal(code, 0, stderr);
-    // A folder was named, so --out is a parent whether it holds one recording or fifty.
-    const written = await readdir(path.join(dir, 'out'));
-    assert.equal(written.length, 1, `one recording, one directory: found ${written}`);
-    assert.ok((await readdir(path.join(dir, 'out', written[0]))).includes('signals.csv'));
+    // A folder was named, so --out is a parent whether it holds one recording or fifty, and
+    // the survivor is named after the recording rather than the link pointing at it.
+    assert.deepEqual(await readdir(path.join(dir, 'out')), ['one']);
+    assert.ok((await readdir(path.join(dir, 'out', 'one'))).includes('signals.csv'));
+  });
+
+  it('picks the same name for a recording reached two ways, whatever the order', async () => {
+    // The first arrival won, so the output directory was named by argument order:
+    // `edf2csv data/one.edf data/alias.edf` wrote out/one and the same two swapped wrote
+    // out/alias. A shell orders a glob however it likes, and inside a folder it was whatever
+    // readdir returned — which differs between filesystems, so copying a study to another
+    // machine could rename its output. Both tie-breaks are properties of the names.
+    const dir = await stage({ 'data/one.edf': 'tiny.edf', 'data/other.edf': 'annotations.edf' });
+    const alias = path.join(dir, 'data', 'alias.edf');
+    await symlink(path.join(dir, 'data', 'one.edf'), alias);
+
+    for (const order of [['one.edf', 'alias.edf'], ['alias.edf', 'one.edf']]) {
+      const out = path.join(dir, `out-${order[0]}`);
+      const { code, stderr } = await cli([
+        ...order.map((name) => path.join(dir, 'data', name)),
+        path.join(dir, 'data', 'other.edf'), '--out', out, '--quiet',
+      ]);
+      assert.equal(code, 0, stderr);
+      assert.deepEqual(
+        (await readdir(out)).sort(),
+        ['one', 'other'],
+        `named after the link instead of the recording, given ${order.join(' ')}`,
+      );
+    }
+
+    // With no name of its own to prefer — two links and no recording among them — the path
+    // that sorts first wins, which is still an answer that does not move.
+    const both = await stage({ 'real.edf': 'tiny.edf', 'data/other.edf': 'annotations.edf' });
+    for (const name of ['zzz.edf', 'aaa.edf']) {
+      await symlink(path.join(both, 'real.edf'), path.join(both, 'data', name));
+    }
+    for (const order of [['zzz.edf', 'aaa.edf'], ['aaa.edf', 'zzz.edf']]) {
+      const out = path.join(both, `out-${order[0]}`);
+      const { stderr } = await cli([
+        ...order.map((name) => path.join(both, 'data', name)),
+        path.join(both, 'data', 'other.edf'), '--out', out, '--quiet',
+      ]);
+      assert.deepEqual((await readdir(out)).sort(), ['aaa', 'other'], `given ${order.join(' ')}: ${stderr}`);
+    }
   });
 
   it('puts a recording in the same place however many siblings it has', async () => {
