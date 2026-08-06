@@ -194,6 +194,32 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // EDF+C recordings whose timekeeping annotations sit past what a double can space out.
+  //
+  // A double's values grow further apart the larger they get: at 1e16 the gap is 2 seconds,
+  // so `t + 1` is `t`. Two symptoms, both silent. At 1e16 the collapse is partial and the
+  // "does this record overlap the window" test — `start + recordDuration > windowStart` —
+  // fails for every record that rounded onto its neighbour: eight of twelve rows vanished,
+  // exit 0, no warning. At 1e17 every record lands on one instant, the recording measures
+  // zero seconds long, and the window resolver blamed a flag nobody passed: "--start
+  // 100000000000000000s is at or past the end of this 100000000000000000s recording."
+  const farOrigin = (onset) => ({
+    reserved: 'EDF+C',
+    startDate: '01.01.20',
+    startTime: '00.00.00',
+    patient: 'X X X X',
+    recording: 'Startdate 01-JAN-2020 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ],
+    talsForRecord: (r) => buildTal(onset + r, []),
+  });
+  writeEdf({ ...farOrigin(1e16), path: at('far-origin.edf') });
+  writeEdf({ ...farOrigin(1e17), path: at('far-origin-collapsed.edf') });
+
   // An EDF+D recording whose first record sits well after zero.
   //
   // --duration is measured from where the conversion starts, and the annotation filter

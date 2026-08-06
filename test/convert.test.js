@@ -530,6 +530,59 @@ describe('converting', () => {
     );
   });
 
+  it('says so when a recording claims an origin its own arithmetic cannot hold', async () => {
+    // A double spaces its values further apart the larger they get: at 1e16 the gap is two
+    // seconds, so `t + 1` is `t`. Honouring the first timekeeping TAL without checking that
+    // gave two silent failures.
+    //
+    // At 1e16 the collapse is partial. "Does this record overlap the window" asks whether
+    // `start + recordDuration > windowStart`, and that is false for every record that
+    // rounded onto its neighbour: eight of twelve rows vanished, exit 0, no warning, and
+    // the file looked exactly like one that had never held them.
+    const partial = await outDir();
+    const first = await convert(fixture('far-origin.edf'), { outputDir: partial });
+    const rows = await readCsv(partial, 'signals.csv');
+    assert.equal(rows.length - 1, 12, 'every row is written');
+
+    // At 1e17 every record lands on one instant, so the recording measures zero seconds
+    // long, and the window resolver blamed a flag nobody had passed:
+    //   error: --start 100000000000000000s is at or past the end of this 1e17s recording.
+    const collapsed = await outDir();
+    const second = await convert(fixture('far-origin-collapsed.edf'), { outputDir: collapsed });
+    assert.equal((await readCsv(collapsed, 'signals.csv')).length - 1, 12);
+
+    for (const result of [first, second]) {
+      const warning = result.diagnostics.find((d) => /too far out/u.test(d.message));
+      assert.ok(warning, `the lost origin must be reported: ${JSON.stringify(result.diagnostics)}`);
+      assert.equal(warning.severity, 'warning');
+      assert.match(warning.hint, /written from zero instead/u);
+    }
+
+    // Timed from zero, so the column is usable and increases.
+    const times = rows.slice(1).map((row) => Number(row.split(',')[0]));
+    assert.deepEqual(times.slice(0, 3), [0, 0.25, 0.5]);
+    for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
+  });
+
+  it('keeps an origin large enough to be represented', async () => {
+    // The guard is on what the arithmetic can express, not on the number being big. At 1e15
+    // the gap between doubles is an eighth of a second, so a 4 Hz recording's quarter-second
+    // steps survive and the true origin is kept.
+    const { deriveRecordStarts } = await import('../dist/convert/timing.js');
+    const file = {
+      header: { continuity: 'EDF+C', recordDuration: 1, signals: [{ isAnnotations: false, samplesPerRecord: 4 }] },
+      recordCount: 3,
+      annotationSignals: [{}],
+    };
+    const kept = deriveRecordStarts(file, { recordStarts: [1e15], malformed: 0 });
+    assert.deepEqual([...kept.starts], [1e15, 1e15 + 1, 1e15 + 2]);
+    assert.deepEqual(kept.diagnostics, []);
+
+    const dropped = deriveRecordStarts(file, { recordStarts: [1e16], malformed: 0 });
+    assert.equal(dropped.starts, null);
+    assert.match(dropped.diagnostics[0].message, /too far out/u);
+  });
+
   it('measures --duration from where the recording starts, not from zero', async () => {
     // The signal window and the annotation window read the same absent --start two ways:
     // resolveRange took the earliest record, the annotation filter took 0. On a recording

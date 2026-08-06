@@ -53,6 +53,11 @@ export function deriveRecordStarts(
     for (let i = 0; i < file.recordCount; i++) {
       contiguous[i] = first + i * file.header.recordDuration;
     }
+    const last = contiguous[file.recordCount - 1] ?? first;
+    if (!canCarry(last, file)) {
+      diagnostics.push(unusableOrigin(first, file));
+      return { starts: null, diagnostics };
+    }
     return { starts: contiguous, diagnostics };
   }
 
@@ -93,6 +98,13 @@ export function deriveRecordStarts(
     });
   }
 
+  let furthest = 0;
+  for (const start of starts) if (start > furthest) furthest = start;
+  if (!canCarry(furthest, file)) {
+    diagnostics.push(unusableOrigin(furthest, file));
+    return { starts: null, diagnostics };
+  }
+
   let outOfOrder = 0;
   for (let i = 1; i < starts.length; i++) {
     if ((starts[i] as number) < (starts[i - 1] as number)) outOfOrder++;
@@ -107,4 +119,61 @@ export function deriveRecordStarts(
   }
 
   return { starts, diagnostics };
+}
+
+/**
+ * Whether times this far out can still tell one sample from the next.
+ *
+ * A double spaces its values further apart the larger they get: at 1e16 the gap is 2
+ * seconds, so `t + 1` is `t`. Past that point a recording's declared origin stops being a
+ * position and becomes a wall — the arithmetic that places records and samples returns the
+ * origin itself, whatever is added to it.
+ *
+ * The finest thing that has to survive is the gap between two consecutive samples of the
+ * fastest channel, since that is what the time column is made of. If that survives, so does
+ * a whole record.
+ */
+function canCarry(origin: number, file: EdfFile): boolean {
+  if (!Number.isFinite(origin)) return false;
+  let interval = file.header.recordDuration;
+  for (const signal of file.header.signals) {
+    if (signal.isAnnotations || !(signal.samplesPerRecord > 0)) continue;
+    const step = file.header.recordDuration / signal.samplesPerRecord;
+    if (step > 0 && step < interval) interval = step;
+  }
+  return origin + interval > origin;
+}
+
+/**
+ * An origin the file's own arithmetic cannot express, reported rather than acted on.
+ *
+ * Two things went wrong when this was taken at face value, both of them quiet. A file whose
+ * records all collapsed onto one instant made the recording zero seconds long, and the
+ * window resolver — which had no reason to suspect the recording rather than the request —
+ * blamed a flag nobody had passed:
+ *
+ *     error: --start 100000000000000000s is at or past the end of this
+ *            100000000000000000s recording.
+ *
+ * Slightly below that, the collapse is partial: `records[i].start + recordDuration` equals
+ * the start again, so the test for "does this record overlap the window" fails for every
+ * record whose neighbour rounded onto it. A twelve-row recording wrote four rows, exit 0,
+ * no warning — the eight that vanished looked exactly like a file that never had them.
+ *
+ * Timing from zero is what the file did before 0.4.9 taught it to honour the first
+ * timekeeping TAL, and at this magnitude it is the only column that can hold distinct
+ * values. The origin is lost, so this says so.
+ */
+function unusableOrigin(origin: number, file: EdfFile): Diagnostic {
+  return {
+    code: 'DISCONTINUOUS',
+    severity: 'warning',
+    message:
+      `This recording's timekeeping annotations place it ${origin}s from its own start ` +
+      `date, which is too far out for its ${file.header.recordDuration}s records to be told ` +
+      `apart: at that magnitude adding a sample interval leaves the number unchanged.`,
+    hint:
+      'Sample times are written from zero instead, so every row is present and the column ' +
+      'increases. Add the onsets in annotations.csv to recover absolute times if you need them.',
+  };
 }
