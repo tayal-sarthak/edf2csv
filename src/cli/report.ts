@@ -142,6 +142,30 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
         `No channel is resampled.`,
     );
   }
+  /*
+    The estimate describes the signal tables, and says so when that is not what will be
+    written.
+
+    Under --annotations-only there are no signal tables, and the line read "Would write 0
+    rows, roughly 0 B." for a conversion that goes on to write annotations.csv with three
+    events in it. --info exists to say what a conversion will do; asserting it will write
+    nothing, when it will write a file, is the one thing it must not do.
+
+    How many events there are cannot be answered from the header — the annotation channel has
+    to be read record by record, which is the scan --info is for avoiding. So it says which
+    file, and that the count is not knowable this cheaply, rather than inventing a zero.
+  */
+  if (!plan.writeSignals) {
+    lines.push(
+      file.annotationSignals.length > 0
+        ? 'Would write annotations.csv and channels.csv, and no signal data. How many events ' +
+          'there are cannot be told from the header.'
+        : 'Would write channels.csv and no signal data — and no annotations.csv either, ' +
+          'since this recording has no annotation channel.',
+    );
+    return lines.join('\n');
+  }
+
   // The estimate counts the characters of the CSV, which is what --gzip then compresses.
   // Reporting it as the size on disk would overstate a compressed conversion several-fold.
   const compressing = plan.groups.some((group) => group.fileName.endsWith('.gz'));

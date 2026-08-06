@@ -324,6 +324,15 @@ Writes the EDF+ event list and nothing else. The output directory gets `annotati
 
 `--start`, `--duration` and `--end` still filter the events. `--channels` is ignored, as described above.
 
+`--info --annotations-only` names the files rather than estimating rows, since the estimate describes the signal tables and there are none:
+
+```
+Would write annotations.csv and channels.csv, and no signal data. How many events there
+are cannot be told from the header.
+```
+
+The event count genuinely isn't knowable that cheaply — the annotation channel has to be read record by record, which is the scan `--info` exists to avoid. Until 0.4.51 this line read `Would write 0 rows, roughly 0 B.`, which was true of the signal tables and false of the run.
+
 On a recording with no annotation channel, the conversion still succeeds and still writes `channels.csv` and `metadata.json`, with a warning:
 
 ```

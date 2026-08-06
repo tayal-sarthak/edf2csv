@@ -344,17 +344,6 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
-  it('shows the actual annotations-only output plan', async () => {
-    const { code, stdout } = await cli([
-      fixture('annotations.edf'),
-      '--info',
-      '--annotations-only',
-    ]);
-    assert.equal(code, 0);
-    assert.match(stdout, /Would write 0 rows/);
-    assert.ok(!stdout.includes('signals.csv'));
-  });
-
   // The estimate exists so someone can decide whether a conversion is worth starting. Reading
   // low is the one direction that makes it useless, so it is checked against every fixture
   // rather than against the one calibration that happened to expose the last shortfall.
@@ -934,6 +923,35 @@ describe('converting several recordings at once', () => {
         await readFile(path.join(awkward, name, 'signals.csv'), 'utf8'),
       );
     }
+  });
+
+  it('does not promise nothing for a run that writes a file', async () => {
+    // The estimate describes the signal tables, so under --annotations-only there was
+    // nothing to describe and the line read "Would write 0 rows, roughly 0 B." — for a
+    // conversion that goes on to write annotations.csv with three events in it. --info
+    // exists to say what a conversion will do, so asserting it will write nothing when it
+    // will write a file is the one thing it must not do.
+    const withEvents = await cli([fixture('annotations.edf'), '--info', '--annotations-only']);
+    assert.equal(withEvents.code, 0, withEvents.stderr);
+    assert.ok(!/Would write 0 rows/u.test(withEvents.stdout), withEvents.stdout);
+    assert.match(withEvents.stdout, /Would write annotations\.csv and channels\.csv/u);
+    // The event count needs the annotation channel read record by record, which is the scan
+    // --info exists to avoid, so it says so rather than inventing a number.
+    assert.match(withEvents.stdout, /cannot be told from the header/u);
+    assert.ok(!withEvents.stdout.includes('signals.csv'), 'no signal file is named');
+
+    const dir = await outDir();
+    await cli([fixture('annotations.edf'), '--out', dir, '--annotations-only', '--quiet']);
+    const events = (await readFile(path.join(dir, 'annotations.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(events.length - 1, 3, 'the run it described did write events');
+
+    // A file with no annotation channel gets told that too, rather than the same sentence.
+    const without = await cli([fixture('tiny.edf'), '--info', '--annotations-only']);
+    assert.match(without.stdout, /no annotations\.csv either/u);
+
+    // And an ordinary --info still reports rows and bytes.
+    const ordinary = await cli([fixture('annotations.edf'), '--info']);
+    assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
   it('agrees with the conversion about where a recording starts', async () => {
