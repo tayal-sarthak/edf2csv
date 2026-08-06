@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.9
+
+### Fixed: a continuous recording that starts mid-second put its samples and its events on different clocks
+
+EDF+ puts the header's start time and every annotation onset on one origin, and says the first
+data record's timekeeping TAL "always starts with +0.X" — the fraction of a second by which
+that record follows it. Continuous files never read it. Their samples were timed from zero
+while their events kept their true onsets, so the two ended up half a second apart:
+
+```
+                first sample times          event at +0.75 lands on
+EDF+D           0.500, 0.750, 1.000         sample 1     correct
+EDF+C           0.000, 0.250, 0.500         sample 3     half a second late
+```
+
+Those two files are byte-identical apart from the reserved field. The discontinuous copy reads
+its record times and gets the answer right; the continuous copy assumed record *k* begins at
+*k* × the record duration, which is true of the spacing but not of the origin.
+
+Nothing about the output says so. Both files convert cleanly, and the CSV is well formed —
+the event simply sits on the wrong row, two samples from where the recording put it.
+
+A continuous recording's records are still contiguous, which is what continuous means: only
+the origin moves. A first TAL of `+0` needs no adjustment at all, which is nearly every file,
+and every existing fixture is unchanged.
+
+The test converts both copies of the same recording and requires them to agree, rather than
+asserting a number either one of them happens to produce.
+
 ## 0.4.8
 
 ### Fixed: `--duration` dropped every annotation on a recording that starts after zero

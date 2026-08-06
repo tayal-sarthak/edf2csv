@@ -30,7 +30,31 @@ export function deriveRecordStarts(
     });
   }
 
-  if (file.header.continuity !== 'EDF+D') return { starts: null, diagnostics };
+  /*
+    A continuous recording's records are contiguous, but the first one need not sit at zero.
+
+    EDF+ puts the header's start time and every annotation onset on one origin, and says the
+    first data record's timekeeping TAL "always starts with +0.X", stating the fraction of a
+    second by which that record follows it. Ignoring that fraction timed the samples from 0
+    while the events kept their true onsets, so the two ended up on origins half a second
+    apart — an event at +0.75 in a 4 Hz recording whose first TAL reads +0.5 landed on sample
+    3 instead of sample 1. The same file marked EDF+D, byte-identical but for the reserved
+    field, placed it correctly, which is what gives the omission away.
+
+    Records stay contiguous, which is what continuous means: only the origin moves. A first
+    TAL of +0 needs no table at all, and that is nearly every file.
+  */
+  if (file.header.continuity !== 'EDF+D') {
+    const first = annotationData.recordStarts[0];
+    if (file.header.continuity !== 'EDF+C' || typeof first !== 'number' || first === 0) {
+      return { starts: null, diagnostics };
+    }
+    const contiguous = new Float64Array(file.recordCount);
+    for (let i = 0; i < file.recordCount; i++) {
+      contiguous[i] = first + i * file.header.recordDuration;
+    }
+    return { starts: contiguous, diagnostics };
+  }
 
   if (file.annotationSignals.length === 0) {
     diagnostics.push({

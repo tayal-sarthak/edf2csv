@@ -352,6 +352,40 @@ describe('converting', () => {
     );
   });
 
+  it('times a continuous recording from its first record, not from zero', async () => {
+    // EDF+ says the first record's timekeeping TAL states the fraction of a second by which
+    // it follows the header's start time, and annotation onsets share that origin. Timing
+    // the samples from zero put the two half a second apart: the event at +0.75 landed on
+    // sample 3 of a 4 Hz record rather than sample 1. The pair of fixtures differ only in
+    // the reserved field, so whatever the answer is, it must be the same for both.
+    const rowsFor = async (name) => {
+      const dir = await outDir();
+      await convert(fixture(name), { outputDir: dir });
+      return {
+        signals: await readCsv(dir, 'signals.csv'),
+        annotations: await readCsv(dir, 'annotations.csv'),
+      };
+    };
+
+    const continuous = await rowsFor('fractional-start.edf');
+    const discontinuous = await rowsFor('fractional-start-d.edf');
+
+    assert.deepEqual(
+      continuous.signals,
+      discontinuous.signals,
+      'a continuous and a discontinuous copy of the same recording must agree on time',
+    );
+    assert.deepEqual(continuous.annotations, discontinuous.annotations);
+
+    // The first sample sits where the TAL says, and the event lands on the row it belongs to.
+    assert.equal(continuous.signals[1], '0.500,0.000');
+    assert.equal(continuous.annotations[1], '0.75,,event,0');
+    assert.ok(
+      continuous.signals.includes('0.750,0.100'),
+      'the event onset must coincide with a real sample row',
+    );
+  });
+
   it('measures --duration from where the recording starts, not from zero', async () => {
     // The signal window and the annotation window read the same absent --start two ways:
     // resolveRange took the earliest record, the annotation filter took 0. On a recording

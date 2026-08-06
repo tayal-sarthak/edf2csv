@@ -170,6 +170,30 @@ export function generate() {
         : buildTal(r),
   });
 
+  // A continuous recording whose first record starts half a second after the header time.
+  //
+  // EDF+ puts the header start time and every annotation onset on one origin, and the first
+  // record's timekeeping TAL states the fraction of a second by which that record follows
+  // it. Timing the samples from zero instead put the two on origins half a second apart: the
+  // event at +0.75 landed on sample 3 rather than sample 1. Written twice, continuous and
+  // discontinuous, because the pair must agree — they differ only in the reserved field.
+  const fractionalStart = {
+    startDate: '02.03.02',
+    startTime: '22.15.00',
+    patient: 'X X X X',
+    recording: 'Startdate 02-MAR-2002 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ],
+    talsForRecord: (r) =>
+      buildTal([0.5, 1.5, 2.5][r], r === 0 ? [{ onset: 0.75, duration: null, text: 'event' }] : []),
+  };
+  writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
+  writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
+
   // An EDF+D recording whose first record sits well after zero.
   //
   // --duration is measured from where the conversion starts, and the annotation filter
