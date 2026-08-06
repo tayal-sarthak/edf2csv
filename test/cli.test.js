@@ -906,6 +906,64 @@ describe('converting several recordings at once', () => {
     assert.equal(survivors, '', `conversions outlived the interrupted parent: ${survivors}`);
   });
 
+  it('names a conversion that was killed, and the directory it left behind', async () => {
+    // A process that dies by signal exits with a null code and says nothing on its way out.
+    // The parent read that as an ordinary failure with empty output, so the run printed
+    // "Converted 29 of 30 recordings; 1 failed." and stopped: not which recording, not why,
+    // and not that its directory held a signals.csv cut off mid-row with no channels.csv
+    // beside it. The out-of-memory killer, a scheduler's time limit and `kill` all arrive
+    // this way, and half a CSV opens in pandas exactly like a whole one.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-killed-'));
+    temporaries.push(dir);
+    const source = await readFile(fixture('long-stream.edf'));
+    const names = [];
+    for (let i = 0; i < 30; i++) {
+      const name = path.join(dir, `r${String(i).padStart(2, '0')}.edf`);
+      await writeFile(name, source);
+      names.push(name);
+    }
+
+    const out = path.join(dir, 'out');
+    const { spawn, execFile: raw } = await import('node:child_process');
+    const run = spawn(process.execPath, [CLI, ...names, '--out', out, '--jobs', '2'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    run.stderr.setEncoding('utf8').on('data', (chunk) => {
+      stderr += chunk;
+    });
+
+    // Only the children carry `<out>/rNN`: the parent's --out is `<out>` and its inputs are
+    // `<dir>/rNN.edf`, so neither of its arguments contains that path.
+    const childPid = async () =>
+      new Promise((resolve) => {
+        raw('pgrep', ['-f', `${out}/r`], (_error, stdout) =>
+          resolve((stdout ?? '').trim().split('\n').filter(Boolean)[0]),
+        );
+      });
+
+    let victim;
+    for (let tries = 0; tries < 100 && victim === undefined; tries++) {
+      victim = await childPid();
+      if (victim === undefined) await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(victim, 'no conversion was running to kill');
+    process.kill(Number(victim), 'SIGKILL');
+
+    const code = await new Promise((resolve) => run.on('close', resolve));
+    assert.notEqual(code, 0, `a killed conversion is a failed run, stderr was:\n${stderr}`);
+    assert.match(
+      stderr,
+      /error: .*r\d\d\.edf: stopped by SIGKILL before it finished\./u,
+      `the killed recording must be named, stderr was:\n${stderr}`,
+    );
+    assert.match(
+      stderr,
+      /Incomplete, and should not be used: .*out\/r\d\d/u,
+      'and so must the directory it left behind',
+    );
+  });
+
   it('rejects a job count that is not a whole number of one or more', async () => {
     // Checked in every mode, including the two where the value cannot be honoured anyway:
     // --stdout converts one recording however many jobs are asked for, but a request that

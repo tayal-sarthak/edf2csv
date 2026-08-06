@@ -98,6 +98,15 @@ const EXIT_ERROR = 1;
 const EXIT_USAGE = 2;
 
 /**
+ * Whether this run is already shutting its children down.
+ *
+ * A child dying by signal is normally worth a line of its own, but not when this process is
+ * the one that killed it: the interrupt handler names every abandoned directory in a single
+ * message, and a per-child line underneath it would say the same thing again, once per job.
+ */
+let stopping = false;
+
+/**
  * Piping into a consumer that exits early (`| head -1`) closes our stdout, and the
  * next write raises EPIPE. That is normal in a shell pipeline, not an error worth a
  * stack trace, so it is swallowed while anything else still surfaces.
@@ -381,6 +390,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         the run read as if it had finished.
       */
       const onInterrupt = (signal: NodeJS.Signals): void => {
+        stopping = true;
         const abandoned = [...running.values()];
         for (const child of running.keys()) child.kill('SIGTERM');
         process.stderr.write(
@@ -999,8 +1009,27 @@ async function convertInChild(
       running.delete(child);
       resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n`, report });
     });
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       running.delete(child);
+      /*
+        A child that was killed says nothing on its way out, so the parent has to.
+
+        `code` is null when a process dies by signal, which left the parent with `code ??
+        EXIT_ERROR` — a failure with an empty `err`, so the run printed nothing but "Converted
+        1 of 2 recordings; 1 failed." and stopped. Nothing said which recording, nothing said
+        why, and nothing said that its directory held a 194 MB signals.csv cut off mid-row
+        with no channels.csv beside it. That file looks exactly like a finished one to
+        anything that opens it.
+
+        The out-of-memory killer, a job scheduler's time limit and `kill` all arrive this way.
+        A run stopped from the keyboard is reported by the interrupt handler instead, which
+        names every directory at once rather than one line per child.
+      */
+      if (signal !== null && !stopping) {
+        err +=
+          `error: stopped by ${signal} before it finished.\n` +
+          `       Incomplete, and should not be used: ${destination}\n`;
+      }
       resolve({ code: code ?? EXIT_ERROR, out, err, report });
     });
   });

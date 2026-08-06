@@ -370,6 +370,15 @@ interrupted (SIGINT): 3 conversions stopped part way through.
        Incomplete, and should not be used: out/r5, out/r6, out/r7
 ```
 
+A single conversion killed on its own — by the out-of-memory killer, by a scheduler's time limit, by `kill` — is reported the same way, since it also leaves a `signals.csv` that ends mid-row and opens like a whole one:
+
+```
+error: study/night-02.edf: stopped by SIGKILL before it finished.
+       Incomplete, and should not be used: out/night-02
+```
+
+The rest of the batch carries on, and the closing count and exit code report it as a failure.
+
 `--stdout` ignores it, since that path takes a single recording anyway.
 
 ## --gzip
