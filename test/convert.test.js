@@ -143,6 +143,53 @@ describe('column naming', () => {
   });
 });
 
+describe('option checking', () => {
+  it('rejects a value the command line would reject, and writes nothing', async () => {
+    // The CLI has always validated these; the library did not, so the same value behaved
+    // differently depending on how it arrived. `decimals: NaN` resolved successfully having
+    // written whole numbers into a column the caller asked for decimals in — no error, no
+    // warning, output that looks deliberate. `decimals: -1` came back as a bare RangeError
+    // from inside toFixed, naming nothing the caller had written. `start: NaN` created the
+    // directory, wrote signals.csv, then failed with a message about the input being
+    // unreadable: a partial conversion, blamed on the file.
+    const { OptionError } = await import('../dist/index.js');
+    const { existsSync } = await import('node:fs');
+
+    const cases = [
+      [{ decimals: NaN }, /decimals must be a whole number between 0 and 20, got NaN/u],
+      [{ decimals: -1 }, /got -1/u],
+      [{ decimals: 1.5 }, /got 1.5/u],
+      [{ decimals: 21 }, /got 21/u],
+      [{ start: NaN }, /start must be a number of seconds, got NaN/u],
+      [{ start: -5 }, /got -5/u],
+      [{ duration: Infinity }, /duration must be a number of seconds/u],
+      [{ end: NaN }, /end must be a number of seconds/u],
+    ];
+
+    for (const [options, expected] of cases) {
+      const dir = await outDir();
+      await assert.rejects(
+        convert(fixture('tiny.edf'), { outputDir: dir, quiet: true, ...options }),
+        (error) => {
+          assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
+          assert.match(error.message, expected);
+          return true;
+        },
+      );
+      // Checked before a directory is created, so a rejected option leaves nothing behind.
+      assert.equal(existsSync(dir), false, `${JSON.stringify(options)} left ${dir} behind`);
+    }
+  });
+
+  it('leaves the values it should accept alone', async () => {
+    for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 }]) {
+      const dir = await outDir();
+      await convert(fixture('tiny.edf'), { outputDir: dir, quiet: true, ...options });
+      assert.ok((await readdir(dir)).includes('signals.csv'), JSON.stringify(options));
+    }
+  });
+});
+
 describe('channel selection', () => {
   it('matches labels case-insensitively', async () => {
     const file = await EdfFile.open(fixture('mixed-rates.edf'));

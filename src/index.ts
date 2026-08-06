@@ -28,5 +28,6 @@ export { buildPlan, rateSlug, SPREADSHEET_ROW_LIMIT } from './convert/plan.js';
 export type { ConversionPlan, PlanOptions, PlanInput, RateGroup, PlannedChannel } from './convert/plan.js';
 
 export { selectChannels, buildColumnNames, ChannelSelectionError } from './convert/channels.js';
+export { OptionError } from './convert/options.js';
 export { parseTimeSpec, resolveRange, TimeRangeError } from './convert/time-range.js';
 export type { ResolvedRange } from './convert/time-range.js';

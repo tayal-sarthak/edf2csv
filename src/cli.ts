@@ -23,6 +23,8 @@ import { EdfFile } from './edf/reader.js';
 import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
 import { ConversionError, USAGE_ERROR_CODES, convert, defaultOutputDir } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
+// Shared with the library so a bad option is the same error whichever way it arrived.
+import { OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson } from './cli/report.js';
@@ -84,14 +86,6 @@ Examples
   edf2csv /data/*.edf --out ./converted --jobs auto
   edf2csv /data/study --out ./converted --jobs auto
 `;
-
-/** A problem with how the command was invoked, as opposed to a problem with the file. */
-class OptionError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'OptionError';
-  }
-}
 
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;

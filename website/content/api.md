@@ -489,17 +489,20 @@ Two channels were requested at two different rates, so two signal files came bac
 
 ### Errors from convert
 
-`convert` throws four distinct error types. All of them are exported, so `instanceof` works.
+`convert` throws five distinct error types. All of them are exported, so `instanceof` works.
 
 | Type | When |
 | --- | --- |
 | `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
-| `ConversionError` | The output can't be written. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE` or `WRITE_FAILED`. |
+| `ConversionError` | The output can't be written, or the request can't be carried out. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST` or `WRITE_FAILED`. |
+| `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, or a `start`, `duration` or `end` that is not a non-negative finite number of seconds. |
 | `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
 
+`OptionError` is raised before the output directory is created, so a rejected option leaves nothing on disk. The command line has always rejected these values; until 0.4.33 the library did not, and `decimals: NaN` quietly wrote whole numbers into a column you had asked for decimals in.
+
 ```js
-import { convert, EdfError, ConversionError, ChannelSelectionError, TimeRangeError } from 'edf2csv';
+import { convert, EdfError, ConversionError, OptionError, ChannelSelectionError, TimeRangeError } from 'edf2csv';
 
 try {
   await convert('/data/recordings/sleep-study.edf', { outputDir: '/data/exports/run-1' });

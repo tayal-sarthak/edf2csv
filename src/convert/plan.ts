@@ -16,6 +16,7 @@ import { decimalsForSignal } from '../edf/scale.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
+import { assertOptions } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
 import type { ResolvedRange } from './time-range.js';
 
@@ -86,6 +87,10 @@ export interface OutputEstimate {
 export const SPREADSHEET_ROW_LIMIT = 1_048_576;
 
 export function buildPlan(input: PlanInput, options: PlanOptions = {}): ConversionPlan {
+  // First, and before a directory is created or a stream opened, so a rejected option
+  // leaves nothing behind. See assertOptions for what used to get through.
+  assertOptions(options);
+
   const diagnostics: Diagnostic[] = [];
   const columnNames = buildColumnNames(input.signals);
 
