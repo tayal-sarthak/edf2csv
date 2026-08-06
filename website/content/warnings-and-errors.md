@@ -497,14 +497,6 @@ warning: Signal 0's label or unit contains 2 control characters (\x1b), which wi
 
 Raised for every affected channel, so a file with three of them gets three warnings.
 
-## Codes that exist but are never raised
-
-One code is declared in the source but isn't raised anywhere in the current version, so you won't see it.
-
-`NONSTANDARD_UNIT` was reserved for reporting a physical dimension outside the set the specification recommends. That case still converts correctly today: the unit string is passed through verbatim into `channels.csv`, exactly as it appears in the header. It is listed here only so that the reference is complete, and so that seeing it in the source isn't mistaken for a behaviour you should expect.
-
-`NONPRINTABLE_LABEL` was in this section until 0.4.37, which implemented it — see above.
-
 ## Fatal errors: the recording can't be read
 
 These stop the conversion. Nothing is written. All of them exit **1**.
