@@ -222,7 +222,17 @@ export async function main(argv: readonly string[]): Promise<number> {
     return EXIT_USAGE;
   }
   const inputs = expanded.map((entry) => entry.path);
-  const batch = inputs.length > 1;
+  /*
+    A batch is what you asked for, not what happened to be there.
+
+    Counting the recordings made the shape of the run depend on the contents of a folder.
+    Under --json a study holding one night printed a pretty-printed object and the same study
+    holding two printed two compact lines, so a script written against one of them broke on
+    the other — and it broke the day a recording was added, not the day the script changed.
+    An input going missing did it in reverse. This is the same count 0.4.20 took out of
+    `--out` for the same reason.
+  */
+  const batch = inputs.length > 1 || expanded.some((entry) => entry.fromDirectory);
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
   const strict = values['strict'] === true;

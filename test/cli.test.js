@@ -859,6 +859,39 @@ describe('converting several recordings at once', () => {
     for (const line of lines) JSON.parse(line);
   });
 
+  it('shapes --json by what was named, not by what was found', async () => {
+    // The batch flag was `inputs.length > 1`, so the shape of the output depended on the
+    // contents of a folder: a study holding one night printed an indented document and the
+    // same study holding two printed JSON Lines. A script written against one broke on the
+    // other, on the day a recording was added rather than the day the script changed — and
+    // an input going missing did it in reverse. Same count 0.4.20 took out of --out.
+    const oneLine = (text) => text.trimEnd().split('\n');
+
+    const alone = await stage({ 'study/night-01/rec.edf': 'tiny.edf' });
+    const first = await cli([path.join(alone, 'study'), '--out', path.join(alone, 'csv'), '--json']);
+    assert.equal(first.code, 0, first.stderr);
+    assert.equal(oneLine(first.stdout).length, 1, 'a folder is JSON Lines even with one in it');
+    JSON.parse(first.stdout);
+
+    const beside = await stage({
+      'study/night-01/rec.edf': 'tiny.edf',
+      'study/night-02/rec.edf': 'tiny.edf',
+    });
+    const second = await cli([path.join(beside, 'study'), '--out', path.join(beside, 'csv'), '--json']);
+    assert.equal(second.code, 0, second.stderr);
+    const lines = oneLine(second.stdout);
+    assert.equal(lines.length, 2);
+    for (const line of lines) JSON.parse(line);
+
+    // Naming one recording still gives the indented document a single conversion prints.
+    const named = await cli([
+      path.join(alone, 'study', 'night-01', 'rec.edf'), '--out', path.join(alone, 'direct'), '--json',
+    ]);
+    assert.equal(named.code, 0, named.stderr);
+    assert.ok(oneLine(named.stdout).length > 1, `expected an indented document, got ${named.stdout}`);
+    JSON.parse(named.stdout);
+  });
+
   it('stops its children when interrupted, and says the output is incomplete', async () => {
     // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
     // signal sent to this process alone does not, which is how a batch runs from a script,

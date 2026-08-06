@@ -464,7 +464,15 @@ The progress meter is separate from the summary. It's drawn only when `--quiet` 
 
 ## --json
 
-Prints a summary object to stdout as JSON and suppresses the human-readable summary. Warnings that would otherwise go to stderr are carried inside the object instead, so with `--json` the whole result of a successful run is one parseable document on stdout and stderr stays empty.
+Prints a summary object to stdout as JSON and suppresses the human-readable summary. Warnings that would otherwise go to stderr are carried inside the object instead, so with `--json` the whole result of a successful run is on stdout and stderr stays empty.
+
+Naming one recording gives one indented document. Naming a folder, or several recordings, gives [JSON Lines](https://jsonlines.org) instead — one compact object per line, written as each recording finishes rather than held until the run ends, so a batch of five hundred can be consumed while it is still running:
+
+```bash
+edf2csv ./study --out ./converted --json | jq -r 'select(.warnings != []) | .output_dir'
+```
+
+`jq` reads that stream a record at a time. `json.load` does not: use `json.loads` per line, or `pandas.read_json(path, lines=True)`. Which of the two shapes you get is decided by what you named and never by what was found there, so a folder that gains a recording does not change the shape of the output.
 
 Here's a complete run over a short three-second, three-channel recording with an annotation channel:
 
@@ -510,7 +518,7 @@ Field by field:
 
 The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
 
-`--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout at all, so a parse failure and a non-zero exit code always coincide.
+`--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
 
 To fail a batch job on any warning, use `--strict`:
 
