@@ -112,7 +112,25 @@ function ignoreBrokenPipe(stream: NodeJS.WriteStream): void {
       // not happen. Node exits 0 on its own when nothing sets a code.
       return;
     }
-    throw error;
+
+    /*
+      Anything else is a real write failure, and this used to rethrow it.
+
+      The throw lands on a nextTick, outside whatever try/catch the conversion is running
+      inside, so it became an uncaught exception: `--stdout` redirected onto a full disk
+      died with a raw stack trace headed `dist/cli.js: throw error;` and lost the warning
+      that the CSV it had already produced was truncated. The same failure through `--out`
+      printed the ordinary message, and so did `--stdout` through the library API, which
+      never registers this listener — the designed path exists and works, and this was
+      preempting it.
+
+      A second listener means the conversion's writer is watching this stream and will
+      turn the failure into that ordinary message. Saying it here too would report one
+      failure twice, so this only speaks when nothing else will.
+    */
+    if (stream.listenerCount('error') > 1) return;
+    process.stderr.write(`error: Writing to ${stream === process.stdout ? 'stdout' : 'stderr'} failed: ${error.message}\n`);
+    process.exitCode = EXIT_ERROR;
   });
 }
 

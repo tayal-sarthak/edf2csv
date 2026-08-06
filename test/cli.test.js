@@ -847,6 +847,41 @@ describe('--gzip', () => {
     assert.equal(stderr.toString(), 'false', 'stdout must still be open when the conversion returns');
   });
 
+  it('reports a write failure on stdout instead of crashing', async () => {
+    // EPIPE is swallowed because a reader closing early is not a failure. Everything else
+    // used to be rethrown, and the throw landed on a nextTick outside whatever try/catch
+    // the conversion was inside — so `--stdout` onto a full disk died with a raw stack
+    // trace and lost the warning that the CSV it had already written was truncated. The
+    // same failure through --out printed the ordinary message all along.
+    //
+    // A read-only descriptor handed over as stdout fails with EBADF, which is a real write
+    // failure and not EPIPE, and needs no full filesystem to arrange.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-badfd-'));
+    temporaries.push(dir);
+    const readOnly = path.join(dir, 'target');
+    await writeFile(readOnly, '');
+
+    const { open } = await import('node:fs/promises');
+    const handle = await open(readOnly, 'r');
+    const { spawn } = await import('node:child_process');
+    try {
+      const child = spawn(process.execPath, [CLI, fixture('long-stream.edf'), '--stdout'], {
+        stdio: ['ignore', handle.fd, 'pipe'],
+      });
+      let stderr = '';
+      child.stderr.setEncoding('utf8').on('data', (chunk) => {
+        stderr += chunk;
+      });
+      const code = await new Promise((resolve) => child.on('close', resolve));
+
+      assert.equal(code, 1, `expected a reported failure, stderr was:\n${stderr}`);
+      assert.match(stderr, /Writing to stdout failed/u);
+      assert.ok(!/throw error|node:internal/u.test(stderr), `an error escaped:\n${stderr}`);
+    } finally {
+      await handle.close();
+    }
+  });
+
   it('exits cleanly when a reader hangs up on a compressed stream', async () => {
     // 0.2.30 made `--stdout | head` exit 0; 0.3.1 said compression would behave identically.
     // It did not: the EPIPE forwarded from stdout destroys the compressor, and end() on a

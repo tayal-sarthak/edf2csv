@@ -3,6 +3,47 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.10
+
+### Fixed: `--stdout` onto a full disk crashed instead of reporting
+
+```
+$ edf2csv recording.edf --stdout > /full-volume/out.csv
+dist/cli.js:108
+        throw error;
+        ^
+Error: ENOSPC: no space left on device, write
+    at writeSync (node:fs:917:3)
+```
+
+The same failure through `--out` has always printed the ordinary message:
+
+```
+error: Writing to "/full-volume/o" failed: ENOSPC: no space left on device, write
+       The files written so far are incomplete and should not be used. Free up space or
+       choose another destination with --out, then run the conversion again.
+```
+
+So did `--stdout` through the library API, which never installs the listener at fault. The
+designed error path existed and worked; something was getting in front of it.
+
+That something is the guard that swallows `EPIPE`. A reader closing early is not a failure, so
+`EPIPE` is ignored — but everything else was rethrown, and the rethrow lands on a nextTick,
+outside whatever `try`/`catch` the conversion is running inside. It became an uncaught
+exception, taking the process down with a stack trace and discarding the warning that the CSV
+already on stdout stops mid-recording. For a tool whose stance is that it will not go quiet
+when something is wrong, losing that particular sentence is the worst part.
+
+Non-`EPIPE` failures are now reported rather than thrown, and only when nothing else is
+listening — during a conversion the writer is already watching that stream and turns the same
+failure into the message above, so speaking twice would report one problem as two. `| head`
+still exits 0.
+
+Verified on a real 2 MB volume filled to capacity, and pinned by a test that hands the command
+a read-only descriptor as stdout: writing to it fails with `EBADF`, which is a genuine write
+failure that needs no full filesystem to arrange. Against the old code that test sees the stack
+trace; against this one it sees the message.
+
 ## 0.4.9
 
 ### Fixed: a continuous recording that starts mid-second put its samples and its events on different clocks
