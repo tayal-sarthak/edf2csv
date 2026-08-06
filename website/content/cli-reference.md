@@ -31,7 +31,15 @@ Converted 3 of 3 recordings.
 
 With `--out` the named directory becomes the parent and each recording gets its own inside it, named after the file. Without `--out` each recording converts beside itself into `<name>_csv`, exactly as it would have done alone.
 
+What `--out` means is decided by what you named, not by what was found. Name one recording and it is the output directory itself; name a folder — or several recordings — and it is a parent. So `edf2csv study --out csv` writes `csv/night-01/rec/` whether the study holds one night or fifty, and adding a second night never moves the first one's output.
+
 A recording that cannot be read is reported and the rest still convert — one unreadable file in a folder of five hundred is a reason to name that file, not to discard the work already done. The closing line says how many succeeded, and the exit code is non-zero if any failed.
+
+The same goes for anything the walk cannot look at: a sub-directory it may not list, or a link whose target is not there — a night linked to a drive that is not mounted, say. It is named on stderr and counts against the run, because the walk cannot know what was behind it and converting less than you asked for is not a success:
+
+```
+error: study/night-02: could not be read, so any recordings inside it were skipped.
+```
 
 A recording named more than once is converted once, however it was named — twice on the command line, or once directly and once inside a folder that was also given. A shell produces that by accident easily enough (`edf2csv *.edf recording.edf`), and it is not ambiguous.
 

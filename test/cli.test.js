@@ -697,8 +697,64 @@ describe('converting several recordings at once', () => {
       path.join(dir, 'data'), '--out', path.join(dir, 'out'), '--quiet',
     ]);
     assert.equal(code, 0, stderr);
-    // One recording, so this is a single conversion and --out is the directory itself.
-    assert.ok((await readdir(path.join(dir, 'out'))).includes('signals.csv'));
+    // A folder was named, so --out is a parent whether it holds one recording or fifty.
+    const written = await readdir(path.join(dir, 'out'));
+    assert.equal(written.length, 1, `one recording, one directory: found ${written}`);
+    assert.ok((await readdir(path.join(dir, 'out', written[0]))).includes('signals.csv'));
+  });
+
+  it('puts a recording in the same place however many siblings it has', async () => {
+    // What --out means was decided by counting the recordings, so `edf2csv study --out csv`
+    // wrote csv/signals.csv while the study held one night and csv/night-01/rec/signals.csv
+    // once it held two: adding a recording moved the output of one that had not changed.
+    // The same count made the destination turn on things nobody had touched — a night on an
+    // unmounted drive, a sub-directory that could not be read — since losing an input was
+    // enough to change where the survivors landed.
+    const alone = await stage({ 'study/night-01/rec.edf': 'tiny.edf' });
+    const beside = await stage({
+      'study/night-01/rec.edf': 'tiny.edf',
+      'study/night-02/rec.edf': 'tiny.edf',
+    });
+
+    for (const dir of [alone, beside]) {
+      const { code, stderr } = await cli([
+        path.join(dir, 'study'), '--out', path.join(dir, 'csv'), '--quiet',
+      ]);
+      assert.equal(code, 0, stderr);
+    }
+
+    const first = path.join('csv', 'night-01', 'rec', 'signals.csv');
+    assert.deepEqual(
+      await readFile(path.join(alone, first), 'utf8'),
+      await readFile(path.join(beside, first), 'utf8'),
+      'the same recording, in the same place, whether or not it has a neighbour',
+    );
+
+    // Naming the recording itself still means the output directory itself.
+    const named = await cli([
+      path.join(alone, 'study', 'night-01', 'rec.edf'),
+      '--out', path.join(alone, 'direct'), '--quiet',
+    ]);
+    assert.equal(named.code, 0, named.stderr);
+    assert.ok((await readdir(path.join(alone, 'direct'))).includes('signals.csv'));
+  });
+
+  it('reports a dangling link whatever it is called, and keeps the survivors in place', async () => {
+    // A study kept as one folder per night, with one night linked to a drive that is not
+    // mounted. The link carries no `.edf` name, so it was skipped in silence — and losing it
+    // left a single recording, which used to move the survivor's output as well.
+    const dir = await stage({ 'study/night-01/rec.edf': 'tiny.edf' });
+    await symlink(path.join(dir, 'nowhere'), path.join(dir, 'study', 'night-02'));
+
+    const { code, stderr } = await cli([
+      path.join(dir, 'study'), '--out', path.join(dir, 'csv'), '--quiet',
+    ]);
+    assert.notEqual(code, 0, 'a recording that could not be reached is not a success');
+    assert.match(stderr, /night-02: could not be read/u);
+    assert.ok(
+      (await readdir(path.join(dir, 'csv', 'night-01', 'rec'))).includes('signals.csv'),
+      'the night that was mounted lands where it would have landed anyway',
+    );
   });
 
   it('reports a folder it could not read instead of stepping over it', async () => {

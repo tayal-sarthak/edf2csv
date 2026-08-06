@@ -645,6 +645,13 @@ interface Input {
    * that fifty recordings all named `rec.edf` do not all claim `<out>/rec`.
    */
   name: string;
+  /**
+   * Whether this recording was found by expanding a directory rather than named directly.
+   *
+   * `--out` means two different things — the output directory itself, or a parent to put one
+   * directory per recording inside — and this is what decides which. See `destinationsFor`.
+   */
+  fromDirectory: boolean;
 }
 
 /**
@@ -665,13 +672,13 @@ async function expandInputs(
     if (info === null || !info.isDirectory()) {
       // Anything that is not a directory is passed through untouched, so a file that does
       // not exist still reports itself rather than vanishing from the list.
-      found.push({ path: given, name: path.basename(given) });
+      found.push({ path: given, name: path.basename(given), fromDirectory: false });
       continue;
     }
     const walked = await walk(given);
     unreadable.push(...walked.unreadable);
     for (const file of walked.files) {
-      found.push({ path: file, name: path.relative(given, file) });
+      found.push({ path: file, name: path.relative(given, file), fromDirectory: true });
     }
   }
   /*
@@ -747,9 +754,22 @@ async function walk(root: string): Promise<{ files: string[]; unreadable: string
       // stat, not the dirent: a dirent describes the link, and what matters is its target.
       const info = await stat(full).catch(() => null);
       if (info === null) {
-        // A broken link is ordinary and names nothing; anything else that cannot be
-        // inspected is only worth mentioning if it looks like a recording.
-        if (/\.(edf|bdf)$/iu.test(entry.name)) unreadable.push(full);
+        /*
+          Anything that cannot be inspected is reported, whatever it is called.
+
+          This used to report only names ending in `.edf` or `.bdf`, on the reasoning that a
+          broken link to something else is nobody's business. A directory carries no such
+          name. A study kept as one folder per night, with one night linked to an external
+          drive, converted the nights that were mounted and said nothing about the one that
+          was not — and because losing that input left a single recording, `--out` stopped
+          meaning "a parent to fill" and started meaning "the directory to write", so the
+          survivor landed somewhere else as well. Whether a drive happened to be mounted
+          changed both what was converted and where it went, in silence, exit 0.
+
+          The walk cannot know what was behind a link it cannot follow, which is exactly the
+          reason to say so rather than to guess.
+        */
+        unreadable.push(full);
         continue;
       }
       if (info.isDirectory()) {
@@ -767,17 +787,26 @@ async function walk(root: string): Promise<{ files: string[]; unreadable: string
 /**
  * Where each recording's output goes.
  *
- * With one input `--out` names the output directory itself, which is what it has always
- * meant. With several it names a parent and each recording gets its own directory inside
- * it, because writing several recordings into one directory would have them overwrite each
- * other's `signals.csv` — the one thing a batch must not do quietly.
+ * Naming one recording, `--out` is the output directory itself, which is what it has always
+ * meant. Naming a folder, or several recordings, it is a parent and each recording gets its
+ * own directory inside it, because writing several recordings into one directory would have
+ * them overwrite each other's `signals.csv` — the one thing a batch must not do quietly.
  *
  * With no `--out` at all, every recording converts beside itself exactly as it would have
  * done alone, so a glob behaves like the shell loop it replaces.
+ *
+ * What a folder means is decided by the folder, not by how much is in it. Counting the
+ * recordings instead meant `edf2csv study --out csv` wrote `csv/signals.csv` while the study
+ * held one night and `csv/night-01/rec/signals.csv` once it held two: adding a recording
+ * moved the output of a recording that had not changed. The same count made the destination
+ * depend on things no one had touched either — a night on an unmounted drive, a
+ * sub-directory that could not be read — so where the data landed turned on the state of the
+ * machine rather than on the command.
  */
 function destinationsFor(inputs: readonly Input[], out: string | undefined): string[] {
   if (out === undefined) return inputs.map((input) => defaultOutputDir(input.path));
-  if (inputs.length === 1) return [out];
+  const single = inputs.length === 1 && inputs[0]?.fromDirectory === false;
+  if (single) return [out];
   return inputs.map((input) => path.join(out, stemOf(input.name)));
 }
 
