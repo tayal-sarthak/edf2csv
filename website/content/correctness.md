@@ -4,19 +4,20 @@ description: What edf2csv checks, how it is compared against pyEDFlib, why the c
 order: 7
 ---
 
-## Five separate claims
+## Six separate claims
 
-Correctness here covers five different things, verified five different ways. The list grew
-past the "three" this section used to promise as the batch and fuzz harnesses were added,
-and the heading did not.
+Correctness here covers six different things, verified six different ways. The list grew
+past the "three" this section used to promise as the batch, fuzz and estimate harnesses were
+added, and the heading did not keep up until 0.4.34.
 
 1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes. Checked by `npm run fuzz:batch`.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **1,200 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
-5. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
+5. **`--info` predicts what a conversion writes.** The row count is exact and the byte count never reads low, across every fixture crossed with every option combination. Checked by `npm run estimate`: **192 predictions over 34 recordings**, sizes reading 20% high on average, which is the direction a size estimate has to err in.
+6. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and fifth are what `npm test` runs, and the third and fourth are the two fuzz commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and sixth are what `npm test` runs; the third, fourth and fifth are the fuzz and estimate commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib

@@ -13,6 +13,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
+import { csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
@@ -362,8 +363,19 @@ function estimateOutput(
     );
     // One comma per channel, plus the newline.
     bytes += groupRows * (timeWidth + cellWidth + group.channels.length + 1);
-    // The header row: the column names, their commas and a newline.
-    bytes += 'time_s'.length + group.channels.reduce((n, c) => n + c.column.length + 1, 0) + 1;
+    /*
+      The header row, measured as it will be written rather than as the labels are stored.
+
+      A column name is quoted when it contains a comma, a quote, a newline or a leading or
+      trailing space, and every quote inside it is doubled. Counting the raw label under-counted
+      that row: three channels labelled `a,b,c,d,e`, `x"y` and `plain` write a 32-byte header
+      and were budgeted 27. EDF labels are free text, so commas in them are ordinary — a montage
+      written as `EEG Fpz-Cz, ref` is exactly the kind of thing this is for.
+
+      csvRow is the function that writes it, so it is the function that measures it. Nothing
+      else is in a position to stay correct when the quoting rules change.
+    */
+    bytes += Buffer.byteLength(csvRow(['time_s', ...group.channels.map((c) => c.column)])) + 1;
   }
 
   return { rows, bytes, exceedsSpreadsheetLimit: exceeds };
