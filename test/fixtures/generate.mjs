@@ -194,6 +194,32 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // An EDF+C recording whose FIRST timekeeping TAL is unreadable, twinned with EDF+D.
+  //
+  // Records sit at 0.5s, 1.5s and 2.5s. Record 0's timekeeping TAL writes its onset with a
+  // comma, so it cannot be read — but records 1 and 2 say plainly where they are, and
+  // continuity fixes the origin from either of them: 1.5 - 1x1 = 0.5. Reading only
+  // recordStarts[0] threw that away and timed the whole file from zero, putting every
+  // sample 0.5s earlier than the file states while the annotation onsets kept their true
+  // values. The two files differ only in the reserved field, so they must agree on time.
+  const lostTk = (r) => (r === 0 ? `+0,5\x14\x14\x00` : `+${r}.5\x14\x14\x00`) + `+${r}.75\x14event ${r}\x14\x00`;
+  const lostOrigin = {
+    reserved: 'EDF+C',
+    startDate: '01.01.20',
+    startTime: '00.00.00',
+    patient: 'X X X X',
+    recording: 'Startdate 01-JAN-2020 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+    talsForRecord: lostTk,
+  };
+  writeEdf({ ...lostOrigin, path: at('lost-timekeeping.edf') });
+  writeEdf({ ...lostOrigin, path: at('lost-timekeeping-d.edf'), reserved: 'EDF+D' });
+
   // Control characters in a label and in a unit.
   //
   // `--info` has escaped these since it was written, because an ANSI escape in a header can

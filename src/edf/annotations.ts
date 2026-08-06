@@ -38,6 +38,8 @@ export interface DecodedRecordAnnotations {
   annotations: Annotation[];
   /** Non-empty chunks that were not valid TALs, so the caller can report them. */
   malformed: number;
+  /** Unreadable TALs in first position, which carry a record's start time, not an event. */
+  malformedTimekeeping: number;
 }
 
 /**
@@ -55,6 +57,7 @@ export function decodeRecordAnnotations(
   let recordStart: number | null = null;
   let isFirstTal = true;
   let malformed = 0;
+  let malformedTimekeeping = 0;
 
   let start = 0;
   for (let i = 0; i <= bytes.length; i++) {
@@ -77,13 +80,24 @@ export function decodeRecordAnnotations(
         if (isTimekeeping) recordStart = parsed.onset;
         for (const annotation of parsed.annotations) annotations.push(annotation);
       } else {
-        malformed++;
+        /*
+          Counted apart from the events, because losing one is a different loss.
+
+          A timekeeping TAL is never exported — it says where the record sits, not what
+          happened — so counting it among the entries that "could not be exported" both
+          overstated what was lost from annotations.csv and said nothing about the thing that
+          actually went missing, which is a record's position in time. A file with one
+          unreadable timekeeping TAL and three perfectly good events reported "1 annotation
+          entry was unreadable and could not be exported" while exporting all three.
+        */
+        if (isTimekeeping) malformedTimekeeping++;
+        else malformed++;
       }
     }
     start = i + 1;
   }
 
-  return { recordStart, annotations, malformed };
+  return { recordStart, annotations, malformed, malformedTimekeeping };
 }
 
 interface ParsedTal {

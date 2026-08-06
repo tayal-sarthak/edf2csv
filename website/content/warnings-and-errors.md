@@ -323,7 +323,7 @@ Rows are written in file order, not sorted by time, so `time_s` will step backwa
 
 ### ANNOTATION_DECODE_FAILED
 
-This code covers two conditions.
+This code covers three conditions, which are counted separately because they lose different things.
 
 **Annotation entries couldn't be decoded.** The annotation channel stores text as a run of Time-stamped Annotation Lists, each beginning with an explicitly signed onset. A chunk that doesn't begin with `+` or `-`, or whose onset isn't a finite number, can't be decoded.
 
@@ -333,6 +333,17 @@ warning: 1 annotation entry was unreadable and could not be exported.
 ```
 
 edf2csv skips the bad entry and keeps going. A single malformed annotation shouldn't cost you a whole conversion, but losing it in silence would mean you never learn that an event is missing from `annotations.csv`.
+
+**A record's timekeeping entry couldn't be decoded, in a continuous file.** The first entry of every record states where that record sits in time rather than describing an event, so it is never exported. Until 0.4.41 these were counted with the events above, which described the wrong loss twice: a file with one unreadable timekeeping entry and three good events announced that one entry "could not be exported" while exporting all three, and said nothing about the timing that had actually gone missing.
+
+```
+warning: 1 data record carries a timekeeping annotation that could not be read, so it does
+         not say where in time it sits.
+         No event was lost — a timekeeping annotation states a record's start time and is
+         never exported. Times are derived from the records that could be read.
+```
+
+In a continuous recording the records sit end to end, so any record that *can* be read fixes the origin for all of them: a record stating 1.5 s in a file of one-second records puts the recording's start at 0.5 s. Only if no record at all states a time does the file fall back to being timed from zero.
 
 **Records carry no readable timekeeping annotation.** In a discontinuous file, the first annotation entry of each record must carry that record's start time. When it's missing or unreadable, that record's true position in time is unknown.
 

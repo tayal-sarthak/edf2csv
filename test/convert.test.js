@@ -779,6 +779,66 @@ describe('converting', () => {
     );
   });
 
+  it('takes the origin from whichever record first states one', async () => {
+    // Reading only recordStarts[0] meant a single unreadable timekeeping TAL threw the
+    // origin away and timed the whole file from zero — while records 1 and 2, saying plainly
+    // that they start at 1.5s and 2.5s, went unread. Every sample came out 0.5s earlier than
+    // the file states, against annotation onsets that kept their true values: precisely the
+    // mismatch 0.4.9 fixed, through the one hole left in it. Continuity is what makes it
+    // recoverable — record i sits at origin + i * duration, so any readable record fixes it.
+    const rowsFor = async (name) => {
+      const dir = await outDir();
+      const result = await convert(fixture(name), { outputDir: dir });
+      return {
+        signals: await readCsv(dir, 'signals.csv'),
+        annotations: await readCsv(dir, 'annotations.csv'),
+        diagnostics: result.diagnostics,
+      };
+    };
+
+    const continuous = await rowsFor('lost-timekeeping.edf');
+    const discontinuous = await rowsFor('lost-timekeeping-d.edf');
+
+    assert.equal(continuous.signals[1], '0.500,0.000', 'the recording starts where it says');
+    assert.deepEqual(
+      continuous.signals,
+      discontinuous.signals,
+      'the two differ only in the reserved field, so they must agree on time',
+    );
+
+    // The events land on rows that exist, which is the point of sharing an origin.
+    const times = new Set(continuous.signals.slice(1).map((row) => row.split(',')[0]));
+    for (const onset of ['0.750', '1.750', '2.750']) {
+      assert.ok(times.has(onset), `no sample row at ${onset}`);
+    }
+  });
+
+  it('calls a lost timekeeping annotation what it is', async () => {
+    // Timekeeping TALs were counted among the annotations, so a file with one unreadable
+    // timekeeping TAL and three good events announced "1 annotation entry was unreadable and
+    // could not be exported" — while exporting all three. Nothing was missing from
+    // annotations.csv; what went missing was a record's position in time.
+    const dir = await outDir();
+    const result = await convert(fixture('lost-timekeeping.edf'), { outputDir: dir });
+
+    assert.equal((await readCsv(dir, 'annotations.csv')).length - 1, 3, 'every event exported');
+    assert.ok(
+      !result.diagnostics.some((d) => /could not be exported/u.test(d.message)),
+      `nothing failed to export: ${JSON.stringify(result.diagnostics)}`,
+    );
+    const notice = result.diagnostics.find((d) => /timekeeping annotation/u.test(d.message));
+    assert.ok(notice, 'the lost timing must be reported');
+    assert.match(notice.message, /1 data record carries a timekeeping annotation/u);
+    assert.match(notice.hint, /No event was lost/u);
+
+    // On the discontinuous twin the existing per-record warning is more specific, and
+    // saying both would report one problem twice.
+    const other = await convert(fixture('lost-timekeeping-d.edf'), { outputDir: await outDir() });
+    const timekeeping = other.diagnostics.filter((d) => /timekeeping/u.test(d.message));
+    assert.equal(timekeeping.length, 1, `one message, got ${timekeeping.length}`);
+    assert.match(timekeeping[0].message, /carry no readable timekeeping annotation \(record 0\)/u);
+  });
+
   it('says so when a recording claims an origin its own arithmetic cannot hold', async () => {
     // A double spaces its values further apart the larger they get: at 1e16 the gap is two
     // seconds, so `t + 1` is `t`. Honouring the first timekeeping TAL without checking that

@@ -4,6 +4,8 @@ import type { EdfFile } from '../edf/reader.js';
 export interface AnnotationTimingData {
   recordStarts: (number | null)[];
   malformed: number;
+  /** Unreadable TALs in first position, which carry timing rather than an event. */
+  malformedTimekeeping?: number;
 }
 
 /**
@@ -31,6 +33,33 @@ export function deriveRecordStarts(
   }
 
   /*
+    A timekeeping TAL is not an event, and saying it "could not be exported" describes the
+    wrong loss twice over.
+
+    These were counted among the annotations, so a file with one unreadable timekeeping TAL
+    and three good events announced "1 annotation entry was unreadable and could not be
+    exported" — while exporting all three. Nothing was missing from annotations.csv; what
+    went missing was a record's position in time, which the message never mentioned.
+  */
+  const lostTimekeeping = annotationData.malformedTimekeeping ?? 0;
+  // The EDF+D branch below raises its own, which names the records and is more specific.
+  // Saying both would report one problem twice.
+  if (lostTimekeeping > 0 && file.header.continuity !== 'EDF+D') {
+    const one = lostTimekeeping === 1;
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${lostTimekeeping} data record${one ? '' : 's'} carr${one ? 'ies' : 'y'} a timekeeping ` +
+        `annotation that could not be read, so ${one ? 'it does' : 'they do'} not say where in ` +
+        `time ${one ? 'it sits' : 'they sit'}.`,
+      hint:
+        'No event was lost — a timekeeping annotation states a record\'s start time and is ' +
+        'never exported. Times are derived from the records that could be read.',
+    });
+  }
+
+  /*
     A continuous recording's records are contiguous, but the first one need not sit at zero.
 
     EDF+ puts the header's start time and every annotation onset on one origin, and says the
@@ -45,14 +74,55 @@ export function deriveRecordStarts(
     TAL of +0 needs no table at all, and that is nearly every file.
   */
   if (file.header.continuity !== 'EDF+D') {
-    const first = annotationData.recordStarts[0];
-    if (file.header.continuity !== 'EDF+C' || typeof first !== 'number' || first === 0) {
-      return { starts: null, diagnostics };
-    }
+    if (file.header.continuity !== 'EDF+C') return { starts: null, diagnostics };
+
+    /*
+      The origin comes from whichever record first states one, not from record 0 alone.
+
+      Reading only `recordStarts[0]` meant a single unreadable timekeeping TAL threw the
+      origin away and timed the whole file from zero — while records 1 and 2, saying plainly
+      that they start at 1.5s and 2.5s, went unread. A recording whose records sit at 0.5s,
+      1.5s and 2.5s came out with every sample 0.5s earlier than the file states, against
+      annotation onsets that kept their true values. That is precisely the mismatch 0.4.9
+      fixed, arriving through the one hole left in it, and the byte-identical EDF+D twin
+      timed it correctly, which is what gives it away.
+
+      Continuity is what makes this recoverable: record i sits at `origin + i * duration`,
+      so any readable record determines the origin for all of them.
+    */
+    const origin = originOf(annotationData.recordStarts, file.header.recordDuration);
+    if (origin === null || origin === 0) return { starts: null, diagnostics };
+
     const contiguous = new Float64Array(file.recordCount);
     for (let i = 0; i < file.recordCount; i++) {
-      contiguous[i] = first + i * file.header.recordDuration;
+      contiguous[i] = origin + i * file.header.recordDuration;
     }
+
+    /*
+      A file marked continuous whose own records disagree about it.
+
+      Nothing looked at records past the first, so an EDF+C file whose records are in fact
+      spread out was timed as though they were contiguous and said nothing. The records are
+      being read here anyway, so the contradiction costs nothing to notice — and it is the
+      file, not the reader, that has to be wrong for this to fire.
+    */
+    const contradicting = annotationData.recordStarts.filter(
+      (declared, i) => typeof declared === 'number' && declared !== contiguous[i],
+    ).length;
+    if (contradicting > 0) {
+      diagnostics.push({
+        code: 'DISCONTINUOUS',
+        severity: 'warning',
+        message:
+          `This file is marked continuous (EDF+C), but ${contradicting} of its ` +
+          `${file.recordCount} data records say they start somewhere other than where ` +
+          `continuity puts them.`,
+        hint:
+          'Times are written as if the records were contiguous, which is what EDF+C means. ' +
+          'If the recording really has gaps, the file should have been marked EDF+D.',
+      });
+    }
+    const first = origin;
     const last = contiguous[file.recordCount - 1] ?? first;
     if (!canCarry(last, file)) {
       diagnostics.push(unusableOrigin(first, file));
@@ -73,13 +143,25 @@ export function deriveRecordStarts(
     return { starts: null, diagnostics };
   }
 
+  /*
+    A record with no readable time is placed from the origin the other records establish,
+    not from zero.
+
+    `i * recordDuration` assumed the recording began at zero, which is the one thing the
+    other records are in a position to contradict: a file starting at 0.5s put its
+    unreadable record at 0.000 while its neighbours sat at 1.5s and 2.5s. The guess is still
+    a guess — a discontinuous file may have a gap exactly there — and it is still reported
+    below, but starting it from where the recording actually begins is strictly closer, and
+    it makes an EDF+D file agree with its byte-identical EDF+C twin about record 0.
+  */
+  const base = originOf(annotationData.recordStarts, file.header.recordDuration) ?? 0;
   const starts = new Float64Array(file.recordCount);
   const missing: number[] = [];
   for (let i = 0; i < file.recordCount; i++) {
     const declared = annotationData.recordStarts[i];
     if (declared === null || declared === undefined) {
       missing.push(i);
-      starts[i] = i * file.header.recordDuration;
+      starts[i] = base + i * file.header.recordDuration;
     } else {
       starts[i] = declared;
     }
@@ -119,6 +201,22 @@ export function deriveRecordStarts(
   }
 
   return { starts, diagnostics };
+}
+
+/**
+ * The recording's origin, from the first record that states where it is.
+ *
+ * Records of a continuous recording sit end to end, so record `i` beginning at `t` puts the
+ * origin at `t - i * duration`. Any one readable timekeeping TAL is therefore enough, which
+ * is what stops one unreadable entry from costing the whole file its position in time.
+ */
+function originOf(recordStarts: readonly (number | null)[], recordDuration: number): number | null {
+  for (const [index, declared] of recordStarts.entries()) {
+    if (typeof declared !== 'number') continue;
+    const origin = declared - index * recordDuration;
+    return Number.isFinite(origin) ? origin : null;
+  }
+  return null;
 }
 
 /**
