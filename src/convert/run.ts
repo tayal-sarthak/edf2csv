@@ -18,6 +18,7 @@ import path from 'node:path';
 import { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
+import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
 import { BufferedLineWriter, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
@@ -35,6 +36,7 @@ export type ConversionErrorCode =
   | 'OUTPUT_EXISTS'
   | 'OUTPUT_UNWRITABLE'
   | 'INPUT_OUTPUT_COLLISION'
+  | 'INPUT_UNREADABLE'
   | 'WRITE_FAILED';
 
 export class ConversionError extends Error {
@@ -424,6 +426,29 @@ async function writeSignalFiles(
     return await streamSignalRows(file, plan, open, recordStarts, options);
   } catch (cause) {
     for (const entry of open) entry.writer.destroy();
+
+    /*
+      Reading and writing both fail through here, and both were reported as writing.
+
+      A recording that shrinks mid-conversion — still being written by the acquisition
+      software, say — raises the reader's own error, which names the record and says the
+      file changed size while it was being read. That precise diagnosis was then filed under
+      `Writing to "<dir>" failed` and given the hint about freeing disk space, which sends
+      someone to look at the one part of the system that was working.
+
+      The reader's message and its advice are kept; only the note about partial output is
+      added, since that much is true of either failure.
+    */
+    if (cause instanceof EdfError) {
+      const where = outputDir === null ? 'stdout' : `"${outputDir}"`;
+      throw new ConversionError(
+        'INPUT_UNREADABLE',
+        cause.message,
+        `${cause.hint ? `${cause.hint} ` : ''}What was written to ${where} before it failed is ` +
+          `incomplete and should not be used.`,
+      );
+    }
+
     const detail = cause instanceof Error ? cause.message : String(cause);
     throw new ConversionError(
       'WRITE_FAILED',

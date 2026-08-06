@@ -3,6 +3,43 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.11
+
+### Fixed: a recording that changed while being read was reported as a disk problem
+
+Reading and writing both fail through one place, and both were reported as writing. A recording
+still being appended to by the acquisition software — or otherwise resized mid-conversion —
+raises the reader's own error, which names the record and says exactly what happened. That
+diagnosis was then filed under the wrong heading and handed the wrong advice:
+
+```
+error: Writing to "/data/converted" failed: Expected 8388600 bytes of data at record 41943 but
+       only 0 were available; the file appears to have changed size while it was being read.
+       The files written so far are incomplete and should not be used. Free up space or choose
+       another destination with --out, then run the conversion again.
+```
+
+Nothing was wrong with the destination, and freeing space or choosing a different `--out` would
+not have helped. It sends someone to look at the one part of the system that was working.
+
+```
+error: Expected 8388600 bytes of data at record 41943 but only 0 were available; the file
+       appears to have changed size while it was being read.
+       Make sure the recording is not still being written to, then try again. What was written
+       to "/data/converted" before it failed is incomplete and should not be used.
+```
+
+The reader's message and its advice are kept; only the note about partial output is added,
+since that much is true either way. A genuine write failure — a full disk, an unwritable path —
+still reports as one, with the hint it always had. The error carries a new code,
+`INPUT_UNREADABLE`, so a script can tell the two apart without reading English.
+
+The test cuts the file at a deterministic point rather than racing a timer: records are read in
+batches sized by a byte budget, and `onProgress` fires between them, so truncating in the first
+callback is reliably before the next read. Getting there took two failed attempts — a timer
+that lost the race on a small file, and a "larger" file made by concatenating one, which is not
+a larger recording at all but one recording followed by bytes nothing reads.
+
 ## 0.4.10
 
 ### Fixed: `--stdout` onto a full disk crashed instead of reporting

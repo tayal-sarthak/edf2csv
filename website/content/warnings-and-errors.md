@@ -575,6 +575,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | --- | --- |
 | Unknown flag | Reported by the argument parser, followed by a pointer to `--help` |
 | No input file | Usage text is printed |
+| The recording changed size while it was being read | `Expected 8388600 bytes of data at record 41943 but only 0 were available; the file appears to have changed size while it was being read.` |
 | Two recordings that would convert into the same directory | `"n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.` |
 | Several recordings with `--stdout` | `--stdout writes a single CSV, so it cannot take 3 recordings.` |
 | `--channels` given with no names | `--channels was given but lists no channel names.` |

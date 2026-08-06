@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -350,6 +350,62 @@ describe('converting', () => {
       [['slow', 'signals_0_000001hz.csv'], ['slower', 'signals_0_00000125hz.csv']],
       'no numbered suffix, and each name states its own rate',
     );
+  });
+
+  it('blames the input when it is the input that failed', async () => {
+    // Reading and writing both fail through one catch, and both were reported as writing.
+    // A recording that shrinks mid-conversion — still being written by the acquisition
+    // software, say — raised the reader's own precise error, which was then filed under
+    // `Writing to "<dir>" failed` and given the hint about freeing disk space, sending the
+    // reader to look at the one part of the system that was working.
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { truncateSync } = await import('node:fs');
+
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-shrink-'));
+    temporaries.push(scratch);
+    const source = path.join(scratch, 'shrinking.edf');
+
+    // Records are read in batches sized by a byte budget, so the file has to be big enough
+    // to need more than one — otherwise it is all read before anything can change under it.
+    // Ten channels make the input large while converting only one keeps the CSV small.
+    writeEdf({
+      path: source,
+      numRecords: 1700,
+      recordDuration: 1,
+      signals: Array.from({ length: 10 }, (unused, channel) => ({
+        label: `ch${channel}`,
+        dimension: 'uV',
+        physMin: -100,
+        physMax: 100,
+        digMin: -1000,
+        digMax: 1000,
+        samplesPerRecord: 256,
+        gen: (record, sample) => (record + sample) % 1000,
+      })),
+    });
+
+    // Cut the file at a known point rather than racing a timer: onProgress fires after each
+    // batch, so truncating in the first callback is reliably before the next read.
+    let cut = false;
+    const converting = convert(source, {
+      outputDir: await outDir(),
+      channels: ['ch0'],
+      onProgress: () => {
+        if (cut) return;
+        cut = true;
+        truncateSync(source, 4096);
+      },
+    });
+
+    await assert.rejects(converting, (error) => {
+      assert.ok(error instanceof ConversionError, `expected a ConversionError, got ${error}`);
+      assert.equal(error.code, 'INPUT_UNREADABLE', 'a read failure is not a write failure');
+      assert.match(error.message, /changed size while it was being read/u);
+      assert.match(error.hint, /not still being written to/u, "the reader's own advice is kept");
+      assert.ok(!/Free up space/u.test(error.hint), 'disk space is not the problem here');
+      assert.match(error.hint, /incomplete and should not be used/u);
+      return true;
+    });
   });
 
   it('times a continuous recording from its first record, not from zero', async () => {
