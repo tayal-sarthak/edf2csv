@@ -460,6 +460,22 @@ drawn in this mode.
 `--stdout` and `--json` cannot be combined: both write to stdout, and together they would produce a
 document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2).
 
+### Redirecting to a file that will not fit
+
+When stdout is redirected to a regular file, `edf2csv` checks at the end that the descriptor grew by as many bytes as it was handed, and fails if it did not:
+
+```
+error: Writing to stdout failed: 150904 of 2063736 bytes did not reach the destination,
+       which stopped accepting them part way through.
+       What is there ends mid-row and should not be used. The destination is almost
+       certainly out of space — a short write is how a filesystem reports filling up
+       mid-write, and nothing after it raised an error because there was nothing after it.
+```
+
+The check exists because this is the one path that has no second file to trip over. `write` returns a short count rather than an error when the filesystem fills partway through a single call, and only the *next* write raises `ENOSPC` — `--out` always has a next write, since `channels.csv` and `metadata.json` come after the samples. Until 0.4.39 a `--stdout` conversion that lost its tail this way exited 0 and announced the full row count.
+
+It applies to a regular file only. A pipe, a terminal or a socket has no size to compare, and cannot lose a write this way without reporting it. Appending with `>>` is fine: the starting size is taken before anything is written.
+
 ## -q, --quiet
 
 Suppresses the closing summary and the progress meter. It doesn't suppress warnings or errors: a conversion that raises a warning about mixed sampling rates or a truncated file still says so on stderr under `--quiet`, because those describe your data rather than the tool's own status. A clean conversion under `--quiet` prints nothing at all and exits 0.

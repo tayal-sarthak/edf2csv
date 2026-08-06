@@ -38,6 +38,8 @@ export class BufferedLineWriter {
   #pending = 0;
   #threshold: number;
   #bytesWritten = 0;
+  /** Real bytes handed to the stream, as opposed to characters. See `bytesOut`. */
+  #bytesOut = 0;
   #ended = false;
   /** The reader closed the pipe; there is nowhere left to write, but this is not a failure. */
   #hungUp = false;
@@ -75,6 +77,18 @@ export class BufferedLineWriter {
   /** Characters written to the stream so far, before any encoding expansion. */
   get charsWritten(): number {
     return this.#bytesWritten;
+  }
+
+  /**
+   * Bytes handed to the stream, counting a multi-byte character once per byte.
+   *
+   * `charsWritten` drives the progress meter, where the difference does not matter. This is
+   * for checking that what was handed over actually arrived, which is a byte question: a
+   * channel labelled in Cyrillic makes the two differ by hundreds of bytes on the header
+   * line alone.
+   */
+  get bytesOut(): number {
+    return this.#bytesOut;
   }
 
   push(text: string): void {
@@ -117,6 +131,7 @@ export class BufferedLineWriter {
     this.#parts = [];
     this.#pending = 0;
     this.#bytesWritten += chunk.length;
+    this.#bytesOut += Buffer.byteLength(chunk);
 
     if (!this.#stream.write(chunk)) {
       // The consumer is behind; wait rather than letting Node buffer without bound.
@@ -180,7 +195,12 @@ export class BufferedLineWriter {
     */
     if (this.#hungUp) return;
     // stdout must not be closed; ending it would break piping for the rest of the process.
-    if (this.#stream === process.stdout || this.#stream === process.stderr) return;
+    // The failure still has to be reported: returning here without looking meant an error
+    // recorded on the stream, but not yet surfaced by a later flush, was simply dropped.
+    if (this.#stream === process.stdout || this.#stream === process.stderr) {
+      if (this.#failure) throw this.#failure;
+      return;
+    }
     await new Promise<void>((resolve, reject) => {
       this.#stream.end((error?: Error | null) => {
         const failure = error ?? this.#failure;

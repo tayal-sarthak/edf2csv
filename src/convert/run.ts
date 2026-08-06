@@ -6,7 +6,7 @@
  * matter how many output tables it produces, and memory stays flat.
  */
 
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, fstatSync } from 'node:fs';
 import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
@@ -467,12 +467,22 @@ async function writeSignalFiles(
 ): Promise<WrittenFile[]> {
   // One budget for every table in this conversion, not one per table: see OffsetBudget.
   const offsets = newOffsetBudget();
+  // Only the stdout path needs this; --out finds a full disk on its own, because it always
+  // has another file to write afterwards. See auditStdout.
+  const audit = outputDir === null ? auditStdout() : null;
   const open: OpenGroup[] = plan.groups.map((group) => {
     // A null directory means the single table goes to stdout. process.stdout is already a
     // writable stream, so the same buffered writer and backpressure handling apply.
     const target =
       outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName));
     const { stream, settled } = compressed(target, options.gzip === true);
+    /*
+      Under --gzip the writer feeds the compressor, so its byte count is the CSV before
+      compression and says nothing about what reached the descriptor. The compressor's own
+      output is what stdout is handed, so that is what is counted. `pipe` uses a 'data'
+      listener of its own and a second one is delivered the same chunks.
+    */
+    if (audit && stream !== target) stream.on('data', (chunk: Buffer) => audit.count(chunk.length));
     const writer = new BufferedLineWriter(stream);
     writer.pushLine(csvRow(['time_s', ...group.channels.map((c) => c.column)]));
     return {
@@ -491,7 +501,25 @@ async function writeSignalFiles(
   });
 
   try {
-    return await streamSignalRows(file, plan, open, recordStarts, options);
+    const written = await streamSignalRows(file, plan, open, recordStarts, options);
+
+    /*
+      Checked once everything has been flushed and ended, and not when the reader hung up.
+
+      `--stdout | head -1` closes the pipe on purpose, which is a shell idiom rather than a
+      failure. A pipe is not a regular file, so auditStdout declines it anyway — the second
+      guard is here because the cost of getting this one wrong is reporting a failure for a
+      command that worked.
+    */
+    if (audit) {
+      // Uncompressed, the writer hands its bytes straight to the descriptor; compressed,
+      // they were counted on the compressor's way out.
+      if (options.gzip !== true) {
+        for (const entry of open) audit.count(entry.writer.bytesOut);
+      }
+      if (!open.some((entry) => entry.writer.hungUp)) audit.verify();
+    }
+    return written;
   } catch (cause) {
     for (const entry of open) entry.writer.destroy();
 
@@ -851,6 +879,62 @@ function writeHint(cause: unknown): string {
     default:
       return `${preamble}Check the destination and run the conversion again.`;
   }
+}
+
+/**
+ * Confirms that everything handed to a file-backed stdout actually arrived.
+ *
+ * `edf2csv rec.edf --stdout > out.csv` onto a volume that the output very nearly fills lost
+ * the tail in silence: 94,977 of 102,400 rows on disk, the file ending mid-row, stderr
+ * announcing "Wrote 102,400 rows to stdout." and the process exiting 0. The same recording
+ * onto the same volume through `--out` fails correctly, which is what gives it away.
+ *
+ * POSIX `write` returns a short count rather than an error when the disk fills partway
+ * through a single call, and only the NEXT write raises ENOSPC. `--out` always has a next
+ * write — channels.csv and metadata.json come after — so it always finds out. `--stdout`
+ * has nothing after it, and when fd 1 is a regular file Node's stdout is a SyncWriteStream
+ * whose `_write` discards the byte count `writeSync` returns, so nothing is raised at all.
+ * No error means no `#failure`, so checking that alone would not have caught this.
+ *
+ * What can be checked is the descriptor: how much it grew against how much it was given.
+ * Only for a regular file — a pipe, a terminal or a socket has no size to compare, and on
+ * those a short write cannot go unreported this way. Appending (`>>`) is fine, since the
+ * starting size is taken before anything is written.
+ */
+function auditStdout(): { count: (bytes: number) => void; verify: () => void } | null {
+  let startSize: number;
+  try {
+    const info = fstatSync(1);
+    if (!info.isFile()) return null;
+    startSize = info.size;
+  } catch {
+    // No usable descriptor to audit; the conversion is not the place to complain about it.
+    return null;
+  }
+
+  let expected = 0;
+  return {
+    count: (bytes: number): void => {
+      expected += bytes;
+    },
+    verify: (): void => {
+      let landed: number;
+      try {
+        landed = fstatSync(1).size - startSize;
+      } catch {
+        return;
+      }
+      if (landed >= expected) return;
+      throw new ConversionError(
+        'WRITE_FAILED',
+        `Writing to stdout failed: ${expected - landed} of ${expected} bytes did not reach ` +
+          `the destination, which stopped accepting them part way through.`,
+        'What is there ends mid-row and should not be used. The destination is almost ' +
+          'certainly out of space — a short write is how a filesystem reports filling up ' +
+          'mid-write, and nothing after it raised an error because there was nothing after it.',
+      );
+    },
+  };
 }
 
 /** Data rows across every signal table, so "nothing was written" is one question. */
