@@ -240,6 +240,34 @@ export class EdfFile {
    * falls in, and some put every annotation in the first record. Reading only the
    * window's records would drop those entirely.
    */
+  /**
+   * Where the first data record starts, from its own timekeeping TAL.
+   *
+   * One record's worth of annotation bytes rather than the whole channel. A continuous
+   * recording's origin is the fraction of a second by which its first record follows the
+   * header's start time, and `--info` needs that to place a requested window — but it does
+   * not need the events, and finding one number by reading every record costs a seek per
+   * record across the whole file, which is the scan `--info` was deliberately spared.
+   *
+   * Returns null when there is nothing to read it from, in which case the origin is zero.
+   */
+  async readFirstRecordStart(): Promise<number | null> {
+    this.#assertOpen();
+
+    const channel = this.annotationSignals[0];
+    if (!channel || this.recordCount === 0) return null;
+
+    const { headerBytes, bytesPerSample } = this.header;
+    const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
+    if (buffer.length === 0) return null;
+
+    const offset = headerBytes + channel.byteOffsetInRecord;
+    const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
+    if (bytesRead < buffer.length) return null;
+
+    return decodeRecordAnnotations(buffer, 0).recordStart;
+  }
+
   async readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];

@@ -465,11 +465,25 @@ async function showInfo(
       A discontinuous file still needs the scan: without it the reported span and row
       estimate are wrong, which is a bug that has already been fixed once here.
     */
-    const needsRecordStarts =
-      file.header.continuity === 'EDF+D' && file.annotationSignals.length > 0;
-    const annotationData = needsRecordStarts
+    const hasAnnotations = file.annotationSignals.length > 0;
+    const needsEveryRecordStart = file.header.continuity === 'EDF+D' && hasAnnotations;
+    /*
+      A continuous recording needs its origin too, which is one read rather than one per
+      record: 0.4.9 made its first record's timekeeping TAL the point the samples are timed
+      from, and this report went on placing a requested window against zero. `--info --start 1`
+      predicted 8 rows where the conversion wrote 10, on a file whose discontinuous twin —
+      identical but for the reserved field — agreed with itself.
+    */
+    const annotationData = needsEveryRecordStart
       ? await file.readAnnotations()
-      : { annotations: [], recordStarts: [], malformed: 0 };
+      : {
+          annotations: [],
+          recordStarts:
+            file.header.continuity === 'EDF+C' && hasAnnotations
+              ? [await file.readFirstRecordStart()]
+              : [],
+          malformed: 0,
+        };
     const timing = deriveRecordStarts(file, annotationData);
     const plan = buildPlan(
       {

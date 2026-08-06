@@ -356,6 +356,29 @@ describe('--info', () => {
   // The estimate exists so someone can decide whether a conversion is worth starting. Reading
   // low is the one direction that makes it useless, so it is checked against every fixture
   // rather than against the one calibration that happened to expose the last shortfall.
+  it('predicts the same rows the conversion writes, whatever the origin', async () => {
+    // 0.4.9 made a continuous recording take its origin from the first record's timekeeping
+    // TAL, and --info kept placing a requested window against zero — it reads annotations
+    // only for discontinuous files, deliberately, because scanning every record to report a
+    // header summary is what an earlier version was fixed for. The estimate and the
+    // conversion therefore disagreed on any windowed run of a file starting mid-second.
+    for (const name of ['fractional-start.edf', 'fractional-start-d.edf']) {
+      for (const window of [[], ['--start', '1'], ['--end', '2'], ['--start', '1.5'],
+        ['--start', '0.5', '--duration', '1']]) {
+        const info = await cli([fixture(name), '--info', '--json', ...window]);
+        assert.equal(info.code, 0);
+        const predicted = JSON.parse(info.stdout).estimate.rows;
+
+        const dir = await outDir();
+        assert.equal((await cli([fixture(name), '--out', dir, '--quiet', ...window])).code, 0);
+        const written = (await readFile(path.join(dir, 'signals.csv'), 'utf8'))
+          .trimEnd().split('\n').length - 1;
+
+        assert.equal(predicted, written, `${name} ${window.join(' ') || '(whole file)'}`);
+      }
+    }
+  });
+
   it('never reports a size the conversion then exceeds', async () => {
     const names = (await readdir(path.join(ROOT, 'test', 'fixtures', 'generated')))
       .filter((n) => /\.(edf|bdf)$/u.test(n))

@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.13
+
+### Fixed: `--info` disagreed with the conversion on a recording that starts mid-second
+
+0.4.9 made a continuous recording take its origin from the first record's timekeeping TAL,
+which is where EDF+ says it is. `--info` went on placing a requested window against zero, so
+the two stopped agreeing about the same file:
+
+```
+edf2csv fractional-start.edf --info --start 1     Would write 8 rows
+edf2csv fractional-start.edf --out ./converted --start 1
+                                                  signals.csv   10  rows
+```
+
+The estimate exists so that someone can decide whether a conversion is worth starting, and it
+was off by a fifth on a file whose discontinuous twin — byte-identical apart from the reserved
+field — agreed with itself the whole time. Which is what made it findable: the two are supposed
+to give the same answer, and 0.4.9 tested exactly that for a whole-file conversion, but not for
+a windowed one.
+
+`--info` reads annotations only for discontinuous files, on purpose: an earlier version was
+fixed for scanning every record of a continuous one just to report a header summary, at 0.29 s
+on a 12 MB file. So this does not undo that. A continuous recording needs one number, and the
+reader now offers one read to get it — its first record's timekeeping TAL, rather than every
+record's. `--info` on an 18 MB, 30,000-record EDF+C still returns in 0.05 s.
+
+The test now compares the estimate against the rows actually written for both twins across five
+windows, rather than asserting a number either one happens to produce.
+
 ## 0.4.12
 
 ### Fixed: `--info` could print a duration that cannot exist
