@@ -27,6 +27,7 @@ export type DiagnosticCode =
   | 'NO_SIGNAL_CHANNELS'
   | 'NO_SAMPLES'
   | 'STALE_OUTPUT'
+  | 'INPUT_CHANGED'
   | 'HEADER_BYTES_MISMATCH'
   | 'NONPRINTABLE_LABEL';
 

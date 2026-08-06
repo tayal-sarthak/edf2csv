@@ -122,6 +122,23 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   const file = await EdfFile.open(inputPath);
 
   try {
+    /*
+      Hashed before a record is read, and only published if the file held still.
+
+      A checksum taken afterwards cannot be trusted whichever descriptor it goes through. A
+      file overwritten in place keeps its inode, so the open handle sees the new bytes too,
+      and the old ones are simply gone — there is nowhere left to read what was converted.
+      Taking it first at least means the hash describes the file the header was read from.
+
+      What makes it a guarantee rather than a hope is the check at the end: if size or
+      modification time moved at any point, the hash is dropped and the run says why. So
+      `sha256` present means the file demonstrably did not change while it was read, and a
+      recording still being written gets a null and a warning instead of a plausible hash of
+      the wrong bytes. (A change reverted within the same modification timestamp would slip
+      through; nothing short of copying the input first can close that.)
+    */
+    const checksumAtOpen = options.checksum === true ? await file.sha256() : null;
+
     // One pass over the annotation channel supplies everything annotation-related:
     // where each record sits in time, and the full event list. It reads the whole
     // file even when a window was requested, because an annotation inside the window
@@ -167,6 +184,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         );
       }
       const written = await writeSignalFiles(file, plan, null, timing.starts, options);
+      if (await file.changedSinceOpen()) plan.diagnostics.push(inputChanged(false));
       return {
         outputDir: '-',
         files: written,
@@ -212,7 +230,28 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     }
 
     written.push(await writeChannelsCsv(outputDir, file, plan, options.gzip === true));
-    await writeMetadata(outputDir, inputPath, file, plan, written, annotationsWritten, options);
+
+    /*
+      The file moved under the conversion. Said out loud, because nothing else shows it.
+
+      The CSVs are still correct for the records that were read, and metadata.json still
+      describes the file as it was opened — so the record is consistent with the output
+      whatever happens here. What stops being true is that the checksum describes the bytes
+      that were converted, since an in-place overwrite leaves nowhere to read them from. It
+      is dropped rather than guessed at.
+    */
+    const changed = await file.changedSinceOpen();
+    if (changed) plan.diagnostics.push(inputChanged(options.checksum === true));
+
+    await writeMetadata(
+      outputDir,
+      inputPath,
+      file,
+      plan,
+      written,
+      annotationsWritten,
+      changed ? null : checksumAtOpen,
+    );
 
     const stale = await findStaleOutput(outputDir, written);
 
@@ -741,6 +780,21 @@ async function writeAnnotationsCsv(
   return { name, rows: inWindow.length };
 }
 
+/** Raised when the input moved while it was being read. See where it is pushed. */
+function inputChanged(hadChecksum: boolean): Diagnostic {
+  return {
+    code: 'INPUT_CHANGED',
+    severity: 'warning',
+    message:
+      'The input changed while it was being converted, so this output covers the file as ' +
+      'it was when the conversion started, not as it is now.',
+    hint: hadChecksum
+      ? 'No checksum was recorded: the bytes that were converted are no longer there to ' +
+        'hash. Convert again once the recording is finished.'
+      : 'Convert again once the recording is finished to pick up the rest.',
+  };
+}
+
 async function writeMetadata(
   outputDir: string,
   inputPath: string,
@@ -748,18 +802,33 @@ async function writeMetadata(
   plan: ConversionPlan,
   written: readonly WrittenFile[],
   annotationCount: number,
-  options: ConvertOptions,
+  /** Hash of the bytes that were converted, or null when it could not be vouched for. */
+  checksum: string | null,
 ): Promise<void> {
   const { header } = file;
-  const info = await stat(inputPath).catch(() => null);
 
+  /*
+    The file as it was when it was opened, not as it is now.
+
+    Both of these used to come from re-opening the path once the CSVs were written, which
+    describes whatever answers to that name by then rather than what was converted. A
+    recording still being written grew from 2,000 records to 3,000 mid-conversion and
+    metadata.json recorded `data_records: 2000` — correct, the CSV holds 2,000 — beside the
+    byte count and SHA-256 of the 3,000-record file. The two halves of one provenance record
+    described two different files, and the checksum covered bytes nobody had converted.
+    Replacing the file at that path did the same thing more thoroughly.
+
+    `file.fileSize` is the number every record count and window in this output was derived
+    from, and the hash is taken over exactly those bytes through the descriptor already open
+    on them, so the record describes one file throughout.
+  */
   const metadata = {
     tool: { name: 'edf2csv', version: TOOL_VERSION },
     source: {
       path: path.resolve(inputPath),
-      bytes: info?.size ?? null,
-      modified: info ? new Date(info.mtimeMs).toISOString() : null,
-      sha256: options.checksum === true ? await sha256(inputPath) : null,
+      bytes: file.fileSize,
+      modified: new Date(file.modifiedAtOpenMs).toISOString(),
+      sha256: checksum,
     },
     recording: {
       format: describeFormat(header),
@@ -802,8 +871,4 @@ async function writeMetadata(
   await writeOutputFile(outputDir, 'metadata.json', JSON.stringify(metadata, null, 2) + '\n');
 }
 
-async function sha256(filePath: string): Promise<string> {
-  const hash = createHash('sha256');
-  await pipeline(createReadStream(filePath), hash);
-  return hash.digest('hex');
-}
+

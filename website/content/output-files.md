@@ -408,13 +408,30 @@ The file is UTF-8, indented with two spaces, and ends with a newline.
 future version that changes any formatting rule will say so here.
 
 `source.path` is the absolute path of the input as resolved at conversion time. `source.bytes` and
-`source.modified` come from the filesystem, with `modified` as an ISO 8601 instant in UTC.
+`source.modified` describe the file as it was when the conversion opened it — the same size every
+record count and window below was derived from — rather than whatever is at that path when the run
+finishes.
 
 `source.sha256` is `null` unless you passed `--checksum`, which reads the input a second time to
 hash it. With a hash recorded, anyone holding the original can establish that the CSVs came from
 that exact file, and you can detect a re-export or a partial copy that kept the same size and name.
 It costs one extra read of the input, which is worth it for anything you intend to publish or
 archive.
+
+The hash is taken before any record is read, and published only if the file held still for the
+whole conversion. If the size or the modification time moved at any point, `sha256` comes back
+`null` and the run raises `INPUT_CHANGED`: a file overwritten in place keeps its inode, so the bytes
+that were converted are simply gone by then, and a plausible hash of the wrong bytes is worse than
+no hash at all. The CSVs and the rest of `metadata.json` are still correct for the data that was
+read. This is the ordinary outcome of converting a recording that is still being written; convert
+again once it is finished.
+
+```
+warning: The input changed while it was being converted, so this output covers the file as it
+         was when the conversion started, not as it is now.
+         No checksum was recorded: the bytes that were converted are no longer there to hash.
+         Convert again once the recording is finished.
+```
 
 ### recording: what the header said
 

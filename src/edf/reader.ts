@@ -9,6 +9,8 @@
 import { open, stat } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 
+import { createHash } from 'node:crypto';
+
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
 import { FIXED_HEADER_BYTES, SIGNAL_HEADER_BYTES, parseHeader, peekSignalCount } from './header.js';
@@ -44,6 +46,16 @@ export interface ReadRecordsOptions {
 export class EdfFile {
   readonly path: string;
   readonly fileSize: number;
+  /**
+   * Last-modified time when this file was opened, in milliseconds, for the same reason as
+   * `fileSize`.
+   *
+   * Kept as the raw number rather than a Date because `new Date(ms).getTime()` truncates to
+   * whole milliseconds: comparing that against a later `fstat`, which carries the
+   * filesystem's sub-millisecond precision, reported every undisturbed conversion as one
+   * whose input had changed underneath it.
+   */
+  readonly modifiedAtOpenMs: number;
   readonly header: EdfHeader;
   /** Records actually present in the file, which may differ from the header's claim. */
   readonly recordCount: number;
@@ -56,6 +68,7 @@ export class EdfFile {
   private constructor(init: {
     path: string;
     fileSize: number;
+    modifiedAtOpenMs: number;
     header: EdfHeader;
     recordCount: number;
     trailingBytes: number;
@@ -64,11 +77,59 @@ export class EdfFile {
   }) {
     this.path = init.path;
     this.fileSize = init.fileSize;
+    this.modifiedAtOpenMs = init.modifiedAtOpenMs;
     this.header = init.header;
     this.recordCount = init.recordCount;
     this.trailingBytes = init.trailingBytes;
     this.diagnostics = init.diagnostics;
     this.#handle = init.handle;
+  }
+
+  /**
+   * SHA-256 of the bytes this conversion actually read.
+   *
+   * Hashed through the open descriptor, over exactly the `fileSize` bytes that were there
+   * when the file was opened — the same number every record count and window in the output
+   * was derived from. Re-opening the path to hash it afterwards described whatever was at
+   * that name by then: a recording still being written grew from 2,000 records to 3,000
+   * mid-conversion and metadata.json recorded `data_records: 2000` beside the checksum and
+   * byte count of the 3,000-record file, which is provenance for bytes nobody converted.
+   * Replacing the file at that path did the same thing more completely.
+   */
+  async sha256(): Promise<string> {
+    this.#assertOpen();
+    const hash = createHash('sha256');
+    const buffer = Buffer.alloc(Math.min(this.fileSize, 4 * 1024 * 1024) || 1);
+    for (let at = 0; at < this.fileSize; ) {
+      const want = Math.min(buffer.length, this.fileSize - at);
+      const { bytesRead } = await this.#handle.read(buffer, 0, want, at);
+      if (bytesRead <= 0) {
+        throw new EdfError(
+          'UNREADABLE',
+          `Expected ${this.fileSize} bytes to checksum but the file ended at ${at}; ` +
+            `it appears to have changed size while it was being read.`,
+          'Make sure the recording is not still being written to, then try again.',
+        );
+      }
+      hash.update(buffer.subarray(0, bytesRead));
+      at += bytesRead;
+    }
+    return hash.digest('hex');
+  }
+
+  /**
+   * Whether the file has changed since it was opened, by size or by modification time.
+   *
+   * Checked through the descriptor, so it answers for the bytes that were read rather than
+   * for whatever now answers to the same name. A recording still being written is the
+   * ordinary cause, and the conversion is still correct for the data it saw — it is the
+   * claim that the output describes the file as it now stands that stops being true.
+   */
+  async changedSinceOpen(): Promise<boolean> {
+    if (this.#closed) return false;
+    const now = await this.#handle.stat().catch(() => null);
+    if (now === null) return false;
+    return now.size !== this.fileSize || now.mtimeMs !== this.modifiedAtOpenMs;
   }
 
   static async open(path: string): Promise<EdfFile> {
@@ -115,6 +176,7 @@ export class EdfFile {
       return new EdfFile({
         path,
         fileSize: info.size,
+        modifiedAtOpenMs: info.mtimeMs,
         header,
         recordCount,
         trailingBytes,

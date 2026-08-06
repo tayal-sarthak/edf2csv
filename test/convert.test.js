@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -958,5 +958,67 @@ describe('converting', () => {
     await convert(fixture('tiny.edf'), { outputDir: hashed, checksum: true });
     const withSum = JSON.parse(await readFile(path.join(hashed, 'metadata.json'), 'utf8'));
     assert.match(withSum.source.sha256, /^[0-9a-f]{64}$/);
+
+    // And it is the hash of the file, not of something that resembles it.
+    const { createHash } = await import('node:crypto');
+    const expected = createHash('sha256').update(await readFile(fixture('tiny.edf'))).digest('hex');
+    assert.equal(withSum.source.sha256, expected);
+    assert.equal(withSum.source.bytes, (await stat(fixture('tiny.edf'))).size);
+  });
+
+  it('describes the bytes it converted, not whatever is at that path afterwards', async () => {
+    // The size, timestamp and checksum came from re-opening the path once the CSVs were
+    // written, which describes whatever answers to that name by then. A recording still
+    // being written grew from 2,000 records to 3,000 mid-conversion and metadata.json
+    // recorded `data_records: 2000` — correct, that is what the CSV holds — beside the byte
+    // count and SHA-256 of the 3,000-record file. Two halves of one provenance record
+    // describing two different files, with nothing to say so.
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { copyFileSync } = await import('node:fs');
+
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-grow-'));
+    temporaries.push(scratch);
+    const signals = [{
+      label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100,
+      digMin: -1000, digMax: 1000, samplesPerRecord: 256, gen: (r, s) => (r + s) % 1000,
+    }];
+    const small = path.join(scratch, 'small.edf');
+    const large = path.join(scratch, 'large.edf');
+    const live = path.join(scratch, 'live.edf');
+    // Big enough to need more than one read batch, so the swap lands mid-conversion.
+    writeEdf({ path: small, numRecords: 2000, recordDuration: 1, signals });
+    writeEdf({ path: large, numRecords: 3000, recordDuration: 1, signals });
+    copyFileSync(small, live);
+
+    let swapped = false;
+    const out = await outDir();
+    const result = await convert(live, {
+      outputDir: out,
+      quiet: true,
+      checksum: true,
+      onProgress: () => {
+        if (swapped) return;
+        swapped = true;
+        copyFileSync(large, live);
+      },
+    });
+
+    assert.ok(swapped, 'the input was never replaced, so this proves nothing');
+    const written = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+    assert.equal(result.file.recordCount, 2000, 'the conversion saw the smaller file');
+    assert.equal(written.recording.data_records, 2000);
+    assert.equal(
+      written.source.bytes,
+      (await stat(small)).size,
+      'the byte count must describe the file that was converted',
+    );
+
+    // An in-place overwrite keeps the inode, so the bytes that were converted are gone —
+    // there is nowhere left to hash them from. A plausible hash of the wrong bytes is worse
+    // than none, so none is recorded and the run says why.
+    assert.equal(written.source.sha256, null);
+    const notice = result.diagnostics.find((d) => d.code === 'INPUT_CHANGED');
+    assert.ok(notice, `the change must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.hint, /No checksum was recorded/u);
   });
 });
