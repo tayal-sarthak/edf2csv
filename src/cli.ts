@@ -779,10 +779,25 @@ async function walk(root: string): Promise<{ files: string[]; unreadable: string
   const files: string[] = [];
   const unreadable: string[] = [];
   const seen = new Set<string>();
-  const queue = [root];
+  /*
+    A queue, taken from the front, and each directory's children entered in a settled order.
 
-  while (queue.length > 0) {
-    const directory = queue.pop() as string;
+    This was a stack popped from the back, so which of two names for one directory was
+    visited first came down to the order `readdir` happened to return them — and the loser
+    was then skipped as already seen, taking its name out of the run with it. A folder
+    holding `aaa-real/` beside `zzz-alias -> aaa-real` converted into `<out>/zzz-alias/`: the
+    link's name, chosen by a hash order that differs between filesystems. 0.4.29 settled this
+    for two names of one *file* and left the directory above it deciding by accident.
+
+    Breadth first, and each directory's sub-directories entered with real names before links
+    and alphabetically within each, so the name that survives is a property of the tree: the
+    shallowest, then the one that is not a link, then the first in sort order.
+  */
+  const queue = [root];
+  let next = 0;
+
+  while (next < queue.length) {
+    const directory = queue[next++] as string;
     const real = await realpath(directory).catch(() => directory);
     if (seen.has(real)) continue;
     seen.add(real);
@@ -804,7 +819,14 @@ async function walk(root: string): Promise<{ files: string[]; unreadable: string
       continue;
     }
 
-    for (const entry of entries) {
+    // A real name before a link to the same thing, then alphabetically. The dirent describes
+    // the entry itself rather than its target, which is exactly the question here.
+    const ordered = [...entries].sort((a, b) => {
+      const link = Number(a.isSymbolicLink()) - Number(b.isSymbolicLink());
+      return link !== 0 ? link : a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+
+    for (const entry of ordered) {
       const full = path.join(directory, entry.name);
       // stat, not the dirent: a dirent describes the link, and what matters is its target.
       const info = await stat(full).catch(() => null);

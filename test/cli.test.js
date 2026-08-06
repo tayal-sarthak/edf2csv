@@ -706,6 +706,28 @@ describe('converting several recordings at once', () => {
     assert.ok((await readdir(path.join(dir, 'out', 'one'))).includes('signals.csv'));
   });
 
+  it('picks the same name for a folder reached two ways, whatever the order', async () => {
+    // 0.4.29 settled this for two names of one file and left the directory above it deciding
+    // by accident: the walk was a stack popped from the back, so which of two names for one
+    // folder was visited first came down to readdir order, and the loser was skipped as
+    // already seen. `aaa-real/` beside `zzz-alias -> aaa-real` converted into
+    // <out>/zzz-alias/ — the link's name, chosen by a hash order that differs between
+    // filesystems. Both orderings of the names are checked, so passing cannot be luck.
+    for (const [real, alias] of [['aaa-real', 'zzz-alias'], ['zzz-real', 'aaa-alias']]) {
+      const dir = await stage({ [`study/${real}/rec.edf`]: 'tiny.edf' });
+      await symlink(path.join(dir, 'study', real), path.join(dir, 'study', alias));
+
+      const out = path.join(dir, 'csv');
+      const { code, stderr } = await cli([path.join(dir, 'study'), '--out', out, '--quiet']);
+      assert.equal(code, 0, stderr);
+      assert.deepEqual(
+        await readdir(out),
+        [real],
+        `the folder's own name must win over the link, not "${alias}"`,
+      );
+    }
+  });
+
   it('picks the same name for a recording reached two ways, whatever the order', async () => {
     // The first arrival won, so the output directory was named by argument order:
     // `edf2csv data/one.edf data/alias.edf` wrote out/one and the same two swapped wrote
