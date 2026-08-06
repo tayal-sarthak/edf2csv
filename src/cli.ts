@@ -733,9 +733,32 @@ function stemOf(name: string): string {
  * anything at all.
  */
 function assertDistinct(inputs: readonly string[], destinations: readonly string[]): void {
+  /*
+    Two names that differ only in case are one directory on a filesystem that does not
+    distinguish them, which is the default on macOS and the rule on Windows.
+
+    `a/REC.edf` and `b/rec.edf` produce `<out>/REC` and `<out>/rec`. Compared exactly those
+    are different, so both went through, and with --force the second conversion wrote into
+    the directory the first had made: one directory holding one recording's `signals.csv`
+    beside the other's `signals_256hz.csv`, under a single `metadata.json` naming only one
+    of them. The run reported "Converted 2 of 2 recordings" and exited 0. A directory whose
+    provenance file describes a recording other than the data beside it is the one outcome
+    this tool exists to prevent.
+
+    The comparison follows the platform rather than being applied everywhere, so a
+    case-sensitive filesystem — where those really are two directories — keeps converting
+    both. A case-sensitive volume on macOS is the exception it gets wrong, and it gets it
+    wrong in the safe direction: a refusal that names both recordings, not a silent merge.
+  */
+  const foldsCase = process.platform === 'darwin' || process.platform === 'win32';
+  const identity = (destination: string): string => {
+    const resolved = path.resolve(destination);
+    return foldsCase ? resolved.toLowerCase() : resolved;
+  };
+
   const claimed = new Map<string, string>();
   for (const [index, destination] of destinations.entries()) {
-    const key = path.resolve(destination);
+    const key = identity(destination);
     const first = claimed.get(key);
     if (first !== undefined) {
       throw new OptionError(
@@ -763,7 +786,7 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
     shares the same prefix, and would be caught as its own adjacent pair.
   */
   const ordered = destinations
-    .map((destination, index) => ({ resolved: path.resolve(destination), destination, index }))
+    .map((destination, index) => ({ resolved: identity(destination), destination, index }))
     .sort((a, b) => (a.resolved < b.resolved ? -1 : a.resolved > b.resolved ? 1 : 0));
 
   for (let i = 1; i < ordered.length; i++) {

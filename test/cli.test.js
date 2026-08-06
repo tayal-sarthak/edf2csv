@@ -501,6 +501,24 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('refuses two recordings whose names differ only in case, where that matters', async () => {
+    // On a filesystem that does not distinguish case — macOS by default, Windows always —
+    // <out>/REC and <out>/rec are one directory. Compared exactly they are different, so
+    // both went through, and with --force the second wrote into the first's directory: one
+    // recording's signals.csv beside the other's signals_256hz.csv, under a single
+    // metadata.json naming only one of them, reported as "Converted 2 of 2 recordings".
+    if (process.platform !== 'darwin' && process.platform !== 'win32') return;
+
+    const dir = await stage({ 'a/REC.edf': 'tiny.edf', 'b/rec.edf': 'mixed-rates.edf' });
+    const out = path.join(dir, 'out');
+    const { code, stderr } = await cli([
+      path.join(dir, 'a', 'REC.edf'), path.join(dir, 'b', 'rec.edf'), '--out', out, '--force',
+    ]);
+    assert.equal(code, 2);
+    assert.match(stderr, /would both be converted into/u);
+    await assert.rejects(readdir(out), 'nothing may be written before refusing');
+  });
+
   it('allows outputs that merely share a parent', async () => {
     // Only nesting is refused. Siblings under one directory are the ordinary case.
     const dir = await stage({ 'study/a.edf': 'tiny.edf', 'study/b.edf': 'annotations.edf' });

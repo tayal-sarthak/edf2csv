@@ -3,6 +3,46 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.15
+
+### Fixed: two recordings differing only in filename case merged into one directory
+
+On a filesystem that does not distinguish case — the default on macOS, always on Windows —
+`<out>/REC` and `<out>/rec` are the same directory. The guard compared destinations exactly, so
+both went through:
+
+```
+edf2csv a/REC.edf b/rec.edf --out ./out --force
+Wrote out/REC
+Wrote out/rec
+Converted 2 of 2 recordings.
+```
+
+Exit 0. One directory was created, and it held both conversions:
+
+```
+out/REC/
+  signals.csv           from REC.edf
+  signals_256hz.csv     from rec.edf
+  signals_128hz.csv     from rec.edf
+  signals_1hz.csv       from rec.edf
+  channels.csv          whichever wrote last
+  metadata.json         names rec.edf, and only rec.edf
+```
+
+A directory whose provenance file describes a recording other than the data sitting beside it
+is the one outcome this tool exists to prevent, and here it arrived without a word. Anyone
+reading `signals.csv` there gets one recording's samples under another's metadata.
+
+Without `--force` it already failed — the second conversion hit "already exists" — so the
+damage needed that flag. It is now refused before anything is written, with both recordings
+named.
+
+The comparison follows the platform rather than applying everywhere, so a case-sensitive
+filesystem, where those really are two directories, keeps converting both. A case-sensitive
+volume on macOS is the case this gets wrong, and it errs in the safe direction: a refusal
+naming both recordings rather than a silent merge.
+
 ## 0.4.14
 
 ### Fixed: two recordings whose output directories nest produced a different result each run
