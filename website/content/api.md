@@ -188,6 +188,7 @@ DUPLICATE_LABEL        EMPTY_LABEL              NONSTANDARD_UNIT
 NO_ANNOTATIONS         ANNOTATION_DECODE_FAILED COMMA_DECIMAL
 LARGE_OUTPUT           NO_SIGNAL_CHANNELS       NO_SAMPLES
 STALE_OUTPUT           HEADER_BYTES_MISMATCH    NONPRINTABLE_LABEL
+INPUT_CHANGED          EMPTY_WINDOW
 ```
 
 `file.diagnostics` carries only the ones the header parser can raise. Conversion adds more, which is why `convert()` returns its own combined list.

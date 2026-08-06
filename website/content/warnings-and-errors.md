@@ -65,6 +65,8 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
+| `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
+| `INPUT_CHANGED` | The input changed while it was being converted |
 
 ## File structure and integrity
 
@@ -439,6 +441,30 @@ warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over fro
 ```
 
 **What to do.** Delete the named files yourself once you've confirmed you don't need them, or convert into a fresh directory with `--out`. `metadata.json` always describes the run that wrote it, so its `conversion.files` list is the authoritative record of which files belong to the current conversion.
+
+### EMPTY_WINDOW
+
+The conversion had signal tables to fill and put no data rows in any of them, so `signals.csv` holds its header and nothing else.
+
+A window can select nothing without being past the end of the recording — `--start` at or past the end is a usage error and stops the run before this. This is the narrower case: a window that lies inside the recording but lands where there is no data. Between the last sample and the nominal end of the last record:
+
+```
+warning: No samples fall inside the requested window (1.950s to 2.000s), so the signal
+         files hold their headers and no data.
+         The window is inside the recording but lands where there is no data — past the
+         last sample, or inside a gap in a discontinuous file. Run with --info to see
+         where the records actually sit.
+```
+
+Or, on a discontinuous recording whose records sit at 0s, 1s and 10s, anywhere in the eight-second gap:
+
+```bash
+edf2csv study.edf --start 2 --end 10    # asks for a span that holds no records at all
+```
+
+**What to do.** Run `--info` to see where the records really are. On an EDF+D file the gaps are the point: the row times are true recording times, so a window chosen from wall-clock arithmetic can miss the data entirely.
+
+It is a warning rather than an error because a batch of five hundred recordings shouldn't stop for the one whose gap lines up with the window. Pass `--strict` to make it a failure.
 
 ## Codes that exist but are never raised
 

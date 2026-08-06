@@ -184,6 +184,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         );
       }
       const written = await writeSignalFiles(file, plan, null, timing.starts, options);
+      if (rowsIn(written) === 0) plan.diagnostics.push(emptyWindow(plan.range, file.recordCount));
       if (await file.changedSinceOpen()) plan.diagnostics.push(inputChanged(false));
       return {
         outputDir: '-',
@@ -203,7 +204,9 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     const written: WrittenFile[] = [];
 
     if (plan.writeSignals && plan.groups.length > 0) {
-      written.push(...(await writeSignalFiles(file, plan, outputDir, timing.starts, options)));
+      const signals = await writeSignalFiles(file, plan, outputDir, timing.starts, options);
+      written.push(...signals);
+      if (rowsIn(signals) === 0) plan.diagnostics.push(emptyWindow(plan.range, file.recordCount));
     }
 
     if (options.annotationsOnly === true && file.annotationSignals.length === 0) {
@@ -778,6 +781,47 @@ async function writeAnnotationsCsv(
   const name = gzip ? 'annotations.csv.gz' : 'annotations.csv';
   await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
   return { name, rows: inWindow.length };
+}
+
+/** Data rows across every signal table, so "nothing was written" is one question. */
+function rowsIn(written: readonly WrittenFile[]): number {
+  return written.reduce((total, file) => total + file.rows, 0);
+}
+
+/**
+ * Raised when the conversion had signal tables to fill and put no data rows in any of them.
+ *
+ * A window can land where there are no samples without being past the end of the recording:
+ * between the last sample and the nominal end of the last record, or — on a discontinuous
+ * file — inside a gap. `--start 2 --end 10` on a recording whose records sit at 0s, 1s and
+ * 10s asks for eight seconds that contain no data at all.
+ *
+ * What came out was a signals.csv holding its header and nothing else, exit 0, no warning,
+ * and `--strict` passing. The closing summary does say "signals.csv 0 rows" and --json
+ * carries `rows: 0`, so it was not quite invisible — but a header-only file is exactly what
+ * a successful extraction of an empty range looks like, and everywhere else that a request
+ * produces nothing this tool says so: a --channels term matching nothing is an error, and
+ * --annotations-only on a file with no events raises NO_ANNOTATIONS. A warning rather than
+ * an error because a batch of five hundred recordings should not stop for one whose gap
+ * happens to line up with the window; --strict turns it into a failure for those who want
+ * that.
+ */
+function emptyWindow(range: ConversionPlan['range'], recordCount: number): Diagnostic {
+  const asked = !range.isWholeRecording;
+  return {
+    code: 'EMPTY_WINDOW',
+    severity: 'warning',
+    message: asked
+      ? `No samples fall inside the requested window (${fixed(range.startSeconds, 3)}s to ` +
+        `${fixed(range.endSeconds, 3)}s), so the signal files hold their headers and no data.`
+      : `This recording's ${recordCount} data records carry no samples in range, so the ` +
+        `signal files hold their headers and no data.`,
+    hint: asked
+      ? 'The window is inside the recording but lands where there is no data — past the ' +
+        'last sample, or inside a gap in a discontinuous file. Run with --info to see where ' +
+        'the records actually sit.'
+      : 'Run with --info to see what the header declares.',
+  };
 }
 
 /** Raised when the input moved while it was being read. See where it is pushed. */

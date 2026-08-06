@@ -28,6 +28,7 @@ export type DiagnosticCode =
   | 'NO_SAMPLES'
   | 'STALE_OUTPUT'
   | 'INPUT_CHANGED'
+  | 'EMPTY_WINDOW'
   | 'HEADER_BYTES_MISMATCH'
   | 'NONPRINTABLE_LABEL';
 

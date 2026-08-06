@@ -143,6 +143,51 @@ describe('column naming', () => {
   });
 });
 
+describe('an empty result', () => {
+  it('says so when the window lands where there is no data', async () => {
+    // A window can select nothing without being past the end of the recording: between the
+    // last sample and the nominal end of the last record, or inside a gap. What came out was
+    // a signals.csv holding its header and nothing else, exit 0, no warning, --strict
+    // passing — which is exactly what a successful extraction of an empty range looks like.
+    // Everywhere else a request that produces nothing says so.
+    const continuous = await outDir();
+    const past = await convert(fixture('tiny.edf'), { outputDir: continuous, start: 1.95 });
+    assert.deepEqual(await readCsv(continuous, 'signals.csv'), ['time_s,ch1,ch2']);
+    const first = past.diagnostics.find((d) => d.code === 'EMPTY_WINDOW');
+    assert.ok(first, `no warning: ${JSON.stringify(past.diagnostics)}`);
+    assert.match(first.message, /1\.950s to 2\.000s/u, 'the window is quoted back');
+
+    // The same thing on a discontinuous file, where the window falls inside the gap between
+    // the records at 1s and 10s.
+    const gap = await outDir();
+    const inside = await convert(fixture('discontinuous.edf'), {
+      outputDir: gap, start: 2, end: 10,
+    });
+    assert.ok(inside.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'));
+
+    // And an ordinary conversion is left alone.
+    const ordinary = await outDir();
+    const whole = await convert(fixture('tiny.edf'), { outputDir: ordinary });
+    assert.ok(!whole.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'));
+  });
+
+  it('leaves the paths that write no signal files alone', async () => {
+    // --annotations-only writes no signal table by design, and a file with no signal
+    // channels has none to write; neither is an empty window and neither should say so.
+    for (const [name, options] of [
+      ['annotations.edf', { annotationsOnly: true }],
+      ['annotations-only.edf', {}],
+    ]) {
+      const dir = await outDir();
+      const result = await convert(fixture(name), { outputDir: dir, ...options });
+      assert.ok(
+        !result.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'),
+        `${name} raised EMPTY_WINDOW`,
+      );
+    }
+  });
+});
+
 describe('option checking', () => {
   it('rejects a value the command line would reject, and writes nothing', async () => {
     // The CLI has always validated these; the library did not, so the same value behaved
