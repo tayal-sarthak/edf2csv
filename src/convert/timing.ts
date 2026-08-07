@@ -213,15 +213,45 @@ export function deriveRecordStarts(
     return { starts: null, diagnostics };
   }
 
+  /*
+    Two ways a record can put the time column out of order, and only one was being looked for.
+
+    A record starting before the one before it is the obvious case. The other is a record
+    starting before the one before it *ends*: starts of 0, 0.5 and 1.0 on one-second records
+    are strictly increasing, so nothing fired, and the rows still came out 0.25, 0.5, 0.75,
+    0.5 — because record 0's samples run to 0.75 while record 1 begins at 0.5. Overlapping
+    acquisition is what a device does when it re-sends a buffer, and the reader has no more
+    to say about it than about the reversed case: every sample is written, in file order,
+    with the time the file gives it.
+
+    Contiguity is not overlap. A continuous recording has `starts[i] === starts[i-1] +
+    duration` exactly, so the comparison is made strict by a fraction of the finest interval
+    the recording can express — the same measure the origin check uses.
+  */
+  const slack = finestInterval(file) / 2;
   let outOfOrder = 0;
+  let overlapping = 0;
   for (let i = 1; i < starts.length; i++) {
-    if ((starts[i] as number) < (starts[i - 1] as number)) outOfOrder++;
+    const previous = starts[i - 1] as number;
+    const current = starts[i] as number;
+    if (current < previous) outOfOrder++;
+    else if (current + slack < previous + file.header.recordDuration) overlapping++;
   }
   if (outOfOrder > 0) {
     diagnostics.push({
       code: 'DISCONTINUOUS',
       severity: 'warning',
       message: `${outOfOrder} data record${outOfOrder === 1 ? '' : 's'} start earlier than the record before it.`,
+      hint: 'Rows are written in file order, so the time column will not increase monotonically.',
+    });
+  }
+  if (overlapping > 0) {
+    diagnostics.push({
+      code: 'DISCONTINUOUS',
+      severity: 'warning',
+      message:
+        `${overlapping} data record${overlapping === 1 ? '' : 's'} start before the record ` +
+        `before ${overlapping === 1 ? 'it' : 'them'} ends, so their samples overlap in time.`,
       hint: 'Rows are written in file order, so the time column will not increase monotonically.',
     });
   }

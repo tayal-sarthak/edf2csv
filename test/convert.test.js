@@ -1171,6 +1171,38 @@ describe('converting', () => {
     for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
   });
 
+  it('reports records that overlap, not only records that reverse', async () => {
+    /*
+      The check asked whether a record starts before the one before it. Starts of 0, 0.5 and
+      1.0 on one-second records are strictly increasing, so it saw nothing — while record 0's
+      samples run to 0.75 and record 1 begins at 0.5, so the column steps backwards anyway.
+      What makes the time column non-monotonic is a record starting before the previous one
+      *ends*, which is a different question and now the one that is asked.
+    */
+    const dir = await outDir();
+    const result = await convert(fixture('records-overlapping.edf'), { outputDir: dir });
+    const overlap = result.diagnostics.find((d) => /overlap in time/u.test(d.message));
+    assert.ok(overlap, `expected the warning: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(overlap.message, /2 data records start before the record before them ends/u);
+    assert.match(overlap.hint, /will not increase monotonically/u);
+
+    // The times really do step backwards, which is why it is said.
+    const times = (await readCsv(dir, 'signals.csv')).slice(1).map((row) => Number(row.split(',')[0]));
+    assert.ok(
+      times.some((time, index) => index > 0 && time < times[index - 1]),
+      'this fixture exists because the column steps backwards; if it does not it tests nothing',
+    );
+
+    // A contiguous recording is not an overlapping one, however its record duration divides.
+    for (const name of ['tiny.edf', 'contiguous-fractional.edf', 'discontinuous.edf']) {
+      const quiet = await convert(fixture(name), { outputDir: await outDir(), quiet: true });
+      assert.ok(
+        !quiet.diagnostics.some((d) => /overlap in time/u.test(d.message)),
+        `${name} was called overlapping`,
+      );
+    }
+  });
+
   it('asks the same of an origin the same distance out on the other side of zero', async () => {
     /*
       The guard above took the signed maximum of the record starts and seeded it with 0, so

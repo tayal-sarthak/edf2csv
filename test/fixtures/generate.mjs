@@ -620,6 +620,26 @@ export function generate() {
   });
 
   /*
+    An EDF+D whose records overlap in time without ever going backwards.
+
+    Starts of 0, 0.5 and 1.0 on one-second records are strictly increasing, so a check for
+    "does this record start before the one before it" sees nothing — while record 0's samples
+    run to 0.75 and record 1 begins at 0.5, so the time column steps backwards anyway. A
+    device re-sending a buffer produces exactly this.
+  */
+  writeEdf({
+    path: at('records-overlapping.edf'),
+    reserved: 'EDF+D',
+    numRecords: 3,
+    recordDuration: 1,
+    talsForRecord: (record) => buildTal([0, 0.5, 1][record], []),
+    signals: [
+      { label: 'sig', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+  });
+
+  /*
     An EDF+D whose records are stored in one order and timestamped in another.
 
     Nothing in the format obliges a writer to store record 5 after record 4 in time, and the

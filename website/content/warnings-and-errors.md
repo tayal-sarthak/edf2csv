@@ -347,7 +347,7 @@ These come from reading the EDF+ annotation channel and working out where each d
 
 ### DISCONTINUOUS
 
-This code covers four related conditions, and a single file can raise more than one of them.
+This code covers five related conditions, and a single file can raise more than one of them.
 
 **The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records aren't contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
 
@@ -371,6 +371,15 @@ warning: 1 data record start earlier than the record before it.
 
 Rows are written in file order, not sorted by time, so `time_s` will step backwards at those points.
 
+**Records start before the record before them ends.** The timekeeping annotations increase, but not by as much as a record lasts, so consecutive records cover overlapping spans of time. A device re-sending a buffer produces this.
+
+```
+warning: 2 data records start before the record before them ends, so their samples overlap in time.
+         Rows are written in file order, so the time column will not increase monotonically.
+```
+
+Until 0.5.25 only the strictly-backwards case above was looked for, so this went unreported: starts of 0, 0.5 and 1.0 on one-second records are increasing, and the column steps backwards anyway, because the first record's samples run to 0.75 while the second begins at 0.5.
+
 **The stated origin is too far from zero for the file's own sample interval.** A double spaces its values further apart the larger they get: near 1e16 seconds the gap between representable numbers is two seconds, so adding a one-second sample interval leaves the number unchanged and every sample in a record lands on one instant.
 
 ```
@@ -382,7 +391,7 @@ warning: This recording's timekeeping annotations place it -10000000000000002s f
 
 The magnitude is what matters, not the sign — a negative origin the same distance out fails identically. Until 0.5.17 the check looked only in the positive direction, seeded from zero, so an all-negative recording never reached it: twelve rows became four, exit 0, and nothing was said, while the byte-for-byte positive mirror of the same file wrote all twelve and explained itself.
 
-**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Don't assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third case, either sort by `time_s` in your analysis or investigate the file, since out-of-order records usually mean the annotations were written incorrectly. For the fourth, nothing needs doing — every row is written and `time_s` is measured from the start of the recording rather than from an origin the arithmetic cannot hold — but the absolute timestamps in that file's annotation channel should be treated as unreliable, since the file is claiming a position no double can express at that resolution.
+**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Don't assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third and fourth cases, either sort by `time_s` in your analysis or investigate the file, since out-of-order or overlapping records usually mean the annotations were written incorrectly. For the fifth, nothing needs doing — every row is written and `time_s` is measured from the start of the recording rather than from an origin the arithmetic cannot hold — but the absolute timestamps in that file's annotation channel should be treated as unreliable, since the file is claiming a position no double can express at that resolution.
 
 ### ANNOTATION_DECODE_FAILED
 

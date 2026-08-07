@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.25
+
+### Fixed: records that overlap in time went unreported, because the check looked for reversal
+
+There are two ways a discontinuous recording can make `time_s` step backwards, and only one
+was being looked for.
+
+The obvious one is a record that starts before the record before it. The other is a record
+that starts before the record before it *ends*. Starts of 0, 0.5 and 1.0 on one-second
+records are strictly increasing, so nothing fired — and the rows still came out 0.25, 0.5,
+0.75, 0.5, because the first record's samples run to 0.75 while the second begins at 0.5. A
+device re-sending a buffer produces exactly this.
+
+Both are reported now, with the same advice, since the reader has no more to say about one
+than the other: every sample is written, in file order, with the time the file gives it.
+Contiguity is not overlap — a continuous recording has `starts[i] === starts[i-1] + duration`
+exactly — so the comparison is made strict by a fraction of the finest interval the recording
+can express, and no ordinary file is called overlapping.
+
+`DISCONTINUOUS` now covers five conditions; the page said four, having said three until
+0.5.17.
+
 ## 0.5.24
 
 ### Fixed: the correctness page described a method it says two hundred lines later was abandoned
