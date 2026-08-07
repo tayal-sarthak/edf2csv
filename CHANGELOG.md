@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.72
+
+### Fixed: the correctness page stated a sweep size the sweep had outgrown
+
+It said `npm run estimate` runs "192 predictions over 34 recordings". It runs 216 over 39.
+The sweep's size is the fixture count crossed with its option sets, four fixtures had been
+added since the number was written, and nothing connected the two — so the page drifted
+silently, on the one page whose subject is not drifting.
+
+The figures are corrected, and a test now recomputes them from the same constants the
+harnesses use: the estimate sweep's recording count against the fixture directory, the
+round-trip sweep's calibrations and cells against the three arrays it crosses. Adding a
+fixture or a sweep dimension now fails a test instead of quietly making the page wrong.
+
 ## 0.4.71
 
 ### Added: `--bom`, for the one reader that needs it

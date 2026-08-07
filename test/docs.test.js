@@ -19,7 +19,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -198,6 +198,42 @@ describe('documentation and source agree on their lists', () => {
       newest[1],
       version,
       `package.json is at ${version} and the newest changelog entry is ${newest[1]}`,
+    );
+  });
+
+  it('states harness sizes that match the harnesses themselves', async () => {
+    /*
+      The correctness page said the estimate sweep runs "192 predictions over 34 recordings"
+      while it was running 216 over 39. It drifted because the sweep's size is the fixture
+      count, four fixtures had been added since, and nothing connected the two. The counts
+      here are recomputed from the same constants the harnesses use, so a fixture or a sweep
+      dimension added tomorrow fails this rather than quietly making the page wrong.
+    */
+    const page = await read('website/content/correctness.md');
+
+    const fixtures = (await readdir(path.join(ROOT, 'test/fixtures/generated'))).filter((n) =>
+      /\.(edf|bdf)$/iu.test(n),
+    ).length;
+    const estimate = /([\d,]+) predictions over ([\d,]+) recordings/u.exec(page);
+    assert.ok(estimate, 'the page no longer states the estimate sweep size');
+    assert.equal(
+      Number(estimate[2].replaceAll(',', '')),
+      fixtures,
+      'the estimate sweep runs every fixture, so that count is the fixture count',
+    );
+
+    const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
+    const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
+      sweep.DIGITAL_MAXES.filter((max) => max > min),
+    ).length;
+    // Every digital pair against every physical pair, once as EDF and once as BDF.
+    const calibrations = digitalPairs * sweep.PHYSICAL_PAIRS.length * 2;
+    const roundTrip = /([\d,]+) cells over ([\d,]+) calibrations/u.exec(page);
+    assert.ok(roundTrip, 'the page no longer states the round-trip sweep size');
+    assert.equal(Number(roundTrip[2].replaceAll(',', '')), calibrations);
+    assert.equal(
+      Number(roundTrip[1].replaceAll(',', '')),
+      calibrations * sweep.SAMPLES_PER_CALIBRATION,
     );
   });
 

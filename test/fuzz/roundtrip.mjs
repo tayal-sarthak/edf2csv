@@ -28,12 +28,19 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
 const CLI = path.join(ROOT, 'dist', 'cli.js');
 
-const DIGITAL_MINS = [-32768, -8192, -2048, -1000, -100, -1, 0];
-const DIGITAL_MAXES = [32767, 8191, 2047, 1000, 100, 1];
-const PHYSICAL_PAIRS = [
+/*
+  Exported so the size this sweep runs at can be recomputed rather than remembered. The
+  correctness page states it, and a page that states a number a harness produces goes stale
+  the moment the harness grows — which is what happened to the estimate sweep's own figures.
+*/
+export const DIGITAL_MINS = [-32768, -8192, -2048, -1000, -100, -1, 0];
+export const DIGITAL_MAXES = [32767, 8191, 2047, 1000, 100, 1];
+export const PHYSICAL_PAIRS = [
   [-250, 250], [-100, 100], [-5, 5], [-1, 1], [-0.5, 0.5],
   [-99999, 99999], [-0.0001, 0.0001], [0, 40], [34, 40],
 ];
+/** Samples in the single record each calibration is written with. One cell each. */
+export const SAMPLES_PER_CALIBRATION = 16;
 
 /** The calibration as the file declares it, which is not always what was asked for. */
 function calibrationOf(directory) {
@@ -71,7 +78,7 @@ export async function sweepRoundTrip() {
               recordDuration: 1,
               bdf,
               signals: [
-                { label: 'ch', dimension: 'uV', physMin, physMax, digMin, digMax, samplesPerRecord: 16, gen },
+                { label: 'ch', dimension: 'uV', physMin, physMax, digMin, digMax, samplesPerRecord: SAMPLES_PER_CALIBRATION, gen },
               ],
             });
 
