@@ -1158,6 +1158,32 @@ describe('converting', () => {
     for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
   });
 
+  it('asks the same of an origin the same distance out on the other side of zero', async () => {
+    /*
+      The guard above took the signed maximum of the record starts and seeded it with 0, so
+      an all-negative recording never got past the seed: the check ran on an origin of zero,
+      which any interval can carry, and passed. The collapse happened regardless — the
+      spacing of doubles grows with magnitude, not with value, so -1e16 defeats a 1-second
+      interval exactly as +1e16 does.
+
+      Twelve rows became four, exit 0, nothing said, while the byte-for-byte positive mirror
+      wrote all twelve and explained itself. The silent one was the one losing data.
+    */
+    const dir = await outDir();
+    const result = await convert(fixture('far-origin-negative.edf'), { outputDir: dir });
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.equal(rows.length - 1, 12, 'every row is written');
+
+    const warning = result.diagnostics.find((d) => /too far out/u.test(d.message));
+    assert.ok(warning, `the lost origin must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(warning.message, /-100000000000000\d+s from its own start date/u);
+    assert.match(warning.hint, /written from zero instead/u);
+
+    const times = rows.slice(1).map((row) => Number(row.split(',')[0]));
+    assert.deepEqual(times.slice(0, 3), [0, 0.25, 0.5]);
+    for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
+  });
+
   it('keeps an origin large enough to be represented', async () => {
     // The guard is on what the arithmetic can express, not on the number being big. At 1e15
     // the gap between doubles is an eighth of a second, so a 4 Hz recording's quarter-second

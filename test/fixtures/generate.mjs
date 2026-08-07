@@ -392,6 +392,29 @@ export function generate() {
   writeEdf({ ...farOrigin(1e16), path: at('far-origin.edf') });
   writeEdf({ ...farOrigin(1e17), path: at('far-origin-collapsed.edf') });
 
+  /*
+    The same distance out, on the other side of zero.
+
+    `buildTal` writes `+${onset}`, and `+-1e16` is not an onset, so this one spells the sign
+    itself — EDF+ says a TAL onset begins with '+' or '-', and a device timestamping from an
+    external clock produces the negative kind.
+
+    The guard that catches the positive case took the signed maximum of the record starts and
+    seeded it with 0, so an all-negative recording never got past the seed and the check
+    passed on an origin of zero. The collapse happened anyway: the spacing of doubles grows
+    with magnitude, not with value. Twelve rows became four, exit 0, nothing said.
+  */
+  const negativeTal = (onset) =>
+    `${onset}${String.fromCharCode(20)}${String.fromCharCode(20)}${String.fromCharCode(0)}`;
+  writeEdf({
+    ...farOrigin(0),
+    path: at('far-origin-negative.edf'),
+    // EDF+D: a continuous file's record times are taken from continuity, so its declared
+    // onsets never reach the guard at all. Discontinuity is what makes them load-bearing.
+    reserved: 'EDF+D',
+    talsForRecord: (record) => negativeTal(-1e16 - record),
+  });
+
   // An EDF+D recording whose first record sits well after zero.
   //
   // --duration is measured from where the conversion starts, and the annotation filter

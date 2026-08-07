@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.17
+
+### Fixed: a recording timestamped far in the negative direction lost two thirds of its rows, silently
+
+A double spaces its values further apart the larger they get. Near 1e16 seconds the gap
+between representable numbers is two seconds, so adding a one-second sample interval leaves
+the number unchanged and every sample in a record lands on one instant. The tool has a guard
+for that, and a warning, and times the recording from zero instead so every row survives.
+
+The guard took the signed maximum of the record start times, seeded with zero. An
+all-negative recording therefore never got past the seed: the check ran on an origin of 0,
+which any interval can carry, and passed. The collapse happened anyway, because the spacing
+of doubles grows with magnitude and not with value — -1e16 defeats a one-second interval
+exactly as +1e16 does.
+
+A twelve-row discontinuous recording wrote four rows, exit 0, nothing said. Its byte-for-byte
+positive mirror wrote all twelve and explained why. Same file, same arithmetic, opposite
+sign, and the silent one was the one losing data — which is the precise failure `unusableOrigin`
+was written to prevent, described in its own comment.
+
+Measured by distance from zero now. A fixture holds it, and it took two attempts to write:
+the first was continuous, and a continuous file takes its record times from continuity, so
+its declared onsets never reach the guard at all. Discontinuity is what makes them
+load-bearing.
+
+Also documents the condition, which was not on the warnings page. That page said
+`DISCONTINUOUS` "covers three related conditions" and listed three; the code raises four.
+
 ## 0.5.16
 
 ### Added: `npm run layouts`, which checks the claim `--layout long` is built on

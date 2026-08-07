@@ -192,8 +192,22 @@ export function deriveRecordStarts(
     });
   }
 
+  /*
+    Furthest from zero, in either direction.
+
+    This took the signed maximum and seeded it with 0, so a recording whose records all sit
+    at negative onsets never got past the seed: `furthest` stayed 0, which any interval can
+    carry. Then the samples collapsed anyway, because the arithmetic that defeats a large
+    positive origin defeats a large negative one identically — at -1e16 seconds, adding a
+    1-second sample interval leaves the double unchanged.
+
+    A four-record recording of eight samples wrote two rows, exit 0, no warning. Its
+    byte-for-byte positive mirror wrote all eight and explained why it had to time them from
+    zero. Same file, same failure, opposite sign, opposite outcome — and the silent one is
+    the one that loses data, which is exactly what unusableOrigin exists to prevent.
+  */
   let furthest = 0;
-  for (const start of starts) if (start > furthest) furthest = start;
+  for (const start of starts) if (Math.abs(start) > Math.abs(furthest)) furthest = start;
   if (!canCarry(furthest, file)) {
     diagnostics.push(unusableOrigin(furthest, file));
     return { starts: null, diagnostics };
@@ -245,6 +259,8 @@ function originOf(recordStarts: readonly (number | null)[], recordDuration: numb
  */
 function canCarry(origin: number, file: EdfFile): boolean {
   if (!Number.isFinite(origin)) return false;
+  // Asked of the origin furthest from zero, whichever side it is on: the spacing of doubles
+  // grows with magnitude, not with value, so -1e16 and +1e16 fail this identically.
   return origin + finestInterval(file) > origin;
 }
 
