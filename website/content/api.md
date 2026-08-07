@@ -297,10 +297,10 @@ Two related helpers, used to pick CSV precision:
 
 ```ts
 function quantizationStep(signal: EdfSignal): number;
-function decimalsForSignal(signal: EdfSignal, max?: number): number;  // max defaults to 20
+function decimalsForSignal(signal: EdfSignal, max?: number): number;  // max defaults to 100
 ```
 
-`quantizationStep` is the smallest physical change one digital unit can express. `decimalsForSignal` is two places past that step, capped at `max`, which is the precision at which no two adjacent digital codes round to the same text. A typical EEG channel lands on 3.
+`quantizationStep` is the smallest physical change one digital unit can express. `decimalsForSignal` is two places past that step, capped at `max`, which is the precision at which no two adjacent digital codes round to the same text. A typical EEG channel lands on 3. The cap defaults to 100 because that is the most `toFixed` will print; it was 20 until 0.4.74, which cost a magnetometer channel most of its digital codes.
 
 ### The batch buffer is reused
 
@@ -309,13 +309,17 @@ This is the one contract in the API that fails silently if you get it wrong.
 `readRecords` allocates a single buffer and refills it on every iteration. `batch.data` is a view into that same buffer, not a fresh copy. Once the loop turns over, anything you kept a reference to now shows the *next* batch's bytes.
 
 ```js
-// WRONG. Every entry ends up pointing at the same memory.
+// WRONG. Every entry is a view of one buffer that keeps being overwritten.
 const kept = [];
 for await (const batch of file.readRecords()) {
   kept.push(batch.data);
 }
-// kept[0], kept[1] and kept[2] are all identical, and all hold the last batch read.
+// kept[0] no longer holds what it held when it was pushed.
 ```
+
+The views are distinct objects over shared memory, which is worth stating precisely because the obvious test for it gives the wrong answer. `kept[0] === kept[1]` is **false** — each iteration hands you a new `Uint8Array`. What they have in common is `kept[0].buffer === kept[1].buffer`, all at offset 0, so what you are holding is three windows onto the same bytes.
+
+Nor do they all end up equal. The final batch is usually short — a 24 MB recording read in 8 MB chunks gives two full batches and a 2.9 MB one — so after the loop `kept[0]` shows the last batch's bytes for as far as they go and the *previous* batch's bytes beyond that. It is neither the first batch nor the last but a seam between two, which is the kind of wrong that produces plausible-looking numbers rather than an error.
 
 ```js
 // CORRECT. Copy what you intend to keep.

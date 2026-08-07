@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.75
+
+### Fixed: the buffer-reuse warning described something the obvious test disproves
+
+api.md calls the reused batch buffer "the one contract in the API that fails silently if you
+get it wrong", and then described it as "kept[0], kept[1] and kept[2] are all identical, and
+all hold the last batch read." Neither half survives being checked. `kept[0] === kept[1]` is
+false — each iteration hands out its own `Uint8Array` — so a reader who tests the warning
+the obvious way is told it does not apply and keeps the references. And they do not all hold
+the last batch: the final batch is usually short, so an early view shows the last batch's
+bytes for as far as they go and the *previous* batch's beyond that. A seam between two
+batches, which produces plausible numbers rather than an error.
+
+The section now says what is actually shared — distinct views, one buffer, all at offset
+zero — and what a stale view holds afterwards. A test reads a fixture in batches with a
+short tail and asserts all of it, so the description and the reader cannot drift apart.
+
+Also corrects `decimalsForSignal`'s documented default, which 0.4.74 moved from 20 to 100
+and this page still gave as 20.
+
 ## 0.4.74
 
 ### Fixed: the decimal ceiling was 20 on a false premise, and cost a magnetometer 69% of its codes

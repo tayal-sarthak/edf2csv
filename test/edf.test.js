@@ -217,6 +217,52 @@ describe('reading samples', () => {
     };
     assert.deepEqual(await readAll(1), await readAll(1 << 20));
   });
+
+  it('hands out views of one reused buffer, which is what the API reference says', async () => {
+    /*
+      api.md calls this the one contract that fails silently if you get it wrong, so the
+      shape of it is worth pinning rather than describing. It also used to describe it
+      loosely — "kept[0], kept[1] and kept[2] are all identical" — and the obvious test for
+      that, object identity, returns false, which would talk a reader out of believing a
+      warning that is true.
+    */
+    const file = await load('long-stream.edf');
+    const kept = [];
+    const copies = [];
+    // 400 records of 512 bytes in 4608-byte batches: 44 full ones and a 2048-byte tail,
+    // which is the arrangement the reference describes and the one that misleads.
+    for await (const batch of file.readRecords({ chunkBytes: 5000 })) {
+      kept.push(batch.data);
+      copies.push(new Uint8Array(batch.data));
+    }
+    assert.ok(kept.length >= 3, `expected several batches, got ${kept.length}`);
+
+    // Distinct objects, one buffer. Both halves of that matter to a caller.
+    assert.notEqual(kept[0], kept[1], 'each iteration hands out its own view');
+    assert.ok(
+      kept.every((view) => view.buffer === kept[0].buffer && view.byteOffset === 0),
+      'and every one of them looks at the same memory from the same place',
+    );
+
+    // The last batch is short, so what an early view shows afterwards is a seam: the last
+    // batch's bytes for as far as they go, the previous batch's beyond that.
+    const last = kept.at(-1);
+    assert.ok(last.length < kept[0].length, 'the final batch is a partial one');
+    assert.deepEqual(
+      [...kept[0].subarray(0, last.length)],
+      [...copies.at(-1)],
+      'the head of a stale view is the last batch',
+    );
+    assert.deepEqual(
+      [...kept[0].subarray(last.length)],
+      [...copies.at(-2).subarray(last.length)],
+      'and its tail is still the one before',
+    );
+
+    // Which is exactly what copying avoids, and why the reference tells you to copy.
+    assert.notDeepEqual([...kept[0]], [...copies[0]]);
+    await file.close();
+  });
 });
 
 describe('BDF (BioSemi 24-bit)', () => {
