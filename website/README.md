@@ -39,8 +39,12 @@ npm run dev
 npm run build
 ```
 
-The build writes static files to `dist/`, with a relative base path, so it can be
-served from a domain root or from a subpath such as GitHub Pages without changes.
+The build writes static files to `dist/`, and they must be served from a domain
+root. The base path is absolute (`base: '/'` in `vite.config.js`) because the
+documentation is prerendered into `/docs/<slug>/`, and a relative base would send
+those pages looking for `/docs/<slug>/assets/...` instead. Served from a subpath —
+a GitHub Pages project site at `/edf2csv/`, say — every asset reference 404s and
+the page renders blank. Deploying there means rebuilding with a matching `base`.
 
 ## Notes on the build
 

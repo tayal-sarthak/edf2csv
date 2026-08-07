@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.70
+
+### Fixed: the website README described a base path the build does not use
+
+It said the build writes `dist/` "with a relative base path, so it can be served from a
+domain root or from a subpath such as GitHub Pages without changes." The base is `/`, and
+`vite.config.js` says why in a comment right above it: documentation is prerendered into
+`/docs/<slug>/`, and a relative base would send those pages looking for
+`/docs/<slug>/assets/...` instead. Serving the build under `/edf2csv/` returns 404 for the
+stylesheet and both scripts, so the page renders blank — which is a poor way to find out.
+
+The README now describes the absolute base, the reason for it, and what deploying to a
+subpath actually requires. A test reads the base out of `vite.config.js` and holds the two
+in agreement, so changing one without the other fails.
+
 ## 0.4.69
 
 ### Added: `formatWallClock` is documented, and every export is checked to be

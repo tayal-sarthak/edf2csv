@@ -201,6 +201,26 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('describes the base path the site is actually built with', async () => {
+    /*
+      The README promised a relative base and subpath deploys. The base is absolute and
+      deliberately so — prerendered pages live at /docs/<slug>/ and a relative base sends
+      them looking for /docs/<slug>/assets/... Serving the build under /edf2csv/ 404s every
+      asset and renders blank, which is a bad thing to learn from your own deploy.
+    */
+    const config = await read('website/vite.config.js');
+    const base = /base:\s*'([^']+)'/.exec(config)?.[1];
+    assert.ok(base, 'vite.config.js no longer declares a base');
+    // Wrapped prose puts line breaks mid-phrase; match on the words, not the layout.
+    const page = (await read('website/README.md')).replace(/\s+/g, ' ');
+    if (base === '/') {
+      assert.ok(page.includes('domain root'), 'README does not say the site needs a domain root');
+      assert.ok(!/relative base path/.test(page), 'README still promises a relative base path');
+    } else {
+      assert.ok(page.includes(base), `README does not mention the base ${base}`);
+    }
+  });
+
   it('documents every name the package exports', async () => {
     /*
       `formatWallClock` was exported and undocumented, which mattered more than a missing
