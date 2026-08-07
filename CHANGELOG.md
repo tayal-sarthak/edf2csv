@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.68
+
+### Fixed: the landing page showed a timezone the format does not have
+
+Its `--info` block read `Recorded 2002-03-02 23:10:00 UTC`. The tool prints no timezone,
+deliberately — EDF stores local wall-clock digits and no zone at all, which is why the
+metadata key is `start_datetime_local` and why the reader keeps `startDateRaw` beside the
+parsed instant. A UTC suffix on the page arguing the tool is careful about exactly that was
+the worst place to put one.
+
+The comment above the block says every terminal and CSV sample on the page is real output
+and nothing is a mock-up. Two of the three CSV samples had drifted from any recording that
+exists, so the claim was half true. The recording is now described in that comment — five
+signals plus annotations, 28800 records, the rates and ranges — and every block on the page
+is the output of running the tool against it, regenerable by anyone who reads the recipe.
+
 ## 0.4.67
 
 ### Fixed: a documentation link pointed at a page the site does not serve

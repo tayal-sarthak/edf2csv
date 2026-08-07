@@ -11,15 +11,28 @@ import { highlight } from '../lib/highlight.js';
   Every terminal block and CSV sample on this page is real output, captured from the
   tool running against a synthetic eight hour sleep recording. Nothing here is a
   mock-up of a product that does not exist yet.
+
+  The recording is 28800 records of 1s: EEG Fpz-Cz, EEG Pz-Oz and EOG horizontal at
+  100 Hz over -250..250 uV, Resp oro-nasal at 10 Hz over -1..1 V, Temp rectal at 1 Hz
+  over 34..40 degC, plus an EDF Annotations channel, started 02.03.02 at 23.10.00.
+  test/fixtures/edf-writer.mjs builds it; run `--info` on the result to regenerate the
+  block below.
+
+  It said `Recorded 2002-03-02 23:10:00 UTC` until 0.4.68. The tool prints no timezone,
+  deliberately: EDF stores local wall-clock digits and no zone at all, which is why the
+  metadata key is `start_datetime_local`. A suffix the format cannot support, on the page
+  arguing the tool is careful about exactly that, was the worst place for it.
 */
 
 const INFO_OUTPUT = `$ edf2csv sleep-study.edf --info
 
 File       sleep-study.edf
 Format     EDF+ (continuous)
-Recorded   2002-03-02 23:10:00 UTC
+Recorded   2002-03-02 23:10:00
 Duration   8h 00m 0s  (28800 records of 1s)
-Size       20.4 MB
+Size       18.7 MB
+Patient    X X X X
+Recording  Startdate 02-MAR-2002 X X X
 
 Channels   5 signals + 1 annotation channel
 
@@ -33,8 +46,10 @@ Channels   5 signals + 1 annotation channel
 Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
 Would write 3,196,800 rows, roughly 108 MB.
 
-warning: At least one output file will have more than 1,048,576 rows, which is more
-         than Excel or Numbers can open.`;
+warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
+         They are written to one file per rate so no channel is resampled.
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+         Use --start and --duration to convert a section, or read the file with pandas or R.`;
 
 const FILES = [
   {
@@ -43,7 +58,7 @@ const FILES = [
     body: 'The three channels recorded at 100 Hz share a time base, so they share a table. Column names are the labels the file itself uses, spaces and all.',
     sample: `time_s,EEG Fpz-Cz,EEG Pz-Oz,EOG horizontal
 0.000,0.061,0.061,0.061
-0.010,58.913,70.147,13.858`,
+0.010,1.648,1.404,0.916`,
     lang: 'text',
   },
   {
@@ -52,7 +67,7 @@ const FILES = [
     body: 'Recorded at 10 Hz, so it gets ten rows a second and not one more. Its decimal precision is derived from its own calibration rather than borrowed from a neighbour.',
     sample: `time_s,Resp oro-nasal
 0.000,0.000244
-0.100,0.024664`,
+0.100,0.000733`,
     lang: 'text',
   },
   {
@@ -61,7 +76,7 @@ const FILES = [
     body: 'Eight hours of recording gives 28,800 rows here, against 2,880,000 in the 100 Hz table. Merging them would mean inventing 99 percent of this column.',
     sample: `time_s,Temp rectal
 0.000,37.00073
-1.000,37.00073`,
+1.000,37.00220`,
     lang: 'text',
   },
   {
