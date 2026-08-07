@@ -457,6 +457,18 @@ function describe(cause: unknown): string {
   return String(cause);
 }
 
+/**
+ * The most `fs.read` will accept as a length.
+ *
+ * Node asserts on a length that does not fit in a signed 32-bit integer, and it asserts in
+ * C++: `Assertion failed: args[3]->IsInt32()`, forty frames of native stack, SIGABRT. Not an
+ * exception — nothing in JavaScript sees it, so no catch block and no `uncaughtException`
+ * handler runs, and a library consumer's whole process goes down with it.
+ *
+ * A round gigabyte rather than the exact limit, so the loop below does whole even reads.
+ */
+const MAX_READ_BYTES = 1024 * 1024 * 1024;
+
 /** Fill a requested region unless EOF is reached; regular-file reads may legally be short. */
 async function readFully(
   handle: FileHandle,
@@ -467,12 +479,21 @@ async function readFully(
 ): Promise<number> {
   let total = 0;
   while (total < length) {
-    const { bytesRead } = await handle.read(
-      buffer,
-      offset + total,
-      length - total,
-      position + total,
-    );
+    /*
+      Capped, because one data record can be larger than a single read may be.
+
+      A record is read in one call when it exceeds the chunk budget — there is nothing
+      smaller to divide it by, since a record is the unit the format is addressed in. EDF's
+      samples-per-record field is 8 characters, so eleven channels at 99,999,999 samples make
+      a record of 2.2 GB, and a long record duration at ordinary rates gets there too. That
+      went to `fs.read` as a single length over 2^31-1 and took the process out with a native
+      assertion rather than an error.
+
+      Looping was already how a short read is handled, so the cap costs one more iteration
+      per gigabyte and nothing else.
+    */
+    const want = Math.min(length - total, MAX_READ_BYTES);
+    const { bytesRead } = await handle.read(buffer, offset + total, want, position + total);
     if (bytesRead === 0) break;
     total += bytesRead;
   }

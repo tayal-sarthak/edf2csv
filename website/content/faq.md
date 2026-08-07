@@ -480,10 +480,18 @@ seconds with the Node heap capped at 48 MB.
 All the output files are written in the same single pass over the data, so a recording that
 produces three rate-split files is still read exactly once.
 
-One thing does scale with the recording: the EDF+ annotation list is collected in memory before
-it's written, because annotations have to be sorted by onset and a writer is free to store an
-event in a record other than the one its onset falls in. A recording with hundreds of thousands of
-events uses memory in proportion to the event count. Signal data never does.
+Two things do scale with the recording, and neither is its length.
+
+The EDF+ annotation list is collected in memory before it's written, because annotations have to
+be sorted by onset and a writer is free to store an event in a record other than the one its
+onset falls in. A recording with hundreds of thousands of events uses memory in proportion to the
+event count.
+
+And one data record is read whole, because a record is the unit the format is addressed in and
+there is nothing smaller to divide it into. Records are almost always well under the 8 MB batch —
+a second of 60 channels at 200 Hz is 24 KB — but the header permits far larger, and a recording
+whose records are gigabytes needs room for one of them. Reading such a record works; it is the
+one case where the working set follows the file.
 
 ## How do I check whether a conversion had problems from a script?
 

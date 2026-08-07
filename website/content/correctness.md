@@ -352,13 +352,13 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the three test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It finishes in about a second on a laptop:
 
 ```
-ℹ tests 206
+ℹ tests 208
 ℹ suites 39
-ℹ pass 206
+ℹ pass 208
 ℹ fail 0
 ```
 
-The 206 tests are split across five files by what they exercise:
+The 208 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
@@ -367,6 +367,7 @@ The 206 tests are split across five files by what they exercise:
 | `test/cli.test.js` | 91 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
 | `test/docs.test.js` | 6 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 4 | `--stdout` onto a destination that fills up, which needs a filesystem of a known small size and so is kept apart |
+| `test/large.test.js` | 2 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 
 To run one file, build and generate first, then point the runner at it:
 
