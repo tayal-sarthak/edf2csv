@@ -325,13 +325,13 @@ The same failure as `TIME_RESOLUTION`, one column over: the value this time rath
 **Cause.** A channel whose quantization step — `|physical_max - physical_min| / (digital_max - digital_min)` — is below 1e-98. Decimals are derived per channel as `ceil(-log10(step)) + 2`, and 100 is where that stops, because 100 is the most `toFixed` will print. EDF's physical bound fields are 8 characters and `1e-99` is five of them, so the format permits such a calibration; no instrument produces one.
 
 ```
-warning: gravimeter steps by less than the 100 decimals written can express, so some
+warning: gravimeter steps by less than any number of decimals this can print, so some
          consecutive samples round to the same value in signals.csv.
          Every sample is written, in order, and the physical values are computed at full
          precision either way. What is lost is only in the printed text.
 ```
 
-Only when the precision was derived. `--decimals` exists to set a coarser one, so reporting the consequence of it would be reporting the flag back at the person who typed it — and since `--strict` turns any diagnostic into a non-zero exit, `--decimals 2 --strict` could not have succeeded on any recording. Up to 0.5.10 it raised this on every channel of an ordinary EEG. The warning is about a ceiling you cannot move, not about a floor you chose.
+Asked of the ceiling, not of the precision in use — so it holds whatever `--decimals` says, and it stays quiet for an ordinary channel however coarse a precision you ask for. `--decimals 2` on a channel needing 3 is a trade you made knowingly; up to 0.5.10 it raised this on every channel of an ordinary EEG, which also made `--decimals 2 --strict` impossible, since `--strict` turns any diagnostic into a non-zero exit. 0.5.10 fixed that by skipping the check whenever `--decimals` was given, and so silenced the real case too: at `--decimals 20` a channel stepping by 1e-106 printed every code it had as `0.00000000000000000000` and said nothing. 0.5.21 asks the question that actually matters — whether any precision this can print would separate consecutive codes.
 
 **What edf2csv does.** Writes every sample, at the finest precision `toFixed` supports. The physical values are computed at full double precision whichever way — what is lost is only in the printed text, so `--json` metadata, row counts and ordering are all unaffected.
 

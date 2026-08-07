@@ -108,14 +108,20 @@ export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS)
 }
 
 /**
- * Whether the decimals a channel gets are fewer than its quantization step needs.
+ * Whether this channel's step is finer than any precision the tool can print.
  *
- * True only when the step is below 1e-98 and the ceiling above bites. Asked by the planner,
- * which turns it into a warning, because a value column that cannot separate consecutive
- * codes is the same failure the time column raises TIME_RESOLUTION for.
+ * Asked of the ceiling, not of the precision in use. `--decimals 2` on a channel needing 3
+ * is a trade the caller made knowingly and is not this warning's business — 0.5.10 fixed a
+ * version of this that fired on every ordinary EEG at `--decimals 2` and made
+ * `--decimals 2 --strict` impossible. But it fixed it by asking "did the caller choose the
+ * precision", which suppressed the real case too: at `--decimals 20` a channel stepping by
+ * 1e-106 printed every one of its codes as `0.00000000000000000000`, in silence.
+ *
+ * The question is whether anything the tool can print would separate consecutive codes. When
+ * the answer is no, that is a ceiling nobody chose, and it holds whatever `--decimals` says.
  */
-export function decimalsAreClamped(signal: EdfSignal, decimals: number): boolean {
+export function decimalsAreClamped(signal: EdfSignal): boolean {
   const step = quantizationStep(signal);
   if (!(step > 0) || !Number.isFinite(step)) return false;
-  return Math.ceil(-Math.log10(step)) + 2 > decimals;
+  return Math.ceil(-Math.log10(step)) + 2 > MAX_DERIVED_DECIMALS;
 }

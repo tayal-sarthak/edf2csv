@@ -257,22 +257,28 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     MAX_DERIVED_DECIMALS. It is rare now, but "rare" is the reason to say so rather than the
     reason not to.
 
-    Only when the precision was derived. `--decimals` exists to set a coarser one, so
-    reporting the consequence of it is reporting the flag back at the caller who typed it:
-    `--decimals 2` raised this on every channel of an ordinary EEG, and since --strict turns
-    any diagnostic into exit 1, `--decimals 2 --strict` could not succeed on any recording.
-    The warning is about a ceiling the caller cannot move, not about a floor they chose.
+    Asked of the ceiling, not of the precision in use, and so asked whatever `--decimals`
+    says. `--decimals 2` on a channel needing 3 is a trade the caller made knowingly, and
+    reporting it was reporting the flag back at the person who typed it — every channel of an
+    ordinary EEG raised this, and since --strict turns any diagnostic into exit 1,
+    `--decimals 2 --strict` could not succeed on any recording at all.
+
+    0.5.10 fixed that by skipping the check whenever `--decimals` was given, which suppressed
+    the real case along with the false one: at `--decimals 20` a channel stepping by 1e-106
+    printed every code it had as `0.00000000000000000000`, and said nothing. The question is
+    not who chose the precision. It is whether any precision the tool can print would
+    separate consecutive codes.
   */
-  for (const group of options.decimals === undefined ? groups : []) {
-    const short = group.channels.filter((c) => decimalsAreClamped(c.signal, c.decimals));
+  for (const group of groups) {
+    const short = group.channels.filter((c) => decimalsAreClamped(c.signal));
     if (short.length === 0) continue;
     diagnostics.push({
       code: 'VALUE_RESOLUTION',
       severity: 'warning',
       message:
         `${listed(short.map((c) => c.column))} ${short.length === 1 ? 'steps' : 'step'} by less ` +
-        `than the ${short[0]?.decimals} decimals written can express, so some consecutive ` +
-        `samples round to the same value in ${group.fileName}.`,
+        `than any number of decimals this can print, so some consecutive samples round to ` +
+        `the same value in ${group.fileName}.`,
       hint:
         'Every sample is written, in order, and the physical values are computed at full ' +
         'precision either way. What is lost is only in the printed text.',

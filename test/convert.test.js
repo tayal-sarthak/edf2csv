@@ -1003,9 +1003,22 @@ describe('converting', () => {
       );
     }
 
-    // The ceiling case is a different thing and still says so: nobody chose 100.
-    const clamped = await convert(fixture('unprintable-step.bdf'), { outputDir: await outDir() });
-    assert.ok(clamped.diagnostics.some((d) => d.code === 'VALUE_RESOLUTION'));
+    /*
+      The ceiling case is a different thing and says so whatever --decimals says — including
+      at 20, where 0.5.10's version went quiet and printed every one of that channel's codes
+      as `0.00000000000000000000`. The question is not who chose the precision; it is whether
+      any precision the tool can print would separate consecutive codes.
+    */
+    for (const options of [{}, { decimals: 20 }, { decimals: 2 }]) {
+      const clamped = await convert(fixture('unprintable-step.bdf'), {
+        outputDir: await outDir(),
+        ...options,
+      });
+      assert.ok(
+        clamped.diagnostics.some((d) => d.code === 'VALUE_RESOLUTION'),
+        `silent at ${JSON.stringify(options)}`,
+      );
+    }
   });
 
   it('says so when the step is finer than any printable decimal', async () => {
@@ -1015,7 +1028,7 @@ describe('converting', () => {
     const result = await convert(fixture('unprintable-step.bdf'), { outputDir: await outDir() });
     const notice = result.diagnostics.find((d) => d.code === 'VALUE_RESOLUTION');
     assert.ok(notice, `expected the warning: ${JSON.stringify(result.diagnostics)}`);
-    assert.match(notice.message, /gravimeter steps by less than the 100 decimals/u);
+    assert.match(notice.message, /gravimeter steps by less than any number of decimals/u);
     assert.match(notice.hint, /computed at full/u);
   });
 

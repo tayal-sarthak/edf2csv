@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.21
+
+### Fixed: 0.5.10 silenced the warning it was meant to keep
+
+`VALUE_RESOLUTION` fired on every channel of an ordinary EEG at `--decimals 2`, which made
+`--decimals 2 --strict` impossible on any recording, so 0.5.10 stopped raising it whenever
+`--decimals` was given.
+
+That is the wrong question. It suppressed the real case along with the false one: at
+`--decimals 20`, a channel whose quantization step is 1e-106 printed every code it had as
+`0.00000000000000000000` — total collapse, nothing recoverable — and said nothing at all.
+
+The question is not who chose the precision. It is whether *any* precision this can print
+would separate consecutive codes. A channel needing 3 places and given 2 is a trade the
+caller made knowingly. A channel needing 108 places has no trade available, and that is true
+whatever `--decimals` says.
+
+Asked of the ceiling now. An ordinary EEG stays quiet at any `--decimals`; the gravimeter
+warns at every `--decimals` and when the precision is derived. The message says "less than
+any number of decimals this can print", since naming a number was what made it sound like a
+setting.
+
 ## 0.5.20
 
 ### Fixed: 0.5.6 shared one of the two per-table buffers and left the other
