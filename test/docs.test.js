@@ -450,6 +450,15 @@ describe('documentation and source agree on their lists', () => {
       'the estimate sweep runs every fixture, so that count is the fixture count',
     );
 
+    // The layout sweep the same way: its recording count is the fixture count, and its
+    // option-set count is a list it exports.
+    const layouts = await import(path.join(ROOT, 'test/fuzz/layouts.mjs'));
+    const shape = /([\d,]+) recordings crossed with (\w+) option sets/u.exec(page);
+    assert.ok(shape, 'the page no longer states the layout sweep shape');
+    assert.equal(Number(shape[1].replaceAll(',', '')), fixtures);
+    const words = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+    assert.equal(words[shape[2]], layouts.OPTIONS.length, `it runs ${layouts.OPTIONS.length}`);
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),

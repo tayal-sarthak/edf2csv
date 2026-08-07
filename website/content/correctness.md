@@ -4,7 +4,7 @@ description: What edf2csv checks, how it is compared against pyEDFlib, why the c
 order: 7
 ---
 
-## Seven separate claims
+## Eight separate claims
 
 Correctness here covers seven different things, verified seven different ways. The list grew
 past the "three" this section used to promise as the batch, fuzz and estimate harnesses were
@@ -16,9 +16,10 @@ added, and the heading did not keep up until 0.4.34.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **1,200 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
 5. **`--info` predicts what a conversion writes.** The row count is exact and the byte count never reads low, across every fixture crossed with every option combination. Checked by `npm run estimate`: **324 predictions over 43 recordings**, sizes reading 16% high on average, which is the direction a size estimate has to err in.
 6. **The digital codes can be recovered from the CSV.** The documentation says the written decimals are always fine enough to get the original integer back, and offers the arithmetic for doing it. Checked by `npm run roundtrip`: **13,440 cells over 840 calibrations**, EDF and BDF, every one recovering the code the file holds.
-7. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
+7. **The two layouts hold the same samples.** `--layout long` is a different shape, not different data, which is what makes it an honest answer to a mixed-rate recording. Checked by `npm run layouts`: **43 recordings crossed with six option sets**, converted both ways, compared per channel as an ordered sequence of value cells — every sequence identical.
+8. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
-The second and seventh are what `npm test` runs; the third through sixth are the fuzz, estimate and round-trip commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and eighth are what `npm test` runs; the third through seventh are the fuzz, estimate, round-trip and layout commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib
@@ -72,6 +73,27 @@ Converting a folder is the hardest part of this tool to reason about: the tree i
 4. **A non-zero exit comes with a message**, never a silent half-conversion.
 
 The first of those is how the collision fixed in 0.4.14 was found: one run produced `<out>/rec`, another `<out>/rec/inner`, from the same command over the same files. Putting that bug back makes this fail in two independent rounds and exit 1.
+
+## The two layouts
+
+```bash
+npm run layouts
+```
+
+```
+237 conversions compared over 43 recordings (552 channel sequences, 21 refused by both).
+Both layouts hold the same samples, in the same order, per channel.
+```
+
+The two counts in the middle move with the fixture set and with which windows a given recording can honour, which is why the claim above is stated as the sweep's shape rather than as a total. What must not move is the last line.
+
+`--layout long` writes one table of `time_s,channel,value` where the default writes a column per channel and a file per rate. Every page describing it says the same thing: a different shape, not different data. That is the claim, and until 0.5.16 nothing ran it — during which the long layout shipped four defects, three of them found by reading rather than by running.
+
+Each fixture is converted both ways, crossed with option sets that move the window and the precision, and compared per channel: the column read down its rows in the wide table against the rows for that channel in the long one, as an ordered sequence of value cells.
+
+Deliberately not joined on time. The two layouts write `time_s` at different precisions by design — the long one shares the finest any rate needs, since one column cannot mean three things — so a time-keyed comparison compares the formatting rather than the data, and at nine decimal places it collapses distinct sub-nanosecond samples into one key. The first version of this harness did exactly that and reported 42 disagreements that were all its own.
+
+It is confirmed capable of failing: making the long layout skip one sample per record is caught on the first recording, as a channel with 8 values in one layout and 6 in the other.
 
 ## Damaged files
 

@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.16
+
+### Added: `npm run layouts`, which checks the claim `--layout long` is built on
+
+Every page says the same thing about it: a different shape, not different data. That is what
+makes it an honest answer to a mixed-rate recording rather than a second way to be wrong, and
+for thirteen versions nothing ran it. In those thirteen versions the long layout shipped four
+defects — a byte audit counting one writer per rate group, then the same again for the
+compressed stream, then a channel order taken from the sampling rate rather than from the
+file, then a promise of sorted rows a discontinuous recording can break. Three of the four
+were found by reading code, not by converting anything.
+
+So this converts. Every fixture crossed with six option sets that move the window and the
+precision, both layouts, compared per channel: the wide column read down its rows against
+that channel's rows in the long table, as an ordered sequence of value cells.
+
+Deliberately not joined on time. The two layouts write `time_s` at different precisions by
+design — the long one shares the finest any rate needs, since one column cannot mean three
+things — so a time-keyed comparison compares the formatting rather than the data, and at nine
+decimal places it collapses distinct sub-nanosecond samples into one key. The first version
+of this harness did exactly that and reported 42 disagreements that were all its own.
+
+Confirmed capable of failing before being kept: making the long layout skip one sample per
+record is caught on the first recording, as a channel holding 8 values one way and 6 the
+other. It is the correctness page's eighth claim, and the page states the sweep's shape
+rather than a total, since the totals move with the fixture set — a test holds the shape
+against the harness.
+
 ## 0.5.15
 
 ### Fixed: `--stdout` on a recording with no signal table, which both layouts got wrong
