@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.3
+
+### Fixed: the long layout promised sorted rows for a file it cannot sort
+
+0.5.0 said, flatly, "rows come out sorted by `time_s`" — on two pages and in its own release
+notes. The promise rests on something true but conditional: every sample of a record falls
+inside that record's span, so writing records in file order gives times in order.
+
+A discontinuous recording is free to store its records in a different order than it
+timestamps them. Nothing in EDF+ forbids it. Then the rows come out 10s, 5s, 0s, and the
+tool was already warning that they would — "2 data records start earlier than the record
+before it. Rows are written in file order, so the time column will not increase
+monotonically" — while the page for the new feature promised the opposite.
+
+The claim is qualified now, in both places, and points at the warning. What has not changed
+is the part that matters: every sample is written, once, in file order, with the time the
+file gives it. A fixture, `records-backwards.edf`, holds all of that — including the check
+that the times really do go backwards, so the test cannot quietly stop testing anything.
+
 ## 0.5.2
 
 ### Fixed: the disk-full tests destroyed any other run on the machine

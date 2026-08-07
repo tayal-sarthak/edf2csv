@@ -428,7 +428,14 @@ time_s,channel,value
 0.010,EEG Fpz-Cz,1.648
 ```
 
-The reason it exists is the mixed-rate recording. A 100 Hz channel and a 1 Hz channel share no rows, so a wide table holding both means either ninety-nine empty cells in every hundred or inventing the samples to fill them — which is why `wide` splits them across files instead. In the long layout each sample carries its own time and nothing has to line up, so every rate goes in one table with nothing invented. Rows come out sorted by `time_s`, and within one time in the order the file declares its channels.
+The reason it exists is the mixed-rate recording. A 100 Hz channel and a 1 Hz channel share no rows, so a wide table holding both means either ninety-nine empty cells in every hundred or inventing the samples to fill them — which is why `wide` splits them across files instead. In the long layout each sample carries its own time and nothing has to line up, so every rate goes in one table with nothing invented. Rows come out sorted by `time_s`, and within one time in the order the file declares its channels — with one exception the format allows and the tool warns about. Records are written in file order, and each record's samples all fall inside that record's span, which is what makes the whole file sorted. A discontinuous recording whose records are *stored* in a different order than they are *timed* breaks that, and edf2csv says so:
+
+```
+warning: 2 data records start earlier than the record before it.
+         Rows are written in file order, so the time column will not increase monotonically.
+```
+
+Every sample is still written, once, in file order. Sort on `time_s` yourself if you need it and that warning appeared.
 
 That also makes it the one layout `--stdout` can stream for a mixed-rate recording, since there is only ever one table:
 

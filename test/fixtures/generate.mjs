@@ -558,6 +558,28 @@ export function generate() {
   });
 
   /*
+    An EDF+D whose records are stored in one order and timestamped in another.
+
+    Nothing in the format obliges a writer to store record 5 after record 4 in time, and the
+    reader already warns when one starts before the one before it. What this fixture is for
+    is the claim the long layout makes: its rows are sorted by time_s, which holds because
+    every sample of a record falls inside that record's span — and stops holding exactly
+    here. Every sample is still written, in file order, which is the only order there is.
+  */
+  writeEdf({
+    path: at('records-backwards.edf'),
+    reserved: 'EDF+D',
+    numRecords: 3,
+    recordDuration: 1,
+    talsForRecord: (record) => buildTal([10, 5, 0][record], []),
+    signals: [
+      { label: 'fast', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'slow', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 1, gen: ramp(1) },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+  });
+
+  /*
     Calibrations whose quantization step is finer than a printed decimal easily reaches.
 
     The magnetometer is the case that was broken: ±1e-16 T over a 16-bit converter steps by

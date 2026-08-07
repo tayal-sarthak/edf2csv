@@ -1445,6 +1445,45 @@ describe('--layout long', () => {
     assert.ok(!channels.includes('signals_256hz.csv'), channels);
   });
 
+  it('says so when the one recording it cannot sort turns up', async () => {
+    /*
+      The sorted-rows promise rests on every sample of a record falling inside that record's
+      span, so records in file order give times in order. A discontinuous recording is free
+      to store its records in a different order than it timestamps them, and then the
+      promise does not hold — the docs said it did, flatly, while the tool was already
+      warning that it would not.
+
+      What must stay true is the part that matters: every sample written, once, in file
+      order, with the time the file gives it.
+    */
+    const dir = await outDir();
+    const { code, stderr } = await cli([
+      fixture('records-backwards.edf'),
+      '--out',
+      dir,
+      '--layout',
+      'long',
+    ]);
+    assert.equal(code, 0);
+    assert.match(stderr, /2 data records start earlier than the record before it/u);
+    assert.match(stderr, /will not increase monotonically/u);
+
+    const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    const times = rows.slice(1).map((row) => Number(row.split(',')[0]));
+    assert.ok(
+      times.some((time, index) => index > 0 && time < times[index - 1]),
+      'this fixture exists because the times go backwards; if they do not it is testing nothing',
+    );
+
+    // Three records of five samples: every one present, none duplicated.
+    assert.equal(times.length, 15);
+    assert.deepEqual(
+      rows.slice(1).map((row) => row.split(',').slice(0, 2).join(',')).slice(0, 3),
+      ['10.000,fast', '10.000,slow', '10.250,fast'],
+      'and they come out in file order, which is the only order there is',
+    );
+  });
+
   it('shares one time precision, because one column cannot mean three things', async () => {
     // 256 Hz needs eight places, 1 Hz needs three. Writing each rate at its own precision
     // would make the column's meaning depend on the row it is in.

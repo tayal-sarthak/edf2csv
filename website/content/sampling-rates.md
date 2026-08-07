@@ -101,7 +101,7 @@ time_s,channel,value
 0.00781250,ECG,0.12088
 ```
 
-Every row is a sample the recording holds, carrying the time it was recorded at. The 1 Hz channel contributes 3 rows and the 256 Hz channel contributes 768, and neither has to account for the other — so all three rates fit one file with nothing repeated, interpolated or blank. Rows come out sorted by `time_s`.
+Every row is a sample the recording holds, carrying the time it was recorded at. The 1 Hz channel contributes 3 rows and the 256 Hz channel contributes 768, and neither has to account for the other — so all three rates fit one file with nothing repeated, interpolated or blank. Rows come out sorted by `time_s` — unless the recording is a discontinuous one whose records are stored in a different order than they are timed, which is rare, allowed by the format, and [warned about](/docs/warnings-and-errors#discontinuous).
 
 This is the shape most plotting and grouping libraries want anyway:
 
