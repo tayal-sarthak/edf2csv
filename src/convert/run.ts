@@ -687,8 +687,10 @@ async function writeLongRecord(
   if (!writer) return;
 
   const cursors = new Int32Array(open.length);
+  /* Reused across sample times so a three-million-row conversion allocates one of these. */
+  const due: { entry: OpenGroup; groupIndex: number; sample: number; channel: number }[] = [];
+
   for (;;) {
-    let pick = -1;
     let earliest = Infinity;
     for (let g = 0; g < open.length; g++) {
       const entry = open[g];
@@ -696,33 +698,56 @@ async function writeLongRecord(
       const sample = cursors[g] ?? 0;
       if (sample >= entry.group.samplesPerRecord) continue;
       const time = recordStart + sample / entry.group.rate;
-      if (time < earliest) {
-        earliest = time;
-        pick = g;
+      if (time < earliest) earliest = time;
+    }
+    if (earliest === Infinity) return;
+
+    /*
+      Everything at this instant, in the order the file declares its channels.
+
+      Groups are ordered by rate, largest first, because that is how the wide layout names
+      its files. Emitting a tie group by group therefore ordered the channels by descending
+      sampling rate — so a recording declaring `slow, medium, fast` wrote `fast, medium,
+      slow`, while the documentation promised file order and channels.csv listed file order.
+      Signal index is the file's own order, and the only one a reader can predict.
+    */
+    due.length = 0;
+    for (let g = 0; g < open.length; g++) {
+      const entry = open[g];
+      if (!entry) continue;
+      const sample = cursors[g] ?? 0;
+      if (sample >= entry.group.samplesPerRecord) continue;
+      if (recordStart + sample / entry.group.rate !== earliest) continue;
+      cursors[g] = sample + 1;
+      // Same window rule as the wide layout, with the same per-rate slack.
+      if (
+        !sampleTimeIsInRange(earliest, range.startSeconds, range.endSeconds, toleranceFor(entry.group.rate))
+      ) {
+        continue;
+      }
+      for (let c = 0; c < entry.group.channels.length; c++) {
+        due.push({ entry, groupIndex: g, sample, channel: c });
       }
     }
-    if (pick < 0) return;
-
-    const entry = open[pick];
-    if (!entry) return;
-    const sample = cursors[pick] ?? 0;
-    cursors[pick] = sample + 1;
-
-    // Same window rule as the wide layout, with the same per-rate slack.
-    if (!sampleTimeIsInRange(earliest, range.startSeconds, range.endSeconds, toleranceFor(entry.group.rate))) {
-      continue;
+    if (due.length === 0) continue;
+    if (due.length > 1) {
+      due.sort(
+        (a, b) =>
+          (a.entry.group.channels[a.channel]?.signal.index ?? 0) -
+          (b.entry.group.channels[b.channel]?.signal.index ?? 0),
+      );
     }
 
-    const time = entry.formatTime(recordStart, sample);
-    for (let c = 0; c < entry.group.channels.length; c++) {
-      const channel = entry.group.channels[c];
-      const format = entry.formatters[c];
+    for (const item of due) {
+      const channel = item.entry.group.channels[item.channel];
+      const format = item.entry.formatters[item.channel];
       if (!channel || !format) continue;
       if (writer.hungUp) return;
       writer.pushLine(
-        `${time},${escapeCsvField(channel.column)},${format(file.sampleAt(batch, recordInBatch, channel.signal, sample))}`,
+        `${item.entry.formatTime(recordStart, item.sample)},${escapeCsvField(channel.column)},` +
+          `${format(file.sampleAt(batch, recordInBatch, channel.signal, item.sample))}`,
       );
-      entry.rows++;
+      item.entry.rows++;
       // Flushed inside the record for the same reason the wide layout is; see there.
       if (writer.full) await writer.flush();
     }
@@ -822,7 +847,12 @@ async function streamSignalRows(
         options.onProgress({
           recordsDone,
           recordsTotal: endRecord - startRecord,
-          bytesWritten: open.reduce((sum, g) => sum + g.writer.charsWritten, 0),
+          // Once per writer: the long layout's groups share one, so summing per group
+          // reported a figure larger than the file being written.
+          bytesWritten: [...new Set(open.map((entry) => entry.writer))].reduce(
+            (sum, entry) => sum + entry.charsWritten,
+            0,
+          ),
         });
       } catch (cause) {
         throw new ConversionError(

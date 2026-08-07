@@ -558,6 +558,26 @@ export function generate() {
   });
 
   /*
+    Channels declared slowest first, which is the opposite of the order the rates group in.
+
+    Rate groups are ordered by rate, largest first, because that is how the wide layout names
+    its files. In the long layout that leaked into the row order: at an instant where all
+    three channels have a sample, this recording wrote `fast, medium, slow` while declaring
+    `slow, medium, fast` — and while channels.csv and the documentation both said file order.
+    Most recordings hide this by declaring their fastest channels first.
+  */
+  writeEdf({
+    path: at('ascending-rates.edf'),
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'slow', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 1, gen: ramp(1) },
+      { label: 'medium', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 2, gen: ramp(2) },
+      { label: 'fast', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+    ],
+  });
+
+  /*
     An EDF+D whose records are stored in one order and timestamped in another.
 
     Nothing in the format obliges a writer to store record 5 after record 4 in time, and the

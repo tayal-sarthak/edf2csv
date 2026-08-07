@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.9
+
+### Fixed: the long layout ordered tied channels by sampling rate, not by the file's order
+
+Documented as "within one time in the order the file declares its channels", which is also
+what `channels.csv` lists and what the wide layout's columns do. What it actually did was
+descending sampling rate: rate groups are sorted largest first, because that is how the wide
+layout names its files, and emitting a tie one group at a time let that leak into the rows.
+
+A recording declaring `slow, medium, fast` wrote `fast, medium, slow` at every instant where
+all three had a sample. Most recordings hide it by declaring their fastest channels first,
+which is why the fixtures did not catch it — a new one, `ascending-rates.edf`, declares them
+the other way round.
+
+Now every channel due at one instant is collected and emitted in signal-index order, which
+is the file's own order and the only one a reader can predict. Checked across all 41
+convertible fixtures: each channel's sequence of values is identical between the two
+layouts.
+
+### Fixed: `onProgress` reported more bytes written than the file being written
+
+`bytesWritten` summed each group's writer. The long layout's groups share one, so a
+three-rate conversion reported three times the real figure — a progress meter that runs past
+the end.
+
 ## 0.5.8
 
 ### Fixed: 0.5.4 fixed half of the stdout audit and left the compressed half

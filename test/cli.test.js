@@ -1546,6 +1546,32 @@ describe('--layout long', () => {
     assert.ok(!channels.includes('signals_256hz.csv'), channels);
   });
 
+  it('orders channels at one time as the file declares them, not by rate', async () => {
+    /*
+      Rate groups are sorted largest-rate-first, because that is how the wide layout names
+      its files, and emitting a tie group by group let that leak into the rows. A recording
+      declaring `slow, medium, fast` wrote `fast, medium, slow` at every instant where all
+      three had a sample — while channels.csv listed file order and the documentation
+      promised it. Most recordings declare their fastest channels first, which hides it.
+    */
+    const dir = await outDir();
+    await cli([fixture('ascending-rates.edf'), '--out', dir, '--layout', 'long', '--quiet']);
+    const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+
+    const atZero = rows.slice(1).filter((row) => row.startsWith('0.000,')).map((row) => row.split(',')[1]);
+    assert.deepEqual(atZero, ['slow', 'medium', 'fast'], 'the order the header declares');
+
+    // And the wide layout's columns are the same order, which is the point of matching it.
+    const wide = await outDir();
+    await cli([fixture('ascending-rates.edf'), '--out', wide, '--quiet']);
+    const channels = (await readFile(path.join(wide, 'channels.csv'), 'utf8'))
+      .trimEnd()
+      .split('\n')
+      .slice(1)
+      .map((row) => row.split(',')[0]);
+    assert.deepEqual(channels, ['slow', 'medium', 'fast']);
+  });
+
   it('says so when the one recording it cannot sort turns up', async () => {
     /*
       The sorted-rows promise rests on every sample of a record falling inside that record's
