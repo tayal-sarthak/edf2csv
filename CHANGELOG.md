@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.6
+
+### Fixed: memory followed the number of output tables, not the size of the recording
+
+Every rate group opened its own writer at the 1 MiB flush threshold, so pending output was
+group count times a megabyte before anything drained. A 6.5 MB recording with forty sampling
+rates therefore needed forty megabytes of buffer and died with a raw V8 heap out-of-memory —
+exit 134, a native stack, nothing written, no catchable error for a library caller — under a
+96 MB cap. The site advertises 48 MB.
+
+Nothing about that recording is large. The fan-out is: an EDF header can declare thousands of
+channels, and a research montage really does mix a dozen rates. The one number that mattered
+was the one the design was not looking at.
+
+The budget is one buffer for the conversion now, split across the tables, with a floor so a
+run does not turn into a flush per row. Single-rate recordings — nearly all of them — keep
+exactly the buffer they had, and forty tables cost 2.5 MB instead of 40. The same 6.5 MB
+recording completes under a 32 MB cap, and its CSVs are byte-identical to a run with a
+gigabyte. Throughput on an eight-hour single-rate conversion is unchanged.
+
+The long layout was never affected: it shares one writer across the groups, which is what
+0.5.0 had to do to keep its rows in order.
+
 ## 0.5.5
 
 ### Fixed: three things `--stdout` said about itself that were not true

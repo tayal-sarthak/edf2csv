@@ -21,7 +21,13 @@ import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
-import { BufferedLineWriter, UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
+import {
+  BufferedLineWriter,
+  DEFAULT_FLUSH_THRESHOLD,
+  UTF8_BOM,
+  csvRow,
+  escapeCsvField,
+} from '../format/csv.js';
 import { listed } from '../format/list.js';
 import {
   fixed,
@@ -509,6 +515,25 @@ async function writeSignalFiles(
     writer: BufferedLineWriter;
   } | null = null;
 
+  /*
+    One buffer's worth of memory for the conversion, not one per table.
+
+    Every group had its own writer at the default 1 MiB threshold, so pending output was
+    group count × 1 MiB before anything drained. A 6.5 MB recording with 40 sampling rates
+    — the header allows thousands of channels, and a research montage really does mix a
+    dozen rates — died with a raw V8 heap out-of-memory and exit 134 under a 96 MB cap,
+    while the site advertises 48 MB. The recording is small; it is the fan-out that is not.
+
+    Split evenly with a floor, so the single-rate case, which is nearly every recording,
+    keeps exactly the buffer it always had, and forty tables cost 2.5 MB rather than 40.
+    The long layout shares one writer already and is unaffected either way.
+  */
+  const MIN_FLUSH_THRESHOLD = 64 * 1024;
+  const flushThreshold = Math.max(
+    MIN_FLUSH_THRESHOLD,
+    Math.floor(DEFAULT_FLUSH_THRESHOLD / Math.max(1, plan.groups.length)),
+  );
+
   const open: OpenGroup[] = plan.groups.map((group, groupIndex) => {
     // A null directory means the single table goes to stdout. process.stdout is already a
     // writable stream, so the same buffered writer and backpressure handling apply.
@@ -530,7 +555,7 @@ async function writeSignalFiles(
       were produced in, and the long layout's whole claim is that its rows are in time
       order.
     */
-    const writer = shared?.writer ?? new BufferedLineWriter(stream);
+    const writer = shared?.writer ?? new BufferedLineWriter(stream, flushThreshold);
     if (plan.layout === 'long' && !shared) shared = { stream, settled, target, writer };
 
     // Only the first group writes the header of a shared table, and the mark before it.

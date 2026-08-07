@@ -10,8 +10,14 @@
 import type { Writable } from 'node:stream';
 import { once } from 'node:events';
 
-/** Flush once this many characters have accumulated. */
-const DEFAULT_FLUSH_THRESHOLD = 1 << 20; // 1 MiB
+/**
+ * Flush once this many characters have accumulated.
+ *
+ * Exported because it is a budget for the whole conversion rather than a per-writer
+ * constant: a mixed-rate recording opens one writer per rate, and each taking a megabyte
+ * meant memory followed the number of tables. See writeSignalFiles.
+ */
+export const DEFAULT_FLUSH_THRESHOLD = 1 << 20; // 1 MiB
 
 const NEEDS_QUOTING = /[",\r\n]/u;
 
