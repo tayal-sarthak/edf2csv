@@ -582,6 +582,19 @@ the only file it is ever written to is the `metadata.json` that `--stdout` does 
 A folder is refused too, even one holding a single recording, because what a folder holds is not
 known until it is walked. The message names the recording inside it so you can run that instead.
 
+And a recording with no signal table at all — one holding only EDF+ annotations, or a `--channels`
+selection that leaves nothing carrying samples — is refused rather than streamed as an empty
+result:
+
+```
+error: --stdout has no signal data to write: this recording has no signal channels, only EDF+ annotations.
+       Convert to a directory to get its annotations.csv, or drop --stdout.
+```
+
+Up to 0.5.14 the wide layout answered that with "--stdout needs exactly one table, but this
+recording produces 0, one for each sampling rate its channels use ()" and pointed at
+`--layout long`, which wrote zero bytes, no header row, and exited 0.
+
 ### Redirecting to a file that will not fit
 
 When stdout is redirected to a regular file, `edf2csv` checks at the end that the descriptor grew by as many bytes as it was handed, and fails if it did not:

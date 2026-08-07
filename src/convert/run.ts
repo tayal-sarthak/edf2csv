@@ -187,6 +187,32 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           'Drop one of the two flags.',
         );
       }
+      /*
+        No table at all is its own answer, and neither layout gave it.
+
+        A recording with no signal channels — one holding only EDF+ annotations — produced
+        zero rate groups. The wide layout then said "--stdout needs exactly one table, but
+        this recording produces 0, one for each sampling rate its channels use ()", with an
+        empty parenthetical, advice to narrow to one of no rates, and advice to use
+        `--layout long` — which wrote zero bytes to stdout, not even a header row, and exited
+        0 while warning that "the signal files hold their headers and no data". There were no
+        files and there was no header. The one path that was right about this is
+        `--annotations-only`, which refuses outright, and this is the same situation reached
+        by a different route.
+      */
+      if (plan.groups.length === 0) {
+        throw new ConversionError(
+          'UNSUPPORTED_REQUEST',
+          file.dataSignals.length === 0
+            ? '--stdout has no signal data to write: this recording has no signal channels, ' +
+              'only EDF+ annotations.'
+            : '--stdout has no signal data to write: nothing was selected that carries samples.',
+          file.dataSignals.length === 0
+            ? 'Convert to a directory to get its annotations.csv, or drop --stdout.'
+            : 'Check --channels and the requested window, or convert to a directory instead.',
+        );
+      }
+
       // The long layout is one table whatever the rates are, so it has nothing to refuse.
       if (plan.layout !== 'long' && plan.groups.length !== 1) {
         throw new ConversionError(

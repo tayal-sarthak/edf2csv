@@ -1508,6 +1508,44 @@ describe('what --stdout says about itself', () => {
     assert.match(checksum.stderr, /--stdout and --checksum cannot be combined/u);
   });
 
+  it('refuses a recording with no signal table instead of streaming nothing', async () => {
+    /*
+      A recording holding only EDF+ annotations produces no rate groups. The wide layout
+      said "--stdout needs exactly one table, but this recording produces 0, one for each
+      sampling rate its channels use ()" — an empty parenthetical, advice to narrow to one
+      of no rates, and advice to use --layout long. Which wrote zero bytes to stdout, not
+      even a header row, exited 0, and warned that "the signal files hold their headers and
+      no data": there were no files and there was no header.
+    */
+    for (const layout of [[], ['--layout', 'long']]) {
+      const { code, stdout, stderr } = await cli([
+        fixture('annotations-only.edf'),
+        '--stdout',
+        ...layout,
+      ]);
+      assert.equal(code, 2, stderr);
+      assert.equal(stdout, '', 'nothing goes to stdout when there is nothing to write');
+      assert.match(stderr, /no signal channels, only EDF\+ annotations/u);
+      assert.ok(!/produces 0/u.test(stderr), stderr);
+      assert.ok(!/use \(\)/u.test(stderr), `empty parenthetical:\n${stderr}`);
+    }
+
+    // Channels that exist but carry nothing get a different sentence, since the fix differs.
+    const selected = await cli([
+      fixture('single-rate-empty-channel.edf'),
+      '--stdout',
+      '--channels',
+      'unused',
+    ]);
+    assert.equal(selected.code, 2);
+    assert.match(selected.stderr, /nothing was selected that carries samples/u);
+
+    // And a recording that does have a table still streams.
+    const works = await cli([fixture('mixed-rates.edf'), '--stdout', '--layout', 'long']);
+    assert.equal(works.code, 0, works.stderr);
+    assert.equal(works.stdout.split('\n')[0], 'time_s,channel,value');
+  });
+
   it('counts a folder of one as a folder, not as one recording it cannot take', async () => {
     // "--stdout writes a single CSV, so it cannot take 1 recordings" — ungrammatical, and
     // wrong on its face, since one recording is exactly what it can take. What it cannot

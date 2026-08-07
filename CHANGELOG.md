@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.15
+
+### Fixed: `--stdout` on a recording with no signal table, which both layouts got wrong
+
+A recording holding only EDF+ annotations produces no rate groups, and neither layout had an
+answer for that.
+
+The wide one said "--stdout needs exactly one table, but this recording produces 0, one for
+each sampling rate its channels use ()" — an empty parenthetical, a count of zero described
+as one-per-rate, advice to narrow to one of no rates with `--channels`, and advice to reach
+for `--layout long`.
+
+Which wrote zero bytes to stdout. Not a header row, nothing, exit 0, alongside a warning that
+"the signal files hold their headers and no data" — there were no files, and there was no
+header. So the wide layout's advice routed you into a silently empty result.
+
+Both refuse now, the way `--stdout --annotations-only` already did, since it is the same
+situation reached by a different route. A `--channels` selection that leaves nothing carrying
+samples gets its own sentence, because the fix is a different one.
+
 ## 0.5.14
 
 ### Fixed: "Nothing is written" was true of every error in that section but one
