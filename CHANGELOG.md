@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.10
+
+### Fixed: `VALUE_RESOLUTION` reported `--decimals` back at the person who typed it
+
+The warning 0.4.74 added is about a ceiling: a channel whose quantization step is below
+1e-98 needs more decimal places than `toFixed` will print, so consecutive digital codes come
+out as the same text. The check asked "does this channel need more decimals than it is
+getting", which is also true — deliberately — every time `--decimals` is used to ask for
+fewer.
+
+So an ordinary EEG at `--decimals 2` raised it on every channel. And because `--strict`
+turns any diagnostic into a non-zero exit, `--decimals 2 --strict` could not succeed on any
+recording at all: the flag and the flag were in a fight.
+
+Raised only when the precision was derived now. `--decimals` is a choice, and the tool takes
+it at its word. The ceiling case is unchanged, and still warns, because nobody chose 100.
+
 ## 0.5.9
 
 ### Fixed: the long layout ordered tied channels by sampling rate, not by the file's order

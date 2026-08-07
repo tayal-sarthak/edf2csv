@@ -256,8 +256,14 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     gives for recovering them stops working. That used to happen at 1e-20 and silently — see
     MAX_DERIVED_DECIMALS. It is rare now, but "rare" is the reason to say so rather than the
     reason not to.
+
+    Only when the precision was derived. `--decimals` exists to set a coarser one, so
+    reporting the consequence of it is reporting the flag back at the caller who typed it:
+    `--decimals 2` raised this on every channel of an ordinary EEG, and since --strict turns
+    any diagnostic into exit 1, `--decimals 2 --strict` could not succeed on any recording.
+    The warning is about a ceiling the caller cannot move, not about a floor they chose.
   */
-  for (const group of groups) {
+  for (const group of options.decimals === undefined ? groups : []) {
     const short = group.channels.filter((c) => decimalsAreClamped(c.signal, c.decimals));
     if (short.length === 0) continue;
     diagnostics.push({

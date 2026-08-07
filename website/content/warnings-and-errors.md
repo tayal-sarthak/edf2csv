@@ -331,6 +331,8 @@ warning: gravimeter steps by less than the 100 decimals written can express, so 
          precision either way. What is lost is only in the printed text.
 ```
 
+Only when the precision was derived. `--decimals` exists to set a coarser one, so reporting the consequence of it would be reporting the flag back at the person who typed it — and since `--strict` turns any diagnostic into a non-zero exit, `--decimals 2 --strict` could not have succeeded on any recording. Up to 0.5.10 it raised this on every channel of an ordinary EEG. The warning is about a ceiling you cannot move, not about a floor you chose.
+
 **What edf2csv does.** Writes every sample, at the finest precision `toFixed` supports. The physical values are computed at full double precision whichever way — what is lost is only in the printed text, so `--json` metadata, row counts and ordering are all unaffected.
 
 **What to do.** Nothing, for any real recording. If you are generating such a file deliberately, the digital codes are still in the EDF and reading them directly is exact.

@@ -919,6 +919,26 @@ describe('converting', () => {
     });
   });
 
+  it('does not report a precision the caller chose as a loss of precision', async () => {
+    /*
+      `--decimals` exists to set a coarser precision, so raising VALUE_RESOLUTION for it is
+      reporting the flag back at the person who typed it. It fired on every channel of an
+      ordinary EEG at `--decimals 2` — and since --strict turns any diagnostic into exit 1,
+      `--decimals 2 --strict` could not succeed on any recording at all.
+    */
+    for (const decimals of [0, 2, 4]) {
+      const result = await convert(fixture('mixed-rates.edf'), { outputDir: await outDir(), decimals });
+      assert.ok(
+        !result.diagnostics.some((d) => d.code === 'VALUE_RESOLUTION'),
+        `--decimals ${decimals} raised it`,
+      );
+    }
+
+    // The ceiling case is a different thing and still says so: nobody chose 100.
+    const clamped = await convert(fixture('unprintable-step.bdf'), { outputDir: await outDir() });
+    assert.ok(clamped.diagnostics.some((d) => d.code === 'VALUE_RESOLUTION'));
+  });
+
   it('says so when the step is finer than any printable decimal', async () => {
     // A step below 1e-98 is past what `toFixed` will print, and an 8-character physical
     // bound can still express one: `1e-99` is five characters. Nothing that measures
