@@ -123,6 +123,22 @@ describe('documentation and source agree on their lists', () => {
       total += actual;
     }
 
+    /*
+      The suite count too, which nothing was reading: the page said 39 while the runner
+      reported 48. Counted the same way, from `describe(` at the start of a line.
+    */
+    let suites = 0;
+    for (const file of claimed.keys()) {
+      suites += ((await read(path.join('test', file))).match(/^\s*describe\(/gmu) ?? []).length;
+    }
+    const shownSuites = /ℹ suites (\d+)/u.exec(page);
+    assert.ok(shownSuites, 'the page no longer shows a suite count');
+    assert.equal(
+      Number(shownSuites[1]),
+      suites,
+      `the files hold ${suites} suites, the page says ${shownSuites[1]}`,
+    );
+
     const summary = /ℹ tests (\d+)/u.exec(page);
     assert.ok(summary, 'the runner summary is gone from the page');
     assert.equal(Number(summary[1]), total, `the summary and the table disagree`);
@@ -247,12 +263,33 @@ describe('documentation and source agree on their lists', () => {
         following the pages in order was told the same name meant a different thing each
         time — and getting-started showed a 3-second file and then ran --start 30m on it.
       */
-      for (const page of ['getting-started.md', 'cli-reference.md', 'edf-format.md']) {
+      /*
+        Every page, and any path spelling.
+
+        This named three pages and matched `File       sleep-study.edf` exactly, so it never
+        looked at recipes.md — which wrote `./sleep-study.edf` and showed a fifth recording
+        again: 4 channels, 42.2 MB, plain EDF. A guard against drift that has a hard-coded
+        list of where drift can happen is a guard against the drift you already found.
+      */
+      const pages = (await readdir(path.join(ROOT, 'website/content'))).filter((name) =>
+        name.endsWith('.md'),
+      );
+      let blocks = 0;
+      for (const page of pages) {
         const text = await read(`website/content/${page}`);
-        for (const [, shownBlock] of text.matchAll(/```(?:text)?\n(File {7}sleep-study\.edf\n[\s\S]*?)```/gu)) {
-          assert.equal(shownBlock.trim(), stdout.replace(recording, 'sleep-study.edf').trim(), page);
+        for (const [, prefix, shown] of text.matchAll(
+          /```(?:text)?\n(File {7}(?:\.\/)?)sleep-study\.edf\n([\s\S]*?)```/gu,
+        )) {
+          blocks++;
+          const want = stdout
+            .replace(recording, `${prefix.endsWith('./') ? './' : ''}sleep-study.edf`)
+            .split('\n')
+            .slice(1)
+            .join('\n');
+          assert.equal(shown.trim(), want.trim(), page);
         }
       }
+      assert.ok(blocks >= 3, `expected the pages to still show this recording, found ${blocks}`);
 
       /*
         And the CSV samples beside it. Two seconds is enough for every sample shown; the

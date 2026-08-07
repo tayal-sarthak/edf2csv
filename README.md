@@ -24,8 +24,8 @@ recording_csv/
 
 ```csv
 time_s,FP1-F7,F7-T7,T7-P7
-0.000000,-17.778,39.267,-3.712
-0.003906,0.195,0.195,0.195
+0.00000000,0.061,113.126,99.939
+0.00390625,37.546,123.871,84.188
 ```
 
 `time_s` is seconds from the start of the recording. The other columns are the

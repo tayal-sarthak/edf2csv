@@ -359,7 +359,7 @@ warning: --annotations-only was requested but this recording has no annotation c
 
 Takes a whole number from 0 to 20 and applies it to every signal column, replacing the per-channel precision edf2csv would otherwise derive.
 
-By default the precision is chosen per channel from its calibration. A channel's smallest expressible step is its physical range divided by its digital range, and the default is two places beyond that step, so two adjacent digital codes never round to the same text and no digits are written that carry no information. An ordinary microvolt EEG channel lands at 3 or 4 decimals; a channel calibrated in volts needs more, which is why the ceiling is 20.
+By default the precision is chosen per channel from its calibration. A channel's smallest expressible step is its physical range divided by its digital range, and the default is two places beyond that step, so two adjacent digital codes never round to the same text and no digits are written that carry no information. An ordinary microvolt EEG channel lands at 3 or 4 decimals; a channel calibrated in volts needs more, and a magnetometer in tesla more again, which is why the derived precision runs up to 100 — the most `toFixed` will print. `--decimals` itself stops at 20, which is a bound on a number you pick by hand rather than on what the format can express.
 
 Use `--decimals` when you want a uniform column width across channels, or when you're willing to trade precision for file size. Note what you give up: `--decimals 2` on a channel whose step is 0.0076 uV maps several genuinely different digital codes onto the same printed value.
 
@@ -368,7 +368,7 @@ Use `--decimals` when you want a uniform column width across channels, or when y
 Out-of-range and non-integer values are usage errors. An empty value is rejected explicitly rather than read as zero, since `--decimals ""` would otherwise round every physical value to a whole number:
 
 ```
-error: --decimals must be a whole number between 0 and 20, got "16".
+error: --decimals must be a whole number between 0 and 20, got "21".
 error: --decimals needs a number, for example --decimals 3.
 ```
 
@@ -693,7 +693,7 @@ fi
 **Exit 2** covers anything decided before touching data:
 
 - An unrecognised flag, a flag missing its argument, or a value where none is expected. The message is followed by `Run edf2csv --help to see the options.`
-- No input file, or more than one input file.
+- No input file at all. (Several are fine: that is a batch.)
 - An unparseable `--start`, `--duration` or `--end`, and passing `--duration` together with `--end`.
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
 - A `--channels` term that matches no channel, a `#N` position that doesn't exist, or `--channels` given with an empty list.

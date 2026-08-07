@@ -354,7 +354,7 @@ npm test
 
 ```
 ℹ tests 251
-ℹ suites 39
+ℹ suites 48
 ℹ pass 251
 ℹ fail 0
 ```

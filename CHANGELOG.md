@@ -3,6 +3,37 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.11
+
+### Fixed: six documentation claims that contradicted the tool or each other
+
+- **cli-reference explained the derived decimal ceiling as 20.** It has been 100 since
+  0.4.74. The sentence was reasoning about a magnetometer needing more places than a
+  microvolt EEG and then giving the number that no longer applies — and 20 is still right
+  for `--decimals`, which made the two easy to conflate. Both are now stated, with what each
+  bounds.
+- **The `--decimals` error example could never be printed.** It showed
+  `--decimals must be a whole number between 0 and 20, got "16"`. 16 is inside 0 to 20.
+- **The exit-code list said "more than one input file" is a usage error.** Batch conversion
+  of several files is a documented feature of the same page.
+- **api.md gave `ConversionError.code` two different value sets** thirty lines apart: seven
+  in the table, four in the prose.
+- **The README's headline CSV sample was not output the tool can produce.** A 256 Hz
+  recording writes `time_s` to eight places, because 1/256 terminates at eight; the sample
+  showed six, and values to match. It is a real conversion now.
+- **recipes.md showed a fifth `sleep-study.edf`** — four channels, 42.2 MB, plain EDF —
+  where the rest of the site shows one recording. 0.4.78 fixed exactly this and the guard it
+  added never looked at that page: it held a hard-coded list of three, and matched only the
+  exact spelling `File       sleep-study.edf`, while recipes wrote `./sleep-study.edf`.
+
+The guard now reads every page in `website/content` and accepts either spelling. A check
+against drift with a hard-coded list of where drift can happen is a check against the drift
+you already found.
+
+Also: the correctness page's captured `npm test` block claimed 39 suites where the runner
+reports 48. That number was the one thing in the block nothing was reading; it is counted
+from the files now, like the test counts beside it.
+
 ## 0.5.10
 
 ### Fixed: `VALUE_RESOLUTION` reported `--decimals` back at the person who typed it

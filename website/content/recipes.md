@@ -135,26 +135,27 @@ edf2csv sleep-study.edf --info
 
 ```text
 File       ./sleep-study.edf
-Format     EDF
-Recorded   2002-03-02 22:15:00
+Format     EDF+ (continuous)
+Recorded   2002-03-02 23:10:00
 Duration   8h 00m 0s  (28800 records of 1s)
-Size       42.2 MB
+Size       18.7 MB
 Patient    X X X X
-Recording  Startdate X X X X
+Recording  Startdate 02-MAR-2002 X X X
 
-Channels   4 signals
+Channels   5 signals + 1 annotation channel
 
-#  COLUMN       LABEL        UNIT  RATE    RANGE        OUTPUT
-0  EEG Fpz-Cz   EEG Fpz-Cz   uV    256 Hz  -250 to 250  signals_256hz.csv
-1  EEG Pz-Oz    EEG Pz-Oz    uV    256 Hz  -250 to 250  signals_256hz.csv
-2  ECG          ECG          mV    256 Hz  -5 to 5      signals_256hz.csv
-3  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     signals_1hz.csv
+#  COLUMN          LABEL           UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz      EEG Fpz-Cz      uV    100 Hz  -250 to 250  signals_100hz.csv
+1  EEG Pz-Oz       EEG Pz-Oz       uV    100 Hz  -250 to 250  signals_100hz.csv
+2  EOG horizontal  EOG horizontal  uV    100 Hz  -250 to 250  signals_100hz.csv
+3  Resp oro-nasal  Resp oro-nasal  V     10 Hz   -1 to 1      signals_10hz.csv
+4  Temp rectal     Temp rectal     degC  1 Hz    34 to 40     signals_1hz.csv
 
-Sampling rates differ, so channels are written to 2 files, one per rate. No channel is resampled.
-Would write 7,401,600 rows, roughly 310 MB.
+Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
+Would write 3,196,800 rows, roughly 108 MB.
 ```
 
-`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way. CSV runs about 4 times the size of the EDF for a typical multi-channel montage, and higher for a recording with few channels, so the estimate is worth reading before you start.
+`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way. CSV runs several times the size of the EDF — about six times here, and higher for a recording with few channels, since every row carries a `time_s` cell however many channels share it — so the estimate is worth reading before you start.
 
 The estimate line goes to stdout and the warnings go to stderr, which makes each of them easy to pick out on its own:
 
