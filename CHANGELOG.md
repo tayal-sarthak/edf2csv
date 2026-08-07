@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.73
+
+### Fixed: `--info --annotations-only --gzip` named files the run would not write
+
+It said "Would write annotations.csv and channels.csv"; the run wrote `annotations.csv.gz`
+and `channels.csv.gz`. Those two sentences were string literals, and the gzip test below
+them reads the group file names — of which there are none under `--annotations-only`, which
+is what makes it that branch. So the same command was described one way by `--info` and
+another by the summary of the run that followed it, and a script that opened the name it was
+given got ENOENT.
+
+The plan now records whether the output is compressed instead of that being inferred from
+file names that may not exist, and both sentences take their suffix from it. `--info` is
+read to find out what a run leaves behind; naming a file it will not create is the one thing
+it must not do.
+
 ## 0.4.72
 
 ### Fixed: the correctness page stated a sweep size the sweep had outgrown

@@ -70,6 +70,14 @@ export interface PlanOptions {
 
 export interface ConversionPlan {
   groups: RateGroup[];
+  /**
+   * Whether the CSVs will be compressed.
+   *
+   * Recorded rather than inferred from the group file names. Under `--annotations-only`
+   * there are no groups to read it off, and `--info` named `annotations.csv` for a run that
+   * wrote `annotations.csv.gz`.
+   */
+  gzip: boolean;
   range: ResolvedRange;
   columnNames: Map<number, string>;
   writeSignals: boolean;
@@ -225,7 +233,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     });
   }
 
-  return { groups, range, columnNames, writeSignals, diagnostics, estimate };
+  return { groups, gzip: options.gzip === true, range, columnNames, writeSignals, diagnostics, estimate };
 }
 
 /**

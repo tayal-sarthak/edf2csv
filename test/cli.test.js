@@ -1005,6 +1005,34 @@ describe('converting several recordings at once', () => {
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
+  it('names the annotation-only files as --gzip will actually write them', async () => {
+    /*
+      The two sentences above were string literals, and the gzip check below them reads the
+      group file names — of which there are none under --annotations-only. So --info named
+      annotations.csv for a run that went on to write annotations.csv.gz, and a script that
+      opened the name it was given got ENOENT.
+    */
+    const { code, stdout } = await cli([
+      fixture('annotations.edf'),
+      '--info',
+      '--annotations-only',
+      '--gzip',
+    ]);
+    assert.equal(code, 0);
+    assert.match(stdout, /Would write annotations\.csv\.gz and channels\.csv\.gz/u);
+
+    const dir = await outDir();
+    await cli([fixture('annotations.edf'), '--out', dir, '--annotations-only', '--gzip', '--quiet']);
+    assert.deepEqual(
+      (await readdir(dir)).sort(),
+      ['annotations.csv.gz', 'channels.csv.gz', 'metadata.json'],
+      'the names --info gave are the names on disk',
+    );
+
+    const without = await cli([fixture('tiny.edf'), '--info', '--annotations-only', '--gzip']);
+    assert.match(without.stdout, /no annotations\.csv\.gz either/u);
+  });
+
   it('agrees with the conversion about where a recording starts', async () => {
     // --info reads one record's annotation bytes rather than scanning the file, which is
     // what keeps it a header read. It stopped at record 0, so the moment that record's

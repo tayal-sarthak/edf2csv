@@ -555,6 +555,7 @@ interface PlanInput {
 
 interface ConversionPlan {
   groups: RateGroup[];
+  gzip: boolean;                       // whether the CSVs will be written compressed
   range: ResolvedRange;
   columnNames: Map<number, string>;    // signal index to CSV column name
   writeSignals: boolean;

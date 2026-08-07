@@ -164,19 +164,22 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     file, and that the count is not knowable this cheaply, rather than inventing a zero.
   */
   if (!plan.writeSignals) {
+    // Named as they will be written. --info is read to find out what a run leaves behind,
+    // and a script that opens the name it was given must find a file there.
+    const suffix = plan.gzip ? '.csv.gz' : '.csv';
     lines.push(
       file.annotationSignals.length > 0
-        ? 'Would write annotations.csv and channels.csv, and no signal data. How many events ' +
-          'there are cannot be told from the header.'
-        : 'Would write channels.csv and no signal data — and no annotations.csv either, ' +
-          'since this recording has no annotation channel.',
+        ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
+          'many events there are cannot be told from the header.'
+        : `Would write channels${suffix} and no signal data — and no annotations${suffix} ` +
+          'either, since this recording has no annotation channel.',
     );
     return lines.join('\n');
   }
 
   // The estimate counts the characters of the CSV, which is what --gzip then compresses.
   // Reporting it as the size on disk would overstate a compressed conversion several-fold.
-  const compressing = plan.groups.some((group) => group.fileName.endsWith('.gz'));
+  const compressing = plan.gzip;
   lines.push(
     `Would write ${plan.estimate.rows.toLocaleString('en-US')} rows, roughly ` +
       `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
