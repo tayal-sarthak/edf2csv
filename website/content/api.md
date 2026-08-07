@@ -700,7 +700,17 @@ function formatRates(rates: readonly number[]): string[];  // distinct rates ren
 function describeFormat(header: EdfHeader): string;  // 'EDF+ (discontinuous)'
 function rateSlug(rate: number): string;             // '256hz', '12_5hz'
 function defaultOutputDir(inputPath: string): string;
+function formatWallClock(date: Date | null): string | null;  // '2002-03-02T23:10:00'
 ```
+
+`formatWallClock` is the one to reach for when writing `startDateTime` out, and the reason is
+worth stating. EDF records a date and a time and no timezone at all. `startDateTime` carries
+those digits as a UTC `Date` so they round-trip unshifted, which makes it a container for the
+wall clock rather than an instant — and serialising it with `toISOString()` appends a `Z`,
+asserting UTC. A reader converting that to local time then moves the recording by their own
+offset: 13:43:04 in the file becomes 08:43:04 in New York. `formatWallClock` drops the `Z`,
+because the file genuinely does not say which zone it meant. It is what produces
+`start_datetime_local` in `metadata.json` and the `Recorded` line in `--info`.
 
 ## Types exported for annotation
 

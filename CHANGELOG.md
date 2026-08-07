@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.69
+
+### Added: `formatWallClock` is documented, and every export is checked to be
+
+It was exported and mentioned nowhere, which matters more than a missing line. It is the
+function that writes a recording's start time without a timezone, and the trap it exists to
+avoid is one a caller falls into precisely because they did not know there was an
+alternative: `startDateTime` is a UTC `Date` carrying the file's wall-clock digits so they
+round-trip unshifted, and `toISOString()` on it appends a `Z` that asserts UTC. A reader
+converting that to local time moves the recording by their own offset — 13:43:04 in the file
+becomes 08:43:04 in New York.
+
+A test now compares every name `dist/index.js` exports against api.md. Twenty-eight exports,
+one of them undocumented, and nothing had been reading the list.
+
 ## 0.4.68
 
 ### Fixed: the landing page showed a timezone the format does not have

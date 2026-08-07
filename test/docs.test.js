@@ -201,6 +201,20 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('documents every name the package exports', async () => {
+    /*
+      `formatWallClock` was exported and undocumented, which mattered more than a missing
+      line: it is the function that writes a recording's start time without a timezone, and
+      the trap it exists to avoid — `toISOString()` appending a Z and asserting UTC on digits
+      the format never assigned a zone to — is one a caller falls into precisely because they
+      did not know there was an alternative.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const page = await read('website/content/api.md');
+    const missing = Object.keys(api).filter((name) => !page.includes(name));
+    assert.deepEqual(missing, [], `api.md does not mention: ${missing.join(', ')}`);
+  });
+
   it('ships source maps that resolve to something', async () => {
     /*
       Every .js.map names `../src/*.ts` as its source, and `src` is not in package.json's
