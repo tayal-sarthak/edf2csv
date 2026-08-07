@@ -893,6 +893,75 @@ describe('converting', () => {
     assert.ok(timeDecimals(3e15) <= 15);
   });
 
+  it('leaves rows on disk when the recording shrinks mid-conversion, and says so', async () => {
+    /*
+      warnings-and-errors.md filed this under "These stop the conversion. Nothing is written.
+      All of them exit 1." Every other error in that section is raised while the header is
+      read, before the output directory exists. This one is raised during the signal pass, so
+      a signals.csv is already on disk holding every row up to that point — ending on a row
+      boundary, opening exactly like a finished one.
+
+      Truncating before the run proves nothing: the header read notices, warns, and converts
+      the records that are there. The file has to shrink while it is being read, so this cuts
+      it from inside onProgress, which fires once per batch.
+    */
+    const { truncate, stat } = await import('node:fs/promises');
+    const { truncateSync } = await import('node:fs');
+    const dir = await outDir();
+    const recording = path.join(path.dirname(dir), 'shrinking.edf');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    writeEdf({
+      path: recording,
+      // Big enough that the default 8 MB read chunk gives several batches, so onProgress
+      // fires while there is still file left to read. At 2 MB it is one batch and one
+      // callback, after everything has already been read, and nothing can be cut in time.
+      numRecords: 40_000,
+      recordDuration: 1,
+      signals: [
+        {
+          label: 'sig',
+          dimension: 'uV',
+          physMin: -100,
+          physMax: 100,
+          digMin: -2048,
+          digMax: 2047,
+          samplesPerRecord: 256,
+          gen: (record, sample) => ((record * 7 + sample) % 4000) - 2000,
+        },
+      ],
+    });
+    const whole = (await stat(recording)).size;
+
+    let cut = false;
+    await assert.rejects(
+      () =>
+        convert(recording, {
+          outputDir: dir,
+          onProgress: () => {
+            if (cut) return;
+            cut = true;
+            // Synchronous, so the next read is already looking at a shorter file.
+            truncateSync(recording, Math.floor(whole / 3));
+          },
+        }),
+      (error) => {
+        assert.match(error.message, /appears to have changed size while it was being read/u);
+        assert.match(error.hint, /before it failed is incomplete and should not be used/u);
+        return true;
+      },
+    );
+    assert.ok(cut, 'the file was never truncated, so this tested nothing');
+
+    // And the rows written before it failed really are on disk.
+    const written = await readFile(path.join(dir, 'signals.csv'), 'utf8');
+    const rows = written.trimEnd().split('\n').length - 1;
+    assert.ok(rows > 0, 'no partial file, so there is nothing to warn anyone about');
+    assert.ok(rows < 40_000 * 256, `${rows} rows is the whole recording`);
+    assert.ok(written.endsWith('\n'), 'it ends on a row boundary, which is why it misleads');
+
+    await truncate(recording, whole).catch(() => {});
+  });
+
   it('writes enough decimals for a magnetometer to keep its codes apart', async () => {
     /*
       ±1e-16 T over a 16-bit converter steps by 3.05e-21 and needs 23 decimals. The clamp

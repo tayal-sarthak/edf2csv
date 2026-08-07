@@ -549,7 +549,9 @@ Raised for every affected channel, so a file with three of them gets three warni
 
 ## Fatal errors: the recording can't be read
 
-These stop the conversion. Nothing is written. All of them exit **1**.
+These stop the conversion and exit **1**.
+
+Nothing is written for all but one of them: they are raised while the header is being read, before the output directory exists. The exception is a recording that changes size *during* the conversion, described at the end of this section — by then rows have been written, and the message says so.
 
 ### FILE_TOO_SMALL
 
@@ -629,12 +631,14 @@ error: "/data/recordings" is a directory, not an EDF file.
 
 `EdfFile.open` still raises it, since the library takes one recording and a directory is not one. The CLI expands a directory into the recordings inside it instead, so from the command line a folder is an input rather than a mistake — see [the CLI reference](/docs/cli-reference).
 
-The mid-conversion case works differently. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
+The mid-conversion case works differently, and is the one place in this section where the conversion has already written something. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
 
 ```
-error: Expected 524288 bytes of data at record 4096 but only 131072 were available; the file appears to have changed size while it was being read.
-       Make sure the recording is not still being written to, then try again.
+error: Expected 2864400 bytes of data at record 24600 but only 0 were available; the file appears to have changed size while it was being read.
+       Make sure the recording is not still being written to, then try again. What was written to "out" before it failed is incomplete and should not be used.
 ```
+
+That last sentence is the part to act on. The rows written before the read failed are on disk, in a `signals.csv` that ends on a row boundary and opens exactly like a finished one — two and a half million of them in the run above, out of 2.88 million. Nothing about the file itself reveals which it is. Delete the directory, or convert into a fresh one.
 
 Wait for the recording to finish, or copy it somewhere stable first, then convert.
 

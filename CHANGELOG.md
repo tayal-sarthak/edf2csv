@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.14
+
+### Fixed: "Nothing is written" was true of every error in that section but one
+
+warnings-and-errors.md opens its fatal-read section with "These stop the conversion. Nothing
+is written. All of them exit 1." That holds for all of them except the one described at the
+end of the same section: a recording that shrinks *during* the conversion, because the
+amplifier is still writing it or something is replacing it underneath.
+
+By then rows are on disk. A 2.88-million-row conversion cut short at record 24,600 leaves
+2,451,013 of them in a `signals.csv` that ends on a row boundary and opens exactly like a
+finished one. Nothing about the file reveals which it is — which is the whole reason to say
+so, and the section said the opposite.
+
+The tool itself was already right: the message ends "What was written to "out" before it
+failed is incomplete and should not be used." I had added a second line saying the same
+thing before checking, and took it out again. The page is what needed fixing.
+
+A test holds it, and holds it honestly: truncating the recording *before* the run proves
+nothing, since the header read notices, warns, and converts the records that are there. It
+has to shrink while being read, so the test cuts it from inside `onProgress` — and asserts
+the cut actually happened, so it cannot quietly stop testing anything.
+
 ## 0.5.13
 
 ### Fixed: the test suite reached for a website dependency, and every publish since 0.5.1 failed
