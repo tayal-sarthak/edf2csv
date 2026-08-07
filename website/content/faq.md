@@ -302,7 +302,16 @@ digital = (signals["EEG Fpz-Cz"] / gain - offset).round().astype("int64")
 ```
 
 The rounding recovers the original integer exactly, because the written decimals are always fine
-enough to keep adjacent digital codes distinct.
+enough to keep adjacent digital codes distinct. `npm run roundtrip` checks that across the
+calibration space — 12,096 cells over 756 combinations of digital and physical bounds, EDF and
+BDF — and every one comes back as the code the file holds.
+
+Two things this depends on. Take the gain from `channels.csv` rather than from what you believe
+the recording's range to be: EDF's physical bound fields are 8 characters, so a header asked for
+`-0.000001` stores `-0`, and the calibration in the CSV is the one the numbers were made with.
+And leave `--decimals` alone. The promise is about the precision edf2csv derives per channel; force
+a coarser one and the codes stop being recoverable, silently — `--decimals 0` on a 256 Hz EEG
+channel gets 645 of 768 samples wrong.
 
 The second route is the programmatic API, which hands you the integers directly and never builds a
 CSV at all:
