@@ -122,7 +122,8 @@ interface EdfHeader {
   startDateRaw: string;        // raw 'dd.mm.yy' as written in the file
   startTimeRaw: string;        // raw 'hh.mm.ss' as written in the file
   startDateTime: Date | null;  // null when the date/time fields are unusable
-  headerBytes: number;
+  headerBytes: number;          // computed from signalCount, not read from the field
+  declaredHeaderBytes: number;  // what the field says, which need not match
   reserved: string;
   isEdfPlus: boolean;
   isBdf: boolean;              // BioSemi BDF/BDF+, 3 bytes per sample instead of 2
@@ -139,6 +140,8 @@ interface EdfHeader {
 `startDateTime` is a UTC `Date`. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
 
 `continuity` normalises the BDF+ spelling: a file reserving `BDF+D` reports `'EDF+D'`, because the two mean the same thing.
+
+`headerBytes` is the one field that is computed rather than read: 256 for the fixed header plus 256 per signal. Every data record offset is derived from it, so it has to be the size the layout actually uses — a writer that fills the length field in carelessly is common enough to have its own warning, `HEADER_BYTES_MISMATCH`, and believing the field over the arithmetic would put every sample at the wrong offset. `declaredHeaderBytes` carries what the field said, the same way `declaredRecordCount` does for the record count, so a caller auditing how a recording was written can see both.
 
 ### EdfSignal
 

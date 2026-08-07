@@ -73,7 +73,23 @@ export interface EdfHeader {
   startTimeRaw: string;
   /** Resolved start instant, or null when the file's date/time fields are unusable. */
   startDateTime: Date | null;
+  /**
+   * Header size in bytes, computed from the signal count rather than read from the field.
+   *
+   * Every data record offset is derived from this, so it has to be the one the layout
+   * actually uses: 256 for the fixed header plus 256 per signal. A writer that fills the
+   * field in carelessly is common enough to have its own warning, HEADER_BYTES_MISMATCH,
+   * and trusting the field over the arithmetic would put every sample at the wrong offset.
+   */
   headerBytes: number;
+  /**
+   * What the header's own length field says, which need not be the above.
+   *
+   * Exposed for the same reason `declaredRecordCount` is: the two disagreeing is a fact
+   * about the file, and a caller checking how a recording was written should be able to see
+   * what it claimed rather than only what was believed.
+   */
+  declaredHeaderBytes: number;
   reserved: string;
   isEdfPlus: boolean;
   /** True for BioSemi BDF/BDF+ files, whose samples are 3 bytes rather than 2. */
@@ -580,6 +596,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       startTimeRaw,
       startDateTime: resolveStartDateTime(startDateRaw, startTimeRaw),
       headerBytes: expectedHeaderBytes,
+      declaredHeaderBytes: headerBytes,
       reserved,
       isEdfPlus,
       isBdf,

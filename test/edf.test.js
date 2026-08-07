@@ -389,4 +389,41 @@ describe('the read budget', () => {
     }
   });
 });
+describe('what the header says against what it means', () => {
+  it('keeps the declared header length beside the computed one', async () => {
+    // api.md said "Every field is read straight from the 256-byte fixed header ... Nothing is
+    // normalised except where noted", and headerBytes carried no note — while being the one
+    // field that is computed rather than read. The computation is right: every record offset
+    // comes from it, and believing a carelessly written length field would put every sample
+    // at the wrong offset. What was missing is the field's own value, which is a fact about
+    // the file and is what HEADER_BYTES_MISMATCH is comparing against.
+    const { mkdtemp, writeFile, readFile, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-hb-'));
+    try {
+      const bytes = Buffer.from(await readFile(fixture('tiny.edf')));
+      Buffer.from('99      ', 'latin1').copy(bytes, 184);
+      const patched = path.join(dir, 'short-header.edf');
+      await writeFile(patched, bytes);
+
+      const file = await EdfFile.open(patched);
+      try {
+        assert.equal(file.header.headerBytes, 768, 'two signals need 256 + 2 * 256');
+        assert.equal(file.header.declaredHeaderBytes, 99, 'and the file says otherwise');
+        assert.ok(file.diagnostics.some((d) => d.code === 'HEADER_BYTES_MISMATCH'));
+      } finally {
+        await file.close();
+      }
+
+      // A well-formed file has them equal, which is what makes the pair worth exposing.
+      const ordinary = await EdfFile.open(fixture('tiny.edf'));
+      assert.equal(ordinary.header.declaredHeaderBytes, ordinary.header.headerBytes);
+      await ordinary.close();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 
