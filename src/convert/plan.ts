@@ -12,7 +12,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
-import { decimalsForSignal } from '../edf/scale.js';
+import { decimalsAreClamped, decimalsForSignal } from '../edf/scale.js';
 import { UTF8_BOM, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
@@ -220,6 +220,31 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
           'them apart, or convert one rate at a time with --channels.',
       });
     }
+  }
+
+  /*
+    The same failure as TIME_RESOLUTION, one column over.
+
+    A channel whose quantization step is below 1e-98 needs more decimals than `toFixed` can
+    print, so consecutive digital codes round to the same text and the arithmetic the FAQ
+    gives for recovering them stops working. That used to happen at 1e-20 and silently — see
+    MAX_DERIVED_DECIMALS. It is rare now, but "rare" is the reason to say so rather than the
+    reason not to.
+  */
+  for (const group of groups) {
+    const short = group.channels.filter((c) => decimalsAreClamped(c.signal, c.decimals));
+    if (short.length === 0) continue;
+    diagnostics.push({
+      code: 'VALUE_RESOLUTION',
+      severity: 'warning',
+      message:
+        `${listed(short.map((c) => c.column))} ${short.length === 1 ? 'steps' : 'step'} by less ` +
+        `than the ${short[0]?.decimals} decimals written can express, so some consecutive ` +
+        `samples round to the same value in ${group.fileName}.`,
+      hint:
+        'Every sample is written, in order, and the physical values are computed at full ' +
+        'precision either way. What is lost is only in the printed text.',
+    });
   }
 
   if (estimate.exceedsSpreadsheetLimit) {

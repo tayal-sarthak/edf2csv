@@ -38,6 +38,14 @@ export const DIGITAL_MAXES = [32767, 8191, 2047, 1000, 100, 1];
 export const PHYSICAL_PAIRS = [
   [-250, 250], [-100, 100], [-5, 5], [-1, 1], [-0.5, 0.5],
   [-99999, 99999], [-0.0001, 0.0001], [0, 40], [34, 40],
+  /*
+    A magnetometer's range, which is where this sweep had a hole.
+
+    The pairs above bottom out at ±0.0001, giving a finest step around 3e-9 — nowhere near
+    a channel whose decimals get clamped. So the sweep passed while ±1e-16 T over 16 bits
+    lost 69% of its codes. This pair reaches the clamp, which is the point of having it.
+  */
+  [-1e-16, 1e-16],
 ];
 /** Samples in the single record each calibration is written with. One cell each. */
 export const SAMPLES_PER_CALIBRATION = 16;

@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.74
+
+### Fixed: the decimal ceiling was 20 on a false premise, and cost a magnetometer 69% of its codes
+
+Decimals are derived per channel as `ceil(-log10(step)) + 2`, which is meant to guarantee
+what output-files.md states outright: no two distinct digital codes round to the same text.
+The result was clamped to 20, and the comment beside the clamp explained that 20 was the
+most `toFixed` will accept. It is not. `toFixed` accepts 100; 101 is a `RangeError`.
+
+The gap was not academic, and it landed on the exact channel type the comment named as the
+reason for the ceiling. A magnetometer spanning ±1e-16 T over a 16-bit converter steps by
+3.05e-21 and needs 23 places. At 20 every value landed on a 1e-20 grid — about three digital
+codes to a printed value — so 69% of the samples could not be recovered by the arithmetic
+the FAQ gives for recovering them. The conversion exited 0 and printed no warning.
+
+The ceiling is now 100. Reaching it takes a step below 1e-98, which an 8-character physical
+bound can still express (`1e-99` is five characters), and a channel that does now raises
+`VALUE_RESOLUTION` rather than losing precision in silence — the same failure
+`TIME_RESOLUTION` reports one column over, and reported the same way: every sample is
+written, in order, and the physical values are computed at full precision either way.
+
+The round-trip sweep did not catch this because its physical pairs bottomed out at ±0.0001,
+a finest step of about 3e-9, nowhere near a clamped channel. It now includes a
+magnetometer's range and runs 13,440 cells over 840 calibrations. Against the old ceiling it
+fails, which is what makes it worth having.
+
+Ordinary channels are untouched: ±250 µV over 12 bits still gets 3, a ±5 mV ECG still gets
+5. `--decimals` still accepts 0 to 20, which is a bound on a number a person picks by hand
+rather than a bound on what the format can express.
+
 ## 0.4.73
 
 ### Fixed: `--info --annotations-only --gzip` named files the run would not write

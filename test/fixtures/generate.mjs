@@ -558,6 +558,33 @@ export function generate() {
   });
 
   /*
+    Calibrations whose quantization step is finer than a printed decimal easily reaches.
+
+    The magnetometer is the case that was broken: ±1e-16 T over a 16-bit converter steps by
+    3.05e-21, needs 23 decimals, and got 20, so three digital codes shared each printed
+    value. The gravimeter is the case that cannot be fixed — a step below 1e-98, past what
+    `toFixed` will print — and exists to be warned about rather than to be recovered.
+  */
+  writeEdf({
+    path: at('magnetometer.edf'),
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'MEG 0113', dimension: 'T', physMin: -1e-16, physMax: 1e-16, digMin: -32768, digMax: 32767, samplesPerRecord: 8, gen: (record, sample) => -32768 + record * 8 + sample },
+    ],
+  });
+
+  writeEdf({
+    path: at('unprintable-step.bdf'),
+    bdf: true,
+    numRecords: 1,
+    recordDuration: 1,
+    signals: [
+      { label: 'gravimeter', dimension: 'm', physMin: -1e-99, physMax: 1e-99, digMin: -8388608, digMax: 8388607, samplesPerRecord: 4, gen: (record, sample) => -8388608 + sample },
+    ],
+  });
+
+  /*
     Header text that is Latin-1 rather than ASCII, which is most real recordings.
 
     The spec says the header is printable ASCII, and exporters write `µV` anyway — one byte,

@@ -14,8 +14,8 @@ added, and the heading did not keep up until 0.4.34.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes. Checked by `npm run fuzz:batch`.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **1,200 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
-5. **`--info` predicts what a conversion writes.** The row count is exact and the byte count never reads low, across every fixture crossed with every option combination. Checked by `npm run estimate`: **216 predictions over 39 recordings**, sizes reading 19% high on average, which is the direction a size estimate has to err in.
-6. **The digital codes can be recovered from the CSV.** The documentation says the written decimals are always fine enough to get the original integer back, and offers the arithmetic for doing it. Checked by `npm run roundtrip`: **12,096 cells over 756 calibrations**, EDF and BDF, every one recovering the code the file holds.
+5. **`--info` predicts what a conversion writes.** The row count is exact and the byte count never reads low, across every fixture crossed with every option combination. Checked by `npm run estimate`: **226 predictions over 41 recordings**, sizes reading 18% high on average, which is the direction a size estimate has to err in.
+6. **The digital codes can be recovered from the CSV.** The documentation says the written decimals are always fine enough to get the original integer back, and offers the arithmetic for doing it. Checked by `npm run roundtrip`: **13,440 cells over 840 calibrations**, EDF and BDF, every one recovering the code the file holds.
 7. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 
 The second and seventh are what `npm test` runs; the third through sixth are the fuzz, estimate and round-trip commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
@@ -36,7 +36,7 @@ A quarter of the recordings are BDF rather than EDF, where a sample is three byt
 
 The recordings it generates are not the test fixtures. Those target the things real files get wrong, and pyEDFlib refuses several of them outright — a truncated file, a header whose digital range is a single point. What this needs is the opposite: ordinary well-formed recordings across a wide spread of calibrations, with digital spans from `-1..1` to `-32768..32767` and physical spans from `0.0001` to `99999`, giving gains from about 1e-9 to about 1e5. Both endpoints of the digital range appear in every recording, since `digitalMin` and `digitalMax` are the two points the header actually calibrates and where a mapping derived slightly differently disagrees most.
 
-The comparison runs at `--decimals 20`, the most the tool will write, so what is being compared is two computations of a value rather than one of them against its printed form. At 12 decimal places a reading near 1e-5 carries only seven significant digits, and that rounding alone is larger than the disagreement being looked for.
+The comparison runs at `--decimals 20`, the most `--decimals` accepts, so what is being compared is two computations of a value rather than one of them against its printed form. At 12 decimal places a reading near 1e-5 carries only seven significant digits, and that rounding alone is larger than the disagreement being looked for.
 
 To confirm the check can fail, put a one-part-in-a-million error into the gain and rerun it:
 
@@ -353,18 +353,18 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 227
+ℹ tests 230
 ℹ suites 39
-ℹ pass 227
+ℹ pass 230
 ℹ fail 0
 ```
 
-The 227 tests are split across six files by what they exercise:
+The 230 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 38 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
-| `test/convert.test.js` | 74 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
+| `test/convert.test.js` | 77 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 96 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
 | `test/docs.test.js` | 12 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 4 | `--stdout` onto a destination that fills up, which needs a filesystem of a known small size and so is kept apart |

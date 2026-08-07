@@ -893,6 +893,58 @@ describe('converting', () => {
     assert.ok(timeDecimals(3e15) <= 15);
   });
 
+  it('writes enough decimals for a magnetometer to keep its codes apart', async () => {
+    /*
+      ±1e-16 T over a 16-bit converter steps by 3.05e-21 and needs 23 decimals. The clamp
+      was 20, on the stated grounds that 20 was the most `toFixed` accepts — it accepts 100.
+      So every value landed on a 1e-20 grid, roughly three digital codes to a printed value,
+      69% of them unrecoverable, exit 0 and no warning. The channel type the comment named
+      as the reason for the ceiling was the one the ceiling broke.
+    */
+    const dir = await outDir();
+    const result = await convert(fixture('magnetometer.edf'), { outputDir: dir });
+    const rows = await readCsv(dir, 'signals.csv');
+    const cells = rows.slice(1).map((row) => row.split(',')[1]);
+    assert.equal(new Set(cells).size, cells.length, 'every code must print as its own text');
+    assert.ok(!result.diagnostics.some((d) => d.code === 'VALUE_RESOLUTION'));
+
+    // And the FAQ's arithmetic gets the codes back, which is the claim being kept.
+    const [signal] = result.plan.groups[0].channels;
+    const gain =
+      (signal.signal.physicalMax - signal.signal.physicalMin) /
+      (signal.signal.digitalMax - signal.signal.digitalMin);
+    const offset = signal.signal.physicalMax / gain - signal.signal.digitalMax;
+    cells.forEach((cell, index) => {
+      assert.equal(Math.round(Number(cell) / gain - offset), -32768 + index);
+    });
+  });
+
+  it('says so when the step is finer than any printable decimal', async () => {
+    // A step below 1e-98 is past what `toFixed` will print, and an 8-character physical
+    // bound can still express one: `1e-99` is five characters. Nothing that measures
+    // anything produces this, which is the reason to warn rather than the reason not to.
+    const result = await convert(fixture('unprintable-step.bdf'), { outputDir: await outDir() });
+    const notice = result.diagnostics.find((d) => d.code === 'VALUE_RESOLUTION');
+    assert.ok(notice, `expected the warning: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.message, /gravimeter steps by less than the 100 decimals/u);
+    assert.match(notice.hint, /computed at full/u);
+  });
+
+  it('leaves an ordinary channel at the decimals it always had', async () => {
+    const { decimalsForSignal } = await import('../dist/edf/scale.js');
+    const signal = (physicalMin, physicalMax, digitalMin, digitalMax) => ({
+      physicalMin,
+      physicalMax,
+      digitalMin,
+      digitalMax,
+    });
+    // Raising the ceiling must not move a channel that never reached it.
+    assert.equal(decimalsForSignal(signal(-250, 250, -2048, 2047)), 3);
+    assert.equal(decimalsForSignal(signal(-5, 5, -2048, 2047)), 5);
+    assert.equal(decimalsForSignal(signal(34, 40, -2048, 2047)), 5);
+    assert.equal(decimalsForSignal(signal(-262144, 262144, -8388608, 8388607)), 4);
+  });
+
   it('leaves an ordinary sampling rate alone', async () => {
     for (const name of ['tiny.edf', 'mixed-rates.edf', 'long-stream.edf', 'many-rates.edf']) {
       const result = await convert(fixture(name), { outputDir: await outDir(), quiet: true });

@@ -69,6 +69,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
+| `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
 
 ## File structure and integrity
 
@@ -316,6 +317,25 @@ warning: Channels at 10000000000 Hz sample faster than the time column can disti
 **What edf2csv does.** Writes every sample, in file order. Nothing is dropped — what stops being true is that `time_s` identifies a row, so joining or plotting on it collapses samples that are genuinely distinct.
 
 **What to do.** Use the row number. Until 0.4.55 this went further than a repeated column: the boundary slack used when deciding which samples fall inside the requested window was a flat nanosecond, larger than the sample interval itself, and a recording of two 1 ns records holding ten samples each wrote ten of its twenty rows with no warning at all.
+
+### VALUE_RESOLUTION
+
+The same failure as `TIME_RESOLUTION`, one column over: the value this time rather than the time.
+
+**Cause.** A channel whose quantization step — `|physical_max - physical_min| / (digital_max - digital_min)` — is below 1e-98. Decimals are derived per channel as `ceil(-log10(step)) + 2`, and 100 is where that stops, because 100 is the most `toFixed` will print. EDF's physical bound fields are 8 characters and `1e-99` is five of them, so the format permits such a calibration; no instrument produces one.
+
+```
+warning: gravimeter steps by less than the 100 decimals written can express, so some
+         consecutive samples round to the same value in signals.csv.
+         Every sample is written, in order, and the physical values are computed at full
+         precision either way. What is lost is only in the printed text.
+```
+
+**What edf2csv does.** Writes every sample, at the finest precision `toFixed` supports. The physical values are computed at full double precision whichever way — what is lost is only in the printed text, so `--json` metadata, row counts and ordering are all unaffected.
+
+**What to do.** Nothing, for any real recording. If you are generating such a file deliberately, the digital codes are still in the EDF and reading them directly is exact.
+
+This warning did not exist until 0.4.74, and the clamp it reports was 20 rather than 100 — set there on the stated grounds that 20 was `toFixed`'s limit, which it is not. A magnetometer channel spanning ±1e-16 T over a 16-bit converter steps by 3.05e-21 and needs 23 places; at 20 its values landed on a 1e-20 grid, about three digital codes to a printed value, and 69% of them could not be recovered from the CSV. It exited 0 and said nothing.
 
 ## Timing, continuity and annotations
 

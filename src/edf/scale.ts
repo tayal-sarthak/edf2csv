@@ -78,19 +78,44 @@ export function quantizationStep(signal: EdfSignal): number {
 }
 
 /**
+ * The most `toFixed` accepts. 101 is a RangeError, so this is the ceiling, not a taste.
+ *
+ * It used to be 20, on the stated grounds that 20 was what `toFixed` allowed. It is not,
+ * and the gap was not academic: a magnetometer channel spanning ±1e-16 T over a 16-bit
+ * converter has a step of 3.05e-21 and needs 23 places. Clamped to 20, every value landed
+ * on a 1e-20 grid — about three digital codes to a printed value — so 69% of the samples
+ * could not be recovered, the conversion exited 0, and nothing said a word. The channel
+ * type the old comment named as the reason for the ceiling was the one it broke.
+ */
+const MAX_DERIVED_DECIMALS = 100;
+
+/**
  * Decimal places needed so that two adjacent digital codes never round to the same
  * string. Two places past the quantization step keep rounding error far below the
  * resolution the hardware actually recorded, without padding the file with digits
  * that carry no information.
  *
- * The ceiling is 20 rather than a tidier number because a channel calibrated in
- * volts rather than microvolts has a step near 1e-7, and one in tesla smaller
- * still. A lower cap would round genuinely different samples to the same text. It
- * costs nothing for ordinary channels, whose step lands them at three or four.
+ * Ordinary channels land at three or four: a ±800 µV channel over 12 bits steps by
+ * 0.39 µV and needs three. The ceiling is only reached by calibrations whose step is
+ * below 1e-98, which an 8-character physical bound can still express — `1e-99` is five
+ * characters. Those get VALUE_RESOLUTION rather than silence.
  */
-export function decimalsForSignal(signal: EdfSignal, max = 20): number {
+export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS): number {
   const step = quantizationStep(signal);
   if (!(step > 0) || !Number.isFinite(step)) return 3;
   const needed = Math.ceil(-Math.log10(step)) + 2;
   return Math.min(max, Math.max(0, needed));
+}
+
+/**
+ * Whether the decimals a channel gets are fewer than its quantization step needs.
+ *
+ * True only when the step is below 1e-98 and the ceiling above bites. Asked by the planner,
+ * which turns it into a warning, because a value column that cannot separate consecutive
+ * codes is the same failure the time column raises TIME_RESOLUTION for.
+ */
+export function decimalsAreClamped(signal: EdfSignal, decimals: number): boolean {
+  const step = quantizationStep(signal);
+  if (!(step > 0) || !Number.isFinite(step)) return false;
+  return Math.ceil(-Math.log10(step)) + 2 > decimals;
 }

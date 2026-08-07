@@ -182,7 +182,7 @@ digital step:
 step = |physical_max - physical_min| / (digital_max - digital_min)
 ```
 
-`edf2csv` writes `ceil(-log10(step)) + 2` decimals, clamped to the range 0 to 20. The two extra
+`edf2csv` writes `ceil(-log10(step)) + 2` decimals, clamped to the range 0 to 100. The two extra
 places put rounding error well below the resolution the hardware recorded, so no two distinct
 digital codes round to the same text, without padding the file with digits that carry no
 information.
@@ -194,9 +194,16 @@ information.
 | Temp rectal | 34 to 40 degC | -2048 to 2047 | 0.001465 degC | 5 |
 | A1 (24-bit BDF) | -262144 to 262144 uV | -8388608 to 8388607 | 0.03125 uV | 4 |
 
-The upper clamp is 20 because a channel calibrated in volts rather than microvolts has a step near
-1e-7, and a magnetometer channel smaller still. A lower cap would round genuinely different samples
-to the same text.
+The upper clamp is 100 because that is the most `toFixed` will print — 101 is a `RangeError` — and
+nothing short of that is a principled place to stop. It was 20 until 0.4.74, on the stated grounds
+that 20 was `toFixed`'s limit, which it is not. The difference showed on the channel type this
+paragraph already named: a magnetometer spanning ±1e-16 T over a 16-bit converter steps by
+3.05e-21 and needs 23 places, so at 20 its values landed on a 1e-20 grid, roughly three digital
+codes to a printed value, and 69% of them could not be recovered. Nothing warned.
+
+Reaching 100 takes a step below 1e-98, which an 8-character physical bound can still express —
+`1e-99` is five characters. A channel that does raises a `VALUE_RESOLUTION` warning rather than
+losing precision in silence.
 
 Two details of the formatting:
 
