@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.76
+
+### Added: the API reference's examples are run, not just displayed
+
+Every `js` block on the page is now extracted, pointed at a real recording, and executed.
+Only paths and the package specifier are rewritten; the code is otherwise exactly what the
+page shows, and each block runs against the first fixture that carries every channel it
+names. A rename, a moved option, a return shape that changed — the kind of drift that leaves
+a page looking perfectly fine — now fails a test instead.
+
+The `parseTimeSpec` example is checked differently, because running it proves nothing: it
+asserts its results in comments rather than printing them. Those four claimed values are
+parsed out of the page and compared against what the function returns.
+
+Both were confirmed capable of failing before being kept — one by renaming an import on the
+page, the other by changing a claimed `0.25` to `0.5`.
+
 ## 0.4.75
 
 ### Fixed: the buffer-reuse warning described something the obvious test disproves

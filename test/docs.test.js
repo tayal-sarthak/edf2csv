@@ -19,7 +19,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { readdir, readFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(ROOT, 'dist', 'cli.js');
 
 const read = (relative) => readFile(path.join(ROOT, relative), 'utf8');
+
+/** Whether a quoted string in an example is naming a channel rather than a path or a flag. */
+function isLabelish(text, labels) {
+  return [...labels.values()].some((set) => set.has(text));
+}
 
 /** The members of an exported string-union type, read from its declaration. */
 async function unionMembers(file, name) {
@@ -199,6 +205,78 @@ describe('documentation and source agree on their lists', () => {
       version,
       `package.json is at ${version} and the newest changelog entry is ${newest[1]}`,
     );
+  });
+
+  it('runs every JavaScript example in the API reference', async () => {
+    /*
+      The examples are the part of the documentation a reader is most likely to paste, and
+      the part that goes stale most quietly: a rename, a changed option name, a return shape
+      that moved, and the page still looks fine. Nothing here checks that they are good
+      examples — only that they are programs, that they run against a real recording, and
+      that the values they claim in comments are the values they produce.
+
+      Only paths and the package specifier are rewritten. The code is otherwise exactly what
+      the page shows, and the recording each block runs against is the first fixture that
+      carries every channel the block names.
+    */
+    const page = await read('website/content/api.md');
+    const blocks = [...page.matchAll(/```js\n([\s\S]*?)```/gu)].map((m) => m[1]);
+    assert.ok(blocks.length >= 8, `expected the examples to still be there, found ${blocks.length}`);
+
+    const candidates = ['annotations.edf', 'mixed-rates.edf'];
+    const labels = new Map();
+    for (const name of candidates) {
+      const api = await import(path.join(ROOT, 'dist/index.js'));
+      const file = await api.EdfFile.open(path.join(ROOT, 'test/fixtures/generated', name));
+      labels.set(name, new Set(file.dataSignals.map((signal) => signal.label)));
+      await file.close();
+    }
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-examples-'));
+    try {
+      let ran = 0;
+      for (const [index, block] of blocks.entries()) {
+        // Fragments — the two halves of the buffer-reuse warning — are not programs.
+        if (!/^import |^const \{/mu.test(block)) continue;
+
+        const named = [...block.matchAll(/'([^']*)'/gu)].map((m) => m[1]);
+        const fixture = candidates.find((name) =>
+          named.every((text) => !labels.get(name)?.size || !isLabelish(text, labels) || labels.get(name).has(text)),
+        );
+        assert.ok(fixture, `no fixture carries every channel example ${index} names`);
+
+        const source = block
+          .replaceAll("'edf2csv'", JSON.stringify(path.join(ROOT, 'dist/index.js')))
+          .replaceAll(
+            '/data/recordings/sleep-study.edf',
+            path.join(ROOT, 'test/fixtures/generated', fixture),
+          )
+          .replaceAll('/data/exports/epoch-42', path.join(work, `out-${index}`))
+          .replaceAll('/data/exports/run-1', path.join(work, `run-${index}`));
+        const file = path.join(work, `example-${index}.mjs`);
+        await writeFile(file, source);
+        await run(process.execPath, [file]);
+        ran++;
+      }
+      assert.ok(ran >= 7, `only ${ran} examples were runnable`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
+  it('produces the values the parseTimeSpec example claims in its comments', async () => {
+    // The one example whose output is asserted in comments rather than printed, so running
+    // it proves nothing on its own.
+    const page = await read('website/content/api.md');
+    const block = /```js\n(import \{ parseTimeSpec[\s\S]*?)```/u.exec(page);
+    assert.ok(block, 'the parseTimeSpec example is gone');
+    const { parseTimeSpec } = await import(path.join(ROOT, 'dist/index.js'));
+
+    const claims = [...block[1].matchAll(/parseTimeSpec\('([^']+)', '[^']+'\);\s*\/\/ ([\d.]+)/gu)];
+    assert.ok(claims.length >= 4, `expected the claimed values, found ${claims.length}`);
+    for (const [, text, claimed] of claims) {
+      assert.equal(parseTimeSpec(text, '--start'), Number(claimed), `parseTimeSpec('${text}')`);
+    }
   });
 
   it('states harness sizes that match the harnesses themselves', async () => {
