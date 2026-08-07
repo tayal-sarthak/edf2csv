@@ -605,6 +605,21 @@ async function streamSignalRows(
           if (writer.hungUp) break;
           writer.pushLine(row);
           entry.rows++;
+
+          /*
+            Flushed inside the record, not only at the end of one.
+
+            The buffer was drained once per record, so the rows of a single record piled up
+            with nothing emptying them — memory followed samples-per-record rather than the
+            batch size the writer exists to hold to. One record of 16,000,000 samples died
+            with a heap out of memory under a 256 MB cap, while the same 32 MB of samples
+            split into 16,000 records converted to the same 283 MB CSV without trouble. The
+            format allows either layout and says nothing about which to expect.
+
+            `full` is a synchronous read of the pending size, so the twenty million rows that
+            are not at a boundary cost a comparison rather than a microtask each.
+          */
+          if (writer.full) await writer.flush();
         }
         await writer.maybeFlush();
       }

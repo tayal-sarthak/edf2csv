@@ -493,6 +493,11 @@ a second of 60 channels at 200 Hz is 24 KB — but the header permits far larger
 whose records are gigabytes needs room for one of them. Reading such a record works; it is the
 one case where the working set follows the file.
 
+The rows a record produces do not: until 0.4.54 they were held until the record ended, so a
+recording of one enormous record ran out of heap where the same samples split across many records
+converted fine. The row buffer is now emptied whenever it fills, wherever in the record that
+happens.
+
 ## How do I check whether a conversion had problems from a script?
 
 Use the exit code for pass or fail, and `--json` for the detail. The exit codes are 0 for success,

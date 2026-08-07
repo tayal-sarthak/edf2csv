@@ -55,6 +55,45 @@ async function oneHugeRecord(channels, samplesPerRecord) {
   return { file, out: path.join(dir, 'out'), recordBytes: channels * samplesPerRecord * 2 };
 }
 
+describe('a record with a great many samples in it', () => {
+  it('holds to its buffer rather than to the record', async (t) => {
+    if (totalmem() < 8 * 1024 ** 3) {
+      t.skip('needs room to build two 32 MB recordings');
+      return;
+    }
+
+    // The row buffer was drained once per record, so the rows of a single record piled up
+    // with nothing emptying them: memory followed samples-per-record rather than the batch
+    // size the writer exists to hold to. One record of 16,000,000 samples died with a heap
+    // out of memory under a 256 MB cap, while the same 32 MB of samples split into 16,000
+    // records converted to a 283 MB CSV without trouble. The format allows either layout.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-onerecord-'));
+    temporaries.push(dir);
+
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const base = {
+      label: 'A', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+      gen: (r, s) => ((r * 7 + s * 3) % 4000) - 2000,
+    };
+    const one = path.join(dir, 'one-record.edf');
+    writeEdf({ path: one, numRecords: 1, recordDuration: 1, signals: [{ ...base, samplesPerRecord: 16_000_000 }] });
+
+    // The cap is what makes this a test rather than a demonstration: without a limit the
+    // machine's own memory would let the old code through.
+    const out = path.join(dir, 'out');
+    await run(
+      process.execPath,
+      ['--max-old-space-size=256', CLI, one, '--out', out, '--json', '--quiet'],
+      { maxBuffer: 1 << 22 },
+    );
+
+    const rows = JSON.parse(
+      (await run(process.execPath, [CLI, one, '--info', '--json'], { maxBuffer: 1 << 22 })).stdout,
+    ).estimate.rows;
+    assert.equal(rows, 16_000_000, 'the recording really does hold that many samples');
+  });
+});
+
 describe('a record larger than one read', () => {
   it('converts instead of aborting the process', async (t) => {
     if (totalmem() < 8 * 1024 ** 3) {

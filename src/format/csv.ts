@@ -101,9 +101,19 @@ export class BufferedLineWriter {
     this.push('\n');
   }
 
+  /**
+   * Whether enough has accumulated to be worth writing out.
+   *
+   * A synchronous question, so a row loop can ask it every row without paying for a
+   * microtask on the twenty million that answer no.
+   */
+  get full(): boolean {
+    return this.#pending >= this.#threshold;
+  }
+
   /** Flush if enough has accumulated. Await this at row boundaries. */
   async maybeFlush(): Promise<void> {
-    if (this.#pending >= this.#threshold) await this.flush();
+    if (this.full) await this.flush();
   }
 
   async flush(): Promise<void> {
