@@ -117,6 +117,19 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(summary, 'the runner summary is gone from the page');
     assert.equal(Number(summary[1]), total, `the summary and the table disagree`);
     assert.match(page, new RegExp(`The ${total} tests are split`, 'u'), 'the prose disagrees too');
+
+    /*
+      And how many files there are, which drifted the same way the counts did: the page said
+      "runs the three test files" long after there were five, then six. Spelled out in words
+      because that is how the sentence reads, and a number the reader can count against the
+      table directly below it.
+    */
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    assert.match(
+      page,
+      new RegExp(`runs the ${words[claimed.size]} test files`, 'u'),
+      `there are ${claimed.size} test files, and the page says otherwise`,
+    );
   });
 
   it('shows a metadata.json with the keys a conversion actually writes', async () => {

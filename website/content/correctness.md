@@ -350,7 +350,7 @@ npm install
 npm test
 ```
 
-`npm test` compiles the TypeScript, regenerates the fixtures, and runs the three test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It finishes in about a second on a laptop:
+`npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
 ℹ tests 218
