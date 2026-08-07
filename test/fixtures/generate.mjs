@@ -194,6 +194,37 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // 1024 Hz: the rate a BioSemi ActiveTwo records at, and the first power of two whose
+  // sample interval needs more than nine decimal places.
+  //
+  // 1/1024 is 0.0009765625 — ten places. The search for an exact expansion stopped at nine,
+  // so this rate fell through to the rounding fallback and wrote 0.0009766, which is exactly
+  // what the time column is meant not to do: `time_s * rate` came back at 8191.999... rather
+  // than a whole number.
+  writeEdf({
+    path: at('biosemi-rate.edf'),
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'EEG', ...uv, samplesPerRecord: 1024, gen: (r, s) => ((r * 1024 + s) % 4000) - 2000 },
+    ],
+  });
+
+  // A rate above a gigahertz whose sample interval does not terminate.
+  //
+  // Three samples in 1e-10 s is 3e10 Hz, and 1/3e10 repeats forever, so the time column falls
+  // back to its nine-place cap and cannot separate consecutive samples. Every sample is still
+  // written; what stops being true is that time_s identifies a row. This is what is left of
+  // TIME_RESOLUTION once the exact-expansion search reaches fifteen places.
+  writeEdf({
+    path: at('repeating-fast.edf'),
+    numRecords: 2,
+    recordDuration: 0.0000000001,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 3, gen: (r, s) => r * 3 + s },
+    ],
+  });
+
   // The three ways a calibration can have its bounds the wrong way round.
   //
   // The gain is (physMax - physMin) / (digMax - digMin), so the sign of that fraction is

@@ -97,18 +97,33 @@ export function makeSampleFormatter(signal: EdfSignal, decimals: number): Sample
 /**
  * Decimals for the time column.
  *
- * The interval between samples is 1/rate, which has a terminating decimal
- * expansion of d places exactly when 10^d divides evenly by the rate. Every rate
- * in common use clears this — 256 Hz needs 8 places, 512 Hz needs 9, 250 Hz and
- * 1000 Hz need 3 — so sample times are written exactly rather than rounded, and
- * `time_s * rate` comes back as a whole number instead of 8191.999999.
+ * The interval between samples is 1/rate, which has a terminating decimal expansion of d
+ * places exactly when 10^d divides evenly by the rate. Writing that many places makes sample
+ * times exact rather than rounded, so `time_s * rate` comes back as a whole number instead
+ * of 8191.999999.
  *
- * Rates with a repeating expansion (3 Hz, say) fall back to enough places to keep
- * consecutive samples distinct.
+ * The search used to stop at nine places, and the comment here claimed "every rate in common
+ * use clears this — 256 Hz needs 8 places, 512 Hz needs 9". The next two powers of two do
+ * not: 1/1024 needs ten places and 1/2048 needs eleven, and those are the rates a BioSemi
+ * ActiveTwo records at by default. Both fell through to the rounding fallback, so the two
+ * most common high-rate EEG recordings got exactly the behaviour this function exists to
+ * avoid — 0.0009766 for an interval of 0.0009765625.
+ *
+ * A rate of 2^a * 5^b terminates in max(a, b) places, so fifteen covers every power of two up
+ * to 32768 Hz, far past anything that records biosignals. Rates with a repeating expansion
+ * (3 Hz, say) still fall back to enough places to keep consecutive samples distinct, and that
+ * fallback keeps its own cap.
+ *
+ * Fifteen and not more, because the test below has to stay exact: 10^16 is past 2^53, where a
+ * double can no longer hold every integer, and `Number.isInteger(10 ** 17 / 3)` is true — so a
+ * larger bound reports a terminating expansion for rates that have none, and 3 Hz would ask
+ * for seventeen decimals of a number that repeats forever.
  */
+const MAX_EXACT_TIME_DECIMALS = 15;
+
 export function timeDecimals(samplingRate: number): number {
   if (!(samplingRate > 0) || !Number.isFinite(samplingRate)) return 3;
-  for (let d = 0; d <= 9; d++) {
+  for (let d = 0; d <= MAX_EXACT_TIME_DECIMALS; d++) {
     if (Number.isInteger(10 ** d / samplingRate)) return Math.max(3, d);
   }
   return Math.min(9, Math.max(3, Math.ceil(Math.log10(samplingRate)) + 3));

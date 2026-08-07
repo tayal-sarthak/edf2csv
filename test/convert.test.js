@@ -807,6 +807,39 @@ describe('converting', () => {
     assert.ok(rows[rows.length - 1][1] < rows[0][1], 'and falls, because its gain is negative');
   });
 
+  it('writes an exact time column at the rates a BioSemi records', async () => {
+    // The search for a terminating decimal expansion stopped at nine places, and the comment
+    // beside it claimed "every rate in common use clears this — 256 Hz needs 8 places, 512 Hz
+    // needs 9". The next two powers of two do not: 1/1024 needs ten and 1/2048 needs eleven,
+    // and those are what an ActiveTwo records at by default. Both fell through to the
+    // rounding fallback, so `time_s * rate` came back at 8191.999... rather than a whole
+    // number — exactly what this column exists to avoid.
+    const { timeDecimals } = await import('../dist/format/number.js');
+    for (const rate of [1024, 2048, 4096, 8192]) {
+      const decimals = timeDecimals(rate);
+      assert.equal(
+        Number((1 / rate).toFixed(decimals)),
+        1 / rate,
+        `${rate} Hz rounds its sample interval at ${decimals} places`,
+      );
+    }
+
+    // A rate whose expansion repeats still gets the capped fallback, rather than asking for
+    // seventeen decimals of a number that never terminates.
+    assert.ok(timeDecimals(3) <= 9, '3 Hz must not claim an exact expansion');
+    assert.ok(timeDecimals(7) <= 9);
+
+    // And end to end: every time_s in a 1024 Hz conversion lands on a whole sample.
+    const dir = await outDir();
+    await convert(fixture('biosemi-rate.edf'), { outputDir: dir, quiet: true });
+    const rows = (await readCsv(dir, 'signals.csv')).slice(1);
+    assert.equal(rows.length, 2048);
+    for (const row of rows) {
+      const time = Number(row.split(',')[0]);
+      assert.equal(time * 1024, Math.round(time * 1024), `${time} is not a whole sample`);
+    }
+  });
+
   it('keeps the boundary slack under one sample interval', async () => {
     // The slack for deciding which samples fall inside the requested window was a flat
     // nanosecond, applied whatever the rate — and the format does not oblige the sample
@@ -818,13 +851,28 @@ describe('converting', () => {
     const rows = await readCsv(dir, 'signals.csv');
     assert.equal(rows.length - 1, 20, 'every sample must be written');
 
-    // Slack that reaches the next sample is not slack. Above a gigahertz the time column
-    // cannot separate them either, which is a different loss and gets its own warning.
+    // 1e10 Hz has a terminating expansion at ten places, which the search now reaches, so
+    // this recording gets a column that separates every sample and needs no warning at all.
+    const times = new Set(rows.slice(1).map((row) => row.split(',')[0]));
+    assert.equal(times.size, 20, 'and each one is distinguishable');
+    assert.ok(!result.diagnostics.some((d) => d.code === 'TIME_RESOLUTION'));
+  });
+
+  it('says so when the rate has no exact expansion to fall back on', async () => {
+    // Three samples in 1e-10 s is 3e10 Hz, and 1/3e10 repeats forever, so the column falls
+    // back to its nine-place cap and cannot separate consecutive samples. Every sample is
+    // still written and in order; what stops being true is that time_s identifies a row,
+    // and joining or plotting on it silently collapses them.
+    const dir = await outDir();
+    const result = await convert(fixture('repeating-fast.edf'), { outputDir: dir });
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.equal(rows.length - 1, 6, 'every sample is written');
+
     const notice = result.diagnostics.find((d) => d.code === 'TIME_RESOLUTION');
-    assert.ok(notice, `the repeated time column must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.ok(notice, `expected the warning: ${JSON.stringify(result.diagnostics)}`);
     assert.match(notice.hint, /Every sample is written, in order/u);
     const times = new Set(rows.slice(1).map((row) => row.split(',')[0]));
-    assert.ok(times.size < 20, 'and it is genuinely repeated, which is why it is worth saying');
+    assert.ok(times.size < 6, 'and the column really does repeat, which is why it is said');
   });
 
   it('leaves an ordinary sampling rate alone', async () => {
