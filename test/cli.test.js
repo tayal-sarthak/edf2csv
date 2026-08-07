@@ -925,6 +925,34 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('says where signals.csv went when there was nothing to put in it', async () => {
+    // Selecting a channel that carries zero samples per record leaves no table to write, so
+    // the run produces channels.csv and metadata.json and no signals.csv — while the
+    // documentation says signals.csv is written unless --annotations-only was passed. The
+    // NO_SAMPLES warning explained the channel; nothing explained the missing file.
+    const dir = await outDir();
+    const converted = await cli([
+      fixture('single-rate-empty-channel.edf'), '--channels', 'unused', '--out', dir,
+    ]);
+    assert.equal(converted.code, 0, converted.stderr);
+    assert.match(converted.stderr, /No signal file was written/u);
+    assert.deepEqual((await readdir(dir)).sort(), ['channels.csv', 'metadata.json']);
+
+    // And --info stops calling that channel "(not selected)" when it is exactly what was
+    // selected — the table contradicted the warning printed below it.
+    const info = await cli([
+      fixture('single-rate-empty-channel.edf'), '--info', '--channels', 'unused',
+    ]);
+    const row = info.stdout.split('\n').find((l) => l.includes('unused'));
+    assert.match(row, /\(no samples\)/u, row);
+
+    // A channel that has samples and was not selected still says so — "(no samples)" is
+    // about what the file gives the channel, and takes precedence because it is true whether
+    // or not the channel was asked for.
+    const real = info.stdout.split('\n').find((l) => l.includes('real'));
+    assert.match(real, /\(not selected\)/u, real);
+  });
+
   it('does not promise nothing for a run that writes a file', async () => {
     // The estimate describes the signal tables, so under --annotations-only there was
     // nothing to describe and the line read "Would write 0 rows, roughly 0 B." — for a

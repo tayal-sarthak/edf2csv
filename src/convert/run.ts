@@ -208,6 +208,26 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       const signals = await writeSignalFiles(file, plan, outputDir, timing.starts, options);
       written.push(...signals);
       if (rowsIn(signals) === 0) plan.diagnostics.push(emptyWindow(plan.range, file.recordCount));
+    } else if (plan.writeSignals) {
+      /*
+        Asked for signal data and given none to write.
+
+        Every channel selected carries zero samples per record, so there is no table to make
+        — `edf2csv rec.edf --channels unused` writes channels.csv and metadata.json and no
+        signals.csv at all. The NO_SAMPLES warning explains the channel; nothing explained the
+        missing file, and the documentation says signals.csv is written unless
+        --annotations-only was passed. Someone looking for it should be told where it went.
+      */
+      plan.diagnostics.push({
+        code: 'NO_SAMPLES',
+        severity: 'warning',
+        message:
+          'No signal file was written: every channel selected carries zero samples per data ' +
+          'record, so there is nothing to put in one.',
+        hint:
+          'channels.csv still describes them. Run with --info to see which channels do carry ' +
+          'samples.',
+      });
     }
 
     if (options.annotationsOnly === true && file.annotationSignals.length === 0) {

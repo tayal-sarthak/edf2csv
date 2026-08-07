@@ -130,7 +130,15 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
       printable(signal.physicalDimension),
       `${rateText[row]} Hz`,
       `${signal.physicalMin} to ${signal.physicalMax}`,
-      fileFor.get(signal.index) ?? '(not selected)',
+      /*
+        A channel with no samples was reported as "(not selected)", which is a different
+        thing and not true when it was named on --channels. `edf2csv rec.edf --info
+        --channels unused` said the channel the command asked for had not been chosen, when
+        what is actually the case is that the file gives it nothing to convert. The
+        NO_SAMPLES warning below the table says so; the table contradicted it.
+      */
+      fileFor.get(signal.index) ??
+        (signal.samplesPerRecord === 0 ? '(no samples)' : '(not selected)'),
     ]);
   }
   lines.push(table(rows, new Set([0])));
