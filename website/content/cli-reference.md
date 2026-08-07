@@ -594,6 +594,14 @@ error: Writing to stdout failed: 150904 of 2063736 bytes did not reach the desti
        mid-write, and nothing after it raised an error because there was nothing after it.
 ```
 
+A reader that stops reading is a different thing, and gets a different line. `edf2csv recording.edf --stdout | head -1` is an ordinary thing to type and not a failure, but it is not a conversion either, so it does not get a conversion's summary:
+
+```
+Stopped: the reader closed the pipe after 52,507 rows had been written. The recording was not converted in full.
+```
+
+Up to 0.5.11 that read "Wrote 52,507 rows to stdout" — a number that is neither the recording's 102,400 nor the one row `head` took, but however many had been formatted before the closed pipe was noticed. How many reached the reader is not knowable from this side; that it stopped early is.
+
 The check exists because this is the one path that has no second file to trip over. `write` returns a short count rather than an error when the filesystem fills partway through a single call, and only the *next* write raises `ENOSPC` — `--out` always has a next write, since `channels.csv` and `metadata.json` come after the samples. Until 0.4.39 a `--stdout` conversion that lost its tail this way exited 0 and announced the full row count.
 
 It applies to a regular file only. A pipe, a terminal or a socket has no size to compare, and cannot lose a write this way without reporting it. Appending with `>>` is fine: the starting size is taken before anything is written.

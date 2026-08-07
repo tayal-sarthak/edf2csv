@@ -705,7 +705,21 @@ async function convertOne(
       // thing worth saying — on stderr, so the CSV on stdout stays clean.
       if (toStdout) {
         const rows = result.files[0]?.rows ?? 0;
-        emit('err', `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`);
+        /*
+          A reader that closed the pipe did not receive a conversion, so it does not get a
+          conversion's summary. `edf2csv rec.edf --stdout | head -1` announced "Wrote 52,507
+          rows to stdout" — a number that is neither the recording's 102,400 nor the one row
+          head took, but however many had been formatted before the close was noticed. The
+          count that reached the reader is not knowable from this side; that it stopped early
+          is, so that is what is said.
+        */
+        emit(
+          'err',
+          result.readerHungUp
+            ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} rows ` +
+              `had been written. The recording was not converted in full.\n`
+            : `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`,
+        );
       } else {
         emit('err', `${formatSummary(result)}\n`);
       }

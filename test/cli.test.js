@@ -1400,6 +1400,43 @@ async function shellTo(args, destination) {
   }
 }
 
+describe('what the summary says it did', () => {
+  it('does not report a conversion to a reader that stopped reading', async () => {
+    /*
+      `edf2csv rec.edf --stdout | head -1` announced "Wrote 52,507 rows to stdout" for a
+      102,400-row recording of which the reader took one line. That number is neither total:
+      it is however many had been formatted before the closed pipe was noticed. What reached
+      the reader cannot be known from this side. That it stopped early can.
+    */
+    const { stderr } = await run(
+      '/bin/sh',
+      ['-c', `"${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout | head -1`],
+    );
+    assert.match(stderr, /the reader closed the pipe after [\d,]+ rows had been written/u);
+    assert.match(stderr, /was not converted in full/u);
+    assert.ok(!/^Wrote /mu.test(stderr), `still claims a conversion:\n${stderr}`);
+
+    // A run nobody interrupted still reports its rows the way it always did.
+    const whole = await cli([fixture('long-stream.edf'), '--stdout']);
+    assert.equal(whole.code, 0);
+    assert.match(whole.stderr, /Wrote 102,400 rows to stdout\./u);
+  });
+
+  it(`calls a compressed CSV's rows rows`, async () => {
+    // `.csv.gz` does not end in `.csv`, so the unit was dropped from every line of a --gzip
+    // summary and the numbers stood on their own with nothing saying what they counted.
+    const dir = await outDir();
+    const { stderr } = await cli([fixture('annotations.edf'), '--out', dir, '--gzip']);
+    for (const name of ['signals.csv.gz', 'annotations.csv.gz', 'channels.csv.gz']) {
+      assert.match(
+        stderr,
+        new RegExp(`${name.replaceAll('.', '\\.')}\\s+[\\d,]+\\s+rows`, 'u'),
+        `${name} has no unit:\n${stderr}`,
+      );
+    }
+  });
+});
+
 describe('a folder the process cannot read', () => {
   it('is a failure, not a usage error, and does not claim the folder is empty', async () => {
     /*
@@ -2044,7 +2081,9 @@ describe('--stdout', () => {
       ['-c', `{ "${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout 2>&3 | head -1 >/dev/null; } 3>&1`],
       { maxBuffer: 1 << 20 },
     );
-    const written = Number(stdout.match(/Wrote ([\d,]+) rows/)[1].replaceAll(',', ''));
+    // Since 0.5.12 the line says the reader stopped rather than claiming a conversion, and
+    // this is still the number it reports: rows written before the close was noticed.
+    const written = Number(stdout.match(/after ([\d,]+) rows had been written/)[1].replaceAll(',', ''));
     assert.ok(written < 102_400, `stopped after ${written} of 102,400 rows`);
   });
 

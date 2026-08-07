@@ -444,6 +444,7 @@ interface ConversionProgress {
 interface ConvertResult {
   outputDir: string;
   files: WrittenFile[];      // { name: string; rows: number }
+  readerHungUp: boolean;     // a toStdout reader closed the pipe before the end
   annotationCount: number;   // rows written to annotations.csv
   diagnostics: Diagnostic[]; // header, plan and stale-output diagnostics combined
   plan: ConversionPlan;

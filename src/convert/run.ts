@@ -109,6 +109,14 @@ export interface WrittenFile {
 export interface ConvertResult {
   outputDir: string;
   files: WrittenFile[];
+  /**
+   * True when a `--stdout` reader closed the pipe before the conversion finished.
+   *
+   * `edf2csv rec.edf --stdout | head -1` is an ordinary thing to type and not a failure, but
+   * it is also not a conversion: the row count is rows formatted before the close was
+   * noticed, which is neither the recording's total nor what the reader received.
+   */
+  readerHungUp: boolean;
   annotationCount: number;
   diagnostics: Diagnostic[];
   plan: ConversionPlan;
@@ -194,12 +202,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             'one table, or convert to a directory instead.',
         );
       }
-      const written = await writeSignalFiles(file, plan, null, timing.starts, options);
+      let readerHungUp = false;
+      const written = await writeSignalFiles(file, plan, null, timing.starts, options, (hungUp) => {
+        readerHungUp = hungUp;
+      });
       if (rowsIn(written) === 0) plan.diagnostics.push(emptyWindow(plan.range, file.recordCount));
       if (await file.changedSinceOpen()) plan.diagnostics.push(inputChanged(false));
       return {
         outputDir: '-',
         files: written,
+        readerHungUp,
         annotationCount: 0,
         diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics],
         plan,
@@ -295,6 +307,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     return {
       outputDir,
       files: written,
+      readerHungUp: false,
       annotationCount: annotationsWritten,
       diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics, ...stale],
       plan,
@@ -497,6 +510,7 @@ async function writeSignalFiles(
   outputDir: string | null,
   recordStarts: Float64Array | null,
   options: ConvertOptions,
+  onHangUp?: (hungUp: boolean) => void,
 ): Promise<WrittenFile[]> {
   // One budget for every table in this conversion, not one per table: see OffsetBudget.
   const offsets = newOffsetBudget();
@@ -623,6 +637,7 @@ async function writeSignalFiles(
       }
       if (!open.some((entry) => entry.writer.hungUp)) audit.verify();
     }
+    onHangUp?.(open.some((entry) => entry.writer.hungUp));
     return written;
   } catch (cause) {
     for (const entry of open) entry.writer.destroy();

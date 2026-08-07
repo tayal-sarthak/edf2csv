@@ -284,7 +284,13 @@ export function formatSummary(result: ConvertResult): string {
   const lines: string[] = [];
   const rows: string[][] = [];
   for (const file of result.files) {
-    rows.push([`  ${file.name}`, file.rows.toLocaleString('en-US'), file.name.endsWith('.csv') ? 'rows' : '']);
+    // `.csv.gz` is still a CSV, and its rows are still rows. The suffix test dropped the
+    // unit from every line of a --gzip summary, so the numbers stood on their own.
+    rows.push([
+      `  ${file.name}`,
+      file.rows.toLocaleString('en-US'),
+      /\.csv(\.gz)?$/u.test(file.name) ? 'rows' : '',
+    ]);
   }
   lines.push(`Wrote ${result.outputDir}`);
   lines.push(table(rows, new Set([1])));

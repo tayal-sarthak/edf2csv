@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.12
+
+### Fixed: the summary claimed a conversion for a reader that stopped reading
+
+`edf2csv recording.edf --stdout | head -1` announced "Wrote 52,507 rows to stdout" for a
+102,400-row recording of which the reader took one line. That number is neither total. It is
+however many rows had been formatted before the closed pipe was noticed — a figure with no
+meaning outside the implementation, presented as the result of the run.
+
+Piping to `head` is an ordinary thing to type and not a failure, so it still exits 0. It is
+not a conversion either, so it no longer gets a conversion's summary: it says the reader
+closed the pipe, after how many rows had been written, and that the recording was not
+converted in full. How many reached the reader cannot be known from this side. That it
+stopped early can.
+
+`ConvertResult` gains `readerHungUp` for callers who need to tell the two apart.
+
+### Fixed: `--gzip` dropped the unit from every line of the summary
+
+```
+Wrote out
+  signals.csv.gz      300
+  annotations.csv.gz    3
+  channels.csv.gz       1
+```
+
+The unit was attached to names ending in `.csv`, and `.csv.gz` does not, so the counts stood
+on their own with nothing saying what they counted — beside an uncompressed run of the same
+recording that says `300  rows`. A compressed CSV's rows are still rows.
+
 ## 0.5.11
 
 ### Fixed: six documentation claims that contradicted the tool or each other
