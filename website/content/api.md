@@ -407,6 +407,11 @@ interface ConvertOptions {
   annotationsOnly?: boolean;      // skip the signal files entirely
   decimals?: number;              // fixed precision instead of per-channel
 
+  // shape and encoding
+  layout?: 'wide' | 'long';       // 'wide' (default), or one table of time_s/channel/value
+  gzip?: boolean;                 // compress every CSV, giving each a .csv.gz name
+  bom?: boolean;                  // start each CSV with a UTF-8 byte order mark
+
   // output
   outputDir?: string;             // defaults to defaultOutputDir(inputPath)
   force?: boolean;                // overwrite an existing output directory
@@ -560,6 +565,7 @@ interface PlanInput {
 
 interface ConversionPlan {
   groups: RateGroup[];
+  layout: 'wide' | 'long';             // a column per channel, or time_s/channel/value
   gzip: boolean;                       // whether the CSVs will be written compressed
   range: ResolvedRange;
   columnNames: Map<number, string>;    // signal index to CSV column name
@@ -583,7 +589,7 @@ interface PlannedChannel {
 }
 ```
 
-`PlanOptions` is the selection half of `ConvertOptions`: `channels`, `start`, `duration`, `end`, `annotationsOnly`, `decimals`.
+`PlanOptions` is everything `ConvertOptions` needs before a byte is written — the selection (`channels`, `start`, `duration`, `end`, `annotationsOnly`, `decimals`) plus the shape and encoding (`layout`, `gzip`, `bom`), since those decide the file names, the row count and the estimate.
 
 ```js
 import { EdfFile, buildPlan, SPREADSHEET_ROW_LIMIT } from 'edf2csv';

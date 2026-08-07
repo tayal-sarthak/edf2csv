@@ -59,6 +59,9 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --annotations-only Just the EDF+ events
       --decimals <n>     Force a number of decimal places
       --checksum         Put a SHA-256 of the input in metadata.json
+      --layout <kind>    wide (default): one column per channel, one file per
+                         sampling rate. long: one file of time_s,channel,value,
+                         every rate together, one row per sample
       --gzip             Compress every CSV, writing .csv.gz files
       --bom              Start each CSV with a UTF-8 byte order mark, so Excel
                          reads accented text and units like µV correctly

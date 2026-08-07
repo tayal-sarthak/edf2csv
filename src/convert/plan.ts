@@ -13,7 +13,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal } from '../edf/scale.js';
-import { UTF8_BOM, csvRow } from '../format/csv.js';
+import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
@@ -66,10 +66,31 @@ export interface PlanOptions {
   gzip?: boolean | undefined;
   /** Start each CSV with a UTF-8 byte order mark, so Excel reads it as UTF-8. */
   bom?: boolean | undefined;
+  /**
+   * How the samples are arranged in the CSV.
+   *
+   * `'wide'`, the default, gives one column per channel and one file per sampling rate.
+   * `'long'` gives one file, three columns — `time_s`, `channel`, `value` — and one row per
+   * sample. See ConversionPlan.layout for why that is the only way to put channels recorded
+   * at different rates in one table without inventing samples.
+   */
+  layout?: 'wide' | 'long' | undefined;
 }
 
 export interface ConversionPlan {
   groups: RateGroup[];
+  /**
+   * How the samples are arranged. `'wide'` is a column per channel and a file per rate;
+   * `'long'` is `time_s,channel,value`, one row per sample, all rates in one file.
+   *
+   * The wide layout has to split a mixed-rate recording across files: a 100 Hz channel and
+   * a 1 Hz channel share no rows, and putting them in one wide table means either 99 empty
+   * cells out of every hundred or inventing the samples that would fill them. In the long
+   * layout each sample carries its own time, so nothing has to line up and nothing is
+   * invented — which also makes it the one layout `--stdout` can stream for such a file.
+   */
+  layout: 'wide' | 'long';
+
   /**
    * Whether the CSVs will be compressed.
    *
@@ -161,8 +182,9 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     }
   }
 
+  const layout = options.layout ?? 'wide';
   const groups = writeSignals
-    ? groupByRate(chosen, columnNames, options.decimals, options.gzip === true)
+    ? groupByRate(chosen, columnNames, options.decimals, options.gzip === true, layout)
     : [];
   const estimate = estimateOutput(
     groups,
@@ -170,6 +192,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     input.recordDuration,
     input.recordStarts,
     options.bom === true,
+    layout,
   );
 
   /*
@@ -192,7 +215,10 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       message:
         `Channels use ${groups.length} different sampling rates ` +
         `(${listed(formatRates(groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
-      hint: 'They are written to one file per rate so no channel is resampled.',
+      hint:
+        layout === 'long'
+          ? 'They share one table, each row carrying its own time, so no channel is resampled.'
+          : 'They are written to one file per rate so no channel is resampled.',
     });
   }
 
@@ -258,7 +284,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     });
   }
 
-  return { groups, gzip: options.gzip === true, range, columnNames, writeSignals, diagnostics, estimate };
+  return { groups, layout, gzip: options.gzip === true, range, columnNames, writeSignals, diagnostics, estimate };
 }
 
 /**
@@ -273,6 +299,7 @@ function groupByRate(
   columnNames: Map<number, string>,
   forcedDecimals: number | undefined,
   gzip: boolean,
+  layout: 'wide' | 'long',
 ): RateGroup[] {
   const byRate = new Map<number, EdfSignal[]>();
   for (const signal of signals) {
@@ -285,7 +312,8 @@ function groupByRate(
   }
 
   const rates = [...byRate.keys()].sort((a, b) => b - a);
-  const single = rates.length === 1;
+  // The long layout writes one table whatever the rates are, so every group names it.
+  const single = rates.length === 1 || layout === 'long';
 
   /*
     Two distinct rates can produce the same slug, because the slug rounds to six decimal
@@ -323,7 +351,12 @@ function groupByRate(
       rate,
       samplesPerRecord: first ? first.samplesPerRecord : 0,
       fileName: single ? `signals${suffix}` : uniqueName(index),
-      timeDecimals: timeDecimals(rate),
+      /*
+        In the long layout every rate shares a `time_s` column, so they share its precision:
+        the finest any of them needs. Writing 100 Hz at three places and 256 Hz at eight in
+        the same column would make the column's meaning depend on the row.
+      */
+      timeDecimals: layout === 'long' ? Math.max(...rates.map(timeDecimals)) : timeDecimals(rate),
       channels: members.map((signal) => ({
         signal,
         column: columnNames.get(signal.index) ?? `signal_${signal.index}`,
@@ -376,10 +409,14 @@ function estimateOutput(
   recordDuration: number,
   recordStarts: Float64Array | null | undefined,
   bom: boolean,
+  layout: 'wide' | 'long',
 ): OutputEstimate {
   let rows = 0;
   let bytes = 0;
   let exceeds = false;
+  // One table in the long layout, so the row limit applies to the sum rather than the
+  // largest group, and the header and mark are counted once rather than once per group.
+  let longRows = 0;
 
   for (const group of groups) {
     let groupRows = 0;
@@ -395,6 +432,30 @@ function estimateOutput(
         endSeconds: range.endSeconds,
       });
     }
+    if (layout === 'long') {
+      // A row per sample per channel rather than a row per sample time.
+      const groupCells = groupRows * group.channels.length;
+      rows += groupCells;
+      longRows += groupCells;
+      /*
+        `time_s,channel,value`: the time, the channel name as it will be escaped into the
+        cell, and the widest the value can print. Same over-counting rule as the wide
+        layout — the declared physical range bounds a cell, and most samples sit under it.
+      */
+      const timeWidth = widthOf(range.endSeconds, group.timeDecimals);
+      for (const channel of group.channels) {
+        const valueWidth = widthOf(
+          Math.max(Math.abs(channel.signal.physicalMin), Math.abs(channel.signal.physicalMax)),
+          channel.decimals,
+          channel.signal.physicalMin < 0 || channel.signal.physicalMax < 0,
+        );
+        const nameWidth = Buffer.byteLength(escapeCsvField(channel.column));
+        // Two commas and the newline.
+        bytes += groupRows * (timeWidth + nameWidth + valueWidth + 3);
+      }
+      continue;
+    }
+
     rows += groupRows;
     if (groupRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
 
@@ -443,6 +504,12 @@ function estimateOutput(
     bytes += Buffer.byteLength(csvRow(['time_s', ...group.channels.map((c) => c.column)])) + 1;
     // Three bytes per file under --bom. Small, but the estimate promises never to read
     // under what gets written, and a one-row conversion is small enough for it to matter.
+    if (bom) bytes += BOM_BYTES;
+  }
+
+  if (layout === 'long' && groups.length > 0) {
+    if (longRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
+    bytes += Buffer.byteLength(csvRow(['time_s', 'channel', 'value'])) + 1;
     if (bom) bytes += BOM_BYTES;
   }
 

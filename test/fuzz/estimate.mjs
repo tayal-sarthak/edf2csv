@@ -43,6 +43,9 @@ const OPTIONS = [
   ['--start', '1'],
   ['--start', '1', '--duration', '1'],
   ['--gzip'],
+  // The long layout has its own row and byte arithmetic; the promise is the same.
+  ['--layout', 'long'],
+  ['--layout', 'long', '--decimals', '12'],
 ];
 
 function run(args) {

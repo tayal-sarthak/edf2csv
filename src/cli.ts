@@ -49,6 +49,9 @@ Options
       --annotations-only Write only the EDF+ annotations, no signal data
       --decimals <n>     Fix the decimal places instead of deriving them per channel
       --checksum         Record a SHA-256 of the input in metadata.json
+      --layout <kind>    wide (default): one column per channel, one file per
+                         sampling rate. long: one file of time_s,channel,value,
+                         every rate together, one row per sample
       --gzip             Compress every CSV, writing .csv.gz files
       --bom              Start each CSV with a UTF-8 byte order mark, so Excel
                          reads accented text and units like µV correctly
@@ -78,6 +81,9 @@ Output
   With --gzip each CSV becomes a .csv.gz; metadata.json stays plain text so the
   directory can still be read at a glance. With --bom each CSV starts with a
   UTF-8 byte order mark and metadata.json does not, since JSON.parse rejects one.
+  With --layout long every channel goes into one signals.csv as time_s, channel
+  and value, in time order, whatever rates the recording mixes — which is also
+  the one arrangement --stdout can stream for a mixed-rate file.
 
 Examples
   edf2csv recording.edf
@@ -162,6 +168,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         'annotations-only': { type: 'boolean' },
         decimals: { type: 'string' },
         checksum: { type: 'boolean' },
+        layout: { type: 'string' },
         gzip: { type: 'boolean' },
         bom: { type: 'boolean' },
         jobs: { type: 'string', short: 'j' },
@@ -290,6 +297,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       annotationsOnly: values['annotations-only'] === true,
       gzip: values['gzip'] === true,
       bom: values['bom'] === true,
+      layout: optionalLayout(values['layout']),
     };
 
     // Validated before the --info branch, not inside the conversion path: a flag that
@@ -1092,7 +1100,7 @@ async function convertInChild(
   for (const flag of ['annotations-only', 'checksum', 'gzip', 'bom', 'force', 'quiet', 'json']) {
     if (values[flag] === true) args.push(`--${flag}`);
   }
-  for (const flag of ['start', 'duration', 'end', 'decimals']) {
+  for (const flag of ['start', 'duration', 'end', 'decimals', 'layout']) {
     if (typeof values[flag] === 'string') args.push(`--${flag}=${values[flag] as string}`);
   }
   // --channels is repeatable, and each term is passed as given so that a label containing a
@@ -1260,6 +1268,13 @@ function splitChannels(raw: unknown): string[] | undefined {
 function optionalTime(raw: unknown, option: string): number | undefined {
   if (raw === undefined) return undefined;
   return parseTimeSpec(String(raw), option);
+}
+
+/** `--layout`, which is one of two words and not a guess at what was meant. */
+function optionalLayout(raw: unknown): 'wide' | 'long' | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === 'wide' || raw === 'long') return raw;
+  throw new OptionError(`--layout must be "wide" or "long", got "${String(raw)}".`);
 }
 
 function optionalDecimals(raw: unknown): number | undefined {

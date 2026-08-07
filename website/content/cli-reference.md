@@ -85,6 +85,7 @@ No EDF or BDF recordings found in "/data/empty".
 | `--annotations-only` | | none | off | Write only the EDF+ event list, no signal data |
 | `--decimals` | | integer 0 to 20 | derived per channel | Force a fixed number of decimal places |
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
+| `--layout` | | `wide`, `long` | `wide` | `long` writes one file of `time_s,channel,value` |
 | `--gzip` | | none | off | Compress every CSV, writing `.csv.gz` files |
 | `--bom` | | none | off | Start each CSV with a UTF-8 byte order mark |
 | `--jobs` | `-j` | integer or `auto` | 1 | Convert this many recordings at once |
@@ -404,6 +405,54 @@ error: study/night-02.edf: stopped by SIGKILL before it finished.
 The rest of the batch carries on, and the closing count and exit code report it as a failure.
 
 `--stdout` ignores it, since that path takes a single recording anyway.
+
+## --layout
+
+How the samples are arranged in the CSV. `wide`, the default, or `long`.
+
+`wide` is a column per channel and a file per sampling rate, which is what every earlier version wrote and what most analysis expects.
+
+`long` is one file, three columns, one row per sample:
+
+```bash
+edf2csv sleep-study.edf --out ./converted --layout long
+```
+
+```
+time_s,channel,value
+0.000,EEG Fpz-Cz,0.061
+0.000,EEG Pz-Oz,0.061
+0.000,EOG horizontal,0.061
+0.000,Resp oro-nasal,0.000244
+0.000,Temp rectal,37.00073
+0.010,EEG Fpz-Cz,1.648
+```
+
+The reason it exists is the mixed-rate recording. A 100 Hz channel and a 1 Hz channel share no rows, so a wide table holding both means either ninety-nine empty cells in every hundred or inventing the samples to fill them — which is why `wide` splits them across files instead. In the long layout each sample carries its own time and nothing has to line up, so every rate goes in one table with nothing invented. Rows come out sorted by `time_s`, and within one time in the order the file declares its channels.
+
+That also makes it the one layout `--stdout` can stream for a mixed-rate recording, since there is only ever one table:
+
+```bash
+edf2csv sleep-study.edf --stdout --layout long | head -20
+```
+
+It is the shape most plotting and grouping libraries want directly:
+
+```python
+import pandas as pd
+long = pd.read_csv('converted/signals.csv')
+long.groupby('channel')['value'].describe()
+```
+
+And it converts back to the wide form in one call, for the rates that share a time base:
+
+```python
+wide = long.pivot(index='time_s', columns='channel', values='value')
+```
+
+The cost is size. A wide row carries one time for every channel; a long row repeats the time and the channel name on every sample, so the same recording is roughly two to three times larger. `--info` reports the long figure when `--layout long` is given, so the estimate always describes the command you typed. `--gzip` recovers most of the difference, since a repeated channel name is exactly what compression is good at.
+
+The `time_s` precision is shared across rates in the long layout — the finest any of them needs — because one column cannot mean three things. A recording mixing 256 Hz and 1 Hz writes both at eight decimal places.
 
 ## --bom
 

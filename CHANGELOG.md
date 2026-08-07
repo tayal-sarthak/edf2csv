@@ -3,6 +3,54 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.0
+
+### Added: `--layout long`, so a mixed-rate recording can be one table
+
+Until now a recording whose channels run at different rates came out as several files, one
+per rate, and that was the honest answer to a real problem: a 100 Hz channel and a 1 Hz
+channel share no rows, so a single wide table holding both means either ninety-nine empty
+cells in every hundred or inventing the samples to fill them. This tool exists not to invent
+them.
+
+The long layout is the other honest answer. One file, three columns — `time_s`, `channel`,
+`value` — and one row per sample. Each sample carries its own time, so nothing has to line
+up, every rate goes in one table, and not a value is invented:
+
+```
+time_s,channel,value
+0.000,EEG Fpz-Cz,0.061
+0.000,EEG Pz-Oz,0.061
+0.000,Resp oro-nasal,0.000244
+0.000,Temp rectal,37.00073
+0.010,EEG Fpz-Cz,1.648
+```
+
+Rows come out sorted by `time_s`. That is not free — the groups are merged rather than
+written one after another, since every sample of a record falls inside that record's span,
+so taking the earliest next sample across the groups leaves the whole file in order. Sorting
+three million rows afterwards would be the reader's problem, and a large one.
+
+It is also the one layout `--stdout` can stream for a mixed-rate recording, because there is
+only ever one table. `--stdout` on such a file used to have nothing to offer but
+`--channels`; its error now says so.
+
+Some details that follow from one table:
+
+- `time_s` shares a precision across rates — the finest any of them needs — because one
+  column cannot mean three things. A file mixing 256 Hz and 1 Hz writes both at eight places.
+- One writer, not one per rate group. Separate buffers over one stream would reach the file
+  in whatever order they happened to fill, which is not the order the rows were produced in.
+- `--info` reports the long figures when `--layout long` is given, so the estimate always
+  describes the command you typed. The estimate sweep now crosses every fixture with the
+  long layout too: 308 predictions, rows exact and bytes never under.
+- The cost is size. A long row repeats the time and the channel name on every sample, so the
+  same recording runs two to three times larger. `--gzip` recovers most of it, since a
+  repeated channel name is what compression is best at. An eight-hour recording converts
+  under a 64 MB heap cap either way.
+
+`--layout wide` is the default and unchanged.
+
 ## 0.4.78
 
 ### Fixed: `sleep-study.edf` was four different recordings across the site

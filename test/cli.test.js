@@ -1386,6 +1386,131 @@ describe('messages that enumerate what the file contains', () => {
   });
 });
 
+describe('--layout long', () => {
+  it('puts every rate in one table, in time order, with nothing invented', async () => {
+    /*
+      The wide layout has to split a mixed-rate recording across files: a 256 Hz channel and
+      a 1 Hz channel share no rows, so one table holding both means either 255 empty cells
+      in every 256 or inventing the samples to fill them. The long layout gives each sample
+      its own time, so the same recording fits one table and every value in it is a value
+      the file holds.
+    */
+    const wideDir = await outDir();
+    const longDir = await outDir();
+    assert.equal((await cli([fixture('mixed-rates.edf'), '--out', wideDir, '--quiet'])).code, 0);
+    assert.equal(
+      (await cli([fixture('mixed-rates.edf'), '--out', longDir, '--layout', 'long', '--quiet'])).code,
+      0,
+    );
+
+    assert.deepEqual(
+      (await readdir(longDir)).sort(),
+      ['channels.csv', 'metadata.json', 'signals.csv'],
+      'one signal file, whatever the rates',
+    );
+
+    const rows = (await readFile(path.join(longDir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows[0], 'time_s,channel,value');
+
+    let previous = -Infinity;
+    const byKey = new Map();
+    for (const row of rows.slice(1)) {
+      const [time, channel, value] = row.split(',');
+      assert.ok(Number(time) >= previous, `time went backwards at ${row}`);
+      previous = Number(time);
+      byKey.set(`${Number(time).toFixed(8)}|${channel}`, value);
+    }
+
+    // Every cell of the wide conversion is present, with the same text.
+    let cells = 0;
+    for (const name of (await readdir(wideDir)).filter((n) => n.startsWith('signals'))) {
+      const wide = (await readFile(path.join(wideDir, name), 'utf8')).trimEnd().split('\n');
+      const columns = wide[0].split(',').slice(1);
+      for (const row of wide.slice(1)) {
+        const parts = row.split(',');
+        for (const [index, column] of columns.entries()) {
+          cells++;
+          assert.equal(
+            byKey.get(`${Number(parts[0]).toFixed(8)}|${column}`),
+            parts[index + 1],
+            `${column} at ${parts[0]}`,
+          );
+        }
+      }
+    }
+    assert.equal(cells, rows.length - 1, 'and nothing beyond them');
+
+    // channels.csv names the one file they all landed in.
+    const channels = await readFile(path.join(longDir, 'channels.csv'), 'utf8');
+    assert.ok(!channels.includes('signals_256hz.csv'), channels);
+  });
+
+  it('shares one time precision, because one column cannot mean three things', async () => {
+    // 256 Hz needs eight places, 1 Hz needs three. Writing each rate at its own precision
+    // would make the column's meaning depend on the row it is in.
+    const dir = await outDir();
+    await cli([fixture('mixed-rates.edf'), '--out', dir, '--layout', 'long', '--quiet']);
+    const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    const places = new Set(rows.slice(1).map((row) => row.split(',')[0].split('.')[1].length));
+    assert.deepEqual([...places], [8], 'every row writes the finest precision any rate needs');
+  });
+
+  it('lets --stdout stream a mixed-rate recording, which wide cannot', async () => {
+    const refused = await cli([fixture('mixed-rates.edf'), '--stdout']);
+    assert.equal(refused.code, 2);
+    assert.match(refused.stderr, /--stdout needs exactly one table/u);
+    assert.match(refused.stderr, /--layout long/u, 'and says what to do about it');
+
+    const { code, stdout } = await cli([
+      fixture('mixed-rates.edf'),
+      '--stdout',
+      '--layout',
+      'long',
+    ]);
+    assert.equal(code, 0);
+    assert.equal(stdout.split('\n')[0], 'time_s,channel,value');
+  });
+
+  it('predicts the long layout rather than the wide one', async () => {
+    const dir = await outDir();
+    const info = await cli([fixture('mixed-rates.edf'), '--info', '--json', '--layout', 'long']);
+    const { estimate } = JSON.parse(info.stdout);
+    await cli([fixture('mixed-rates.edf'), '--out', dir, '--layout', 'long', '--quiet']);
+
+    const written = await readFile(path.join(dir, 'signals.csv'));
+    const rows = written.toString('utf8').trimEnd().split('\n').length - 1;
+    assert.equal(estimate.rows, rows, 'the row count is exact');
+    assert.ok(estimate.bytes >= written.length, 'and the byte count never reads under');
+
+    /*
+      A long row is a sample; a wide row is a sample time. They come to the same number for
+      this recording, because each of its rates carries exactly one channel — which is worth
+      saying, since it is the case where the two layouts hold the same rows in a different
+      shape. Where a rate carries several channels they diverge, so that is checked on a
+      file that has one: quirky-labels.edf puts four channels at 4 Hz.
+    */
+    const wide = JSON.parse((await cli([fixture('mixed-rates.edf'), '--info', '--json'])).stdout);
+    assert.equal(estimate.rows, wide.estimate.rows, 'one channel per rate, so the counts meet');
+
+    const shared = fixture('quirky-labels.edf');
+    const sharedWide = JSON.parse((await cli([shared, '--info', '--json'])).stdout);
+    const sharedLong = JSON.parse(
+      (await cli([shared, '--info', '--json', '--layout', 'long'])).stdout,
+    );
+    assert.equal(
+      sharedLong.estimate.rows,
+      sharedWide.estimate.rows * 4,
+      'four channels at one rate is four long rows per sample time',
+    );
+  });
+
+  it('refuses a layout it does not have', async () => {
+    const { code, stderr } = await cli([fixture('tiny.edf'), '--layout', 'tall']);
+    assert.equal(code, 2);
+    assert.match(stderr, /--layout must be "wide" or "long", got "tall"/u);
+  });
+});
+
 describe('--bom', () => {
   it('writes a mark on every CSV and on no JSON, leaving the text itself unchanged', async () => {
     /*

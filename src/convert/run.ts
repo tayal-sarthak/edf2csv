@@ -15,12 +15,13 @@ import type { Writable } from 'node:stream';
 import { createGzip, gzipSync } from 'node:zlib';
 import path from 'node:path';
 
+import type { RecordBatch } from '../edf/reader.js';
 import { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
-import { BufferedLineWriter, UTF8_BOM, csvRow } from '../format/csv.js';
+import { BufferedLineWriter, UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import {
   fixed,
@@ -171,7 +172,8 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           'Drop one of the two flags.',
         );
       }
-      if (plan.groups.length !== 1) {
+      // The long layout is one table whatever the rates are, so it has nothing to refuse.
+      if (plan.layout !== 'long' && plan.groups.length !== 1) {
         throw new ConversionError(
           'UNSUPPORTED_REQUEST',
           // Naming the rates is the point: the hint says to narrow the selection, and this
@@ -181,7 +183,8 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
             `one for each sampling rate its channels use ` +
             `(${listed(formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
-          'Narrow it to one rate with --channels, or convert to a directory instead.',
+          'Narrow it to one rate with --channels, write --layout long to get them all in ' +
+            'one table, or convert to a directory instead.',
         );
       }
       const written = await writeSignalFiles(file, plan, null, timing.starts, options);
@@ -493,12 +496,25 @@ async function writeSignalFiles(
   // Only the stdout path needs this; --out finds a full disk on its own, because it always
   // has another file to write afterwards. See auditStdout.
   const audit = outputDir === null ? auditStdout() : null;
-  const open: OpenGroup[] = plan.groups.map((group) => {
+  /*
+    In the long layout every group writes into one table, so they share one stream. Opening
+    a stream per group on the same path is what the rate-slug collision fix in groupByRate
+    was about: two writers on one file interleave rows under a header naming one of them.
+  */
+  let shared: {
+    stream: Writable;
+    settled: Promise<void>;
+    target: Writable;
+    writer: BufferedLineWriter;
+  } | null = null;
+
+  const open: OpenGroup[] = plan.groups.map((group, groupIndex) => {
     // A null directory means the single table goes to stdout. process.stdout is already a
     // writable stream, so the same buffered writer and backpressure handling apply.
     const target =
-      outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName));
-    const { stream, settled } = compressed(target, options.gzip === true);
+      shared?.target ??
+      (outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName)));
+    const { stream, settled } = shared ?? compressed(target, options.gzip === true);
     /*
       Under --gzip the writer feeds the compressor, so its byte count is the CSV before
       compression and says nothing about what reached the descriptor. The compressor's own
@@ -506,9 +522,25 @@ async function writeSignalFiles(
       listener of its own and a second one is delivered the same chunks.
     */
     if (audit && stream !== target) stream.on('data', (chunk: Buffer) => audit.count(chunk.length));
-    const writer = new BufferedLineWriter(stream);
-    if (options.bom === true) writer.push(UTF8_BOM);
-    writer.pushLine(csvRow(['time_s', ...group.channels.map((c) => c.column)]));
+    /*
+      One writer, not one per group, when the table is shared. Separate writers over one
+      stream each hold their own buffer and flush on their own schedule, so the rows would
+      reach the file in whatever order the buffers filled — which is not the order they
+      were produced in, and the long layout's whole claim is that its rows are in time
+      order.
+    */
+    const writer = shared?.writer ?? new BufferedLineWriter(stream);
+    if (plan.layout === 'long' && !shared) shared = { stream, settled, target, writer };
+
+    // Only the first group writes the header of a shared table, and the mark before it.
+    if (plan.layout !== 'long' || groupIndex === 0) {
+      if (options.bom === true) writer.push(UTF8_BOM);
+      writer.pushLine(
+        plan.layout === 'long'
+          ? csvRow(['time_s', 'channel', 'value'])
+          : csvRow(['time_s', ...group.channels.map((c) => c.column)]),
+      );
+    }
     return {
       group,
       writer,
@@ -583,6 +615,72 @@ async function writeSignalFiles(
   }
 }
 
+/**
+ * One record's samples in the long layout: `time_s,channel,value`, in time order.
+ *
+ * The groups are merged rather than written one after another. Every sample in a record
+ * falls inside that record's span, so taking the earliest next sample across the groups
+ * each time leaves the whole file sorted by `time_s` — which is the only thing that makes a
+ * mixed-rate long table useful, since sorting 3 million rows afterwards is the reader's
+ * problem and a large one.
+ *
+ * Ties go to the group with the higher rate, which is the order the groups are already in.
+ * Within a sample time the channels come out in the order the file declares them.
+ */
+async function writeLongRecord(
+  file: EdfFile,
+  open: readonly OpenGroup[],
+  batch: RecordBatch,
+  recordInBatch: number,
+  recordStart: number,
+  range: ConversionPlan['range'],
+): Promise<void> {
+  const writer = open[0]?.writer;
+  if (!writer) return;
+
+  const cursors = new Int32Array(open.length);
+  for (;;) {
+    let pick = -1;
+    let earliest = Infinity;
+    for (let g = 0; g < open.length; g++) {
+      const entry = open[g];
+      if (!entry) continue;
+      const sample = cursors[g] ?? 0;
+      if (sample >= entry.group.samplesPerRecord) continue;
+      const time = recordStart + sample / entry.group.rate;
+      if (time < earliest) {
+        earliest = time;
+        pick = g;
+      }
+    }
+    if (pick < 0) return;
+
+    const entry = open[pick];
+    if (!entry) return;
+    const sample = cursors[pick] ?? 0;
+    cursors[pick] = sample + 1;
+
+    // Same window rule as the wide layout, with the same per-rate slack.
+    if (!sampleTimeIsInRange(earliest, range.startSeconds, range.endSeconds, toleranceFor(entry.group.rate))) {
+      continue;
+    }
+
+    const time = entry.formatTime(recordStart, sample);
+    for (let c = 0; c < entry.group.channels.length; c++) {
+      const channel = entry.group.channels[c];
+      const format = entry.formatters[c];
+      if (!channel || !format) continue;
+      if (writer.hungUp) return;
+      writer.pushLine(
+        `${time},${escapeCsvField(channel.column)},${format(file.sampleAt(batch, recordInBatch, channel.signal, sample))}`,
+      );
+      entry.rows++;
+      // Flushed inside the record for the same reason the wide layout is; see there.
+      if (writer.full) await writer.flush();
+    }
+  }
+}
+
 async function streamSignalRows(
   file: EdfFile,
   plan: ConversionPlan,
@@ -610,6 +708,12 @@ async function streamSignalRows(
       if (allHungUp()) break;
       const index = batch.firstRecordIndex + r;
       const recordStart = recordStarts ? (recordStarts[index] ?? index * recordDuration) : index * recordDuration;
+
+      if (plan.layout === 'long') {
+        await writeLongRecord(file, open, batch, r, recordStart, plan.range);
+        recordsDone++;
+        continue;
+      }
 
       for (const entry of open) {
         const { group, writer, formatters, formatTime } = entry;
@@ -684,12 +788,22 @@ async function streamSignalRows(
     }
   }
 
+  const closed = new Set<BufferedLineWriter>();
   for (const entry of open) {
+    if (closed.has(entry.writer)) continue;
+    closed.add(entry.writer);
     await entry.writer.end();
     // With --gzip the writer's stream is the compressor, whose end callback fires when the
     // compressor is done rather than when the file behind it is. Awaiting only that would
     // report success with the tail of the file still in flight.
     await entry.settled;
+  }
+
+  // A shared table is one file, and its row count is every group's rows, not the first's.
+  if (plan.layout === 'long') {
+    const first = open[0];
+    if (!first) return [];
+    return [{ name: first.group.fileName, rows: open.reduce((sum, e) => sum + e.rows, 0) }];
   }
   return open.map((entry) => ({ name: entry.group.fileName, rows: entry.rows }));
 }

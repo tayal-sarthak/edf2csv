@@ -146,8 +146,11 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   lines.push('');
   if (plan.groups.length > 1) {
     lines.push(
-      `Sampling rates differ, so channels are written to ${plan.groups.length} files, one per rate. ` +
-        `No channel is resampled.`,
+      plan.layout === 'long'
+        ? `Sampling rates differ, and the long layout puts them in one table anyway: each row ` +
+          `carries its own time, so nothing has to line up. No channel is resampled.`
+        : `Sampling rates differ, so channels are written to ${plan.groups.length} files, one per rate. ` +
+          `No channel is resampled.`,
     );
   }
   /*
