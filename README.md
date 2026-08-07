@@ -60,6 +60,8 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --decimals <n>     Force a number of decimal places
       --checksum         Put a SHA-256 of the input in metadata.json
       --gzip             Compress every CSV, writing .csv.gz files
+      --bom              Start each CSV with a UTF-8 byte order mark, so Excel
+                         reads accented text and units like µV correctly
   -j, --jobs <n>         Convert this many recordings at once, or "auto"
   -f, --force            Overwrite the output folder
   -q, --quiet            Less output

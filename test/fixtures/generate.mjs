@@ -557,6 +557,28 @@ export function generate() {
     ],
   });
 
+  /*
+    Header text that is Latin-1 rather than ASCII, which is most real recordings.
+
+    The spec says the header is printable ASCII, and exporters write `µV` anyway — one byte,
+    0xB5 — because that is the unit the amplifier measures in. The label carries an accent
+    for the same reason. What this fixture is for is the encoding of the CSV that comes out:
+    two characters here become three bytes of UTF-8, which a spreadsheet reading the system
+    code page renders as mojibake unless the file says it is UTF-8.
+  */
+  writeEdf({
+    path: at('latin1-labels.edf'),
+    reserved: 'EDF+C',
+    numRecords: 2,
+    recordDuration: 1,
+    signals: [
+      { label: 'EEG Céz-A1', dimension: 'µV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true, },
+    ],
+    talsForRecord: (record) =>
+      buildTal(record, record === 1 ? [{ onset: 1, text: 'Réveil — stade N2' }] : []),
+  });
+
   // Every annotation crammed into the first record, with onsets spread across the
   // recording. Nothing in the spec obliges a writer to store an event in the record
   // its onset falls in, and some tools really do this.

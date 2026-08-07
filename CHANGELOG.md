@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.71
+
+### Added: `--bom`, for the one reader that needs it
+
+Excel on Windows opens a CSV with no byte order mark in the system code page rather than
+UTF-8, so anything outside ASCII arrives wrong. `µV` is the common case — EDF headers are
+Latin-1 in practice and exporters write the micro sign as the single byte `B5`, which UTF-8
+stores as two, and Excel renders as `Âµ`. Annotation text in French, German or Japanese goes
+the same way.
+
+`--bom` starts each CSV with `EF BB BF`, which tells Excel the file is UTF-8. It covers
+`signals.csv`, `channels.csv` and `annotations.csv`, and their `.csv.gz` forms — the mark
+goes inside the compressed stream. `metadata.json` never gets one: `JSON.parse` rejects a
+leading U+FEFF, so a mark there would break every reader of the file to help a program that
+will not open it anyway.
+
+Off by default, because the mark is not invisible to everything. pandas strips it either
+engine, checked against 3.0.5. Python's own `csv` module over a plain `open()` does not, and
+neither does `fs.readFileSync(path, 'utf8')` — the first column name comes back as
+`\ufefftime_s` and a lookup of `time_s` misses. Readers that want it gone ask for
+`utf-8-sig`. So: `--bom` when the destination is Excel, plain when it is a script.
+
+The estimate counts the three bytes, since it promises never to read under what gets
+written. A new fixture, `latin1-labels.edf`, carries `µV` and an accented label written the
+way an exporter writes them, and the estimate harness now runs 216 predictions over 39
+recordings.
+
 ## 0.4.70
 
 ### Fixed: the website README described a base path the build does not use

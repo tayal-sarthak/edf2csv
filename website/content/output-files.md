@@ -46,7 +46,7 @@ All three CSV files use the same conventional dialect:
 
 | Property | Value |
 | --- | --- |
-| Encoding | UTF-8, no byte order mark |
+| Encoding | UTF-8, no byte order mark (`--bom` adds one) |
 | Line ending | LF (`\n`), including a final newline at end of file |
 | Delimiter | Comma |
 | Header | Exactly one row, always present |

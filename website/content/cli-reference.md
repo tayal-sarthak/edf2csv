@@ -86,6 +86,7 @@ No EDF or BDF recordings found in "/data/empty".
 | `--decimals` | | integer 0 to 20 | derived per channel | Force a fixed number of decimal places |
 | `--checksum` | | none | off | Record a SHA-256 of the input in `metadata.json` |
 | `--gzip` | | none | off | Compress every CSV, writing `.csv.gz` files |
+| `--bom` | | none | off | Start each CSV with a UTF-8 byte order mark |
 | `--jobs` | `-j` | integer or `auto` | 1 | Convert this many recordings at once |
 | `--force` | `-f` | none | off | Write into an output directory that already exists |
 | `--quiet` | `-q` | none | off | Suppress the closing summary and the progress meter |
@@ -399,6 +400,28 @@ error: study/night-02.edf: stopped by SIGKILL before it finished.
 The rest of the batch carries on, and the closing count and exit code report it as a failure.
 
 `--stdout` ignores it, since that path takes a single recording anyway.
+
+## --bom
+
+Starts each CSV with a UTF-8 byte order mark — the three bytes `EF BB BF`. Off by default.
+
+It exists for one reader. Excel on Windows opens a CSV with no mark in the system code page rather than UTF-8, so anything outside ASCII arrives wrong. `µV` is the common case: EDF headers are Latin-1 in practice and exporters write the micro sign as a single byte, which UTF-8 stores as two, and Excel shows as `Âµ`. Annotation text in French, German or Japanese goes the same way. The mark tells Excel the file is UTF-8 and the text comes through as written:
+
+```bash
+edf2csv recording.edf --out ./converted --bom
+```
+
+It applies to `signals.csv`, `channels.csv` and `annotations.csv`, and to their `.csv.gz` forms — the mark goes inside the compressed stream, so decompressing gives a marked CSV. `metadata.json` never gets one: `JSON.parse` rejects a leading U+FEFF, so a mark there would break every reader of the file to help a program that will not open it anyway.
+
+The reason it is not the default is that the mark is not invisible to everything. pandas strips it on the way in, either engine. Python's own `csv` module over a plain `open()` does not, and neither does Node's `fs.readFileSync(path, 'utf8')` — the first column name comes back as `\ufefftime_s` and a lookup of `time_s` misses. Readers that want it gone ask for it by name:
+
+```python
+import csv
+with open('converted/signals.csv', newline='', encoding='utf-8-sig') as handle:
+    header = next(csv.reader(handle))   # ['time_s', 'EEG Fpz-Cz', ...]
+```
+
+So: `--bom` if the destination is Excel, plain if the destination is a script.
 
 ## --gzip
 

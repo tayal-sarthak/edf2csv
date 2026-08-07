@@ -50,6 +50,8 @@ Options
       --decimals <n>     Fix the decimal places instead of deriving them per channel
       --checksum         Record a SHA-256 of the input in metadata.json
       --gzip             Compress every CSV, writing .csv.gz files
+      --bom              Start each CSV with a UTF-8 byte order mark, so Excel
+                         reads accented text and units like µV correctly
   -j, --jobs <n>         Convert this many recordings at once, or "auto" (default: 1)
   -f, --force            Overwrite the output directory if it exists
   -q, --quiet            Suppress the summary; warnings and errors still print
@@ -74,7 +76,8 @@ Output
   annotations.csv when the recording carries EDF+ annotations. Channels recorded
   at different sampling rates are written to separate files, never resampled.
   With --gzip each CSV becomes a .csv.gz; metadata.json stays plain text so the
-  directory can still be read at a glance.
+  directory can still be read at a glance. With --bom each CSV starts with a
+  UTF-8 byte order mark and metadata.json does not, since JSON.parse rejects one.
 
 Examples
   edf2csv recording.edf
@@ -160,6 +163,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         decimals: { type: 'string' },
         checksum: { type: 'boolean' },
         gzip: { type: 'boolean' },
+        bom: { type: 'boolean' },
         jobs: { type: 'string', short: 'j' },
         force: { type: 'boolean', short: 'f' },
         quiet: { type: 'boolean', short: 'q' },
@@ -285,6 +289,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       decimals: optionalDecimals(values['decimals']),
       annotationsOnly: values['annotations-only'] === true,
       gzip: values['gzip'] === true,
+      bom: values['bom'] === true,
     };
 
     // Validated before the --info branch, not inside the conversion path: a flag that
@@ -1084,7 +1089,7 @@ async function convertInChild(
     1 for it, which the parent then counted as a conversion that had not happened. The parent
     applies it once, from the counts the children report.
   */
-  for (const flag of ['annotations-only', 'checksum', 'gzip', 'force', 'quiet', 'json']) {
+  for (const flag of ['annotations-only', 'checksum', 'gzip', 'bom', 'force', 'quiet', 'json']) {
     if (values[flag] === true) args.push(`--${flag}`);
   }
   for (const flag of ['start', 'duration', 'end', 'decimals']) {

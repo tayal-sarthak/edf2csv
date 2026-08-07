@@ -13,7 +13,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsForSignal } from '../edf/scale.js';
-import { csvRow } from '../format/csv.js';
+import { UTF8_BOM, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { timeDecimals } from '../format/number.js';
 import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
@@ -64,6 +64,8 @@ export interface PlanOptions {
   decimals?: number | undefined;
   /** Compress each CSV with gzip, giving every one of them a `.gz` name. */
   gzip?: boolean | undefined;
+  /** Start each CSV with a UTF-8 byte order mark, so Excel reads it as UTF-8. */
+  bom?: boolean | undefined;
 }
 
 export interface ConversionPlan {
@@ -83,6 +85,8 @@ export interface OutputEstimate {
   /** True when any single file would exceed Excel's row limit. */
   exceedsSpreadsheetLimit: boolean;
 }
+
+const BOM_BYTES = Buffer.byteLength(UTF8_BOM);
 
 /** Excel and most spreadsheet tools stop at 1,048,576 rows including the header. */
 export const SPREADSHEET_ROW_LIMIT = 1_048_576;
@@ -157,6 +161,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     range,
     input.recordDuration,
     input.recordStarts,
+    options.bom === true,
   );
 
   /*
@@ -337,6 +342,7 @@ function estimateOutput(
   range: ResolvedRange,
   recordDuration: number,
   recordStarts: Float64Array | null | undefined,
+  bom: boolean,
 ): OutputEstimate {
   let rows = 0;
   let bytes = 0;
@@ -402,6 +408,9 @@ function estimateOutput(
       else is in a position to stay correct when the quoting rules change.
     */
     bytes += Buffer.byteLength(csvRow(['time_s', ...group.channels.map((c) => c.column)])) + 1;
+    // Three bytes per file under --bom. Small, but the estimate promises never to read
+    // under what gets written, and a one-row conversion is small enough for it to matter.
+    if (bom) bytes += BOM_BYTES;
   }
 
   return { rows, bytes, exceedsSpreadsheetLimit: exceeds };

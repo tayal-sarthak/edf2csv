@@ -20,7 +20,7 @@ import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
-import { BufferedLineWriter, csvRow } from '../format/csv.js';
+import { BufferedLineWriter, UTF8_BOM, csvRow } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import {
   fixed,
@@ -248,12 +248,15 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         annotationData.annotations,
         requestedAnnotationWindow(options, plan.range.recordingStartSeconds),
         options.gzip === true,
+        options.bom === true,
       );
       written.push(result);
       annotationsWritten = result.rows;
     }
 
-    written.push(await writeChannelsCsv(outputDir, file, plan, options.gzip === true));
+    written.push(
+      await writeChannelsCsv(outputDir, file, plan, options.gzip === true, options.bom === true),
+    );
 
     /*
       The file moved under the conversion. Said out loud, because nothing else shows it.
@@ -504,6 +507,7 @@ async function writeSignalFiles(
     */
     if (audit && stream !== target) stream.on('data', (chunk: Buffer) => audit.count(chunk.length));
     const writer = new BufferedLineWriter(stream);
+    if (options.bom === true) writer.push(UTF8_BOM);
     writer.pushLine(csvRow(['time_s', ...group.channels.map((c) => c.column)]));
     return {
       group,
@@ -741,7 +745,11 @@ async function writeOutputFile(
   name: string,
   contents: string,
   gzip = false,
+  bom = false,
 ): Promise<void> {
+  // metadata.json never gets one: JSON.parse rejects a leading U+FEFF, so a mark there
+  // would break every reader of the file to help a spreadsheet that will not open it.
+  if (bom) contents = UTF8_BOM + contents;
   try {
     // The sidecars are built in memory before being written, so compressing them in memory
     // costs nothing extra. Only the signal tables are large enough to need a stream.
@@ -761,6 +769,7 @@ async function writeChannelsCsv(
   file: EdfFile,
   plan: ConversionPlan,
   gzip: boolean,
+  bom: boolean,
 ): Promise<WrittenFile> {
   const includedColumns = new Set(plan.groups.flatMap((g) => g.channels.map((c) => c.signal.index)));
   const fileFor = new Map<number, string>();
@@ -811,7 +820,7 @@ async function writeChannelsCsv(
   }
 
   const name = gzip ? 'channels.csv.gz' : 'channels.csv';
-  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
+  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip, bom);
   return { name, rows: lines.length - 1 };
 }
 
@@ -854,6 +863,7 @@ async function writeAnnotationsCsv(
   annotations: readonly Annotation[],
   window: { from: number; to: number },
   gzip: boolean,
+  bom: boolean,
 ): Promise<WrittenFile> {
   const inWindow = annotations
     .filter((a) => a.onset >= window.from && a.onset < window.to)
@@ -872,7 +882,7 @@ async function writeAnnotationsCsv(
   }
 
   const name = gzip ? 'annotations.csv.gz' : 'annotations.csv';
-  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip);
+  await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip, bom);
   return { name, rows: inWindow.length };
 }
 

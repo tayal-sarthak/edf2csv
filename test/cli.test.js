@@ -1358,6 +1358,65 @@ describe('messages that enumerate what the file contains', () => {
   });
 });
 
+describe('--bom', () => {
+  it('writes a mark on every CSV and on no JSON, leaving the text itself unchanged', async () => {
+    /*
+      The unit here is `µV`, written in the header as the single Latin-1 byte 0xB5, which is
+      what real exporters do. UTF-8 makes it two bytes, and a spreadsheet reading the system
+      code page shows `Âµ`. The mark is what tells it otherwise.
+    */
+    const plainDir = await outDir();
+    const bomDir = await outDir();
+    assert.equal((await cli([fixture('latin1-labels.edf'), '--out', plainDir, '--quiet'])).code, 0);
+    assert.equal(
+      (await cli([fixture('latin1-labels.edf'), '--out', bomDir, '--bom', '--quiet'])).code,
+      0,
+    );
+
+    for (const name of ['signals.csv', 'channels.csv', 'annotations.csv']) {
+      const marked = await readFile(path.join(bomDir, name));
+      assert.deepEqual(
+        [...marked.subarray(0, 3)],
+        [0xef, 0xbb, 0xbf],
+        `${name} must start with the mark`,
+      );
+      const plain = await readFile(path.join(plainDir, name));
+      assert.equal(
+        marked.subarray(3).toString('utf8'),
+        plain.toString('utf8'),
+        `${name} must be the same text, only preceded by the mark`,
+      );
+    }
+
+    // JSON.parse rejects a leading U+FEFF, so metadata.json never gets one.
+    const metadata = await readFile(path.join(bomDir, 'metadata.json'));
+    assert.notEqual(metadata[0], 0xef, 'metadata.json must not carry a mark');
+    assert.doesNotThrow(() => JSON.parse(metadata.toString('utf8')));
+
+    const units = await readFile(path.join(bomDir, 'channels.csv'), 'utf8');
+    assert.ok(units.includes('µV'), 'the unit survives as itself either way');
+  });
+
+  it('puts the mark inside the compressed stream, and counts it in the estimate', async () => {
+    const dir = await outDir();
+    assert.equal(
+      (await cli([fixture('latin1-labels.edf'), '--out', dir, '--bom', '--gzip', '--quiet'])).code,
+      0,
+    );
+    const expanded = gunzipSync(await readFile(path.join(dir, 'signals.csv.gz')));
+    assert.deepEqual([...expanded.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+
+    // The estimate promises never to read under what is written, so three bytes a file count.
+    const plain = await cli([fixture('latin1-labels.edf'), '--info', '--json']);
+    const marked = await cli([fixture('latin1-labels.edf'), '--info', '--json', '--bom']);
+    assert.equal(
+      JSON.parse(marked.stdout).estimate.bytes - JSON.parse(plain.stdout).estimate.bytes,
+      3,
+      'one signal file, three bytes',
+    );
+  });
+});
+
 describe('--gzip', () => {
   it('writes .csv.gz whose contents match an uncompressed run exactly', async () => {
     const plainDir = await outDir();

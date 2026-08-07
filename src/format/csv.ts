@@ -15,6 +15,20 @@ const DEFAULT_FLUSH_THRESHOLD = 1 << 20; // 1 MiB
 
 const NEEDS_QUOTING = /[",\r\n]/u;
 
+/**
+ * U+FEFF, written as EF BB BF, which is what `--bom` prepends to each CSV.
+ *
+ * Excel on Windows reads a CSV with no byte order mark in the system code page rather than
+ * UTF-8, so `µV` — two bytes of UTF-8 for one character — shows up as `Âµ`. The mark tells
+ * it the file is UTF-8.
+ *
+ * Opt-in because it is not free. pandas strips it either engine (checked against 3.0.5),
+ * but Python's own `csv.reader` over a plain `open()` does not, and neither does
+ * `fs.readFileSync(path, 'utf8')`: the first column name comes back as `\ufefftime_s`, and
+ * a lookup of `time_s` misses. Readers that want it gone ask for `utf-8-sig`.
+ */
+export const UTF8_BOM = '\ufeff';
+
 /** Quote a field only when CSV requires it, doubling any embedded quotes. */
 export function escapeCsvField(value: string): string {
   if (value === '') return '';
