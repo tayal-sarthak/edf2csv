@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.26
+
+### Fixed: 0.5.20's memory test asserted a heap size only one machine has
+
+It converted 200 output tables under a 48 MB cap, which the fixed code does on macOS with
+Node 24 and does not on Linux with Node 22. So the release workflow failed and 0.5.25 did not
+reach npm — a test turning a garbage-collector difference into a red build, which is worse
+than no test.
+
+How much heap a conversion needs is not portable, and the separating cap is not either: the
+pre-fix code dies at 64 MB here and needs considerably more on the runner. The test runs both
+counts at 96 MB now — 40 tables, the size 0.5.6 was measured at and which always fitted, and
+200, the size that did not — so what it asserts is the property, that the second costs no more
+than the first. The exact figures are in the 0.5.20 entry, where a measurement belongs, rather
+than in an assertion that is only true on one machine.
+
+Verified the way it should have been: a fresh clone, `npm ci`, all 261 tests passing.
+
 ## 0.5.25
 
 ### Fixed: records that overlap in time went unreported, because the check looked for reversal
