@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.67
+
+### Fixed: a documentation link pointed at a page the site does not serve
+
+The site serves its pages under `/docs/`, and one link in warnings-and-errors.md — added in
+0.4.42 — pointed at `/cli-reference#synopsis`. Every other internal link on the site uses the
+prefix. The markdown rendered, the sentence read sensibly, and only a click found out.
+
+The landing page also still showed 129,536 as the number of sample values checked against
+pyEDFlib. 0.4.44 corrected that figure to 16,943 on the correctness page and nowhere else, so
+the two pages disagreed by 7.6x about the tool's headline claim.
+
+A test now walks every internal link in the content, checking the prefix, the page and the
+heading it names, since a heading can be renamed without the links to it moving.
+
+## 0.4.66
+
+### Fixed: the source maps in the published package pointed at nothing
+
+Every `.js.map` named `../src/cli.ts` and its siblings as their sources, and `src` is not in
+package.json's `files`. So the maps shipped — 38 of them, 137 kB — and resolved to nothing
+once installed: a stack frame inside edf2csv followed a map to a file that is not there and
+fell back to the compiled output.
+
+`inlineSources` puts the TypeScript into the map itself, which a debugger prefers over
+fetching the path, so a frame now lands on the line that produced it. It costs 92 kB packed,
+186.5 kB to 278.3 kB. A test walks every emitted map and fails if one names sources the
+package neither ships nor carries.
+
 ## 0.4.65
 
 ### Fixed: the changelog stopped forty-five versions ago

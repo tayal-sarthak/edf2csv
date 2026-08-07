@@ -98,7 +98,7 @@ Resp oro-nasal,3,Resp oro-nasal,V,10,10,-1,1,...`,
 ];
 
 const FACTS = [
-  { value: '129,536', label: 'sample values verified bit-for-bit identical to pyEDFlib' },
+  { value: '16,943', label: 'sample values verified bit-for-bit identical to pyEDFlib' },
   { value: '1.4s', label: 'to turn a 40 MB recording into a 159 MB CSV' },
   { value: '48 MB', label: 'heap cap the conversion still completes under' },
   { value: '0', label: 'runtime dependencies, network calls, or telemetry' },

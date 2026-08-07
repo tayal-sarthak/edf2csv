@@ -136,6 +136,49 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('links to pages the site actually serves', async () => {
+    /*
+      The site serves its pages under /docs/, and a link written without that prefix is a 404
+      that nothing notices — the markdown renders, the text reads sensibly, and only a click
+      finds out. One had been sitting in warnings-and-errors.md pointing at
+      /cli-reference#synopsis while every other internal link on the site used /docs/.
+
+      Anchors are checked too, since a heading can be renamed without the links to it moving.
+    */
+    const { readdir } = await import('node:fs/promises');
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) => n.endsWith('.md'));
+    const anchors = new Map();
+    for (const name of names) {
+      const text = await read(path.join('website/content', name));
+      anchors.set(
+        name.slice(0, -3),
+        new Set(
+          [...text.matchAll(/^#{2,6} (.+)$/gmu)].map((m) =>
+            m[1].toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, ''),
+          ),
+        ),
+      );
+    }
+
+    const broken = [];
+    for (const name of names) {
+      const text = await read(path.join('website/content', name));
+      for (const [, label, href] of text.matchAll(/\[([^\]]+)\]\((\/[^)]*)\)/gu)) {
+        const [route, fragment] = href.split('#');
+        const slug = route.replace(/^\/docs\//u, '').replace(/\/$/u, '');
+        if (!route.startsWith('/docs/')) {
+          broken.push(`${name}: [${label}](${href}) is not under /docs/`);
+        } else if (!anchors.has(slug)) {
+          broken.push(`${name}: [${label}](${href}) names no page`);
+        } else if (fragment && !anchors.get(slug).has(fragment)) {
+          broken.push(`${name}: [${label}](${href}) names no heading on that page`);
+        }
+      }
+    }
+    assert.deepEqual(broken, [], broken.join('\n'));
+  });
+
   it('has a changelog entry for the version being released', async () => {
     /*
       The file records what each version changed, and it stopped: its newest entry was 0.4.19
