@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.20
+
+### Fixed: 0.5.6 shared one of the two per-table buffers and left the other
+
+That version made memory stop following the number of output tables, and tested it at forty
+rates. At two hundred it still died: an 855 KB recording with 200 sampling rates ran out of
+heap under a 48 MB cap.
+
+Two things were sized per table and only one of them was shared. The line buffer got a
+budget split across the groups — with a 64 KiB floor under each, which at 200 groups is 12.8
+MB, so the floor became the whole quantity. And `createWriteStream` was left at its own
+default `highWaterMark`, which is 64 KiB per stream: another 12.8 MB that the change never
+looked at. Forty groups made both invisible at 5 MB apiece; two hundred made them 25 MB
+together.
+
+The floor is 8 KiB now and the stream buffer shares the same budget. The memory test runs at
+200 groups rather than 40, since 40 was the count that hid this.
+
+An eight-hour single-rate conversion runs at the same speed, and the forty-rate case from
+0.5.6 still completes under a 32 MB cap.
+
 ## 0.5.19
 
 ### Fixed: the long layout's tie order broke where two rates land a ULP apart

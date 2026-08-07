@@ -568,9 +568,21 @@ async function writeSignalFiles(
     keeps exactly the buffer it always had, and forty tables cost 2.5 MB rather than 40.
     The long layout shares one writer already and is unaffected either way.
   */
-  const MIN_FLUSH_THRESHOLD = 64 * 1024;
+  const MIN_FLUSH_THRESHOLD = 8 * 1024;
   const flushThreshold = Math.max(
     MIN_FLUSH_THRESHOLD,
+    Math.floor(DEFAULT_FLUSH_THRESHOLD / Math.max(1, plan.groups.length)),
+  );
+  /*
+    The stream's own buffer is the other half of the same sum.
+
+    0.5.6 shared the line-buffer budget and left `createWriteStream` at its 64 KiB default,
+    which is per stream: 200 rate groups meant 12.8 MB of stream buffer on top of 12.8 MB of
+    line buffer, and an 855 KB recording still died at a 48 MB cap. Shared the same way, with
+    a floor that keeps an ordinary conversion writing in useful-sized pieces.
+  */
+  const streamBuffer = Math.max(
+    16 * 1024,
     Math.floor(DEFAULT_FLUSH_THRESHOLD / Math.max(1, plan.groups.length)),
   );
 
@@ -579,7 +591,11 @@ async function writeSignalFiles(
     // writable stream, so the same buffered writer and backpressure handling apply.
     const target =
       shared?.target ??
-      (outputDir === null ? process.stdout : createWriteStream(path.join(outputDir, group.fileName)));
+      (outputDir === null
+        ? process.stdout
+        : createWriteStream(path.join(outputDir, group.fileName), {
+            highWaterMark: streamBuffer,
+          }));
     const { stream, settled } = shared ?? compressed(target, options.gzip === true);
     /*
       Under --gzip the writer feeds the compressor, so its byte count is the CSV before

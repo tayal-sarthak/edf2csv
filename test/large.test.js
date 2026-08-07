@@ -95,6 +95,17 @@ describe('a record with a great many samples in it', () => {
 });
 
 describe('a recording that mixes many sampling rates', () => {
+  /*
+    200 rates, not 40.
+
+    0.5.6 shared the line-buffer budget across the groups and left a 64 KiB floor under each,
+    and left `createWriteStream` at its own 64 KiB default — which is per stream. At 40 groups
+    that is 5 MB and invisible; at 200 it is 25 MB, and an 855 KB recording still died at a
+    48 MB cap. Both are shared now, so the count that has to be exercised is the larger one.
+  */
+  const GROUPS = 200;
+  const RECORDS = 400;
+
   it('holds one buffer for the conversion rather than one per table', async () => {
     /*
       Every rate group opened its own writer at the 1 MiB flush threshold, so pending output
@@ -108,7 +119,7 @@ describe('a recording that mixes many sampling rates', () => {
     temporaries.push(dir);
 
     const { writeEdf } = await import('./fixtures/edf-writer.mjs');
-    const signals = Array.from({ length: 40 }, (unused, index) => ({
+    const signals = Array.from({ length: GROUPS }, (unused, index) => ({
       label: `ch${index}`,
       dimension: 'uV',
       physMin: -250,
@@ -116,11 +127,11 @@ describe('a recording that mixes many sampling rates', () => {
       digMin: -2048,
       digMax: 2047,
       // A distinct samplesPerRecord per channel is a distinct rate, which is a distinct table.
-      samplesPerRecord: 40 - index,
+      samplesPerRecord: GROUPS - index,
       gen: (record, sample) => ((record * 7 + sample * 13) % 4000) - 2000,
     }));
     const recording = path.join(dir, 'many.edf');
-    writeEdf({ path: recording, numRecords: 4000, recordDuration: 1, signals });
+    writeEdf({ path: recording, numRecords: RECORDS, recordDuration: 1, signals });
 
     const out = path.join(dir, 'out');
     await run(
@@ -132,13 +143,14 @@ describe('a recording that mixes many sampling rates', () => {
     // Forty tables plus channels.csv and metadata.json, and every row of every one.
     const { readdir, readFile } = await import('node:fs/promises');
     const names = (await readdir(out)).filter((name) => name.startsWith('signals'));
-    assert.equal(names.length, 40, 'one table per rate');
+    assert.equal(names.length, GROUPS, 'one table per rate');
     let rows = 0;
     for (const name of names) {
       rows += (await readFile(path.join(out, name), 'utf8')).trimEnd().split('\n').length - 1;
     }
     // Each channel writes samplesPerRecord × 4000 samples; the rates run 40 down to 1.
-    const expected = 4000 * Array.from({ length: 40 }, (u, i) => 40 - i).reduce((a, b) => a + b);
+    const expected =
+      RECORDS * Array.from({ length: GROUPS }, (u, i) => GROUPS - i).reduce((a, b) => a + b);
     assert.equal(rows, expected, 'and nothing was dropped to fit');
   });
 });
