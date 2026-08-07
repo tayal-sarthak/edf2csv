@@ -3,6 +3,1259 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.65
+
+### Fixed: the changelog stopped forty-five versions ago
+
+This file records what each version changed, and its newest entry was 0.4.19 while the
+package was at 0.4.64. Every release since had notes on GitHub and nothing here — in the one
+place the repository presents as the record, and the one a reader without a browser has.
+
+The forty-five entries are written from the commit messages, which were composed in this
+file's voice and carry the same reproductions. Nothing is reconstructed from memory: each
+entry says what its commit said.
+
+A test now compares the newest heading here against the version in `package.json`, so the
+file can fall behind by the release being prepared and no further. Two of the numbers on the
+correctness page had drifted the same way and were caught the same way, twice; the difference
+between a number that stays true and one that rots is whether something reads it.
+
+## 0.4.64
+
+### Fixed: the correctness page says how long its own suite takes
+
+```
+`npm test` ... runs the three test files ... It finishes in about a second on a laptop
+```
+
+There are six files and it takes about twenty seconds. Both halves drifted while the page's
+test counts were being corrected twice, because those were the numbers a test was watching
+and these were not.
+
+Twenty seconds is not a regression, and saying so is the point: almost all of it sits in
+three files that do expensive things on purpose. cli.test.js spawns the built binary as a
+subprocess for every case and interrupts a thirty-file batch to watch it stop. large.test.js
+builds and reads multi-gigabyte recordings. stdout-audit.test.js creates and mounts a disk
+image so it can fill it up. The parser, the planning, the CSV contents and the documentation
+checks together still run in about a second, which is the number the old sentence was
+describing before those three arrived.
+
+The file count is now checked, spelled out in words the way the sentence reads. The duration
+is not: it is a property of the machine, and a test asserting a wall-clock figure fails on a
+slow CI box for no reason anyone can act on.
+
+## 0.4.63
+
+### Added: the promise that the digital codes are recoverable is now checked
+
+The FAQ says "the rounding recovers the original integer exactly, because the written
+decimals are always fine enough to keep adjacent digital codes distinct", and prints the
+arithmetic. It is the reason the tool offers no raw-digital output mode: the claim is that
+you do not need one. Nothing checked it.
+
+`npm run roundtrip` does — 12,096 cells over 756 combinations of digital and physical bounds,
+EDF and BDF, each converted and then recovered with exactly the arithmetic the page prints.
+Every one comes back as the code the file holds. Narrowing the derived precision by two places
+makes it fail, so it is a check rather than a demonstration.
+
+It also found two conditions the page did not state, both of which will bite someone.
+
+Take the gain from channels.csv, not from what you believe the range to be. EDF's physical
+bound fields are 8 characters, so a header asked for -0.000001 stores -0. The first version of
+this harness computed the gain from the values it had passed to the writer and reported 620
+failures, every one of them its own — the tool was right and the test was measuring its own
+intent.
+
+And leave --decimals alone. The promise is about the precision derived per channel; force a
+coarser one and the codes stop being recoverable with nothing to indicate it. --decimals 0 on
+a 256 Hz EEG channel gets 645 of 768 samples wrong. The page warned that flag would not give
+you integers; it did not say it silently breaks the recipe printed below it.
+
+## 0.4.62
+
+### Fixed: the fallback for an inexact rate reaches far enough to do its job
+
+A rate whose sample interval has no terminating decimal expansion falls back to, in the
+comment's own words, "enough places to keep consecutive samples distinct". It stopped at
+nine. At 3e10 Hz the interval is 3.3e-11, so nine places rounded every sample in a record to
+the same timestamp — a column that cannot tell two samples apart is not keeping them
+distinct, which is the one thing that branch exists to do.
+
+Both halves of the function now reach fifteen: the search for an exact expansion, since
+0.4.59, and the fallback. 3e10 Hz gets fourteen places and six distinct timestamps where it
+had three.
+
+TIME_RESOLUTION keeps a trigger, because a bound that nothing reaches is a warning nobody
+maintains. It now takes a rate whose interval is finer than fifteen places can express —
+3e15 Hz — which is nine orders of magnitude past anything that records biosignals, and the
+fixture moved there so the warning still has something that raises it.
+
+## 0.4.61
+
+### Fixed: three things the FAQ told people that its own examples contradict
+
+The digital-recovery snippet reads sleep-study_csv/signals.csv, from the recording the same
+page opens by showing as a mixed-rate file whose 256 Hz channels land in signals_256hz.csv.
+Two earlier snippets on the page read that name correctly. This one, the only snippet doing
+arithmetic worth checking, pointed at a file that recording does not produce, so pasting it
+gets a FileNotFoundError. It now reads the right table and says why, and running it against
+mixed-rates.edf recovers the digital codes exactly — [0, 74, 147, 219, 290], which is what
+the file holds.
+
+The leftover-files section is headed "Why is there a leftover signals_256hz.csv next to my
+new signals.csv?" and its example warning lists signals_128hz.csv and signals_1hz.csv. The
+one file the reader came to that section about was missing from the message. The tool names
+all three; so does the example now.
+
+And the CSV size factor was given as four here and seven in recipes.md. Neither is a
+constant: every row carries one time_s cell however many channels share it, so a 23-channel
+256 Hz montage measures 4.3x while a single-channel recording of the same length is 10x.
+Both pages now say that, and say what it turns on, rather than picking a number.
+
+## 0.4.60
+
+### Fixed: one recording's length stops being rendered two ways in one session
+
+```
+$ edf2csv rec.edf --info
+Duration   6m 40s  (400 records of 1s)
+```
+
+```
+$ edf2csv rec.edf --start 10m --out csv
+error: --start "10m" is at or past the end of this 400s recording.
+```
+
+The message whose job is to say how long the recording actually is gave a bare number of
+seconds, while --info gave the humanised form for the same file. On an overnight recording it
+read "7950s recording", leaving the reader to divide by 3600 to judge whether their --start
+was reasonable — which is the one question the message exists to answer. cli-reference.md has
+documented it humanised since it was written ("2h 12m 30s"), a form no input could produce.
+
+It now uses the same formatter --info does. The typed value keeps its quotation marks, since
+that is the user's own text and should come back exactly as written, and a recording short
+enough that the two renderings coincide is unchanged — which is the case the reference's
+other example uses.
+
+The neighbouring row in the usage-error table was stale in the other direction. Quoting the
+window values was deliberate, added along with the quoting for --start, and only one of the
+two adjacent rows was updated at the time. The table is maintained as exact strings, so the
+row now carries the quotation marks the tool emits.
+
+## 0.4.59
+
+### Fixed: the time column is exact at 1024 Hz and 2048 Hz, which is what a BioSemi records
+
+timeDecimals looks for the number of decimal places in which 1/rate terminates, so sample
+times are written exactly and `time_s * rate` comes back a whole number. The search stopped
+at nine places, and the comment beside it said "every rate in common use clears this — 256 Hz
+needs 8 places, 512 Hz needs 9".
+
+The next two powers of two do not. 1/1024 is 0.0009765625, which needs ten; 1/2048 needs
+eleven. Both fell through to the rounding fallback and were written as 0.0009766 and
+0.0004883 — precisely the behaviour the function exists to avoid, on the rates an ActiveTwo
+records at by default.
+
+The search now goes to fifteen places, which covers every power of two through 32768 Hz.
+Fifteen and not more because the test has to stay exact: 10^16 is past 2^53, and
+`Number.isInteger(10 ** 17 / 3)` is true, so a larger bound would claim a terminating
+expansion for 3 Hz and ask for seventeen decimals of a number that repeats forever.
+
+It also subsumes most of what 0.4.55 warned about. A 1e10 Hz recording terminates at ten
+places, so it now gets a column that separates every sample rather than twenty rows sharing
+three timestamps. TIME_RESOLUTION still has a real trigger — a rate above a gigahertz whose
+expansion repeats, 3e10 Hz say — and a fixture now holds one, since a warning nothing can
+raise is a warning nobody will maintain.
+
+## 0.4.58
+
+### Added: the header length the file claims is available beside the one that is used
+
+api.md says "Every field is read straight from the 256-byte fixed header plus the per-signal
+block. Nothing is normalised except where noted", and lists headerBytes with no note. It is
+the one field that is computed rather than read: 256 for the fixed header plus 256 per
+signal.
+
+The computation is right, and has to be. Every data record offset is derived from it, a
+writer that fills the length field in carelessly is common enough to have its own warning,
+and believing the field over the arithmetic would put every sample at the wrong offset. What
+was missing is the field's own value — which is a fact about the file, and is the thing
+HEADER_BYTES_MISMATCH is comparing against.
+
+`declaredHeaderBytes` now carries it, exactly as `declaredRecordCount` already carries what
+the record-count field said. A caller auditing how a recording was written can see both; a
+well-formed file has them equal, which is what makes the pair worth having.
+
+## 0.4.57
+
+### Fixed: the reference describes the inversion the code actually looks for
+
+```
+INVERTED_PHYSICAL_RANGE — A channel's physical minimum sits above its physical maximum
+```
+
+That is not the condition. The gain is (physMax - physMin) / (digMax - digMin), so what
+inverts a channel is the sign of that fraction. Reversing exactly one of the two pairs makes
+it negative; reversing both leaves it positive, and such a channel is not inverted at all.
+The code has known this for some versions — its comment says warning on the physical pair
+alone "was wrong in both directions" — and the page went on stating the version that was
+wrong, in two places.
+
+Someone matching on the described condition would raise a warning on a file with both pairs
+reversed, which is correct data, and miss one with only its digital bounds reversed, which is
+genuinely sign-flipped EEG. The page now gives the gain, a table of the three cases, and a
+note that the message names whichever pair is actually reversed.
+
+A fixture holds all three so the distinction is checked rather than described. Two of its
+columns are constant, because the fixture writer clamps samples to the declared digital
+range and a reversed range clamps every one of them to the same value — said so in the
+fixture and in the test, since a constant column that looks like a converter bug and is not
+one is worth labelling.
+
+## 0.4.56
+
+### Fixed: a channel with no samples stops being described as one nobody asked for
+
+```
+$ edf2csv rec.edf --info --channels unused
+1  unused  unused  uV  0 Hz  -100 to 100  (not selected)
+```
+
+```
+warning: Signal 1 ("unused") carries no samples at all (0 per data record).
+```
+
+The channel named on --channels was reported as not selected, in a table printed directly
+above a warning explaining why it has nothing to contribute. It was selected; the file gives
+it nothing. The column now says "(no samples)", which is true whether or not it was asked
+for, and a channel that does carry samples and was not chosen still reads "(not selected)".
+
+The conversion had the same gap from the other side. Selecting only such a channel leaves no
+table to write, so the run produced channels.csv and metadata.json and no signals.csv —
+while output-files.md says signals.csv is written unless --annotations-only was passed.
+Nothing accounted for the missing file. It does now, and the page carries the exception.
+
+Same shape as 0.4.51: a report describing what it measures rather than what the run did.
+
+## 0.4.55
+
+### Fixed: the slack at a window boundary stops being wider than the samples
+
+Deciding which samples fall inside a requested window used a flat nanosecond of slack,
+applied whatever the sampling rate. A nanosecond is far below any real interval — 20 kHz is
+50 microseconds — but the format does not oblige it to be: EDF's record duration is an
+8-character field that accepts 1e-9.
+
+A recording of two 1 ns records holding ten samples each wrote ten of its twenty rows. The
+window ends at 2e-9, the comparison asked for `time < 2e-9 - 1e-9`, and the whole second
+record failed it. Exit 0, no warning, half the samples gone.
+
+Slack that reaches the next sample is not slack, so it is now capped at half a sample
+interval. Same lesson as 0.4.45: a constant chosen for one scale is a bug at another, and the
+scale that matters is what the recording can express.
+
+Fixing that exposes the other half. Sample times are written to at most nine decimal places,
+so above a gigahertz the column repeats — those twenty rows carry three distinct times.
+Nothing is lost, and every sample is written in order, but `time_s` stops identifying a row,
+so joining or plotting on it collapses samples that are genuinely distinct. TIME_RESOLUTION
+now says so and points at the row number instead. No shipped fixture raises it, and the
+whole fixture set was checked to be sure.
+
+## 0.4.54
+
+### Fixed: the row buffer is emptied when it fills, not when the record ends
+
+BufferedLineWriter exists to hold a bounded amount of formatted text, and the loop drained it
+once per data record. Within a record nothing emptied it, so memory followed
+samples-per-record rather than the buffer's own threshold.
+
+```
+16,000 records of 1,000 samples   ->  283 MB CSV, converts under a 256 MB heap
+1 record of 16,000,000 samples    ->  JavaScript heap out of memory
+```
+
+The same 32 MB of samples either way. The format allows both layouts and says nothing about
+which to expect: samples-per-record is an 8-character field, and a writer that puts an entire
+recording in one record is producing a legal file.
+
+The buffer is now emptied wherever it fills. `full` is a synchronous read of the pending size,
+so the twenty million rows that are not at a boundary cost a comparison rather than a
+microtask each — a 92 MB conversion times the same as before.
+
+The test caps the heap at 256 MB, because without a limit the machine's own memory lets the
+old code through and the test becomes a demonstration of nothing.
+
+The FAQ said one thing scales with the recording. Two do, and neither is its length: the
+annotation list, and one record held whole while it is read. Both are now named there.
+
+## 0.4.53
+
+### Fixed: a data record larger than one read no longer takes the process down
+
+```
+$ edf2csv rec.edf --out csv
+node[87678]: void node::fs::Read(...) at ../src/node_file.cc:2632
+Assertion failed: args[3]->IsInt32()
+----- Native stack trace -----
+$ echo $?
+134
+```
+
+Nothing written, and exit 134 — which is none of the three codes this tool documents. Worse
+through the library: the assertion is raised in C++, not thrown, so neither a try/catch
+around readRecords nor an uncaughtException handler ever runs. A consumer's whole process
+goes down with it.
+
+A record is read in one call when it exceeds the chunk budget, there being nothing smaller to
+divide it by: a record is the unit the format is addressed in. EDF's samples-per-record field
+is 8 characters, so eleven channels at 99,999,999 samples make a record of 2,199,999,978
+bytes — and a long record duration at ordinary rates reaches the same place. `fs.read` takes
+a length that must fit in a signed 32-bit integer, and asserts rather than throwing when it
+does not.
+
+readFully already looped to handle a short read, so the fix is to cap what it asks for at a
+gigabyte and go round again. The 2.2 GB record now converts in 1.2s. The boundary is exact,
+so the test checks both sides of it: 2,199,999,978 bytes must convert, and 2,134,000,000 —
+which always worked — must keep working, since a fix that refused large records rather than
+reading them would pass the first and fail the second.
+
+The FAQ said memory does not scale with the recording, with the annotation list as the one
+exception. There is a second: one record is held whole. It is now named there.
+
+## 0.4.52
+
+### Added: the metadata.json the documentation prints is checked against one a conversion writes
+
+output-files.md prints a whole metadata.json as its explanation of the format, and that
+transcript is what someone reads before writing code against it. A key added to the record
+and not to the page reads as a key that does not exist; one removed reads as a key they can
+rely on. api.md had exactly that happen to its `window` object, which lost two fields for
+several versions before an audit noticed — and the only reason this record has not is that
+nobody has changed it lately.
+
+The docs test now converts a fixture and compares the key structure of the result against
+the sample on the page. The shape, not the values: the sample describes an eight-hour sleep
+study that is not in this repository, and rewriting it to match a two-record fixture would
+make it a worse explanation of the format, which is what it is there for.
+
+The fixture is the discontinuous one, chosen so every part of the record the page shows is
+populated — it raises a diagnostic, so `notes` is not empty, and carries annotations, so the
+annotation fields are real. An empty array cannot say what its entries look like, and that is
+the half of the shape worth checking.
+
+Confirmed capable of failing: deleting one key from the sample fails the test.
+
+## 0.4.51
+
+### Fixed: --info stops promising nothing for a run that writes a file
+
+```
+$ edf2csv annotations.edf --info --annotations-only
+Would write 0 rows, roughly 0 B.
+```
+
+```
+$ edf2csv annotations.edf --out csv --annotations-only
+Wrote csv
+  annotations.csv  3  rows
+  channels.csv     1  rows
+```
+
+The estimate describes the signal tables, and under --annotations-only there are none, so
+zero was true of what it measures and false of the run. --info exists to say what a
+conversion will do before you commit to it; asserting it will write nothing, when it will
+write a file, is the one thing it must not do.
+
+How many events there are cannot be answered from the header — the annotation channel has to
+be read record by record, which is the scan --info exists to avoid. So it names the files and
+says the count is not knowable this cheaply, rather than inventing a zero:
+
+```
+Would write annotations.csv and channels.csv, and no signal data. How many events there
+are cannot be told from the header.
+```
+
+A recording with no annotation channel is told that instead, since it gets no annotations.csv
+at all. An ordinary --info is untouched, --gzip keeps its "before compression" note, and a
+test that had encoded "Would write 0 rows" as correct is replaced by one that checks the run
+it describes really does write three events.
+
+## 0.4.50
+
+### Added: what --info predicts is checked against what a conversion writes
+
+Two promises live in that one line, and they are not the same promise. The row count is
+arithmetic on the header, so a conversion doing the same arithmetic has to land on the same
+number — close is wrong. The byte count is documented as an approximation, and the direction
+it errs in is the whole point: people read it to decide whether they have room, so reading
+low is a defect even though "approximate" would excuse it.
+
+Neither had anything checking it. `npm run estimate` crosses every fixture with every option
+combination — 192 predictions over 34 recordings — and asserts the row count exactly and the
+byte count as a bound. Sizes read 20% high on average, which is the side to be on.
+
+It found the header row being measured as the raw labels rather than as the line that gets
+written. A column name is quoted when it contains a comma, a quote, a newline or an edge
+space, and every quote inside it is doubled; three channels labelled `a,b,c,d,e`, `x"y` and
+`plain` write a 32-byte header and were budgeted 27. EDF labels are free text, so commas in
+them are ordinary. csvRow writes that line, so csvRow now measures it — nothing else is in a
+position to stay right when the quoting rules change.
+
+The sweep carries no allowlist. There is a case the estimate cannot bound — a recording whose
+samples fall outside the digital range its own header declares — but no fixture does that, and
+an exemption nobody has to earn is how a regression gets in wearing the name of a known case.
+
+## 0.4.49
+
+### Fixed: two names a macOS filesystem makes one are refused, not merged
+
+The guard that refuses two recordings landing in the same directory case-folded and stopped
+there. HFS+ and APFS fold Unicode normalisation as well, so `café` written as e + U+0301 and
+`café` written as U+00E9 are one directory — while remaining two different JavaScript
+strings, which is all the guard compared.
+
+```
+study/café.edf   (NFC)  ->  csv/café/signals.csv
+study/café.bdf   (NFD)  ->  csv/café/signals_256hz.csv, _128hz, _1hz
+```
+
+One directory holding two recordings, under a single metadata.json naming one of them,
+reported as "Converted 2 of 2 recordings" and exit 0 under --force. The extensions differ,
+which is what lets both files exist while their stems collide.
+
+Without --force the second conversion happened to hit "already exists" — the accidental save
+rather than the check doing its job, and it named the wrong problem: a directory in the way,
+rather than two recordings claiming one name. It now says what is actually wrong, before
+anything is written, with or without --force.
+
+Folded only on darwin. On Linux those are genuinely two directories and refusing them would
+be inventing a collision that is not there; Windows preserves normalisation too. That is the
+same platform-shaped assumption the case fold already made, and it keeps the same limit — a
+volume that normalises while the running platform does not is covered by neither.
+
+## 0.4.48
+
+### Fixed: the read buffer is the size of the data, not the size of the budget
+
+`chunkBytes` is a ceiling on how much to read at once. The buffer was however many records
+would fit in it — whether or not the file had that many.
+
+```
+a 848-byte fixture, 2 records, read with a 512 MB budget
+  allocated 536,870,880 bytes
+```
+
+and every ordinary read of a small recording reserved the full 8 MB default for a file that
+might be a tenth of a kilobyte. Nothing was wrong with the data; the memory simply had
+nothing to do with it. A batch of five hundred short recordings paid it five hundred times.
+
+Bounded now by what is actually going to be read, so the fixture above allocates 80 bytes and
+a windowed read of two records allocates two records. Large files are untouched: their record
+count exceeds what the budget allows either way, so the budget is still what decides.
+
+The samples cannot move, and are checked not to: the same five recordings read with a
+one-byte budget, a one-megabyte budget and a 512 MB budget produce identical sample
+sequences. The suite already held that check for two of those; this adds the third.
+
+## 0.4.47
+
+### Fixed: two ways a batch still depended on things the command did not say
+
+--out went back to meaning the output directory itself when a named folder turned out to
+hold nothing.
+
+```
+edf2csv study named.edf --out csv     study holds recordings  ->  csv/named/signals.csv
+edf2csv blank named.edf --out csv     blank holds none        ->  csv/signals.csv
+```
+
+0.4.20 took this decision off the recording count, and the flag it left behind answered "did
+any input come from a directory" rather than "was a directory named" — the same question
+only when the directory yielded something. So whether an unrelated folder happened to
+contain anything decided where a different recording's output went, silently, exit 0. It is
+now decided by what was named, which is what 0.4.20 said it was.
+
+And a child was handed its options as two arguments each, so a value beginning with a dash
+became another option in the child's parser:
+
+```
+edf2csv study --out ./-nightly            converts
+edf2csv study --out ./-nightly --jobs 2   Option '--out' argument is ambiguous.
+```
+
+The same command, converting everything one way and nothing the other. A leading dash is not
+exotic — path.join produces one from a folder given as `.`, and directories get named after
+dates and flags. 0.4.19 fixed this for the recording's own path with a `--` separator; every
+option that carries a value had it too, and they now go over as `--flag=value`, which cannot
+be misread. Serial and parallel produce identical bytes with such a destination.
+
+## 0.4.46
+
+### Fixed: --info and the conversion agree again about where a recording starts
+
+0.4.41 taught a conversion to take a continuous recording's origin from whichever record
+first states one, so a single unreadable timekeeping entry no longer costs the file its
+position. --info was left reading record 0 and stopping there, so from that version the two
+halves of the tool described the same file differently.
+
+```
+$ edf2csv rec.edf --info --start 3
+error: --start "3" is at or past the end of this 3s recording.
+```
+
+```
+$ edf2csv rec.edf --out csv --start 3
+Wrote csv
+  signals.csv  2  rows
+```
+
+--info found nothing at record 0 and reported a recording starting at zero; the conversion
+took the origin from record 1 and timed it from 0.5s. The flag exists to tell you what a
+conversion will do before you commit to it, so disagreeing with the conversion is the one
+thing it must not do.
+
+It now reads on past record 0 until a record states its own time, up to sixteen of them.
+Continuity is what makes that cheap and correct: record i beginning at t puts the origin at
+t - i * duration, so any one of them settles it, and sixteen small reads keep --info a header
+read rather than the per-record scan it was deliberately spared. On the 205 KB fixture it
+still returns in 0.05s.
+
+readFirstRecordStart is now readOrigin, since it returns the recording's origin rather than
+one record's start. It was never documented.
+
+## 0.4.45
+
+### Fixed: an ordinary recording stops being accused of contradicting its own continuity
+
+0.4.41 added a check that an EDF+C file's records sit where continuity puts them, and wrote
+it as an equality between two doubles. They are not equal. A recording of 0.1s records
+sitting at 0.1, 0.2, 0.3 ... is contiguous by construction, and 0.1 + 2 * 0.1 is
+0.30000000000000004.
+
+```
+warning: This file is marked continuous (EDF+C), but 2 of its 8 data records say they
+         start somewhere other than where continuity puts them.
+```
+
+On a file with nothing whatever wrong with it — and under --strict, a failed run. Fractional
+record durations are ordinary; the format has an 8-character field for exactly that.
+
+The comparison is now against what the recording can express: one sample of its fastest
+channel is the shortest span it distinguishes, and anything below half of that is arithmetic
+rather than a gap. canCarry already refuses origins where the double spacing swamps that
+interval, so the representation error is under the tolerance by construction rather than by
+hope — the two checks now share the same notion of "the finest thing this file can say".
+
+A record that really is somewhere else is still caught: a file marked EDF+C whose records
+jump from 1.5s to 10.5s reports one of three.
+
+Shipped three versions ago and mine. The lesson is the ordinary one about comparing computed
+floating point for equality, which is why the fixture that catches it is now in the suite in
+both directions.
+
+## 0.4.44
+
+### Fixed: the numbers the documentation prints are numbers this repository produces
+
+Five figures, each verified by running the thing that produces it.
+
+The --info footer said "roughly 27.4 KB" on two pages where the tool says 22.2 KB, and
+api.md printed estimate.bytes of 28095 against an actual 22749. The estimate changed and the
+transcripts did not.
+
+The convert() example in api.md was wrong three ways in one block. Its `window` object had
+lost `recordingStartSeconds` and `recordingEndSeconds`, added to ResolvedRange since. Its
+estimate said 6165 against an actual 5172. And its warning read "3 different sampling rates
+(256 Hz, 128 Hz, 1 Hz)" for a call that selects two channels at two rates — where the prose
+directly below it says "Two channels were requested at two different rates". That is the
+0.4.x change making the mixed-rate warning describe the conversion rather than the file, and
+the sample output was never updated, so the page contradicted itself in adjacent lines. The
+note explaining why it is two rather than three is now there.
+
+And the correctness page's test counts, wrong again: 179 against 197, having been 148 against
+179 before 0.4.34 corrected them. So this time the docs test checks them — per file, against
+the summary, and against the prose that repeats the total. It caught its own new test on the
+first run, which is what it is for.
+
+## 0.4.43
+
+### Added: the documentation's lists are checked against the source's
+
+Four times in the 0.4 line a new diagnostic shipped and one of the three places that
+enumerate them was not updated — the table in warnings-and-errors.md, the code list in
+cli-reference.md, the block in api.md. Nothing failed, because nothing checked. The lists
+are prose, and prose does not compile.
+
+Now a test reads both directions: every code in the source is named on all three pages, and
+every code the pages list exists. Same for the conversion error codes against api.md, every
+flag in --help against the README and the reference, and the set of exit codes against the
+table that explains them.
+
+It reads the three enumerating constructs rather than sweeping the pages for upper-case
+words, because those are also --info column headings, errno names and the format's own
+vocabulary — a check that caught those would need an allowlist that grows with the prose,
+which is the kind of test people delete.
+
+On its first run it found NONSTANDARD_UNIT declared in DiagnosticCode and named on two pages
+out of three. It has been dead since 0.1: reserved for a physical dimension outside the set
+the spec recommends, never raised, and a warning on every unusual unit would fire on most
+real recordings, which is presumably why. 0.4.37 took the other dead code, NONPRINTABLE_LABEL,
+and implemented it. This one is removed instead, so the type stops offering a value nothing
+can produce and the reference loses its "codes that exist but are never raised" section
+along with the last thing in it.
+
+Nothing that ever occurred at runtime changes: no conversion could produce that value.
+
+## 0.4.42
+
+### Fixed: the reference stops describing a version of the tool that no longer exists
+
+```
+The input path must be a regular file that can be read. A directory, a missing path or
+a special file is a file error (exit 1), not a usage error.
+```
+
+Every clause of that is wrong for a directory, and has been since folders became inputs. A
+folder of recordings converts and exits 0. A folder holding none exits 2, not 1. The exit-1
+list said the same thing a second time — "the input can't be read: ... it's a directory" —
+and the UNREADABLE section printed an example the command line cannot produce.
+
+That last one is worth keeping rather than deleting: `EdfFile.open` does still refuse a
+directory, because the library takes one recording and a directory is not one. What changed
+is that the CLI expands a directory before it gets there. The section now says which of the
+two you are looking at.
+
+A page that describes the wrong tool is worse than a page with a gap in it — the gap sends
+you to try it, and this sent you to conclude the feature was not there. A test pins the
+contract in all four of its parts: a folder converts, an empty folder is 2, a missing file
+is 1, and the library still refuses a directory.
+
+## 0.4.41
+
+### Fixed: one unreadable timekeeping entry stops costing a recording its origin
+
+The EDF+C origin came from recordStarts[0] and nowhere else. When that one entry could not
+be decoded, the whole file was timed from zero — while records 1 and 2, saying plainly that
+they begin at 1.5s and 2.5s, went unread.
+
+A recording whose records sit at 0.5s, 1.5s and 2.5s came out with every sample half a
+second earlier than the file states, against annotation onsets that kept their true values,
+so an event at +0.75 fell between rows. That is exactly the mismatch 0.4.9 fixed, arriving
+through the one hole left in it — and the byte-identical EDF+D twin timed it correctly,
+which is what gives it away.
+
+Continuity is what makes it recoverable: record i sits at origin + i * duration, so any
+readable record fixes the origin for all of them. The EDF+D fallback for a record with no
+readable time now starts from that origin too, rather than assuming zero, so the twins agree
+about record 0 as well.
+
+Two things fall out of reading the other records. A file marked EDF+C whose records say they
+sit somewhere other than where continuity puts them is now reported rather than quietly
+timed as contiguous. And a timekeeping entry is counted apart from the events, because
+calling it an annotation that "could not be exported" was wrong twice: a file with one bad
+timekeeping entry and three good events reported one entry lost while exporting all three,
+and never mentioned the timing that had actually gone. The EDF+D path keeps its own
+per-record message, which is more specific; saying both would report one problem twice.
+
+## 0.4.40
+
+### Fixed: a --stdout failure stops describing files it never wrote
+
+```
+error: Writing to stdout failed: ENOSPC: no space left on device, write
+       The files written so far are incomplete and should not be used. The destination
+       is out of space; free some up or choose another with --out.
+```
+
+Both halves of that hint were written for --out. There are no "files written so far" on this
+path — the conversion writes to a stream the shell redirected — and --out is the flag whose
+absence is the reason the message exists at all. Someone following it goes looking for a
+partial directory that was never created, and is pointed at a mode they deliberately did not
+use.
+
+It now names what there actually is:
+
+```
+What reached stdout before it failed is incomplete and should not be used. The
+destination is out of space; free some up or redirect it somewhere else.
+```
+
+Same class as the disk-space hint 0.4.36 replaced, one flag over: advice that fits one path
+being given on another. The --out wording is untouched, and every errno keeps the sentence
+0.4.36 gave it.
+
+## 0.4.39
+
+### Fixed: --stdout stops reporting success for bytes that never arrived
+
+```
+$ edf2csv long-stream.edf --stdout > /Volumes/small/sig.csv
+Wrote 102,400 rows to stdout.
+$ echo $?
+0
+```
+
+94,977 rows on disk. The file ends mid-row at "371.00390625," with no trailing newline,
+150,904 bytes short, and the line on stderr overstates the count by 7,423 rows. The same
+recording onto the same volume through --out fails correctly — exit 1, ENOSPC named — which
+is what gives it away.
+
+POSIX write returns a short count rather than an error when the filesystem fills partway
+through a single call; only the NEXT write raises ENOSPC. --out always has a next write,
+since channels.csv and metadata.json come after the samples, so it always finds out.
+--stdout has nothing after it. And when fd 1 is a regular file, Node's stdout is a
+SyncWriteStream whose _write discards the count writeSync returns, so no error is raised at
+all — which means checking the stream's recorded failure would not have caught it either.
+
+What can be checked is the descriptor: how much it grew against how much it was handed. Only
+for a regular file, since a pipe or a terminal has no size to compare and cannot lose a
+write this way without saying so; appending with >> is fine, because the starting size is
+taken first. Under --gzip the bytes counted are the compressor's output rather than the
+CSV's, since those are what stdout is given.
+
+Two guards keep it off the healthy paths: the audit declines anything that is not a regular
+file, and it is skipped entirely when the reader hung up, because `--stdout | head -1` is a
+shell idiom and not a failure. Reporting a failure for a command that worked would be worse
+than the bug.
+
+BufferedLineWriter.end() also returned early for stdout without consulting the failure the
+stream's error listener had recorded, so an error not yet surfaced by a later flush was
+dropped. It looks now.
+
+This is a narrower window than "any full disk": when an earlier flush crosses the boundary a
+later write does raise ENOSPC and that was always handled. It is the case where the output
+very nearly fits.
+
+## 0.4.38
+
+### Fixed: the library stops blaming the destination for the caller's own failures
+
+Two places where an answer came from the wrong layer.
+
+`changedSinceOpen` returned false on a closed file. `convert` closes the file before it
+returns, so `result.file.changedSinceOpen()` denied the very change the INPUT_CHANGED
+diagnostic in the same result object had just reported — one object, two answers. False is
+not something a closed descriptor can know. It now remembers the last answer it computed,
+and `convert` always asks on the way out, so the result agrees with itself. A file closed
+without ever being asked throws instead of guessing.
+
+A progress callback that threw came back as
+
+```
+ConversionError WRITE_FAILED: Writing to "out" failed: caller bug
+The files written so far are incomplete and should not be used. Check the destination
+and run the conversion again.
+```
+
+The destination was working perfectly; the caller's own callback threw. onProgress ran
+inside the same try that turns a stream failure into WRITE_FAILED, which is the same
+misattribution the write hints carried until 0.4.36, one layer up. It now raises
+CALLBACK_FAILED naming the callback, keeps the original as `cause` so the stack that matters
+survives, and still stops the conversion — writing on into a directory whose owner has just
+failed is not an improvement. A ConversionError that arrives at the outer catch already
+saying what went wrong is passed through rather than wrapped a second time.
+
+Found by an auditor looking at the library surface; a third report from the same pass — a
+raw ENOENT escaping when the input is deleted mid-run — did not reproduce, since an open
+descriptor outlives both unlink and rename.
+
+## 0.4.37
+
+### Fixed: a label made of control characters is reported instead of passed on in silence
+
+NONPRINTABLE_LABEL has been declared in the source and documented as reserved since 0.1.
+Nothing raised it.
+
+`--info` has escaped control bytes since it was written, on the reasoning that an ANSI
+escape in a header can drive the reader's terminal — \x1b[2J clears the screen, which is
+enough to hide the rest of the output. The CSV had no such protection and needs none for
+correctness: quoting makes any byte safe for a parser, and passing the label through exactly
+as the file has it is the right call, since losing what the header says is not an
+improvement.
+
+What was missing is the sentence saying so. A recording whose channel is labelled
+\x1b[2Jgone converted with no warning at all, and `cat signals.csv` then cleared the
+terminal — while a script referencing that column by name carried an invisible control
+character in it. The two halves of the tool disagreed about whether this was worth
+mentioning.
+
+Now every affected channel gets a warning naming the bytes, escaped, and saying to address
+it by position with --channels "#N" since the name cannot be typed. Tab is included: it is
+harmless to a terminal but it makes a column name nothing can match reliably. Nothing is
+rewritten — the label still reaches the CSV as the file has it.
+
+That leaves NONSTANDARD_UNIT as the only code still declared and never raised, and the
+documentation now says so rather than saying two.
+
+## 0.4.36
+
+### Fixed: a failed write says what went wrong, not "free up space" every time
+
+Every write failure carried one hint: "Free up space or choose another destination with
+--out". That fits exactly one errno. A directory sitting where signals.csv belongs produced
+
+```
+error: Writing to "csv" failed: EISDIR: illegal operation on a directory, open "csv/signals.csv"
+       The files written so far are incomplete and should not be used. Free up space or
+       choose another destination with --out, then run the conversion again.
+```
+
+and so did a read-only volume, a permission denial, a path too long for the filesystem, and
+running out of file descriptors. Wrong advice is worse than none: it sends someone to check
+`df` on a disk that is fine, while the thing that actually failed stays unexamined.
+
+The errno is the one part of the failure that names the cause, so it is what picks the
+sentence now — out of space, over quota, no permission, read-only, a directory in the way,
+a path that vanished, a name too long, too many open files (which a recording with many
+sampling rates can reach, since it opens one output file per rate, so --channels narrows
+it). Anything unrecognised keeps the general form rather than guessing.
+
+What does not change is the part that matters: whatever the cause, the files written so far
+are incomplete and must not be used.
+
+## 0.4.35
+
+### Fixed: a window that lands where there is no data says so
+
+`--start` at or past the end of the recording is a usage error and stops the run. This is
+the narrower case it leaves behind: a window that lies inside the recording but selects
+nothing. Between the last sample and the nominal end of the last record —
+
+```
+edf2csv tiny.edf --start 1.95 --out csv
+```
+
+— or, on a discontinuous file whose records sit at 0s, 1s and 10s, anywhere in the eight
+second gap:
+
+```
+edf2csv study.edf --start 2 --end 10 --out csv
+```
+
+Both produced a signals.csv holding its header and nothing else, exit 0, no warning, and
+--strict passing. That is exactly what a successful extraction of an empty range looks like.
+The summary does print "signals.csv 0 rows" and --json carries rows: 0, so it was not
+invisible — but everywhere else that a request produces nothing, this tool says so: a
+--channels term matching nothing is an error, and --annotations-only on a file with no
+events raises NO_ANNOTATIONS.
+
+EMPTY_WINDOW now covers it, quoting the window back and pointing at --info to see where the
+records really sit. A warning rather than an error, because a batch of five hundred
+recordings should not stop for the one whose gap lines up with the window; --strict makes it
+a failure for those who want that.
+
+The paths that write no signal table by design are left alone: --annotations-only, and a
+file whose only channel carries annotations.
+
+## 0.4.34
+
+### Fixed: the correctness page states numbers this repository can produce
+
+Five things had drifted apart from what the commands actually print.
+
+```
+"Three separate claims", followed by five numbered ones. The list grew as the batch and
+fuzz harnesses were added and the heading did not.
+```
+
+```
+"4,000 runs over 1,000 corrupted recordings" for `npm run fuzz`, which does 1,200 over 300
+at its default seed. The larger figure is reachable — `npm run fuzz -- 42 2000` — so the
+page now says which is the default and how to ask for more.
+```
+
+```
+"ℹ tests 148" and a per-file table adding to 148, against a suite of 179. The table is
+regenerated from what the files hold: 35, 59, 85.
+```
+
+```
+129,536 sample values in the README's accuracy section, a number from a recording set that
+is not in this repository. Both places now say 16,943 across the 75 recordings that are.
+```
+
+```
+The README put `npm test` under the pyEDFlib claim, and `npm test` has never run that
+check — it is deliberately kept out so the package can stay dependency-free. It now shows
+`pip install pyedflib && npm run crossvalidate`, which is the command that does it.
+```
+
+A number nobody can reproduce is worse than no number, on a page whose subject is what has
+actually been verified.
+
+## 0.4.33
+
+### Fixed: the library checks its options too, before anything is written
+
+The command line has always rejected these values — `--decimals 1.5` is a usage error and
+always has been — and the library did not, so the same value behaved differently depending
+on how it arrived:
+
+```
+decimals: NaN   resolved successfully, having written whole numbers into a column the
+                caller had asked for decimals in. No error, no warning, and output that
+                looks like a deliberate choice.
+decimals: -1    came back as a bare RangeError from inside toFixed, naming nothing the
+                caller had written.
+start: NaN      created the output directory, wrote signals.csv, and then failed saying
+                the input was unreadable — a partial conversion, blamed on the file.
+```
+
+The first is the one that matters: a conversion that succeeds and is wrong.
+
+`assertOptions` now runs at the top of buildPlan, which every path goes through before a
+directory is created or a stream is opened, so a rejected option leaves nothing behind. It
+throws `OptionError`, which the CLI already declared privately and now shares with the
+library and exports, so a bad option is one error type whichever way it arrived — and the
+CLI keeps exit 2 for it.
+
+## 0.4.32
+
+### Changed: the bit-for-bit cross-check actually compares bits
+
+The correctness page has said, since it was written, that edf2csv's physical values match
+pyEDFlib's "to the last bit ... not equal to within a tolerance, not numpy.allclose". It even
+printed the method: dump the doubles through the API, compare the 64 bits.
+
+`npm run crossvalidate` did something else. It converted with --decimals 20, parsed the cells
+back into floats, and accepted anything within abs(reference) * 1e-9 — and skipped empty
+cells without counting them as anything. That cannot be exact whatever the tolerance: a cell
+is a rounded decimal rendering, so reading it back gives the nearest double to the printed
+digits rather than the double that was computed. The page described a check that did not
+exist.
+
+The recipe the page prints is now checked in as test/crossvalidate/dump-doubles.mjs and is
+what the checker runs, so the documented method and the executed one are the same code. Every
+value is compared as its 64 bits, addressed by the signal's position rather than its label —
+labels need not be unique, and matching on them could compare one channel against another's
+samples.
+
+Confirmed capable of failing before being trusted: flipping the lowest mantissa bit of every
+scaled value is caught on the first sample of every recording, including differences no
+decimal rendering shows — pyEDFlib -1.0 against edf2csv -1.0000000000000002, which the old
+tolerance passed in silence.
+
+```
+Compared 16,943 sample values bit for bit, and 120 annotations, across 75 recordings.
+Every value agreed.
+```
+
+The README and the correctness page said 129,536 values, a number from a recording set that
+is not in the repository. Both now state what the shipped command actually compares, and the
+README no longer files the pyEDFlib claim under `npm test`, which never ran it.
+
+## 0.4.31
+
+### Fixed: metadata describes the file that was converted, or admits it cannot
+
+The size, timestamp and SHA-256 in metadata.json came from re-opening the input path once
+the CSVs were written. That describes whatever answers to that name by then, which need not
+be what was converted. A recording still being written grew from 2,000 records to 3,000
+mid-conversion, and metadata.json recorded:
+
+```
+"bytes": 1536512, "sha256": "28535bb4...",     <- the 3,000-record file
+"data_records": 2000                            <- what the CSV holds
+```
+
+Two halves of one provenance record describing two different files, with nothing to say so.
+Replacing the file at that path did the same thing more thoroughly. That is the opposite of
+what --checksum is for.
+
+`bytes` and `modified` now come from the descriptor state at open — the same size every
+record count and window in the output was derived from — so the record is internally
+consistent whatever happens to the path.
+
+The hash needed more than that. A file overwritten in place keeps its inode, so the open
+descriptor sees the new bytes too and the converted ones are gone; no post-hoc hash can
+recover them. So it is taken before the first record is read, and published only if the file
+held still: if size or modification time moved at any point, `sha256` is null and the run
+raises INPUT_CHANGED saying why. A plausible hash of the wrong bytes is worse than none.
+`sha256` present now means the file demonstrably did not change while it was read.
+
+The change is reported even without --checksum, since a conversion of a file that moved
+under it is worth knowing about on its own. The CSVs stay correct for the records that were
+read either way.
+
+## 0.4.30
+
+### Fixed: the folder above the recording stops choosing its name by accident too
+
+0.4.29 settled which of two names for one recording the output is called after, and left the
+directory above it deciding the same question the old way. The walk was a stack popped from
+the back, so which of two names for one folder was visited first came down to the order
+readdir returned them — and the loser was skipped as already seen, taking its name out of
+the run.
+
+```
+study/aaa-real/rec.edf
+study/zzz-alias -> study/aaa-real
+```
+
+```
+edf2csv study --out ./out   ->  out/zzz-alias/rec/signals.csv
+```
+
+The link's name, chosen by a hash order that differs between filesystems. So the release
+note for 0.4.29 was true of files and not of the folders holding them, which is the same
+defect one level up.
+
+Breadth first now, with each directory's children entered real names before links and
+alphabetically within each, so the surviving name is a property of the tree: the shallowest,
+then the one that is not a link, then the first in sort order. Both orderings of the names
+are tested — aaa-real beside zzz-alias, and zzz-real beside aaa-alias — so passing cannot be
+the sort order agreeing with the answer by luck.
+
+## 0.4.29
+
+### Fixed: one recording, two names — the output directory stops depending on the order
+
+A recording reachable more than one way is converted once, and the surviving name was
+whichever arrived first. That made the output directory a function of enumeration order:
+
+```
+edf2csv data/one.edf data/alias.edf --out ./out   ->  out/one
+edf2csv data/alias.edf data/one.edf --out ./out   ->  out/alias
+```
+
+A shell orders a glob however it likes. Inside a folder it was whatever readdir returned,
+which is hash order on APFS, a different hash on ext4, and creation order elsewhere — so
+copying a study to another machine could rename its output, and a script that read
+out/one/signals.csv found nothing there.
+
+The winner is now decided by the names themselves. A name the recording actually has beats
+a link pointing at it, since that is the name the file has; two links are settled by the
+path that sorts first. Both are properties of the file set, so the answer does not move.
+
+One behaviour change falls out of it: a recording reachable as `link.edf` and as
+`linkdir/actual.edf` now converts into `<out>/linkdir/actual` rather than `<out>/link`,
+which is also the layout the folder has.
+
+## 0.4.28
+
+### Changed: a request that cannot be carried out exits 2, like every other one
+
+Exit 1 means "the file or the destination is the problem"; exit 2 means "the command line
+is the problem". Both --stdout refusals were filed under 1:
+
+```
+error: --stdout has no signal data to write because --annotations-only was given.
+       Drop one of the two flags.
+```
+
+```
+error: --stdout needs exactly one table, but this recording produces 3, one for each
+       sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+       Narrow it to one rate with --channels, or convert to a directory instead.
+```
+
+Both hints say, in as many words, to change the flags — and a script reading the exit code
+went looking at the disk instead. `--stdout --json` was already 2 for exactly this reason,
+so the three conflicts disagreed with each other.
+
+Exit 2 has always covered checks that need the header first: a --channels term matching
+nothing, a --start past the end of the recording. These belong with them. The library keeps
+throwing a ConversionError so nothing about its API changes, under a new code
+UNSUPPORTED_REQUEST that says which kind of problem it is; a destination that genuinely
+cannot be written is still exit 1.
+
+## 0.4.27
+
+### Changed: --json is shaped by what you named, and the JSON Lines batch is documented
+
+Two things, one cause.
+
+The batch flag was `inputs.length > 1`, so the shape of --json depended on the contents of a
+folder rather than on the command. A study holding one night printed an indented document;
+the same study holding two printed JSON Lines. A script written against one broke on the
+other — on the day a recording was added, not the day the script changed — and an input
+going missing did it in reverse. That is the same count 0.4.20 took out of --out, for the
+same reason, and it is now decided the same way: naming a folder means a batch whether it
+holds one recording or fifty.
+
+And the documentation never mentioned JSON Lines. It said "the whole result of a successful
+run is one parseable document on stdout", which is true of one recording and false of a
+folder: `json.load` fails on the second line. One object per line as each recording finishes
+is the right shape for a batch — five hundred recordings can be consumed while the run is
+still going, and `jq` reads it a record at a time — so the docs now say so, and say what to
+use in Python.
+
+## 0.4.26
+
+### Fixed: the signal count is read the way every other header number is read
+
+EdfFile.open has to know how many signals there are before it can know how much header to
+read, and it worked that out with its own Number(). That parse tolerated the NUL padding
+sloppy writers emit — the reason it existed — but not the comma decimal separator, which
+every other numeric field here accepts and which the documentation lists this field among.
+
+So a header written with a comma never got its signal headers read at all, and the file
+died on a message whose arithmetic refuted itself:
+
+```
+error: File declares 2 signals, which needs a 768-byte header, but the file is
+       only 848 bytes.
+```
+
+848 is larger than 768. Following that message leads to a truncation that is not there,
+while parseHeader, handed the same bytes directly, read the file correctly and raised
+COMMA_DECIMAL. The reader and the parser disagreed about which files were readable.
+
+Both now share one parse, so they cannot drift apart again. The size error also names
+whichever of the two is actually short — the file, or the bytes the parser was handed.
+
+## 0.4.25
+
+### Fixed: the _ch suffix is checked against the file, not only against the label it fixes
+
+Duplicated labels get a `_ch<index>` suffix, which is unique among the channels sharing that
+label — and nothing stopped it from landing on a label some other channel already had. EDF
+labels are free text and nothing enforces uniqueness, so a file carrying T8, T8 and a third
+channel genuinely labelled T8_ch0 is well-formed. It produced:
+
+```
+time_s,T8_ch0,T8_ch1,T8_ch0
+```
+
+Two columns, one name, and the warning beside it said the suffix kept them
+"distinguishable". channels.csv listed T8_ch0 against two signal indices, so the join it
+exists for could not resolve it either; metadata.json recorded the name twice; and a
+name-based lookup returns one of the two with nothing to say which. Exit 0 throughout.
+
+Names are now made unique across the whole file: anything still shared after the first pass
+takes its own position too, which is unique by construction. And the channel that lost its
+own label to another's suffix is named, because its column is the one thing in the output
+that no longer matches the file:
+
+```
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so its column is "T8_ch0_ch2".
+```
+
+## 0.4.24
+
+### Fixed: an origin the file's own arithmetic cannot hold is reported, not acted on
+
+0.4.9 taught continuous recordings to honour the first timekeeping TAL, which is right, but
+it took the number at face value. A double spaces its values further apart the larger they
+get: at 1e16 the gap is two seconds, so `t + 1` is `t`. Past that point an origin stops
+being a position and becomes a wall.
+
+Two silent failures came out of that. At 1e16 the collapse is partial, and the test for
+"does this record overlap the window" — `start + recordDuration > windowStart` — is false
+for every record that rounded onto its neighbour. A twelve-row recording wrote four rows,
+exit 0, no warning; the eight that vanished looked exactly like a file that never had them.
+
+At 1e17 every record lands on one instant, so the recording measures zero seconds long, and
+the window resolver had no reason to suspect the recording rather than the request:
+
+```
+error: --start 100000000000000000s is at or past the end of this 100000000000000000s
+       recording.
+```
+
+--start was never passed.
+
+Both paths now check that the origin can still separate two consecutive samples of the
+fastest channel. When it cannot, the recording is timed from zero — what it did before
+0.4.9, and the only column that can hold distinct values at that magnitude — and says so,
+pointing at annotations.csv for the absolute onsets. An origin merely large is kept: at 1e15
+the gap is an eighth of a second, so a 4 Hz recording's quarter-second steps survive.
+
+## 0.4.23
+
+### Fixed: one offset cache for the whole conversion, not one per sampling rate
+
+The time-column cache was capped at 2^20 offsets per rate group. A file may hold as many
+rate groups as it has channels, so nothing bounded the total.
+
+Twelve channels at twelve rates just under the cap — a 25 MB file — peaked at 1.66 GB and
+took 36 seconds. A 92 MB file at a single rate, four times the data, peaks at 283 MB and
+finishes in a fraction of that. Twenty-four rates never finished at all: it spent two
+minutes swapping and was killed. A per-group limit is not a limit.
+
+One budget for the conversion, spent in the order the groups ask. They are already sorted
+fastest-rate first, so the cache goes to the tables with the most rows to write and the
+ones that miss out are the ones that would have gained least from it — they format the
+same text the slow way.
+
+```
+12 rates, 25 MB   1.66 GB / 36.0s  ->  1.02 GB / 5.5s
+24 rates, 50 MB   did not finish   ->  1.20 GB / 8.5s
+```
+
+A file with one rate group behaves exactly as it did: same budget, same cache, and 75
+fixture and flag combinations byte-identical to 0.4.22.
+
+## 0.4.22
+
+### Fixed: the time column stops writing "1e+21.000"
+
+`fixed` has guarded value cells against the 1e21 cliff since 0.3.x, where toFixed switches
+to exponent notation. The time column lost that guard in 0.4.1, when the per-row toFixed
+was replaced by a cached decomposition: whole seconds plus printed fraction, concatenated.
+The concatenation is an implicit Number-to-String, which switches to exponent form at the
+same 1e21 — and the cached fraction is then glued onto the end of it:
+
+```
+time_s,ch1
+750000000000000100000.000,0.300
+1e+21.000,0.400
+1.25e+21.000,0.500
+```
+
+"1e+21.000" is not a number in any notation. pandas and R both read it as NaN, in a column
+whose every other cell is plain fixed-decimal, so a reader has no reason to look for it.
+
+Reachable because EDF's record-duration field is 8 characters and exponent form fits, so a
+header may legitimately say 1e21; three records get there. One comparison per row hands
+those to the slow path, which already expands them with BigInt, and leaves the cache doing
+its job for the other twenty million.
+
+## 0.4.21
+
+### Fixed: a conversion killed mid-flight names itself, and the directory it left
+
+A process that dies by signal exits with a null code and prints nothing on its way out.
+The parent read that as an ordinary failure with empty output, so a batch whose child was
+killed printed "Converted 1 of 2 recordings; 1 failed." and nothing else — not which
+recording, not why, and not that out/b held a 194 MB signals.csv cut off mid-row with no
+channels.csv beside it. Half a CSV opens in pandas exactly like a whole one.
+
+The out-of-memory killer, a job scheduler's time limit and `kill` all arrive this way, and
+they arrive on the machines where batches are largest. The close handler now reads the
+signal it was given and says so, in the same words the interrupt handler uses for a run
+stopped from the keyboard:
+
+```
+error: in/b.edf: stopped by SIGKILL before it finished.
+       Incomplete, and should not be used: out/b
+```
+
+Ctrl-C keeps its single message: the interrupt handler names every abandoned directory at
+once, and a per-child line under it would repeat that once per job.
+
+## 0.4.20
+
+### Changed: a link that leads nowhere is reported, and --out stops depending on what was found
+
+A study kept as one folder per night, with one night linked to an external drive that
+happened not to be mounted, converted the nights that were there and said nothing about
+the one that was not. The walk only reported entries whose names ended in .edf or .bdf,
+and a directory carries no such name.
+
+Losing that input made it worse than a silent omission. --out decided between "the output
+directory" and "a parent to fill" by counting the recordings, so dropping one left a single
+recording and moved the survivor as well: csv/signals.csv instead of csv/night-01/rec/.
+Whether a drive was mounted changed both what was converted and where it went, exit 0.
+
+Two changes. The walk reports anything it cannot inspect, whatever it is called, and that
+counts against the run. And what --out means is now decided by what was named rather than
+by what was found: one recording names the output directory itself, a folder or several
+recordings name a parent. `edf2csv study --out csv` writes csv/night-01/rec/ whether the
+study holds one night or fifty — adding a second night no longer moves the first one's
+output, and neither does an input going missing.
+
 ## 0.4.19
 
 ### Fixed: the nesting guard could be stepped past by a sibling

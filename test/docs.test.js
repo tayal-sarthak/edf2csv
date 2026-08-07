@@ -132,6 +132,28 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('has a changelog entry for the version being released', async () => {
+    /*
+      The file records what each version changed, and it stopped: its newest entry was 0.4.19
+      while the package was at 0.4.64. Forty-five releases had notes on GitHub and nothing in
+      the one place the repository presents as the record.
+
+      Checked against package.json rather than against git tags, so the file may be one entry
+      ahead — the release being prepared writes its entry before the version is published —
+      and no further behind than that.
+    */
+    const changelog = await read('CHANGELOG.md');
+    const newest = /^## (\d+\.\d+\.\d+)$/mu.exec(changelog);
+    assert.ok(newest, 'the changelog has no version headings');
+
+    const { version } = JSON.parse(await read('package.json'));
+    assert.equal(
+      newest[1],
+      version,
+      `package.json is at ${version} and the newest changelog entry is ${newest[1]}`,
+    );
+  });
+
   it('shows a metadata.json with the keys a conversion actually writes', async () => {
     /*
       output-files.md prints a whole metadata.json as its explanation of the format, and that
