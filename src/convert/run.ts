@@ -80,9 +80,10 @@ export interface ConvertOptions extends PlanOptions {
   /**
    * Write the signal CSV to stdout instead of to a directory.
    *
-   * Only valid when the conversion produces exactly one signal file: a mixed-rate
-   * recording becomes several tables, and merging them into one stream would mean
-   * inventing the samples this tool exists not to invent. No sidecar files are written.
+   * Only valid when the conversion produces exactly one signal file. In the default wide
+   * layout a mixed-rate recording becomes several tables, and merging them into one stream
+   * would mean inventing the samples this tool exists not to invent; `layout: 'long'` gives
+   * one table for any recording, so it lifts the restriction. No sidecar files are written.
    */
   toStdout?: boolean | undefined;
   onProgress?: ((progress: ConversionProgress) => void) | undefined;

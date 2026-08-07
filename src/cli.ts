@@ -61,7 +61,7 @@ Options
       --json             Print machine-readable JSON to stdout (works with --info too)
       --strict           Exit 1 if the recording raised any warning
       --stdout           Write the signal CSV to stdout instead of a directory
-                         (single-rate recordings only)
+                         (one table only: one sampling rate, or --layout long)
   -h, --help             Show this help
   -V, --version          Show the version
 
@@ -256,15 +256,51 @@ export async function main(argv: readonly string[]): Promise<number> {
     return EXIT_USAGE;
   }
 
-  // One stream holds one table, for the same reason it holds one recording: concatenating
-  // them would give a CSV whose rows come from different files with nothing marking where
-  // one ends. Naming the count makes it obvious a glob was the cause.
+  /*
+    One stream holds one table, for the same reason it holds one recording: concatenating
+    them would give a CSV whose rows come from different files with nothing marking where
+    one ends. Naming the count makes it obvious a glob was the cause — except when the count
+    is one, which happens for a folder holding a single recording. That read "--stdout writes
+    a single CSV, so it cannot take 1 recordings": ungrammatical, and wrong on its face, since
+    one recording is exactly what it can take. What it cannot take is a folder, whose contents
+    are not known until they are walked.
+  */
   if (toStdout && batch) {
     process.stderr.write(
-      `--stdout writes a single CSV, so it cannot take ${inputs.length} recordings.\n` +
-        `Convert them to directories instead, or run edf2csv once per file.\n`,
+      inputs.length === 1
+        ? `--stdout writes a single CSV, and a folder is converted as a batch even when it ` +
+          `holds one recording.\nName the recording itself — ${inputs[0]} — or convert to a ` +
+          `directory instead.\n`
+        : `--stdout writes a single CSV, so it cannot take ${inputs.length} recordings.\n` +
+          `Convert them to directories instead, or run edf2csv once per file.\n`,
     );
     return EXIT_USAGE;
+  }
+
+  /*
+    Flags that --stdout has nowhere to put.
+
+    Both were accepted and dropped in silence. `--out` names a directory that is never
+    created, so the run looked like it had written one. `--checksum` is worse than useless:
+    the hash is computed before the first record is read, which is a second full pass over
+    the input, and then the only file it is ever written to — metadata.json — is not written
+    at all. A recording large enough to want a checksum is large enough to notice reading it
+    twice for nothing.
+
+    Refusing rather than ignoring is what this tool already does for `--stdout --json` and
+    `--stdout --annotations-only`.
+  */
+  for (const [flag, given] of [
+    ['--out', values['out'] !== undefined],
+    ['--checksum', values['checksum'] === true],
+  ] as const) {
+    if (toStdout && given) {
+      process.stderr.write(
+        `--stdout and ${flag} cannot be combined: --stdout writes no files, and ${flag} has ` +
+          `nothing to act on.\nDrop ${flag}, or drop --stdout and convert to a directory.\n`,
+      );
+      return EXIT_USAGE;
+    }
   }
 
   /*

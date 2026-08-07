@@ -1400,6 +1400,55 @@ async function shellTo(args, destination) {
   }
 }
 
+describe('what --stdout says about itself', () => {
+  it('does not claim a restriction that --layout long removed', async () => {
+    // 0.5.0 made --stdout work on a mixed-rate recording and left the help saying
+    // "(single-rate recordings only)" — twenty lines above its own paragraph explaining
+    // that --layout long is how a mixed-rate file streams.
+    const { stdout } = await cli(['--help']);
+    const works = await cli([fixture('mixed-rates.edf'), '--stdout', '--layout', 'long']);
+    assert.equal(works.code, 0, works.stderr);
+    assert.ok(
+      !/single-rate recordings only/u.test(stdout),
+      'the help forbids what the tool just did',
+    );
+  });
+
+  it('refuses the flags it used to accept and drop', async () => {
+    /*
+      --out named a directory that was never created, so the run looked like it had written
+      one. --checksum was worse: the hash is computed before the first record is read — a
+      second full pass over the input — and the only file it is ever written to is
+      metadata.json, which --stdout does not write. Refusing is what this tool already does
+      for --stdout with --json and with --annotations-only.
+    */
+    const dir = await outDir();
+    const out = await cli([fixture('tiny.edf'), '--stdout', '--out', dir]);
+    assert.equal(out.code, 2);
+    assert.match(out.stderr, /--stdout and --out cannot be combined/u);
+    await assert.rejects(() => stat(dir), 'and no directory is left behind');
+
+    const checksum = await cli([fixture('tiny.edf'), '--stdout', '--checksum']);
+    assert.equal(checksum.code, 2);
+    assert.match(checksum.stderr, /--stdout and --checksum cannot be combined/u);
+  });
+
+  it('counts a folder of one as a folder, not as one recording it cannot take', async () => {
+    // "--stdout writes a single CSV, so it cannot take 1 recordings" — ungrammatical, and
+    // wrong on its face, since one recording is exactly what it can take. What it cannot
+    // take is a folder.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-one-'));
+    temporaries.push(dir);
+    await writeFile(path.join(dir, 'night.edf'), await readFile(fixture('tiny.edf')));
+
+    const { code, stderr } = await cli([dir, '--stdout']);
+    assert.equal(code, 2);
+    assert.ok(!/take 1 recordings/u.test(stderr), stderr);
+    assert.match(stderr, /a folder is converted as a batch even when it holds one recording/u);
+    assert.match(stderr, /night\.edf/u, 'and names the recording to run instead');
+  });
+});
+
 describe('--layout long', () => {
   it('puts every rate in one table, in time order, with nothing invented', async () => {
     /*

@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.5
+
+### Fixed: three things `--stdout` said about itself that were not true
+
+**The help forbade what the tool does.** `--help` and the README both described `--stdout`
+as "(single-rate recordings only)" — twenty lines above the paragraph, in the same help text,
+explaining that `--layout long` is how a mixed-rate recording streams. 0.5.0 lifted the
+restriction and left the line describing it.
+
+**`--out` and `--checksum` were accepted and dropped in silence.** `--out` named a directory
+that was never created, so a run that wrote nowhere looked like it had written somewhere.
+`--checksum` was worse than useless: the hash is computed before the first record is read,
+which is a second full pass over the input, and the only file it is ever written to is the
+`metadata.json` that `--stdout` does not write. A recording large enough to want a checksum
+is large enough to notice being read twice for nothing. Both are usage errors now, which is
+what `--stdout --json` and `--stdout --annotations-only` already were.
+
+**A folder holding one recording was refused as "1 recordings".** "--stdout writes a single
+CSV, so it cannot take 1 recordings" — ungrammatical, and wrong on its face, since one
+recording is exactly what it can take. What it cannot take is a folder, whose contents are
+not known until it is walked. It says that instead, and names the recording inside so you can
+run that.
+
 ## 0.5.4
 
 ### Fixed: `--stdout --layout long` failed with a disk-full error on a file that was complete

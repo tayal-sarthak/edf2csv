@@ -566,6 +566,15 @@ meter is never drawn in this mode.
 `--stdout` and `--json` cannot be combined: both write to stdout, and together they would produce a
 document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2).
 
+So are `--stdout --out` and `--stdout --checksum` (exit 2 since 0.5.5). Both were accepted and
+dropped in silence before that. `--out` named a directory that was never created, so a run that
+wrote nowhere looked like it had written somewhere; `--checksum` computed a SHA-256 of the input —
+a second full pass over the file, before the first record is read — and then discarded it, since
+the only file it is ever written to is the `metadata.json` that `--stdout` does not write.
+
+A folder is refused too, even one holding a single recording, because what a folder holds is not
+known until it is walked. The message names the recording inside it so you can run that instead.
+
 ### Redirecting to a file that will not fit
 
 When stdout is redirected to a regular file, `edf2csv` checks at the end that the descriptor grew by as many bytes as it was handed, and fails if it did not:

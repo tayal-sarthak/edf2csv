@@ -70,7 +70,8 @@ npx edf2csv recording.edf --start 30m --duration 5m
   -q, --quiet            Less output
       --json             Machine-readable JSON on stdout (works with --info too)
       --strict           Exit 1 if the recording raised any warning
-      --stdout           Write the CSV to stdout (single-rate recordings only)
+      --stdout           Write the CSV to stdout (one table only: one sampling
+                         rate, or --layout long)
   -h, --help             Help
   -V, --version          Version
 ```
