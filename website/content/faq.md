@@ -29,8 +29,13 @@ resampled, interpolated or padded.
 
 Because EDF stores each sample as 2 raw bytes (3 for BDF) and CSV stores it as human-readable
 text. A sample stored as two bytes becomes something like `-114.258`, which is eight characters
-plus a comma. A factor of four is normal, and a factor of five or six happens on channels that
-need more decimal places.
+plus a comma.
+
+How much larger depends on the channel count as much as on the decimals, because every row
+carries one `time_s` cell however many channels share it. A 23-channel 256 Hz montage comes out
+about 4 times the EDF; a single-channel recording of the same length is nearer 10, since the
+time column has nothing to share with. Channels needing more decimal places push it up
+further.
 
 The extra size isn't padding. The decimal places are chosen per channel from its calibration so
 that no two distinct digital codes round to the same text, and no further digits are written.
@@ -111,8 +116,8 @@ and the rate-named files from the first run are still there, looking current. ed
 this and tells you:
 
 ```text
-warning: signals_128hz.csv, signals_1hz.csv are left over from an earlier conversion into this
-         directory and were not rewritten.
+warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an earlier
+         conversion into this directory and were not rewritten.
          Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
 ```
 
@@ -291,7 +296,8 @@ row = channels.loc["EEG Fpz-Cz"]
 gain = (row.physical_max - row.physical_min) / (row.digital_max - row.digital_min)
 offset = row.physical_max / gain - row.digital_max
 
-signals = pd.read_csv("sleep-study_csv/signals.csv")
+# EEG Fpz-Cz is a 256 Hz channel, so it is in the 256 Hz table — see the layout above.
+signals = pd.read_csv("sleep-study_csv/signals_256hz.csv")
 digital = (signals["EEG Fpz-Cz"] / gain - offset).round().astype("int64")
 ```
 

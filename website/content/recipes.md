@@ -154,7 +154,7 @@ Sampling rates differ, so channels are written to 2 files, one per rate. No chan
 Would write 7,401,600 rows, roughly 310 MB.
 ```
 
-`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way. CSV is roughly seven times the size of the EDF it came from, so the estimate is worth reading before you start.
+`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way. CSV runs about 4 times the size of the EDF for a typical multi-channel montage, and higher for a recording with few channels, so the estimate is worth reading before you start.
 
 The estimate line goes to stdout and the warnings go to stderr, which makes each of them easy to pick out on its own:
 
