@@ -18,6 +18,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    // Sources embedded in the maps, because src/ is not in the published package and a map
+    // pointing at ../src/cli.ts resolves to nothing once installed. A stack frame inside
+    // edf2csv should land on the line that produced it, not on a missing file.
+    "inlineSources": true,
     "removeComments": false,
     "newLine": "lf",
 

@@ -10,6 +10,10 @@
  * places or it does not. The prose around each name still has to be written by hand and
  * read by a person; what this stops is a code existing that no page mentions, or a page
  * naming one that no longer exists.
+ *
+ * The last check here is about the package rather than the pages, for the same reason: a
+ * source map that points at a file the package does not ship is a claim about where the code
+ * came from, and it is one nothing was reading.
  */
 
 import { describe, it } from 'node:test';
@@ -152,6 +156,33 @@ describe('documentation and source agree on their lists', () => {
       version,
       `package.json is at ${version} and the newest changelog entry is ${newest[1]}`,
     );
+  });
+
+  it('ships source maps that resolve to something', async () => {
+    /*
+      Every .js.map names `../src/*.ts` as its source, and `src` is not in package.json's
+      `files` — so once installed, a stack frame inside edf2csv followed a map to a file that
+      is not there. The maps were shipped and useless.
+
+      `inlineSources` puts the TypeScript into the map itself, which a debugger prefers over
+      fetching the path, so the frame lands on the line that produced it without shipping a
+      second copy of the tree as separate files. It costs about 90 kB packed.
+    */
+    const { readdir } = await import('node:fs/promises');
+
+    const { files } = JSON.parse(await read('package.json'));
+    assert.ok(!files.includes('src'), 'if src ships, the maps can point at it instead');
+
+    const emitted = (await readdir(path.join(ROOT, 'dist'))).filter((n) => n.endsWith('.js.map'));
+    assert.ok(emitted.length > 0, 'no source maps were built');
+
+    for (const name of emitted) {
+      const map = JSON.parse(await read(path.join('dist', name)));
+      assert.ok(
+        Array.isArray(map.sourcesContent) && map.sourcesContent.every((c) => typeof c === 'string' && c.length > 0),
+        `${name} names ${map.sources?.join(', ')} but carries no sources, and the package ships neither`,
+      );
+    }
   });
 
   it('shows a metadata.json with the keys a conversion actually writes', async () => {
