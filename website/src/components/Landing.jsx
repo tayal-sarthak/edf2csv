@@ -101,12 +101,15 @@ Resp oro-nasal,3,Resp oro-nasal,V,10,10,-1,1,...`,
     title: 'What was converted, and from what',
     body: 'Tool version, source file and size, the recording header, the exact window converted, and every warning raised. Enough to reproduce the run later.',
     sample: `{
-  "tool": { "name": "edf2csv", "version": "0.1.0" },
+  "tool": { "name": "edf2csv", "version": "..." },
+  "source": { "path": "...", "bytes": 19670016, "sha256": null },
   "recording": {
     "format": "EDF+ (continuous)",
     "start_datetime_local": "2002-03-02T23:10:00",
-    "data_records": 28800
-  }
+    "data_records": 28800,
+    ...
+  },
+  "conversion": { "whole_recording": true, ... }
 }`,
     lang: 'json',
   },

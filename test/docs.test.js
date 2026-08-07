@@ -207,6 +207,63 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('shows the landing page the output that recording really produces', async () => {
+    /*
+      The page's terminal block is captured output, and the recording it came from lived in
+      a comment as a recipe — which made "this is real output" a claim nobody could check
+      without rebuilding an 19 MB file by hand from prose. It drifted twice: a row figure in
+      0.4.67, a `UTC` suffix the format cannot support in 0.4.68, on the page arguing the
+      tool is careful about exactly that.
+
+      So the recipe is a module now, and this rebuilds the recording and compares.
+    */
+    const jsx = await read('website/src/components/Landing.jsx');
+    const block = /const INFO_OUTPUT = `([\s\S]*?)`;/u.exec(jsx);
+    assert.ok(block, 'the landing page no longer shows an --info block');
+    // The first line is the prompt and command, which no run of the tool prints.
+    const shown = block[1].split('\n').slice(2).join('\n').trim();
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-landing-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stdout, stderr } = await run(process.execPath, [CLI, recording, '--info']);
+      // The tool prints the path it was given; the page shows the bare name it was run with.
+      const actual = `${stdout}${stderr}`.replace(recording, 'sleep-study.edf').trim();
+      assert.equal(actual, shown);
+
+      /*
+        And the CSV samples beside it. Two seconds is enough for every sample shown; the
+        page's own figures for the whole recording are the --info block's business, checked
+        above. A sample containing an ellipsis is illustrative — channels.csv's columns are
+        elided to fit — and only the literal ones are held to being prefixes.
+      */
+      const out = path.join(work, 'converted');
+      await run(process.execPath, [CLI, recording, '--out', out, '--duration', '2', '--quiet']);
+      const samples = [
+        .../const FILES = \[([\s\S]*?)\n\];/u
+          .exec(jsx)[1]
+          .matchAll(/name: '([^']+)',[\s\S]*?sample: `([\s\S]*?)`,/gu),
+      ];
+      assert.ok(samples.length >= 3, `expected the file samples, found ${samples.length}`);
+
+      let checked = 0;
+      for (const [, name, sample] of samples) {
+        if (sample.includes('...')) continue;
+        const written = await readFile(path.join(out, name), 'utf8');
+        assert.ok(
+          written.startsWith(`${sample}\n`),
+          `${name} on the page is not how the conversion starts:\n` +
+            `  page: ${JSON.stringify(sample)}\n  file: ${JSON.stringify(written.slice(0, 120))}`,
+        );
+        checked++;
+      }
+      assert.ok(checked >= 3, `only ${checked} samples were literal enough to check`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('runs every JavaScript example in the API reference', async () => {
     /*
       The examples are the part of the documentation a reader is most likely to paste, and

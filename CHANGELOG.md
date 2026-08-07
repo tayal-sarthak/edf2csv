@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.77
+
+### Fixed: the landing page showed an annotations.csv the recording could not produce
+
+The page says every terminal block and CSV sample on it is real output from one synthetic
+sleep recording, and the recipe for that recording lived in a comment. Which made the claim
+unfalsifiable in practice: checking it meant rebuilding a 19 MB file by hand from prose. The
+page drifted twice anyway — a row figure in 0.4.67, a `UTC` suffix in 0.4.68 — and this
+found a third. Its `annotations.csv` sample shows `Sleep stage W` at onset 0. The recording
+had an annotation channel with no events in it at all, so the real file is a header row and
+nothing else.
+
+The recipe is a module now, `test/fixtures/sleep-study.mjs`, and the recording carries the
+sleep staging a sleep study carries. A test rebuilds it, runs `--info`, and compares the
+output against the page character for character; then converts two seconds of it and checks
+each CSV sample really is how that file starts. Samples that are abridged say so with an
+ellipsis and are left alone — which the `metadata.json` sample did not, while showing
+`"version": "0.1.0"`. It is now visibly an extract.
+
 ## 0.4.76
 
 ### Added: the API reference's examples are run, not just displayed
