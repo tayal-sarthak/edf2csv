@@ -1638,6 +1638,33 @@ describe('--layout long', () => {
     assert.equal(written.trimEnd().split('\n').length - 1, 1155, 'and every row is there');
   });
 
+  it('counts the shared compressor once, not once per rate group', async () => {
+    /*
+      0.5.4 fixed this arithmetic in the uncompressed branch and left the compressed one,
+      because there the count is a sum and here it is a subscription: one 'data' listener
+      was attached per group to the one shared compressor, so every chunk was counted N
+      times. A 40-rate recording claimed 622,240 bytes where 15,556 had been written, failed
+      with a disk-full error over a perfectly good file, and printed Node's
+      MaxListenersExceededWarning to stderr on the way past ten listeners.
+    */
+    const destination = path.join(path.dirname(await outDir()), 'signals.csv.gz');
+    const { code, stderr } = await shellTo(
+      [fixture('many-rates.edf'), '--stdout', '--layout', 'long', '--gzip'],
+      destination,
+    );
+    assert.equal(code, 0, stderr);
+    assert.ok(!/did not reach the destination/u.test(stderr), stderr);
+    assert.ok(!/MaxListenersExceededWarning/u.test(stderr), `Node warned:\n${stderr}`);
+
+    // And the stream is the file: same bytes as converting to a directory.
+    const dir = await outDir();
+    await cli([fixture('many-rates.edf'), '--out', dir, '--layout', 'long', '--gzip', '--quiet']);
+    assert.deepEqual(
+      gunzipSync(await readFile(destination)),
+      gunzipSync(await readFile(path.join(dir, 'signals.csv.gz'))),
+    );
+  });
+
   it('predicts the long layout rather than the wide one', async () => {
     const dir = await outDir();
     const info = await cli([fixture('mixed-rates.edf'), '--info', '--json', '--layout', 'long']);

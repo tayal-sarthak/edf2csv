@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.8
+
+### Fixed: 0.5.4 fixed half of the stdout audit and left the compressed half
+
+`--stdout --layout long --gzip` still failed, and louder than before. On a 40-rate recording
+it claimed "606684 of 622240 bytes did not reach the destination" over a compressed stream
+that decompresses to every row, and printed Node's `MaxListenersExceededWarning` to stderr
+on the way past ten listeners.
+
+Same arithmetic as 0.5.4, different shape, which is why it survived the fix. Uncompressed,
+the audit adds up each writer's byte count — a sum, fixed by counting distinct writers.
+Compressed, it subscribes to the compressor's `data` events — and the subscription was made
+once per rate group, on the one compressor they share, so every chunk was counted once per
+group.
+
+Subscribed once per stream now. The stream is byte-identical to what `--out --gzip` writes.
+
 ## 0.5.7
 
 ### Fixed: a folder that could not be read was reported as a folder holding nothing

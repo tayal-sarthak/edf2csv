@@ -546,8 +546,19 @@ async function writeSignalFiles(
       compression and says nothing about what reached the descriptor. The compressor's own
       output is what stdout is handed, so that is what is counted. `pipe` uses a 'data'
       listener of its own and a second one is delivered the same chunks.
+
+      Once per stream, which in the long layout is once for all the groups. Attaching per
+      group put N listeners on the one shared compressor, so every chunk was counted N
+      times: `--stdout --layout long --gzip` on a 40-rate recording claimed 622,240 of
+      622,240 bytes where 15,556 had been written, failed with a disk-full error over a
+      perfectly good file, and printed Node's MaxListenersExceededWarning to stderr on the
+      way past ten. 0.5.4 fixed the same arithmetic in the uncompressed branch and left
+      this one, because the uncompressed branch is where the count is a sum and this one is
+      where it is a subscription.
     */
-    if (audit && stream !== target) stream.on('data', (chunk: Buffer) => audit.count(chunk.length));
+    if (audit && stream !== target && !shared) {
+      stream.on('data', (chunk: Buffer) => audit.count(chunk.length));
+    }
     /*
       One writer, not one per group, when the table is shared. Separate writers over one
       stream each hold their own buffer and flush on their own schedule, so the rows would
