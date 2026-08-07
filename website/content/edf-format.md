@@ -64,11 +64,11 @@ your files actually have in them. `--info` prints both fields, and they're copie
 `metadata.json` as `patient_id` and `recording_id`.
 
 ```bash
-edf2csv sleep-study.edf --info
+edf2csv telemetry-psg.edf --info
 ```
 
 ```
-File       sleep-study.edf
+File       telemetry-psg.edf
 Format     EDF+ (continuous)
 Recorded   2002-03-02 22:15:00
 Duration   3s  (3 records of 1s)
@@ -76,6 +76,10 @@ Size       1.5 KB
 Patient    MCH-0234567 F 02-MAY-1951 Haagse_Harry
 Recording  Startdate 02-MAR-2002 PSG-1234/2002 NN Telemetry03
 ```
+
+Those two lines are the EDF+ specification's own example header, which is why they read as a real
+patient rather than as placeholders. `sleep-study.edf` — the recording the rest of this site
+converts — has `X X X X` in both fields, so it cannot show you what this section is about.
 
 ### Start date and time, and the two-digit year
 

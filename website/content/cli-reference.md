@@ -138,24 +138,28 @@ edf2csv sleep-study.edf --info
 ```
 File       sleep-study.edf
 Format     EDF+ (continuous)
-Recorded   2019-11-04 22:15:00
-Duration   8h 12m 30s  (29550 records of 1s)
-Size       25.1 MB
+Recorded   2002-03-02 23:10:00
+Duration   8h 00m 0s  (28800 records of 1s)
+Size       18.7 MB
+Patient    X X X X
+Recording  Startdate 02-MAR-2002 X X X
 
-Channels   3 signals + 1 annotation channel
+Channels   5 signals + 1 annotation channel
 
-#  COLUMN       LABEL        UNIT  RATE    RANGE        OUTPUT
-0  EEG Fpz-Cz   EEG Fpz-Cz   uV    256 Hz  -250 to 250  signals_256hz.csv
-1  ECG          ECG          mV    128 Hz  -5 to 5      signals_128hz.csv
-3  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     signals_1hz.csv
+#  COLUMN          LABEL           UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz      EEG Fpz-Cz      uV    100 Hz  -250 to 250  signals_100hz.csv
+1  EEG Pz-Oz       EEG Pz-Oz       uV    100 Hz  -250 to 250  signals_100hz.csv
+2  EOG horizontal  EOG horizontal  uV    100 Hz  -250 to 250  signals_100hz.csv
+3  Resp oro-nasal  Resp oro-nasal  V     10 Hz   -1 to 1      signals_10hz.csv
+4  Temp rectal     Temp rectal     degC  1 Hz    34 to 40     signals_1hz.csv
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
-Would write 11,376,750 rows, roughly 282 MB.
+Would write 3,196,800 rows, roughly 108 MB.
 ```
 
 Reading the table:
 
-- The `#` column is the channel's position in the file, counted over every channel including the annotation channel. That's why the numbering can skip, as it does above where channel 2 is `EDF Annotations`. Those `#` values are what the `#N` form of `--channels` addresses.
+- The `#` column is the channel's position in the file, counted over every channel including the annotation channel — which is why the data channels above stop at `#4` in a file with six channels: `#5` is `EDF Annotations`. A recording that stores its annotation channel in the middle makes the numbering skip instead. Those `#` values are what the `#N` form of `--channels` addresses.
 - `COLUMN` is the CSV column header the channel will get, and `LABEL` is the raw label from the header. They differ only when a label is duplicated or empty (see below).
 - `OUTPUT` names the file the channel would land in, or `(not selected)` when `--channels` excludes it.
 - The row and byte estimates honour `--channels`, `--start`, `--duration`, `--end`, `--decimals` and `--annotations-only`, so the figures describe the command you actually typed. With `--annotations-only` the signal channels read `(not selected)` and the estimate is 0 rows, because that run would write no signal data.

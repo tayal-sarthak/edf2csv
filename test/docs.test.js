@@ -233,6 +233,22 @@ describe('documentation and source agree on their lists', () => {
       assert.equal(actual, shown);
 
       /*
+        Every page that shows this recording shows the same recording.
+
+        `sleep-study.edf` was four different files across the site: 28800 records here, 3
+        records of plain EDF in getting-started, 29550 records at other rates in
+        cli-reference, and 3 records with a real patient identifier in edf-format. A reader
+        following the pages in order was told the same name meant a different thing each
+        time — and getting-started showed a 3-second file and then ran --start 30m on it.
+      */
+      for (const page of ['getting-started.md', 'cli-reference.md', 'edf-format.md']) {
+        const text = await read(`website/content/${page}`);
+        for (const [, shownBlock] of text.matchAll(/```(?:text)?\n(File {7}sleep-study\.edf\n[\s\S]*?)```/gu)) {
+          assert.equal(shownBlock.trim(), stdout.replace(recording, 'sleep-study.edf').trim(), page);
+        }
+      }
+
+      /*
         And the CSV samples beside it. Two seconds is enough for every sample shown; the
         page's own figures for the whole recording are the --info block's business, checked
         above. A sample containing an ellipsis is illustrative — channels.csv's columns are

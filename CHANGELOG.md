@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.4.78
+
+### Fixed: `sleep-study.edf` was four different recordings across the site
+
+The same filename appears on the landing page, in getting-started, in cli-reference and in
+edf-format, and each showed `--info` output for a different file: 28800 records of EDF+ at
+100/10/1 Hz, three records of plain EDF at 256/128/1 Hz, 29550 records at 25.1 MB, and three
+records carrying a real patient identifier. A reader working through the pages in order was
+told the name meant something different each time.
+
+Worse than untidy in one place: getting-started showed a three-second recording, then said
+"on a long recording, `--info` tells you four things before you spend any disk", then told
+the reader to run `--start 30m --duration 5m` on it — a window that file does not have.
+
+The two channel-table blocks are regenerated from the recording 0.4.77 made reproducible, so
+they are that file's real output. The identification-fields example in edf-format is a
+different recording and now has a different name, `telemetry-psg.edf`, with a line saying
+why: it carries the EDF+ specification's own example patient header, and `sleep-study.edf`
+is anonymised, so it cannot demonstrate what that section is about.
+
+The test from 0.4.77 now checks every page: any block that opens with `File       sleep-study.edf`
+must match what the tool prints for that recording.
+
 ## 0.4.77
 
 ### Fixed: the landing page showed an annotations.csv the recording could not produce

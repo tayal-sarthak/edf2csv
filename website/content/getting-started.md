@@ -122,28 +122,30 @@ edf2csv sleep-study.edf --info
 
 ```text
 File       sleep-study.edf
-Format     EDF
-Recorded   1985-01-01 00:00:00
-Duration   3s  (3 records of 1s)
-Size       3.3 KB
+Format     EDF+ (continuous)
+Recorded   2002-03-02 23:10:00
+Duration   8h 00m 0s  (28800 records of 1s)
+Size       18.7 MB
 Patient    X X X X
-Recording  Startdate X X X X
+Recording  Startdate 02-MAR-2002 X X X
 
-Channels   3 signals
+Channels   5 signals + 1 annotation channel
 
-#  COLUMN       LABEL        UNIT  RATE    RANGE        OUTPUT
-0  EEG Fpz-Cz   EEG Fpz-Cz   uV    256 Hz  -250 to 250  signals_256hz.csv
-1  ECG          ECG          mV    128 Hz  -5 to 5      signals_128hz.csv
-2  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     signals_1hz.csv
+#  COLUMN          LABEL           UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz      EEG Fpz-Cz      uV    100 Hz  -250 to 250  signals_100hz.csv
+1  EEG Pz-Oz       EEG Pz-Oz       uV    100 Hz  -250 to 250  signals_100hz.csv
+2  EOG horizontal  EOG horizontal  uV    100 Hz  -250 to 250  signals_100hz.csv
+3  Resp oro-nasal  Resp oro-nasal  V     10 Hz   -1 to 1      signals_10hz.csv
+4  Temp rectal     Temp rectal     degC  1 Hz    34 to 40     signals_1hz.csv
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
-Would write 1,155 rows, roughly 22.2 KB.
+Would write 3,196,800 rows, roughly 108 MB.
 ```
 
 Anything the tool noticed is printed after the table, on stderr:
 
 ```text
-warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
