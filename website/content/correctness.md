@@ -37,7 +37,7 @@ A quarter of the recordings are BDF rather than EDF, where a sample is three byt
 
 The recordings it generates are not the test fixtures. Those target the things real files get wrong, and pyEDFlib refuses several of them outright — a truncated file, a header whose digital range is a single point. What this needs is the opposite: ordinary well-formed recordings across a wide spread of calibrations, with digital spans from `-1..1` to `-32768..32767` and physical spans from `0.0001` to `99999`, giving gains from about 1e-9 to about 1e5. Both endpoints of the digital range appear in every recording, since `digitalMin` and `digitalMax` are the two points the header actually calibrates and where a mapping derived slightly differently disagrees most.
 
-The comparison runs at `--decimals 20`, the most `--decimals` accepts, so what is being compared is two computations of a value rather than one of them against its printed form. At 12 decimal places a reading near 1e-5 carries only seven significant digits, and that rounding alone is larger than the disagreement being looked for.
+The comparison does not go through the CSV at all. Both sides dump their doubles and the 64 bits are compared, so what is being compared is two computations of a value rather than one of them against its printed form. Reading a printed cell back cannot be exact whatever precision it was printed at — a cell is a rounded rendering, so parsing it gives the nearest double to those digits rather than the double that was computed. Until 0.4.32 this ran at `--decimals 20` and did exactly that, which is described below; this paragraph described it too, for twenty versions after it stopped being true.
 
 To confirm the check can fail, put a one-part-in-a-million error into the gain and rerun it:
 
@@ -285,13 +285,13 @@ The remaining 20 come from the gain itself. `gain` is the result of a division a
 
 On an ordinary microvolt channel you won't see the difference in a CSV.
 
-edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Even forcing the maximum with `--decimals 20` prints `0.195360195360195` from both forms.
+edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Forcing the maximum `--decimals` accepts, 20, is where the two forms part company: edf2csv prints `0.19536019536019536003` and the specification's literal ordering prints `0.19536019536019466614`, first differing at the fifteenth decimal. That is the difference this section is about, and three decimals is why an ordinary conversion never shows it.
 
 It matters for four reasons:
 
 - **It's what makes exact comparison possible.** Bit-identity with pyEDFlib is a property you either have or don't. Accepting a 32-unit error means the strongest available check degrades to a tolerance check, and a tolerance check can't tell a rounding difference from a genuine bug.
 - **The doubles are visible through the API.** `makeScaler` returns the value, not a formatted string, so anything built on the programmatic API gets the full double.
-- **Not every channel is in microvolts.** A channel calibrated in volts has a quantization step near 1e-7 and gets many more decimal places, which is why the precision cap is 20. The further right the printed digits go, the closer the discrepancy gets to visible.
+- **Not every channel is in microvolts.** A channel calibrated in volts has a quantization step near 1e-7 and gets many more decimal places; a magnetometer in tesla more again, which is why the derived precision runs to 100 — the most `toFixed` will print. The further right the printed digits go, the closer the discrepancy gets to visible.
 - **It's free.** The better arrangement is one line, evaluated once per channel.
 
 ### The cases where the formula doesn't apply

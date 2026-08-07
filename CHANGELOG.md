@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.24
+
+### Fixed: the correctness page described a method it says two hundred lines later was abandoned
+
+"The comparison runs at `--decimals 20`, the most `--decimals` accepts, so what is being
+compared is two computations of a value rather than one of them against its printed form."
+
+It does not. Since 0.4.32 both sides dump their doubles and the 64 bits are compared; nothing
+goes through a CSV, and `compare.py` mentions `--decimals` once, in the past tense, to say it
+used to. The same page explains that change further down. Reading a printed cell back cannot
+be exact at any precision — a cell is a rounded rendering, so parsing it gives the nearest
+double to those digits rather than the double that was computed, which is exactly why the
+method was replaced.
+
+Two more on the same page:
+
+- It gave the derived precision cap as 20. It has been 100 since 0.4.74, and the sentence was
+  making an argument about a magnetometer needing more places than a volt channel — the
+  argument the ceiling was raised for.
+- It said `--decimals 20` prints `0.195360195360195` "from both forms". It prints
+  `0.19536019536019536003`, and the specification's literal ordering prints
+  `0.19536019536019466614` — they first differ at the fifteenth decimal. Which is the
+  difference that section exists to describe, so the sentence was undercutting its own point
+  with a number neither form produces.
+
 ## 0.5.23
 
 ### Fixed: the `time_s` precision rule was documented as it worked before 0.4.55
