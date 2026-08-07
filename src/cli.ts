@@ -223,6 +223,26 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   if (expanded.length === 0) {
+    /*
+      "None here" and "could not look" are different answers, and so are their exit codes.
+
+      A folder the process cannot read gave the same exit 2 and the same "No EDF or BDF
+      recordings found" as an empty one — while the line above it said the folder could not
+      be read. Exit 2 is this tool's code for "the command itself was wrong", so a script
+      was being told to fix its arguments when what needed fixing was a permission. The
+      command was fine; the filesystem refused.
+
+      And the sentence itself claimed a fact the run is in no position to state: nothing was
+      found because nothing was looked at.
+    */
+    if (unreadable.length > 0) {
+      process.stderr.write(
+        `Nothing could be converted: ${unreadable.length === 1 ? 'that path' : 'those paths'} ` +
+          `could not be read, so whether ${unreadable.length === 1 ? 'it holds' : 'they hold'} ` +
+          `recordings is unknown.\n`,
+      );
+      return EXIT_ERROR;
+    }
     process.stderr.write(
       `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${p}"`))}.\n`,
     );

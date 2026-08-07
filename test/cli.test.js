@@ -1400,6 +1400,44 @@ async function shellTo(args, destination) {
   }
 }
 
+describe('a folder the process cannot read', () => {
+  it('is a failure, not a usage error, and does not claim the folder is empty', async () => {
+    /*
+      "None here" and "could not look" are different answers. An unreadable folder gave the
+      same exit 2 and the same "No EDF or BDF recordings found" as an empty one — directly
+      under a line saying the folder could not be read. Exit 2 is this tool's code for "the
+      command itself was wrong", so a script was being told to fix its arguments when what
+      needed fixing was a permission.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-locked-'));
+    temporaries.push(dir);
+    const locked = path.join(dir, 'locked');
+    await mkdir(locked);
+    await writeFile(path.join(locked, 'night.edf'), await readFile(fixture('tiny.edf')));
+    await chmod(locked, 0o000);
+    try {
+      const { code, stderr } = await cli([locked, '--out', path.join(dir, 'out')]);
+      assert.equal(code, 1, `a permission is not a usage error:\n${stderr}`);
+      assert.match(stderr, /could not be read/u);
+      assert.ok(
+        !/No EDF or BDF recordings found/u.test(stderr),
+        'it did not look, so it cannot say there were none',
+      );
+      assert.match(stderr, /whether it holds recordings is unknown/u);
+    } finally {
+      await chmod(locked, 0o755);
+    }
+  });
+
+  it('still calls an empty folder empty, and that a usage error', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-emptydir-'));
+    temporaries.push(dir);
+    const { code, stderr } = await cli([dir]);
+    assert.equal(code, 2, stderr);
+    assert.match(stderr, /No EDF or BDF recordings found/u);
+  });
+});
+
 describe('what --stdout says about itself', () => {
   it('does not claim a restriction that --layout long removed', async () => {
     // 0.5.0 made --stdout work on a mixed-rate recording and left the help saying

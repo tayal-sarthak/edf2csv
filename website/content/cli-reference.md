@@ -107,6 +107,13 @@ An input can be a recording or a folder of them, and several can be given at onc
 No EDF or BDF recordings found in "/data/empty".
 ```
 
+A folder the process cannot open is a different answer and gets a different one. "None here" is something the run can state; "could not look" is not, so it says that instead, and exits 1 rather than 2 — the command was fine, the filesystem refused:
+
+```
+error: /data/locked: could not be read, so any recordings inside it were skipped.
+Nothing could be converted: that path could not be read, so whether it holds recordings is unknown.
+```
+
 Anything that is not a directory is passed to the reader as given, so a missing path or a special file reports itself rather than being skipped.
 
 `-o, --out <dir>` sets the destination. Without it, the output directory is the input file's name with its extension replaced by `_csv`, created next to the input: `/data/recordings/sleep-study.edf` becomes `/data/recordings/sleep-study_csv`. The directory is created if it doesn't exist, including missing parents.

@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.7
+
+### Fixed: a folder that could not be read was reported as a folder holding nothing
+
+Both got the same exit 2 and the same sentence — "No EDF or BDF recordings found in
+/data/locked" — printed directly beneath a line saying the folder could not be read. The two
+lines contradicted each other, and the exit code sided with the wrong one.
+
+Exit 2 is this tool's code for "the command itself was wrong". The command was fine; the
+filesystem refused. A script reading the status was being told to fix its arguments when
+what needed fixing was a permission, and the sentence stated a fact the run was in no
+position to state: nothing was found because nothing was looked at.
+
+An unreadable path now exits 1 and says so — "whether it holds recordings is unknown". An
+empty folder is still exit 2 and still says it is empty, which it can, having looked.
+
 ## 0.5.6
 
 ### Fixed: memory followed the number of output tables, not the size of the recording
