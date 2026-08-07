@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.2
+
+### Fixed: the disk-full tests destroyed any other run on the machine
+
+`test/stdout-audit.test.js` needs a filesystem of a known small size, so it makes one with
+`hdiutil`. The image and the volume were constants — `/tmp/edf2csv-audit.dmg` and
+`/Volumes/edf2csvaudit` — and every run began by detaching that volume and deleting that
+image, whoever they belonged to.
+
+So two runs at once did not queue, they destroyed each other. Three concurrent copies of the
+file fail 10 of their 12 tests, the second run pulling the disk out from under the first
+mid-write. This is not exotic: `node --test` runs test files in parallel, re-running a suite
+before the last one has finished is ordinary, and CI machines run more than one job. It
+surfaced here as a single mystery failure in an otherwise green run, which is the worst way
+for it to surface — a flaky test costs more than the one it fails, because it makes every
+other result a question.
+
+The image and volume are named for the process now, and the mount point is read from
+`hdiutil` rather than assumed: macOS renames a volume whose name is already taken —
+`edf2csvaudit 1` — so assuming the path meant a colliding run would have quietly written
+into the other run's volume. Four concurrent copies now pass all sixteen and leave nothing
+mounted.
+
 ## 0.5.1
 
 ### Fixed: 0.5.0 shipped a feature and told none of the pages that argue for it

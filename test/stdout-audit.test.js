@@ -19,8 +19,23 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(ROOT, 'dist', 'cli.js');
 const fixture = (name) => path.join(ROOT, 'test', 'fixtures', 'generated', name);
 
-const IMAGE = '/tmp/edf2csv-audit.dmg';
-const VOLUME = '/Volumes/edf2csvaudit';
+/*
+  Named for this process, and mounted where macOS says it mounted it.
+
+  Both used to be constants — /tmp/edf2csv-audit.dmg and /Volumes/edf2csvaudit — and each
+  run began by detaching that volume and deleting that image, whoever they belonged to. Two
+  runs at once therefore destroyed each other rather than queueing: three concurrent copies
+  of this file fail 10 of 12 tests, with the second run pulling the disk out from under the
+  first mid-write. `node --test` runs test files in parallel, a re-run started before the
+  last one finished is ordinary, and CI machines run more than one job. A test that is
+  destructive to whatever else is on the machine is worse than a slow one.
+
+  The mount point is read from hdiutil rather than assumed, too: macOS renames a volume
+  whose name is already taken — `edf2csvaudit 1` — so assuming the path meant a colliding
+  run would silently write into the *other* run's volume.
+*/
+const IMAGE = `/tmp/edf2csv-audit-${process.pid}.dmg`;
+const VOLUME_NAME = `edf2csvaudit${process.pid}`;
 
 async function volumeAvailable() {
   if (process.platform !== 'darwin') return false;
@@ -32,15 +47,28 @@ async function volumeAvailable() {
   }
 }
 
+/** The mount point hdiutil reports, which is not always the one the name asks for. */
+function mountPointOf(attachOutput) {
+  const mounted = attachOutput
+    .split('\n')
+    .map((line) => line.split('\t').pop()?.trim())
+    .filter((mount) => mount?.startsWith('/Volumes/'));
+  const point = mounted.at(-1);
+  assert.ok(point, `hdiutil attach reported no mount point:\n${attachOutput}`);
+  return point;
+}
+
 async function withSmallVolume(body) {
-  await run('hdiutil', ['detach', VOLUME, '-quiet']).catch(() => {});
   await rm(IMAGE, { force: true });
-  await run('hdiutil', ['create', '-size', '2m', '-fs', 'HFS+', '-volname', 'edf2csvaudit', '-quiet', IMAGE]);
-  await run('hdiutil', ['attach', IMAGE, '-nobrowse', '-quiet']);
+  await run('hdiutil', [
+    'create', '-size', '2m', '-fs', 'HFS+', '-volname', VOLUME_NAME, '-quiet', IMAGE,
+  ]);
+  const { stdout } = await run('hdiutil', ['attach', IMAGE, '-nobrowse']);
+  const volume = mountPointOf(stdout);
   try {
-    return await body();
+    return await body(volume);
   } finally {
-    await run('hdiutil', ['detach', VOLUME, '-quiet']).catch(() => {});
+    await run('hdiutil', ['detach', volume, '-quiet']).catch(() => {});
     await rm(IMAGE, { force: true });
   }
 }
@@ -60,8 +88,9 @@ async function toFile(args, destination) {
 }
 
 describe('--stdout onto a destination that fills up', () => {
+  // withSmallVolume detaches its own volume in a finally; this is only for the image, in
+  // case the process died between creating it and attaching it.
   after(async () => {
-    await run('hdiutil', ['detach', VOLUME, '-quiet']).catch(() => {});
     await rm(IMAGE, { force: true });
   });
 
@@ -78,7 +107,7 @@ describe('--stdout onto a destination that fills up', () => {
     // SyncWriteStream whose _write discards the count writeSync returns. So nothing was
     // raised at all: 94,977 of 102,400 rows on disk, the file ending mid-row, stderr saying
     // "Wrote 102,400 rows to stdout." and the process exiting 0.
-    await withSmallVolume(async () => {
+    await withSmallVolume(async (VOLUME) => {
       const destination = path.join(VOLUME, 'sig.csv');
       const result = await toFile([fixture('long-stream.edf'), '--stdout'], destination);
 
@@ -110,7 +139,7 @@ describe('--stdout onto a destination that fills up', () => {
     // written so far" named files that do not exist on this path, and "choose another
     // destination with --out" is advice for a different command — the destination is
     // whatever the shell redirected the stream to.
-    await withSmallVolume(async () => {
+    await withSmallVolume(async (VOLUME) => {
       await run('dd', ['if=/dev/zero', `of=${path.join(VOLUME, 'filler')}`, 'bs=1024', 'count=1560']);
       const result = await toFile([fixture('long-stream.edf'), '--stdout'], path.join(VOLUME, 's.csv'));
 
@@ -129,7 +158,7 @@ describe('--stdout onto a destination that fills up', () => {
 
     // The same volume, and an output that fits: this must succeed with every row present.
     // A check that fires on a healthy conversion is worse than no check.
-    await withSmallVolume(async () => {
+    await withSmallVolume(async (VOLUME) => {
       const destination = path.join(VOLUME, 'small.csv');
       const result = await toFile([fixture('tiny.edf'), '--stdout'], destination);
       assert.equal(result.code, 0, result.stderr);
@@ -151,7 +180,7 @@ describe('--stdout onto a destination that fills up', () => {
     // compression and says nothing about what reached the descriptor. The compressed output
     // of this recording fits on the volume, so this must succeed — and it is the case that
     // catches counting the wrong number, which would report a shortfall of about 1.6 MB.
-    await withSmallVolume(async () => {
+    await withSmallVolume(async (VOLUME) => {
       const destination = path.join(VOLUME, 'sig.csv.gz');
       const result = await toFile([fixture('long-stream.edf'), '--stdout', '--gzip'], destination);
       assert.equal(result.code, 0, result.stderr);
