@@ -429,6 +429,35 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('gives the decimals every documented sampling rate really gets', async () => {
+    /*
+      output-files.md prints a table of rate against `time_s` decimals, with a column saying
+      whether the expansion is exact. It said the search stops at nine places and listed
+      1024 Hz as seven and rounded; the bound has been fifteen since 0.4.55, and 1024 Hz gets
+      ten and is exact. Two of three columns wrong on one row, in a table whose whole subject
+      is that these numbers are derived rather than chosen.
+    */
+    const { timeDecimals } = await import(path.join(ROOT, 'dist/format/number.js'));
+    const page = await read('website/content/output-files.md');
+    const rows = [
+      ...page.matchAll(/^\| ([\d.]+) Hz \| [\d.]+ \| (\d+) \| (yes|rounded) \|$/gmu),
+    ];
+    assert.ok(rows.length >= 8, `the rate table is gone: found ${rows.length} rows`);
+
+    for (const [, rate, decimals, exact] of rows) {
+      const actual = timeDecimals(Number(rate));
+      assert.equal(actual, Number(decimals), `${rate} Hz gets ${actual}, the page says ${decimals}`);
+      // "Exact" means 1/rate terminates at that many places, which is what makes
+      // `time_s * rate` land on a whole row number.
+      const terminates = Number.isInteger(10 ** actual / Number(rate));
+      assert.equal(
+        exact === 'yes',
+        terminates,
+        `${rate} Hz is ${terminates ? 'exact' : 'rounded'}, the page says ${exact}`,
+      );
+    }
+  });
+
   it('states harness sizes that match the harnesses themselves', async () => {
     /*
       The correctness page said the estimate sweep runs "192 predictions over 34 recordings"

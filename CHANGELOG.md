@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.23
+
+### Fixed: the `time_s` precision rule was documented as it worked before 0.4.55
+
+Two pages still described the old bound.
+
+output-files.md said the search for a terminating expansion stops at nine places, and its
+table listed 1024 Hz as getting seven decimals and being rounded. The bound has been fifteen
+since 0.4.55; 1024 Hz gets ten and is exact, since 1/1024 terminates at ten. Two of the three
+columns wrong on one row, in a table whose whole subject is that these numbers are derived
+rather than chosen. The closing paragraph then explained a cap that no longer exists.
+
+warnings-and-errors.md said times are "written to at most nine decimal places, which
+separates everything up to a gigahertz", and illustrated `TIME_RESOLUTION` with a warning at
+10 GHz — a rate that terminates at ten places and is written exactly, and does not warn. The
+replacement shows the rate that does: 3e15 Hz, whose reciprocal never terminates.
+
+A test now recomputes every row of that table from `timeDecimals`, including the exact-or-
+rounded column, which it derives rather than reads. Every power of two through 32768 Hz
+terminates inside fifteen places, so the table gains 4096 Hz as well.
+
 ## 0.5.22
 
 ### Fixed: 0.5.12 called a finished conversion unfinished

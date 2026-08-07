@@ -303,16 +303,18 @@ No two columns in `signals.csv` ever share a name, so the `channels.csv` join al
 
 ### TIME_RESOLUTION
 
-Sample times are written to at most nine decimal places, which separates everything up to a gigahertz. Faster than that and the column repeats.
+Sample times are written to at most fifteen decimal places, which separates everything a terminating rate can reach — every power of two through 32768 Hz, and far past it. Only a rate whose reciprocal never terminates, and whose interval is finer than fifteen places, makes the column repeat.
 
 **Cause.** A sample interval finer than fifteen decimal places can express, and with no terminating expansion to find — 3e15 Hz, say, where 1/3e15 repeats forever. A rate that terminates gets as many places as it needs up to fifteen, so every power of two through 32768 Hz is written exactly; one that repeats gets as many as it takes to keep consecutive samples apart, to the same limit. EDF's record-duration field is 8 characters and accepts `1e-15`, so the format permits these rates; nothing that records biosignals comes within nine orders of magnitude of them.
 
 ```
-warning: Channels at 10000000000 Hz sample faster than the time column can distinguish, so
+warning: Channels at 3000000000000000 Hz sample faster than the time column can distinguish, so
          consecutive rows in signals.csv carry the same time_s value.
          Every sample is written, in order. Use the row number rather than time_s to tell
          them apart, or convert one rate at a time with --channels.
 ```
+
+Up to 0.5.23 this section gave the bound as nine places and a gigahertz, and showed that warning at 10 GHz — a rate that in fact terminates at ten places and is written exactly. Both were true before 0.4.55 raised the search bound.
 
 **What edf2csv does.** Writes every sample, in file order. Nothing is dropped — what stops being true is that `time_s` identifies a row, so joining or plotting on it collapses samples that are genuinely distinct.
 

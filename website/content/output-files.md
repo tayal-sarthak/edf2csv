@@ -117,8 +117,9 @@ minimum of three.
 
 The interval between samples is `1 / rate`. That fraction has a terminating decimal expansion of
 `d` places exactly when `10^d` divides evenly by the rate. `edf2csv` searches for the smallest such
-`d` up to nine places and uses it, so sample times are written exactly rather than rounded, and
-`time_s * rate` comes back as a whole row number instead of `8191.999999`.
+`d` up to fifteen places and uses it, so sample times are written exactly rather than rounded, and
+`time_s * rate` comes back as a whole row number instead of `8191.999999`. Fifteen is the bound
+because `10^16` is past 2^53, where the integer test stops being able to tell.
 
 | Sampling rate | 1 / rate | Decimals in `time_s` | Exact? |
 | --- | --- | --- | --- |
@@ -129,7 +130,8 @@ The interval between samples is `1 / rate`. That fraction has a terminating deci
 | 500 Hz | 0.002 | 3 | yes |
 | 512 Hz | 0.001953125 | 9 | yes |
 | 1000 Hz | 0.001 | 3 | yes |
-| 1024 Hz | 0.0009765625 | 7 | rounded |
+| 1024 Hz | 0.0009765625 | 10 | yes |
+| 4096 Hz | 0.000244140625 | 12 | yes |
 | 3 Hz | 0.333... | 4 | rounded |
 
 256 Hz is the case that comes up most in practice. Written with three decimals, sample 1 of a
@@ -137,11 +139,15 @@ The interval between samples is `1 / rate`. That fraction has a terminating deci
 Written with eight, it's `0.00390625`, the exact value, and `time_s * 256` is an integer for every
 row in the file.
 
-Two kinds of rate fall outside this. A rate whose reciprocal doesn't terminate at all, such as
-3 Hz, gets enough places to keep consecutive samples distinct and no more. A rate needing more than
-nine places, such as 1024 Hz, is capped and the times are rounded. In both cases the column is
-marked "rounded" above: the times are accurate to within a fraction of a sample period, but
-multiplying them by the rate won't land on exact integers.
+One kind of rate falls outside this: one whose reciprocal doesn't terminate at all, such as 3 Hz.
+It gets enough places to keep consecutive samples distinct and no more, and is marked "rounded"
+above — the times are accurate to within a fraction of a sample period, but multiplying them by the
+rate won't land on exact integers.
+
+Every power of two through 32768 Hz terminates inside fifteen places, so every rate a recording is
+likely to use is written exactly. Up to 0.5.23 this section said the search stopped at nine and
+listed 1024 Hz as rounded at seven places; the bound has been fifteen since 0.4.55, and 1024 Hz
+gets ten and is exact.
 
 `--decimals` doesn't affect this column. It sets the precision of the signal values only.
 
