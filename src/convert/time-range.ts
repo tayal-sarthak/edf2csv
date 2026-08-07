@@ -133,12 +133,38 @@ export interface ResolvedRange {
   recordingEndSeconds: number;
 }
 
-/** Slack for comparisons at sample/window boundaries. */
+/**
+ * Slack for comparisons at sample/window boundaries.
+ *
+ * A nanosecond is far below any real sampling interval — 20 kHz is 50 microseconds — so it
+ * absorbs the arithmetic error in `recordStart + sample / rate` without reaching a
+ * neighbouring sample.
+ */
 export const BOUNDARY_TOLERANCE = 1e-9;
 
+/**
+ * The slack to use for a channel sampled this often.
+ *
+ * Never as much as half a sample interval, because slack that reaches the next sample stops
+ * being slack. A fixed nanosecond was applied whatever the rate, and the format does not
+ * oblige the interval to be larger than it: EDF's record duration is an 8-character field
+ * that accepts `1e-9`. A recording of two 1 ns records holding ten samples each wrote ten of
+ * its twenty rows — the window ends at 2e-9, the comparison asked for `time < 2e-9 - 1e-9`,
+ * and the entire second record failed it. Exit 0, no warning, half the samples gone.
+ */
+export function toleranceFor(rate: number): number {
+  if (!(rate > 0) || !Number.isFinite(rate)) return BOUNDARY_TOLERANCE;
+  return Math.min(BOUNDARY_TOLERANCE, 1 / rate / 2);
+}
+
 /** Match the exact half-open boundary rules used while writing signal rows. */
-export function sampleTimeIsInRange(time: number, startSeconds: number, endSeconds: number): boolean {
-  return time >= startSeconds - BOUNDARY_TOLERANCE && time < endSeconds - BOUNDARY_TOLERANCE;
+export function sampleTimeIsInRange(
+  time: number,
+  startSeconds: number,
+  endSeconds: number,
+  tolerance: number = BOUNDARY_TOLERANCE,
+): boolean {
+  return time >= startSeconds - tolerance && time < endSeconds - tolerance;
 }
 
 /** Count samples from one record that fall inside a half-open requested window. */
@@ -149,11 +175,12 @@ export function countSamplesInRange(options: {
   startSeconds: number;
   endSeconds: number;
 }): number {
+  const slack = toleranceFor(options.rate);
   const lower = Math.ceil(
-    (options.startSeconds - BOUNDARY_TOLERANCE - options.recordStart) * options.rate,
+    (options.startSeconds - slack - options.recordStart) * options.rate,
   );
   const upper = Math.ceil(
-    (options.endSeconds - BOUNDARY_TOLERANCE - options.recordStart) * options.rate,
+    (options.endSeconds - slack - options.recordStart) * options.rate,
   );
   const first = Math.max(0, Math.min(options.samplesPerRecord, lower));
   const last = Math.max(0, Math.min(options.samplesPerRecord, upper));

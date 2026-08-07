@@ -183,6 +183,32 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     });
   }
 
+  /*
+    A time column that cannot tell two samples apart.
+
+    Sample times are written to at most nine decimal places, which separates everything up to
+    a gigahertz. Below that the column repeats: a recording of 1 ns records holding ten
+    samples each writes twenty rows carrying three distinct times, so joining or plotting on
+    `time_s` silently collapses them. Nothing is lost from the file — every sample is there,
+    in order — but the column stops being an identifier, and that is worth saying rather than
+    leaving to be discovered.
+  */
+  for (const group of groups) {
+    const step = group.rate > 0 ? 1 / group.rate : 0;
+    if (step > 0 && step < 10 ** -group.timeDecimals) {
+      diagnostics.push({
+        code: 'TIME_RESOLUTION',
+        severity: 'warning',
+        message:
+          `Channels at ${formatRate(group.rate)} Hz sample faster than the time column can ` +
+          `distinguish, so consecutive rows in ${group.fileName} carry the same time_s value.`,
+        hint:
+          'Every sample is written, in order. Use the row number rather than time_s to tell ' +
+          'them apart, or convert one rate at a time with --channels.',
+      });
+    }
+  }
+
   if (estimate.exceedsSpreadsheetLimit) {
     diagnostics.push({
       code: 'LARGE_OUTPUT',

@@ -194,6 +194,22 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // Samples arriving faster than a nanosecond apart.
+  //
+  // Two records of 1e-9 s holding ten samples each: twenty samples, an interval of 1e-10 s.
+  // The boundary slack used to decide which samples fall inside the requested window was a
+  // flat nanosecond — larger than the interval itself — so `time < end - 1e-9` excluded the
+  // whole second record and ten of the twenty rows vanished with no warning. The format
+  // permits it: record duration is an 8-character field that accepts 1e-9.
+  writeEdf({
+    path: at('sub-nanosecond.edf'),
+    numRecords: 2,
+    recordDuration: 0.000000001,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 10, gen: (r, s) => r * 10 + s },
+    ],
+  });
+
   // A perfectly ordinary contiguous EDF+C recording whose record duration is not a whole
   // number of seconds.
   //

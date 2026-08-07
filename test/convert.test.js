@@ -779,6 +779,36 @@ describe('converting', () => {
     );
   });
 
+  it('keeps the boundary slack under one sample interval', async () => {
+    // The slack for deciding which samples fall inside the requested window was a flat
+    // nanosecond, applied whatever the rate — and the format does not oblige the sample
+    // interval to be larger than that. Two records of 1e-9 s holding ten samples each wrote
+    // ten of their twenty rows: the window ends at 2e-9, the comparison asked for
+    // `time < 2e-9 - 1e-9`, and the entire second record failed it. Exit 0, no warning.
+    const dir = await outDir();
+    const result = await convert(fixture('sub-nanosecond.edf'), { outputDir: dir });
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.equal(rows.length - 1, 20, 'every sample must be written');
+
+    // Slack that reaches the next sample is not slack. Above a gigahertz the time column
+    // cannot separate them either, which is a different loss and gets its own warning.
+    const notice = result.diagnostics.find((d) => d.code === 'TIME_RESOLUTION');
+    assert.ok(notice, `the repeated time column must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.hint, /Every sample is written, in order/u);
+    const times = new Set(rows.slice(1).map((row) => row.split(',')[0]));
+    assert.ok(times.size < 20, 'and it is genuinely repeated, which is why it is worth saying');
+  });
+
+  it('leaves an ordinary sampling rate alone', async () => {
+    for (const name of ['tiny.edf', 'mixed-rates.edf', 'long-stream.edf', 'many-rates.edf']) {
+      const result = await convert(fixture(name), { outputDir: await outDir(), quiet: true });
+      assert.ok(
+        !result.diagnostics.some((d) => d.code === 'TIME_RESOLUTION'),
+        `${name} raised TIME_RESOLUTION`,
+      );
+    }
+  });
+
   it('measures a record against what the file can express, not against equality', async () => {
     // 0.4.41 asked whether the declared start and the contiguous one were the same double.
     // They are not: a recording of 0.1s records sitting at 0.1, 0.2, 0.3 ... is contiguous

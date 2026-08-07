@@ -32,7 +32,7 @@ import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts } from './timing.js';
-import { sampleTimeIsInRange } from './time-range.js';
+import { sampleTimeIsInRange, toleranceFor } from './time-range.js';
 import { VERSION as TOOL_VERSION } from '../version.js';
 
 export { TOOL_VERSION };
@@ -590,10 +590,12 @@ async function streamSignalRows(
       for (const entry of open) {
         const { group, writer, formatters, formatTime } = entry;
         const { channels, rate } = group;
+        // Slack that never reaches the next sample; see toleranceFor.
+        const slack = toleranceFor(rate);
 
         for (let sample = 0; sample < group.samplesPerRecord; sample++) {
           const time = recordStart + sample / rate;
-          if (!sampleTimeIsInRange(time, startSeconds, endSeconds)) continue;
+          if (!sampleTimeIsInRange(time, startSeconds, endSeconds, slack)) continue;
 
           let row = formatTime(recordStart, sample);
           for (let c = 0; c < channels.length; c++) {

@@ -68,6 +68,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NONPRINTABLE_LABEL` | A channel's label or unit contains control characters |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
+| `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
 
 ## File structure and integrity
 
@@ -288,6 +289,23 @@ warning: Signal 2 is labelled "T8_ch0", which is also the column name another ch
 ```
 
 No two columns in `signals.csv` ever share a name, so the `channels.csv` join always resolves.
+
+### TIME_RESOLUTION
+
+Sample times are written to at most nine decimal places, which separates everything up to a gigahertz. Faster than that and the column repeats.
+
+**Cause.** A record duration small enough that `samples_per_record / record_duration` exceeds 1 GHz. EDF's record-duration field is 8 characters and accepts `1e-9`, so the format permits it; no biosignal recording does.
+
+```
+warning: Channels at 10000000000 Hz sample faster than the time column can distinguish, so
+         consecutive rows in signals.csv carry the same time_s value.
+         Every sample is written, in order. Use the row number rather than time_s to tell
+         them apart, or convert one rate at a time with --channels.
+```
+
+**What edf2csv does.** Writes every sample, in file order. Nothing is dropped — what stops being true is that `time_s` identifies a row, so joining or plotting on it collapses samples that are genuinely distinct.
+
+**What to do.** Use the row number. Until 0.4.55 this went further than a repeated column: the boundary slack used when deciding which samples fall inside the requested window was a flat nanosecond, larger than the sample interval itself, and a recording of two 1 ns records holding ten samples each wrote ten of its twenty rows with no warning at all.
 
 ## Timing, continuity and annotations
 
