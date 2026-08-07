@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.19
+
+### Fixed: the long layout's tie order broke where two rates land a ULP apart
+
+0.5.9 made channels sharing an instant come out in the order the file declares them, and
+tested that on the double. Two exact divisions of the same instant need not give the same
+double. A 0.3 s record holding 12 and 4 samples is 40 Hz and 13.333… Hz: sample 9 of the fast
+channel is 9/40 = 0.22500000000000000555, sample 3 of the slow one is 3/13.333… =
+0.22499999999999997780. Equality does not see that, so those two rows fell out in numeric
+order — `slow` before `fast`, once, in the middle of a file that was otherwise right.
+
+Two rows are at one time exactly when they carry the same `time_s`, which is the only
+definition a reader of the CSV can apply, so that is the test now. A relative epsilon keeps
+the common case to one numeric comparison; the formatted times are only compared for
+candidates already within a hair of each other. Deciding on the text rather than a tolerance
+also means the column can never step backwards to satisfy an ordering rule. An eight-hour
+three-rate conversion runs no slower.
+
+### Changed: the layout harness reports why, not just that
+
+`npm run layouts` said "long refused what wide accepted" and nothing else, which sent me
+looking for a defect that turned out to be a transient filesystem failure under load. It
+carries the tool's own message now. A harness that reports a disagreement without the
+evidence for it costs more than it saves.
+
 ## 0.5.18
 
 ### Fixed: argument order decided a recording's output directory, and whether the run happened

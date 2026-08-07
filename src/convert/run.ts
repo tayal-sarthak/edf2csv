@@ -716,6 +716,37 @@ async function writeSignalFiles(
  * Ties go to the group with the higher rate, which is the order the groups are already in.
  * Within a sample time the channels come out in the order the file declares them.
  */
+/**
+ * Whether two sample times are close enough that only rounding could separate them.
+ *
+ * A relative epsilon, because the gap between doubles grows with magnitude. Well below any
+ * real sample interval — the finest a recording can declare is bounded by its record
+ * duration and samples-per-record fields — and well above the one-ULP disagreement that two
+ * exact divisions of the same instant produce.
+ */
+function nearlyEqual(a: number, b: number): boolean {
+  return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-12;
+}
+
+/** The chosen instant as it will be written, for deciding which channels share it. */
+function formatAt(
+  open: readonly OpenGroup[],
+  cursors: Int32Array,
+  recordStart: number,
+  earliest: number,
+): string {
+  for (let g = 0; g < open.length; g++) {
+    const entry = open[g];
+    if (!entry) continue;
+    const sample = cursors[g] ?? 0;
+    if (sample >= entry.group.samplesPerRecord) continue;
+    if (recordStart + sample / entry.group.rate === earliest) {
+      return entry.formatTime(recordStart, sample);
+    }
+  }
+  return '';
+}
+
 async function writeLongRecord(
   file: EdfFile,
   open: readonly OpenGroup[],
@@ -751,14 +782,30 @@ async function writeLongRecord(
       sampling rate — so a recording declaring `slow, medium, fast` wrote `fast, medium,
       slow`, while the documentation promised file order and channels.csv listed file order.
       Signal index is the file's own order, and the only one a reader can predict.
+
+      "At this instant" is decided on the time as written, not on the double. `s / rate` for
+      two channels at one moment need not give the same double: a 0.3 s record holding 12 and
+      4 samples makes 40 Hz and 13.333… Hz, and 9/40 is 0.22500000000000000555 while 3/13.333…
+      is 0.22499999999999997780. Equality missed that, so those two rows fell out in numeric
+      order — `slow` before `fast`, once, in the middle of a file that was otherwise right.
+
+      Two rows are at one time exactly when they carry the same `time_s`, which is the only
+      definition a reader of the CSV can apply. The numeric pre-filter keeps the common case
+      to one comparison; formatting happens only for candidates already within a hair.
     */
+    const earliestText = formatAt(open, cursors, recordStart, earliest);
     due.length = 0;
     for (let g = 0; g < open.length; g++) {
       const entry = open[g];
       if (!entry) continue;
       const sample = cursors[g] ?? 0;
       if (sample >= entry.group.samplesPerRecord) continue;
-      if (recordStart + sample / entry.group.rate !== earliest) continue;
+      const time = recordStart + sample / entry.group.rate;
+      if (time !== earliest) {
+        // Far away in the ordinary case; only a near-tie is worth formatting.
+        if (!nearlyEqual(time, earliest)) continue;
+        if (entry.formatTime(recordStart, sample) !== earliestText) continue;
+      }
       cursors[g] = sample + 1;
       // Same window rule as the wide layout, with the same per-rate slack.
       if (

@@ -47,14 +47,19 @@ function unquote(cell) {
   return cell.startsWith('"') ? cell.slice(1, -1).replaceAll('""', '"') : cell;
 }
 
+/**
+ * Returns null on success, or what the tool said on failure.
+ *
+ * The message matters: a bare "long refused what wide accepted" sent me looking for a defect
+ * that was a transient filesystem failure under load. A harness that reports a disagreement
+ * without the evidence for it costs more than it saves.
+ */
 function convert(args) {
   try {
-    execFileSync(process.execPath, [CLI, ...args], { stdio: 'ignore' });
-    return true;
-  } catch {
-    // A recording or window this refuses is refused in both layouts, and is reported by the
-    // other harnesses. There is nothing to compare.
-    return false;
+    execFileSync(process.execPath, [CLI, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
+    return null;
+  } catch (error) {
+    return String(error.stderr ?? error.message).trim().split('\n')[0] || 'no message';
   }
 }
 
@@ -75,12 +80,15 @@ export function sweepLayouts() {
       const wide = path.join(base, 'wide');
       const long = path.join(base, 'long');
       try {
-        if (!convert([source, '--out', wide, '--quiet', ...options])) {
+        // A recording or window the wide layout refuses is refused for a reason the other
+        // harnesses cover; there is nothing here to compare.
+        if (convert([source, '--out', wide, '--quiet', ...options]) !== null) {
           skipped++;
           continue;
         }
-        if (!convert([source, '--out', long, '--layout', 'long', '--quiet', ...options])) {
-          problems.push(`${name} ${options.join(' ')}: long refused what wide accepted`);
+        const refusal = convert([source, '--out', long, '--layout', 'long', '--quiet', ...options]);
+        if (refusal !== null) {
+          problems.push(`${name} ${options.join(' ')}: long refused what wide accepted — ${refusal}`);
           continue;
         }
         compared++;

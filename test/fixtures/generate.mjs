@@ -581,6 +581,25 @@ export function generate() {
   });
 
   /*
+    Two channels whose sample times coincide mathematically but not in binary.
+
+    A 0.3 s record holding 12 and 4 samples is 40 Hz and 13.333… Hz. Sample 9 of the fast
+    channel is 9/40 = 0.22500000000000000555; sample 3 of the slow one is 3/13.333… =
+    0.22499999999999997780. The same instant, one ULP apart — so a tie test written as
+    equality does not see it, and those two rows fall out in numeric order rather than in
+    the order the file declares its channels. Once, in the middle of a file otherwise right.
+  */
+  writeEdf({
+    path: at('fractional-tie.edf'),
+    numRecords: 2,
+    recordDuration: 0.3,
+    signals: [
+      { label: 'fast', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 12, gen: (record, i) => 100 + record * 12 + i },
+      { label: 'slow', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (record, i) => 500 + record * 4 + i },
+    ],
+  });
+
+  /*
     Channels declared slowest first, which is the opposite of the order the rates group in.
 
     Rate groups are ordered by rate, largest first, because that is how the wide layout names

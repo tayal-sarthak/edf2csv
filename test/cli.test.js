@@ -1686,6 +1686,38 @@ describe('--layout long', () => {
     assert.deepEqual(channels, ['slow', 'medium', 'fast']);
   });
 
+  it('holds that order when two rates land on one instant a ULP apart', async () => {
+    /*
+      0.5.9 made tied channels come out in file order and tested equality on the double. Two
+      exact divisions of the same instant need not give the same double: a 0.3 s record with
+      12 and 4 samples is 40 Hz and 13.333… Hz, and 9/40 is 0.22500000000000000555 while
+      3/13.333… is 0.22499999999999997780. So at that one instant the rows fell out in
+      numeric order — `slow` before `fast` — in a file that was otherwise right.
+
+      Two rows are at one time exactly when they carry the same `time_s`, which is the only
+      definition a reader of the CSV can apply.
+    */
+    const dir = await outDir();
+    await cli([fixture('fractional-tie.edf'), '--out', dir, '--layout', 'long', '--quiet']);
+    const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+
+    // Group by the time as written, which is what the reader sees.
+    const byTime = new Map();
+    for (const row of rows.slice(1)) {
+      const [time, channel] = row.split(',');
+      (byTime.get(time) ?? byTime.set(time, []).get(time)).push(channel);
+    }
+    const shared = [...byTime.entries()].filter(([, channels]) => channels.length > 1);
+    assert.ok(shared.length >= 4, `expected several shared instants, found ${shared.length}`);
+    for (const [time, channels] of shared) {
+      assert.deepEqual(channels, ['fast', 'slow'], `at ${time}`);
+    }
+
+    // And the column never steps backwards, which is what deciding on the text preserves.
+    const times = rows.slice(1).map((row) => Number(row.split(',')[0]));
+    for (let i = 1; i < times.length; i++) assert.ok(times[i] >= times[i - 1], `at row ${i}`);
+  });
+
   it('says so when the one recording it cannot sort turns up', async () => {
     /*
       The sorted-rows promise rests on every sample of a record falling inside that record's
