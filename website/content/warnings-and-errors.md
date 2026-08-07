@@ -304,7 +304,7 @@ No two columns in `signals.csv` ever share a name, so the `channels.csv` join al
 
 Sample times are written to at most nine decimal places, which separates everything up to a gigahertz. Faster than that and the column repeats.
 
-**Cause.** A rate above 1 GHz whose sample interval has no terminating decimal expansion — 3e10 Hz, say, where 1/3e10 repeats forever. A rate that does terminate gets as many places as it needs, up to fifteen, so every power of two through 32768 Hz is written exactly. EDF's record-duration field is 8 characters and accepts `1e-9`, so the format permits these rates; no biosignal recording uses them.
+**Cause.** A sample interval finer than fifteen decimal places can express, and with no terminating expansion to find — 3e15 Hz, say, where 1/3e15 repeats forever. A rate that terminates gets as many places as it needs up to fifteen, so every power of two through 32768 Hz is written exactly; one that repeats gets as many as it takes to keep consecutive samples apart, to the same limit. EDF's record-duration field is 8 characters and accepts `1e-15`, so the format permits these rates; nothing that records biosignals comes within nine orders of magnitude of them.
 
 ```
 warning: Channels at 10000000000 Hz sample faster than the time column can distinguish, so

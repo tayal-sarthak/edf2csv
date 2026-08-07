@@ -859,10 +859,10 @@ describe('converting', () => {
   });
 
   it('says so when the rate has no exact expansion to fall back on', async () => {
-    // Three samples in 1e-10 s is 3e10 Hz, and 1/3e10 repeats forever, so the column falls
-    // back to its nine-place cap and cannot separate consecutive samples. Every sample is
-    // still written and in order; what stops being true is that time_s identifies a row,
-    // and joining or plotting on it silently collapses them.
+    // Three samples in 1e-15 s is 3e15 Hz, and 1/3e15 repeats forever, so there is no exact
+    // expansion to find and even the fallback's fifteen places cannot separate consecutive
+    // samples. Every sample is still written and in order; what stops being true is that
+    // time_s identifies a row, and joining or plotting on it silently collapses them.
     const dir = await outDir();
     const result = await convert(fixture('repeating-fast.edf'), { outputDir: dir });
     const rows = await readCsv(dir, 'signals.csv');
@@ -873,6 +873,24 @@ describe('converting', () => {
     assert.match(notice.hint, /Every sample is written, in order/u);
     const times = new Set(rows.slice(1).map((row) => row.split(',')[0]));
     assert.ok(times.size < 6, 'and the column really does repeat, which is why it is said');
+  });
+
+  it('reaches far enough to separate samples before giving up on them', async () => {
+    // The fallback for a rate with no exact expansion is meant to use "enough places to keep
+    // consecutive samples distinct", and stopped at nine — which at 3e10 Hz, where the
+    // interval is 3.3e-11, rounded every sample in a record to one timestamp. A column that
+    // cannot tell two samples apart is not keeping them distinct.
+    const { timeDecimals } = await import('../dist/format/number.js');
+    for (const rate of [333, 3e6, 3e10]) {
+      const decimals = timeDecimals(rate);
+      const interval = 1 / rate;
+      assert.ok(
+        interval >= 10 ** -decimals,
+        `${rate} Hz gets ${decimals} places for an interval of ${interval}`,
+      );
+    }
+    // And it stops at fifteen rather than growing without bound.
+    assert.ok(timeDecimals(3e15) <= 15);
   });
 
   it('leaves an ordinary sampling rate alone', async () => {

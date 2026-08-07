@@ -118,15 +118,21 @@ export function makeSampleFormatter(signal: EdfSignal, decimals: number): Sample
  * double can no longer hold every integer, and `Number.isInteger(10 ** 17 / 3)` is true — so a
  * larger bound reports a terminating expansion for rates that have none, and 3 Hz would ask
  * for seventeen decimals of a number that repeats forever.
+ *
+ * The fallback is bounded by the same fifteen. It used to stop at nine, which defeated the
+ * one thing it exists to do: at 3e10 Hz — non-terminating, so no exact expansion to find —
+ * the interval is 3.3e-11 and nine places rounded every sample in a record to the same
+ * timestamp. A column that cannot tell two samples apart is not keeping them distinct, which
+ * is what this branch is for.
  */
-const MAX_EXACT_TIME_DECIMALS = 15;
+const MAX_TIME_DECIMALS = 15;
 
 export function timeDecimals(samplingRate: number): number {
   if (!(samplingRate > 0) || !Number.isFinite(samplingRate)) return 3;
-  for (let d = 0; d <= MAX_EXACT_TIME_DECIMALS; d++) {
+  for (let d = 0; d <= MAX_TIME_DECIMALS; d++) {
     if (Number.isInteger(10 ** d / samplingRate)) return Math.max(3, d);
   }
-  return Math.min(9, Math.max(3, Math.ceil(Math.log10(samplingRate)) + 3));
+  return Math.min(MAX_TIME_DECIMALS, Math.max(3, Math.ceil(Math.log10(samplingRate)) + 3));
 }
 
 /** Human-readable byte size for warnings and summaries. */

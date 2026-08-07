@@ -210,16 +210,17 @@ export function generate() {
     ],
   });
 
-  // A rate above a gigahertz whose sample interval does not terminate.
+  // A rate whose sample interval is finer than fifteen decimal places can express.
   //
-  // Three samples in 1e-10 s is 3e10 Hz, and 1/3e10 repeats forever, so the time column falls
-  // back to its nine-place cap and cannot separate consecutive samples. Every sample is still
-  // written; what stops being true is that time_s identifies a row. This is what is left of
-  // TIME_RESOLUTION once the exact-expansion search reaches fifteen places.
+  // Three samples in 1e-15 s is 3e15 Hz, and 1/3e15 repeats forever, so there is no exact
+  // expansion to find and the fallback's fifteen places still cannot separate consecutive
+  // samples. Every sample is written; what stops being true is that time_s identifies a row.
+  // This is what is left of TIME_RESOLUTION once both the search and the fallback reach
+  // fifteen — a rate no recording has, kept so the warning has something that raises it.
   writeEdf({
     path: at('repeating-fast.edf'),
     numRecords: 2,
-    recordDuration: 0.0000000001,
+    recordDuration: 1e-15,
     signals: [
       { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 3, gen: (r, s) => r * 3 + s },
     ],
