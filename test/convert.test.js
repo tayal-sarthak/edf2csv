@@ -779,6 +779,34 @@ describe('converting', () => {
     );
   });
 
+  it('calls a channel inverted when its gain is negative, not when one pair looks odd', async () => {
+    // The gain is (physMax - physMin) / (digMax - digMin), so the sign of that fraction is
+    // what inverts a channel. Reversing exactly one pair does it; reversing both leaves a
+    // positive gain and a channel that is not inverted at all. The documentation described
+    // the trigger as the physical pair on its own, which is neither what the code does nor
+    // what the format means — and the code is the one that is right.
+    const file = await EdfFile.open(fixture('reversed-bounds.edf'));
+    const raised = file.diagnostics.filter((d) => d.code === 'INVERTED_PHYSICAL_RANGE');
+    await file.close();
+
+    assert.equal(raised.length, 2, `one per genuinely inverted channel: ${raised.length}`);
+    assert.match(raised[0].message, /Signal 0 \("phys-only"\).*physical minimum 100 above/u);
+    // The message names whichever pair is actually reversed.
+    assert.match(raised[1].message, /Signal 1 \("dig-only"\).*digital minimum 1000 above/u);
+    assert.ok(!raised.some((d) => /"both"/u.test(d.message)), 'both reversed is a positive gain');
+
+    // And the values follow the gain. Only the channel whose digital bounds are the right
+    // way round can be checked this way: the fixture writer clamps generated samples to the
+    // declared digital range, and a reversed range clamps every one of them to the same
+    // value — so those two columns are constant by construction of the fixture rather than
+    // by anything the converter did.
+    const dir = await outDir();
+    await convert(fixture('reversed-bounds.edf'), { outputDir: dir, quiet: true });
+    const rows = (await readCsv(dir, 'signals.csv')).slice(1).map((r) => r.split(',').map(Number));
+    assert.equal(rows[0][1], 0, 'phys-only starts at its physical maximum');
+    assert.ok(rows[rows.length - 1][1] < rows[0][1], 'and falls, because its gain is negative');
+  });
+
   it('keeps the boundary slack under one sample interval', async () => {
     // The slack for deciding which samples fall inside the requested window was a flat
     // nanosecond, applied whatever the rate — and the format does not oblige the sample

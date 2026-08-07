@@ -54,7 +54,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `DEGENERATE_DIGITAL_RANGE` | A channel's digital minimum equals its digital maximum |
 | `DEGENERATE_PHYSICAL_RANGE` | A channel's physical minimum equals its physical maximum |
 | `UNUSABLE_PHYSICAL_RANGE` | A channel's physical range is too wide to represent |
-| `INVERTED_PHYSICAL_RANGE` | A channel's physical minimum sits above its physical maximum |
+| `INVERTED_PHYSICAL_RANGE` | A channel's calibration inverts its polarity: exactly one of its two bounds pairs is reversed |
 | `NO_SAMPLES` | A channel declares zero samples per data record |
 | `EMPTY_LABEL` | A channel has a blank label |
 | `DUPLICATE_LABEL` | Two or more channels share a label, or a `--channels` term matched several |
@@ -208,9 +208,17 @@ either side of it are unaffected.
 
 ### INVERTED_PHYSICAL_RANGE
 
-A channel declares a physical minimum that's greater than its physical maximum.
+A channel's calibration inverts its polarity.
 
-**Cause.** This is sometimes a mistake and sometimes deliberate. Some hardware records a channel with inverted polarity and expresses that by swapping the physical bounds, which is a legitimate reading of the specification. Others simply wrote the fields in the wrong order.
+The gain is `(physical_max - physical_min) / (digital_max - digital_min)`, so what makes a channel inverted is the sign of that fraction, not the physical pair on its own. Reversing exactly one of the two pairs makes it negative; reversing both leaves it positive, and such a channel is not inverted at all:
+
+| physical bounds | digital bounds | gain | raised |
+| --- | --- | --- | --- |
+| reversed | normal | negative | yes |
+| normal | reversed | negative | yes |
+| reversed | reversed | positive | no |
+
+**Cause.** This is sometimes a mistake and sometimes deliberate. Some hardware records a channel with inverted polarity and expresses that by swapping one pair of bounds, which is a legitimate reading of the specification. Others simply wrote the fields in the wrong order.
 
 **What edf2csv does.** Converts exactly as the header specifies, inversion included. Overriding the header would silently flip the sign of real data.
 
@@ -218,6 +226,8 @@ A channel declares a physical minimum that's greater than its physical maximum.
 warning: Signal 3 ("inverted") declares physical minimum 100 above physical maximum -100, which inverts its polarity.
          The values are converted exactly as the header specifies, inversion included.
 ```
+
+The message names whichever pair is reversed, so a file with its digital bounds the wrong way round says so rather than reporting the physical ones.
 
 **What to do.** Check the sign of a feature you can recognise, for example the direction of the R wave on an ECG channel or the polarity of a known artefact. If the polarity is wrong for your purposes, negate the column in your analysis. Don't assume edf2csv corrected it.
 

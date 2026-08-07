@@ -194,6 +194,26 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  // The three ways a calibration can have its bounds the wrong way round.
+  //
+  // The gain is (physMax - physMin) / (digMax - digMin), so the sign of that fraction is
+  // what makes a channel inverted — not the physical pair alone. Reversing exactly one pair
+  // inverts it; reversing both leaves a positive gain and a channel that is not inverted at
+  // all, which is why warning on the physical pair by itself was wrong in both directions.
+  writeEdf({
+    path: at('reversed-bounds.edf'),
+    numRecords: 1,
+    recordDuration: 1,
+    signals: [
+      { label: 'phys-only', dimension: 'uV', physMin: 100, physMax: -100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => s * 100 },
+      // The writer clamps to the declared digital range, and a reversed range clamps every
+      // sample to one value — so these two columns are constant by construction. What they
+      // are here to exercise is which diagnostic the header raises, not the values.
+      { label: 'dig-only', dimension: 'uV', physMin: -100, physMax: 100, digMin: 1000, digMax: -1000, samplesPerRecord: 4, gen: (r, s) => s * 100 },
+      { label: 'both', dimension: 'uV', physMin: 100, physMax: -100, digMin: 1000, digMax: -1000, samplesPerRecord: 4, gen: (r, s) => s * 100 },
+    ],
+  });
+
   // Samples arriving faster than a nanosecond apart.
   //
   // Two records of 1e-9 s holding ten samples each: twenty samples, an interval of 1e-10 s.
