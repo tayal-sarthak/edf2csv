@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.13
+
+### Fixed: the test suite reached for a website dependency, and every publish since 0.5.1 failed
+
+0.5.1 stopped the link checker carrying its own copy of the site's slug rule and had it
+import `slugify` from `website/src/lib/markdown.js` instead. That file imports `marked`.
+
+The package has no dependencies, deliberately, and `npm test` runs with none installed —
+which is a claim the correctness page makes in as many words. So the release workflow failed
+on `Cannot find package 'marked'` for 0.5.1 through 0.5.12, and npm stayed on 0.5.0 while
+twelve tags, twelve GitHub releases and twelve sets of green local tests said otherwise. It
+passed here because this machine has the website's `node_modules` sitting next to the
+package's.
+
+`slugify` is its own module now, `website/src/lib/slug.js`, importing nothing. The renderer
+imports it and re-exports it; the test imports it directly. Both callers share the function
+without sharing a dependency graph.
+
+Verified the way it should have been the first time: a fresh clone, `npm ci`, no website
+`node_modules` anywhere, all 253 tests passing.
+
 ## 0.5.12
 
 ### Fixed: the summary claimed a conversion for a reader that stopped reading

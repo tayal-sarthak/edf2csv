@@ -7,6 +7,9 @@
 
 import { marked } from 'marked';
 import { highlight } from './highlight.js';
+import { slugify } from './slug.js';
+
+export { slugify };
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -24,13 +27,7 @@ export function splitFrontmatter(raw) {
   return { meta, body: raw.slice(match[0].length) };
 }
 
-export function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
-}
+
 
 const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
 

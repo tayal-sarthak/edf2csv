@@ -175,8 +175,13 @@ describe('documentation and source agree on their lists', () => {
       the page and was `layout` here: this would have called a working link broken, and,
       worse, passed a link to `#layout` that resolves to nothing. A link checker with its own
       idea of where links point is not a link checker.
+
+      From slug.js rather than markdown.js, which imports `marked`. The package has no
+      dependencies and `npm test` runs with none installed, so importing the renderer here
+      broke every publish from 0.5.1 to 0.5.12 on `Cannot find package 'marked'` — while the
+      suite passed on a machine where the website's node_modules happened to be there.
     */
-    const { slugify } = await import(path.join(ROOT, 'website/src/lib/markdown.js'));
+    const { slugify } = await import(path.join(ROOT, 'website/src/lib/slug.js'));
     const { readdir } = await import('node:fs/promises');
 
     const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) => n.endsWith('.md'));
