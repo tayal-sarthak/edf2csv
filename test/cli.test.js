@@ -925,6 +925,29 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('states a recording\'s length the way --info states it', async () => {
+    // The message whose job is to tell you how long the recording actually is rendered it as
+    // a bare number of seconds, while --info printed the humanised form for the same file in
+    // the same session: "6m 40s" against "400s", and "7950s recording" on an overnight file,
+    // leaving the reader to divide by 3600 to judge whether their --start was reasonable.
+    // cli-reference.md has always documented it humanised, a form no input could produce.
+    const info = await cli([fixture('long-stream.edf'), '--info']);
+    const duration = /Duration\s+(\S+(?: \S+)*?)\s+\(/u.exec(info.stdout);
+    assert.ok(duration, info.stdout);
+    assert.equal(duration[1], '6m 40s');
+
+    const past = await cli([fixture('long-stream.edf'), '--start', '10m', '--out', await outDir()]);
+    assert.equal(past.code, 2, past.stderr);
+    assert.match(past.stderr, /at or past the end of this 6m 40s recording/u);
+    // The typed value still comes back exactly as it was written.
+    assert.match(past.stderr, /--start "10m"/u);
+
+    // A recording short enough that the two renderings coincide is unchanged, which is the
+    // case the reference's other example uses.
+    const short = await cli([fixture('tiny.edf'), '--start', '600s', '--out', await outDir()]);
+    assert.match(short.stderr, /at or past the end of this 2s recording/u);
+  });
+
   it('says where signals.csv went when there was nothing to put in it', async () => {
     // Selecting a channel that carries zero samples per record leaves no table to write, so
     // the run produces channels.csv and metadata.json and no signals.csv — while the

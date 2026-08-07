@@ -7,6 +7,8 @@
  * a message that shows the forms that work.
  */
 
+import { formatDuration } from '../format/number.js';
+
 export class TimeRangeError extends Error {
   constructor(message: string) {
     super(message);
@@ -238,8 +240,21 @@ export function resolveRange(options: {
       invisible.
     */
     throw new TimeRangeError(
+      /*
+        The recording's length in the same words --info uses for it.
+
+        `formatSeconds` renders a bare number of seconds, so this message and the Duration
+        line disagreed about one file in one session: --info said "6m 40s" and the error said
+        "400s". On an overnight recording it read "7950s recording", leaving the reader to
+        divide by 3600 to find out whether their --start was reasonable — which is the one
+        question this message exists to answer. cli-reference.md has always documented it
+        humanised ("2h 12m 30s"), a form no input could produce.
+
+        The typed value keeps `quoted`, since that is the user's own text and should come
+        back exactly as they wrote it.
+      */
       `--start ${quoted(options.startText, startSeconds)} is at or past the end of this ` +
-        `${formatSeconds(latest)} recording.`,
+        `${formatDuration(latest)} recording.`,
     );
   }
   if (endSeconds <= startSeconds) {
