@@ -226,8 +226,8 @@ the same arithmetic.
 ## One file per sampling rate
 
 Recordings often mix rates. A sleep study may hold EEG at 256 Hz, ECG at 128 Hz and rectal
-temperature at 1 Hz. These can't share one table without inventing values for the slow channels, so
-each distinct rate gets its own file:
+temperature at 1 Hz. These can't share one *wide* table — a column per channel — without inventing
+values for the slow channels, so each distinct rate gets its own file:
 
 ```bash
 edf2csv sleep-study.edf --out ./converted
@@ -258,6 +258,21 @@ without guessing.
 Joining the rates means deciding what to do about the mismatch. Merging on `time_s` with a nearest
 or backward-fill strategy is one answer, and it's a decision to make in your own code with the
 original sample times in front of you.
+
+The other answer is not to make the rates share a row at all. [`--layout long`](/docs/cli-reference#--layout)
+writes one file whatever the rates are — `time_s`, `channel`, `value`, one row per sample — so each
+sample keeps its own time and nothing has to line up:
+
+```
+time_s,channel,value
+0.00000000,EEG Fpz-Cz,0.061
+0.00000000,ECG,0.00122
+0.00000000,Temp rectal,37.00073
+0.00390625,EEG Fpz-Cz,9.096
+```
+
+Nothing is invented there either; it is the same samples in a different shape. The cost is size,
+since every row repeats the time and the channel name.
 
 ## channels.csv
 

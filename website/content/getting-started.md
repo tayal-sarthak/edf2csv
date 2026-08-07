@@ -87,7 +87,7 @@ The number of decimals in `time_s` is chosen so the sample interval is written e
 
 If two channels in the file share a label, both column names get a `_ch` suffix carrying the channel's position — `T8-P8_ch0`, `T8-P8_ch1` — since position is the only thing that reliably tells them apart.
 
-If the recording mixes sampling rates, there's no single `signals.csv`. You get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, with nothing interpolated. See [Mixed sampling rates](/docs/sampling-rates) for the details.
+If the recording mixes sampling rates, there's no single `signals.csv`. You get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, with nothing interpolated — or one file of `time_s,channel,value` if you pass [`--layout long`](/docs/cli-reference#--layout). See [Mixed sampling rates](/docs/sampling-rates) for the details.
 
 ### channels.csv
 

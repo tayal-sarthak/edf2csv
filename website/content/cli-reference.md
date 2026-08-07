@@ -70,7 +70,7 @@ Anything in the folder that is not a recording is skipped, and a folder holding 
 No EDF or BDF recordings found in "/data/empty".
 ```
 
-`--stdout` still takes a single recording, since one stream holds one table.
+`--stdout` still takes a single recording, since one stream holds one recording's table.
 
 ## Flags at a glance
 
@@ -541,12 +541,20 @@ refuses a mixed-rate file rather than merging tables that have different row cou
 
 ```
 error: --stdout needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
-       Narrow it to one rate with --channels, or convert to a directory instead.
+       Narrow it to one rate with --channels, write --layout long to get them all in one table, or convert to a directory instead.
 ```
 
-`--channels` is usually the answer, since selecting channels that share a rate leaves one table. The
-row count still goes to stderr, so stdout carries nothing but CSV, and the progress meter is never
-drawn in this mode.
+Two answers, and which one fits depends on what you want out of the stream. `--channels` narrows
+the selection until one rate is left, and gives you the wide table for that rate. [`--layout long`](#--layout)
+keeps every channel and puts them in one table by giving each sample its own row, which is the one
+arrangement a mixed-rate recording can take without inventing anything:
+
+```bash
+edf2csv sleep-study.edf --stdout --layout long | head -20
+```
+
+The row count still goes to stderr either way, so stdout carries nothing but CSV, and the progress
+meter is never drawn in this mode.
 
 `--stdout` and `--json` cannot be combined: both write to stdout, and together they would produce a
 document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2).
@@ -667,7 +675,7 @@ fi
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
 - A `--channels` term that matches no channel, a `#N` position that doesn't exist, or `--channels` given with an empty list.
 - A `--decimals` value that's empty, not an integer, or outside 0 to 20.
-- `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate, which would produce more than one table.
+- `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate in the default wide layout, which would produce more than one table. `--layout long` produces one table whatever the rates are, so it is accepted.
 
 The last three categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
 

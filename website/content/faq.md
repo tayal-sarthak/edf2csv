@@ -25,6 +25,25 @@ resampled, interpolated or padded.
 `channels.csv` has an `output_file` column telling you where each channel went, and
 `--info` shows the same mapping before you convert anything.
 
+If you would rather have one file, [`--layout long`](/docs/cli-reference#--layout) gives you one —
+by changing the shape rather than the data. Each row is a single sample, carrying its own time, so
+no channel has to fill in cells for times it was never sampled at:
+
+```bash
+edf2csv sleep-study.edf --out ./converted --layout long
+```
+
+```
+time_s,channel,value
+0.00000000,EEG Fpz-Cz,0.061
+0.00000000,ECG,0.00122
+0.00000000,Temp rectal,37.00073
+0.00390625,EEG Fpz-Cz,9.096
+```
+
+Still nothing resampled, interpolated or padded. `long.pivot(index='time_s', columns='channel',
+values='value')` in pandas gets you back to the wide form for whichever rates you want it for.
+
 ## Why is my CSV so much larger than the EDF file?
 
 Because EDF stores each sample as 2 raw bytes (3 for BDF) and CSV stores it as human-readable

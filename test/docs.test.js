@@ -151,6 +151,16 @@ describe('documentation and source agree on their lists', () => {
 
       Anchors are checked too, since a heading can be renamed without the links to it moving.
     */
+    /*
+      The site's own slug function, not a copy of it.
+
+      This test carried its own rule — lowercase, then every run of non-alphanumerics to a
+      hyphen — and the site's keeps hyphens as themselves. So `## --layout` is `--layout` on
+      the page and was `layout` here: this would have called a working link broken, and,
+      worse, passed a link to `#layout` that resolves to nothing. A link checker with its own
+      idea of where links point is not a link checker.
+    */
+    const { slugify } = await import(path.join(ROOT, 'website/src/lib/markdown.js'));
     const { readdir } = await import('node:fs/promises');
 
     const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) => n.endsWith('.md'));
@@ -159,11 +169,7 @@ describe('documentation and source agree on their lists', () => {
       const text = await read(path.join('website/content', name));
       anchors.set(
         name.slice(0, -3),
-        new Set(
-          [...text.matchAll(/^#{2,6} (.+)$/gmu)].map((m) =>
-            m[1].toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, ''),
-          ),
-        ),
+        new Set([...text.matchAll(/^#{2,6} (.+)$/gmu)].map((m) => slugify(m[1]))),
       );
     }
 
@@ -277,6 +283,35 @@ describe('documentation and source agree on their lists', () => {
       assert.ok(checked >= 3, `only ${checked} samples were literal enough to check`);
     } finally {
       await rm(work, { recursive: true, force: true });
+    }
+  });
+
+  it('mentions the long layout wherever it says a mixed-rate file needs several files', async () => {
+    /*
+      0.5.0 added --layout long, which is the answer to the question these passages are
+      about, and left every one of them saying the split is the only outcome. cli-reference
+      went further and listed "more than one sampling rate" as a flat exit-2 condition for
+      --stdout, which --layout long makes false — while the tool's own error message for
+      that case already named the flag.
+
+      The rule this holds is narrow on purpose: a page that tells the reader a mixed-rate
+      recording becomes several files has to also tell them about the layout that does not.
+    */
+    const claims = /one file per rate|several signals files|no single `signals\.csv`|more than one table/iu;
+    for (const page of [
+      'sampling-rates.md',
+      'output-files.md',
+      'faq.md',
+      'getting-started.md',
+      'cli-reference.md',
+      'warnings-and-errors.md',
+    ]) {
+      const text = await read(`website/content/${page}`);
+      if (!claims.test(text)) continue;
+      assert.ok(
+        text.includes('--layout long') || text.includes('`--layout`'),
+        `${page} says a mixed-rate recording splits, without saying --layout long does not`,
+      );
     }
   });
 

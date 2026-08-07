@@ -433,7 +433,7 @@ The recording's channels don't all run at the same sampling rate.
 
 **Cause.** Normal and extremely common. A sleep study typically records EEG at 256 Hz, ECG at 128 Hz and a rectal temperature probe at 1 Hz, all in one file.
 
-**What edf2csv does.** Writes one file per rate: `signals_256hz.csv`, `signals_128hz.csv`, `signals_1hz.csv`. A fractional rate becomes something like `signals_12_5hz.csv`. No channel is resampled.
+**What edf2csv does.** Writes one file per rate: `signals_256hz.csv`, `signals_128hz.csv`, `signals_1hz.csv`. A fractional rate becomes something like `signals_12_5hz.csv`. No channel is resampled. Under `--layout long` they share one file instead, still without resampling, and the hint below reads "They share one table, each row carrying its own time, so no channel is resampled."
 
 ```
 warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).

@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.1
+
+### Fixed: 0.5.0 shipped a feature and told none of the pages that argue for it
+
+`--layout long` is the answer to a question six pages ask, and every one of them still said
+the split into a file per rate was the only outcome. sampling-rates.md spends a section
+listing the three ways a wide table can fill the cells a slow channel never recorded, and
+never mentioned the fourth option, which is not to make the table wide. faq.md's "why did I
+get several signals files" gave no way to get one. cli-reference listed "more than one
+sampling rate" as a flat exit-2 condition for `--stdout` — which `--layout long` makes false,
+while the tool's own error message for that case already names the flag.
+
+All six now say so, with real output. A test holds the rule: a page that tells the reader a
+mixed-rate recording becomes several files has to also tell them about the layout that does
+not.
+
+### Fixed: the link checker had its own idea of where links point
+
+Added in 0.4.67 with its own copy of the site's slug rule — lowercase, then every run of
+non-alphanumerics to a hyphen. The site's keeps hyphens as themselves, so `## --layout` is
+`#--layout` on the page and was `#layout` here. It would have called the correct links added
+above broken, and it would have passed a link to `#layout` that resolves to nothing.
+
+It imports `slugify` from `website/src/lib/markdown.js` now, which is the function that
+generates the ids, so a link checker and the links agree by construction.
+
 ## 0.5.0
 
 ### Added: `--layout long`, so a mixed-rate recording can be one table

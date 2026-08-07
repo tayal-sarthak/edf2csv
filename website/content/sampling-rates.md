@@ -26,6 +26,8 @@ Take three seconds of recording with EEG at 256 Hz and temperature at 1 Hz. The 
 
 Interpolation itself isn't the problem — it's often exactly what you want. The problem is that once the numbers are in a CSV they're indistinguishable from measurements. Nothing in the file records which values came off a sensor and which came out of an algorithm.
 
+There is a fourth way, and it is the one that gets you a single file honestly: stop insisting the table be wide. It has its own section below.
+
 ## What MNE does
 
 Load a three-second file with one 256 Hz channel, one 128 Hz channel and one 1 Hz channel using `mne.io.read_raw_edf`, and every channel reports 768 samples. The 3 genuine temperature readings become 768 values, upsampled to the fastest channel in the file. No warning is printed.
@@ -78,6 +80,46 @@ Each file is a complete, self-contained CSV: a `time_s` column followed by one c
 A fractional rate has its decimal point replaced by an underscore, so the name is a safe filename on every platform.
 
 The `time_s` column is seconds from the start of the recording and means the same thing in every file. That shared clock is what makes the separate files joinable later. The number of decimal places is chosen per rate so sample times are written exactly rather than rounded: 256 Hz gets 8 places because 1/256 terminates at 8 decimal places, 128 Hz gets 7, and 1 Hz gets 3. Multiplying `time_s` by the rate gives back a whole sample index rather than something like 8191.99999.
+
+## The other shape: one row per sample
+
+Everything above is about the wide table — a column per channel, a row per time value — because that is what a CSV of signal data usually means and what the default layout writes. The constraint it runs into is structural: one row has to hold a value for every column, and channels sampled at different rates do not have a value at the same times.
+
+`--layout long` drops that constraint by dropping the shape. One file, three columns, one row per sample:
+
+```bash
+edf2csv recording.edf --out ./converted --layout long
+```
+
+```
+time_s,channel,value
+0.00000000,EEG Fpz-Cz,0.061
+0.00000000,ECG,0.00122
+0.00000000,Temp rectal,37.00073
+0.00390625,EEG Fpz-Cz,9.096
+0.00781250,EEG Fpz-Cz,18.010
+0.00781250,ECG,0.12088
+```
+
+Every row is a sample the recording holds, carrying the time it was recorded at. The 1 Hz channel contributes 3 rows and the 256 Hz channel contributes 768, and neither has to account for the other — so all three rates fit one file with nothing repeated, interpolated or blank. Rows come out sorted by `time_s`.
+
+This is the shape most plotting and grouping libraries want anyway:
+
+```python
+import pandas as pd
+long = pd.read_csv("converted/signals.csv")
+long.groupby("channel")["value"].describe()
+```
+
+And the wide form is one call away, for whichever rates you want it for:
+
+```python
+wide = long.pivot(index="time_s", columns="channel", values="value")
+```
+
+Note what that `pivot` produces for a mixed-rate file: a frame with 768 rows where the temperature column is 765 blanks. That is option 3 from the list above, arrived at deliberately, in your code, with the original file still on disk — which is the difference the whole page is about.
+
+Two costs. The file is larger, because every row repeats the time and the channel name rather than sharing one time across a row; two to three times, and `--gzip` recovers most of it. And `time_s` takes one precision for every rate — the finest any of them needs — because a single column cannot mean three things, so a 256 Hz and 1 Hz mix writes both at eight decimal places.
 
 ## Seeing the split before you convert
 
