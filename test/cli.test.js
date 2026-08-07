@@ -1451,7 +1451,7 @@ describe('what the summary says it did', () => {
       '/bin/sh',
       ['-c', `"${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout | head -1`],
     );
-    assert.match(stderr, /the reader closed the pipe after [\d,]+ rows had been written/u);
+    assert.match(stderr, /the reader closed the pipe after [\d,]+ of [\d,]+ rows/u);
     assert.match(stderr, /was not converted in full/u);
     assert.ok(!/^Wrote /mu.test(stderr), `still claims a conversion:\n${stderr}`);
 
@@ -1459,6 +1459,47 @@ describe('what the summary says it did', () => {
     const whole = await cli([fixture('long-stream.edf'), '--stdout']);
     assert.equal(whole.code, 0);
     assert.match(whole.stderr, /Wrote 102,400 rows to stdout\./u);
+  });
+
+  it('does not call a conversion incomplete because the reader stopped reading', async () => {
+    /*
+      Whether the conversion stopped early and whether the reader did are different
+      questions, and 0.5.12 answered the first with the second. A recording whose CSV outruns
+      the pipe buffer but fits inside one flush is written in full and only then meets the
+      closed pipe — every row formatted, every row handed over — and the summary said "The
+      recording was not converted in full."
+
+      The estimate's row count is exact, so the two cases can be told apart.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-mid-'));
+    temporaries.push(dir);
+    const recording = path.join(dir, 'mid.edf');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    // 10,000 rows: past the 64 KiB pipe buffer, inside the flush threshold.
+    writeEdf({
+      path: recording,
+      numRecords: 100,
+      recordDuration: 1,
+      signals: [
+        {
+          label: 'EEG',
+          dimension: 'uV',
+          physMin: -250,
+          physMax: 250,
+          digMin: -2048,
+          digMax: 2047,
+          samplesPerRecord: 100,
+          gen: (record, sample) => ((record * 7 + sample) % 4095) - 2048,
+        },
+      ],
+    });
+
+    const { stderr } = await run('/bin/sh', [
+      '-c',
+      `"${process.execPath}" "${CLI}" "${recording}" --stdout | head -1`,
+    ]);
+    assert.match(stderr, /Wrote 10,000 rows to stdout, but the reader closed the pipe/u);
+    assert.ok(!/was not converted in full/u.test(stderr), stderr);
   });
 
   it(`calls a compressed CSV's rows rows`, async () => {
@@ -2192,7 +2233,7 @@ describe('--stdout', () => {
     );
     // Since 0.5.12 the line says the reader stopped rather than claiming a conversion, and
     // this is still the number it reports: rows written before the close was noticed.
-    const written = Number(stdout.match(/after ([\d,]+) rows had been written/)[1].replaceAll(',', ''));
+    const written = Number(stdout.match(/after ([\d,]+) of [\d,]+ rows/)[1].replaceAll(',', ''));
     assert.ok(written < 102_400, `stopped after ${written} of 102,400 rows`);
   });
 

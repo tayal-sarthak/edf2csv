@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.22
+
+### Fixed: 0.5.12 called a finished conversion unfinished
+
+Whether the conversion stopped early and whether the reader stopped reading are different
+questions, and 0.5.12 answered the first with the second. Any `--stdout` run whose reader
+closed the pipe got "The recording was not converted in full."
+
+For a large recording that is true. For one whose CSV outruns the 64 KiB pipe buffer but fits
+inside a single flush — 10,000 rows, 166 KB — it is not: every row is formatted and handed
+over, and only then does the final write meet the closed pipe. The conversion finished. The
+delivery did not.
+
+The estimate's row count is exact, so the two can be told apart, and now are. A run that
+stopped short says how far it got out of how many; a run that finished says it finished and
+that not all of it arrived. Both still exit 0, because piping to `head` is an ordinary thing
+to type and not a failure.
+
 ## 0.5.21
 
 ### Fixed: 0.5.10 silenced the warning it was meant to keep

@@ -709,16 +709,27 @@ async function convertOne(
           A reader that closed the pipe did not receive a conversion, so it does not get a
           conversion's summary. `edf2csv rec.edf --stdout | head -1` announced "Wrote 52,507
           rows to stdout" — a number that is neither the recording's 102,400 nor the one row
-          head took, but however many had been formatted before the close was noticed. The
-          count that reached the reader is not knowable from this side; that it stopped early
-          is, so that is what is said.
+          head took, but however many had been formatted before the close was noticed.
+
+          Whether the *conversion* stopped early is a separate question from whether the
+          reader did, and 0.5.12 answered the first with the second. A 10,000-row recording
+          whose CSV outruns the pipe buffer but fits one flush is written in full and only
+          then meets the closed pipe: every row formatted, every row handed over, and the
+          summary said "The recording was not converted in full." The estimate's row count is
+          exact, so the two cases can be told apart and told apart honestly — what reached
+          the reader is not knowable from this side either way.
         */
+        const expected = result.plan.estimate.rows;
         emit(
           'err',
-          result.readerHungUp
-            ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} rows ` +
-              `had been written. The recording was not converted in full.\n`
-            : `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`,
+          !result.readerHungUp
+            ? `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`
+            : rows < expected
+              ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} of ` +
+                `${expected.toLocaleString('en-US')} rows had been written. The recording was ` +
+                `not converted in full.\n`
+              : `Wrote ${rows.toLocaleString('en-US')} rows to stdout, but the reader closed ` +
+                `the pipe before the end, so not all of them reached it.\n`,
         );
       } else {
         emit('err', `${formatSummary(result)}\n`);
