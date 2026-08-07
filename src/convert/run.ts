@@ -571,7 +571,18 @@ async function writeSignalFiles(
       // Uncompressed, the writer hands its bytes straight to the descriptor; compressed,
       // they were counted on the compressor's way out.
       if (options.gzip !== true) {
-        for (const entry of open) audit.count(entry.writer.bytesOut);
+        /*
+          Once per writer, not once per group. The long layout gives every group the same
+          writer, so counting per group multiplied its byte total by the number of rates:
+          `--stdout --layout long` on a three-rate recording handed over 32,043 bytes, was
+          credited with 96,129, and failed with a disk-full error for a file that was
+          complete on disk. It only showed with stdout redirected to a regular file, since
+          that is the one case the audit applies to — which is the command the --layout
+          documentation gives.
+        */
+        for (const writer of new Set(open.map((entry) => entry.writer))) {
+          audit.count(writer.bytesOut);
+        }
       }
       if (!open.some((entry) => entry.writer.hungUp)) audit.verify();
     }

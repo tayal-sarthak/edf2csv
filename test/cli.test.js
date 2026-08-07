@@ -1386,6 +1386,20 @@ describe('messages that enumerate what the file contains', () => {
   });
 });
 
+/** Run the CLI with stdout redirected to a regular file, which is what the audit checks. */
+async function shellTo(args, destination) {
+  const quoted = args.map((a) => `"${a}"`).join(' ');
+  try {
+    const { stderr } = await run('/bin/sh', [
+      '-c',
+      `"${process.execPath}" "${CLI}" ${quoted} > "${destination}"`,
+    ]);
+    return { code: 0, stderr };
+  } catch (error) {
+    return { code: error.code ?? 1, stderr: String(error.stderr ?? '') };
+  }
+}
+
 describe('--layout long', () => {
   it('puts every rate in one table, in time order, with nothing invented', async () => {
     /*
@@ -1508,6 +1522,33 @@ describe('--layout long', () => {
     ]);
     assert.equal(code, 0);
     assert.equal(stdout.split('\n')[0], 'time_s,channel,value');
+  });
+
+  it('does not credit itself with one copy of the stream per rate group', async () => {
+    /*
+      --stdout audits itself by comparing how far the file grew against how many bytes it
+      handed over, because a filesystem filling up mid-write returns a short count rather
+      than an error and stdout has nothing after it to trip over. The count was taken per
+      rate group. The long layout gives every group the same writer, so a three-rate
+      recording handed over 32,043 bytes, was credited with 96,129, and failed with a
+      disk-full message about a file that was complete on disk.
+
+      It only bites when stdout is a regular file, which is the one case the audit applies
+      to — and is the command the --layout documentation gives.
+    */
+    // outDir() names a directory the conversion would create; --stdout creates nothing, so
+    // the redirect needs a directory that already exists — its parent.
+    const destination = path.join(path.dirname(await outDir()), 'signals.csv');
+    const { code, stderr } = await shellTo(
+      [fixture('mixed-rates.edf'), '--stdout', '--layout', 'long'],
+      destination,
+    );
+    assert.equal(code, 0, stderr);
+    assert.ok(!/did not reach the destination/u.test(stderr), stderr);
+    assert.match(stderr, /Wrote 1,155 rows to stdout/u);
+
+    const written = await readFile(destination, 'utf8');
+    assert.equal(written.trimEnd().split('\n').length - 1, 1155, 'and every row is there');
   });
 
   it('predicts the long layout rather than the wide one', async () => {

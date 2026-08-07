@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.4
+
+### Fixed: `--stdout --layout long` failed with a disk-full error on a file that was complete
+
+The command the `--layout` documentation gives — `edf2csv recording.edf --stdout --layout
+long > signals.csv` — exited 1 on every mixed-rate recording, saying "64086 of 96129 bytes
+did not reach the destination" and advising that the disk was almost certainly full. The
+file on disk was complete, every row present.
+
+`--stdout` audits itself: a filesystem that fills up mid-write returns a short count rather
+than an error, and stdout has nothing written after it to trip over, so the run compares how
+far the file grew against how many bytes it handed over. That count was taken once per rate
+group. 0.5.0's long layout gives every group the same writer, so a three-rate recording
+counted its 32,043 bytes three times, was credited with 96,129, and concluded that two
+thirds of them had been lost.
+
+Counted once per writer now. It only bit when stdout was redirected to a regular file, which
+is the one case the audit applies to and exactly what the documentation shows — through a
+pipe the audit declines, so the feature looked fine everywhere it was demonstrated
+interactively.
+
 ## 0.5.3
 
 ### Fixed: the long layout promised sorted rows for a file it cannot sort
