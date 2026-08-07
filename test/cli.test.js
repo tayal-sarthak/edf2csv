@@ -719,6 +719,45 @@ describe('converting several recordings at once', () => {
     }
   });
 
+  it('picks the same name whether a recording is named directly or through its folder', async () => {
+    /*
+      The tie-break above settles two *paths* for one recording. This is one path with two
+      *names*: a folder gives the recording its position inside the folder, `night-01/rec`,
+      and naming the file directly gives it its bare `rec`. Whichever the loop met first won,
+      so argument order decided the output directory's name — and, once a sibling
+      `study/rec.edf` was in play, decided whether the run happened at all: the bare name
+      collides with that sibling, so one order was refused with exit 2 while the other
+      converted both.
+
+      The nested name wins. It is what the folder promised, and it is the one that does not
+      collide, since collapsing a recording to its bare name is what puts it on a sibling.
+    */
+    const dir = await stage({ 'study/night-01/rec.edf': 'tiny.edf' });
+    const folder = path.join(dir, 'study');
+    const file = path.join(folder, 'night-01', 'rec.edf');
+
+    for (const [label, order] of [['folder first', [folder, file]], ['file first', [file, folder]]]) {
+      const out = path.join(dir, `out-${label.replace(' ', '-')}`);
+      const { code, stderr } = await cli([...order, '--out', out, '--quiet']);
+      assert.equal(code, 0, stderr);
+      assert.deepEqual(
+        (await readdir(path.join(out, 'night-01'))).sort(),
+        ['rec'],
+        `${label} named it differently`,
+      );
+      assert.deepEqual((await readdir(out)).sort(), ['night-01'], `${label} converted it twice`);
+    }
+
+    // And with a sibling that wants the bare name, both orders convert both recordings.
+    await writeFile(path.join(folder, 'rec.edf'), await readFile(fixture('annotations.edf')));
+    for (const [label, order] of [['folder first', [folder, file]], ['file first', [file, folder]]]) {
+      const out = path.join(dir, `both-${label.replace(' ', '-')}`);
+      const { code, stderr } = await cli([...order, '--out', out, '--quiet']);
+      assert.equal(code, 0, `${label}:\n${stderr}`);
+      assert.deepEqual((await readdir(out)).sort(), ['night-01', 'rec'], label);
+    }
+  });
+
   it('picks the same name for a recording reached two ways, whatever the order', async () => {
     // The first arrival won, so the output directory was named by argument order:
     // `edf2csv data/one.edf data/alias.edf` wrote out/one and the same two swapped wrote

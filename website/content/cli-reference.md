@@ -64,6 +64,8 @@ The layout is kept — a recording at `study/night-1/rec.edf` comes out at `conv
 
 Symbolic links are followed, both to recordings and to folders, since linking data into a working directory is a normal way to arrange it. A recording reachable two ways is converted once rather than twice, and a cycle of links terminates instead of running forever.
 
+Which of its names the output takes is decided by the names, never by the order you typed them. A recording is preferred over a link pointing at it; a recording named both directly and through a folder keeps the position the folder gives it, since that is what the folder promised and it is the name that does not collide with a sibling.
+
 Anything in the folder that is not a recording is skipped, and a folder holding none says so rather than converting nothing in silence:
 
 ```

@@ -847,7 +847,24 @@ function outnames(
   held: { entry: Input; link: boolean },
 ): boolean {
   if (candidate.link !== held.link) return !candidate.link;
-  return candidate.entry.path < held.entry.path;
+  if (candidate.entry.path !== held.entry.path) return candidate.entry.path < held.entry.path;
+  /*
+    One recording, one path, two names — reached directly and through a named folder.
+
+    `edf2csv study study/night-01/rec.edf` and the same two swapped are the same request, and
+    they disagreed: the folder gives the recording its position inside the folder
+    (`night-01/rec`), a direct mention gives it its bare name (`rec`), and whichever spelling
+    the loop met first won. So argument order decided the output directory's name, and, once
+    a second `study/rec.edf` was in play, decided whether the run happened at all — the bare
+    name collides with it and the run is refused, exit 2, while the other order converts both.
+
+    The nested name wins. It is what the folder promised — "the layout is kept: recordings in
+    sub-folders come out in sub-folders" — and it is the one that does not collide, since
+    collapsing a recording to its bare name is what puts it on top of a sibling.
+  */
+  const depth = (entry: Input): number => entry.name.split(path.sep).length;
+  if (depth(candidate.entry) !== depth(held.entry)) return depth(candidate.entry) > depth(held.entry);
+  return candidate.entry.name < held.entry.name;
 }
 
 /**

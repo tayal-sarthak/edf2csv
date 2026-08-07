@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.18
+
+### Fixed: argument order decided a recording's output directory, and whether the run happened
+
+`edf2csv study study/night-01/rec.edf --out o` and the same two arguments swapped are the
+same request. They disagreed.
+
+A recording reached both directly and through a named folder has one path and two names: the
+folder gives it its position inside the folder, `night-01/rec`, and naming the file gives it
+its bare `rec`. The tie-break that settles which name survives compares paths — and these
+paths are identical — so it fell through to whichever spelling the loop met first. Argument
+order.
+
+That renamed the output directory. Worse, with a sibling `study/rec.edf` also present, the
+bare name collides with it: one order converted both recordings and exited 0, the other was
+refused with "would both be converted into o/rec, so one would overwrite the other" and exit
+2. Same files, same flags, same intent.
+
+The nested name wins now. It is what the folder promised — "the layout is kept: recordings in
+sub-folders come out in sub-folders" — and it is the one that does not collide, since
+collapsing a recording to its bare name is what puts it on top of a sibling. Both orders now
+convert both recordings, and both name them the same thing.
+
+The existing tie-break for two *paths* to one recording, which prefers a real name over a
+link and sorts the rest, is unchanged; this is the case one path with two names, which it did
+not reach.
+
 ## 0.5.17
 
 ### Fixed: a recording timestamped far in the negative direction lost two thirds of its rows, silently
