@@ -314,6 +314,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   let byteOffsetInRecord = 0;
   const bytesPerSample = isBdf ? 3 : 2;
   const seenLabels = new Map<string, number[]>();
+  const emptyLabels: number[] = [];
 
   for (let i = 0; i < signalCount; i++) {
     const label = trimField(readField(0, 16, i));
@@ -428,11 +429,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       }
 
       if (label === '') {
-        diagnostics.push({
-          code: 'EMPTY_LABEL',
-          severity: 'warning',
-          message: `Signal ${i} has no label. It will appear as "signal_${i}".`,
-        });
+        // Collected, not reported here: what this channel's column ends up called depends on
+        // whether some later channel is literally labelled `signal_<i>`, and inside this loop
+        // the later channels do not exist yet. See the pass below.
+        emptyLabels.push(i);
       } else {
         // Collected rather than reported here: a label repeated five times should
         // produce one warning naming all five, not four near-identical pairs.
@@ -500,6 +500,40 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         });
       }
     }
+  }
+
+  /*
+    What an unlabelled channel is actually called, which the message used to guess.
+
+    A channel with no label takes `signal_<index>` — unless another channel is literally
+    labelled that, which EDF permits, since labels are free text and nothing enforces anything
+    about them. Then both collide and both are suffixed. The warning said "It will appear as
+    "signal_0"" while the file's header read `time_s,signal_0_ch0,signal_0_ch1`: the one
+    sentence the run printed named a column that exists in neither signals.csv nor
+    channels.csv.
+
+    The other half was silent. The channel that genuinely carries the label `signal_0` lost
+    its own column name to a collision with a synthesised one, and nothing said so —
+    DUPLICATE_LABEL did not fire, because the two labels are not the same label. Both halves
+    are one sentence here, because they are one event.
+
+    No specific suffixed name is quoted. The suffix rule has a second pass for names that are
+    still shared afterwards, and a message that hard-coded `_ch<index>` would be guessing again
+    in exactly the way this is fixing.
+  */
+  for (const index of emptyLabels) {
+    const taken = seenLabels.get(`signal_${index}`);
+    diagnostics.push({
+      code: 'EMPTY_LABEL',
+      severity: 'warning',
+      message:
+        taken === undefined
+          ? `Signal ${index} has no label. It will appear as "signal_${index}".`
+          : `Signal ${index} has no label, so it takes the name "signal_${index}" — which ` +
+            `${taken.length === 1 ? 'signal' : 'signals'} ${listed(taken.map(String))} already ` +
+            `${taken.length === 1 ? 'carries' : 'carry'} as a label, so both columns are ` +
+            `suffixed with their position instead.`,
+    });
   }
 
   for (const [label, indices] of seenLabels) {

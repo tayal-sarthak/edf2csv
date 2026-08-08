@@ -138,6 +138,72 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('names the column an unlabelled channel really gets', async () => {
+    /*
+      EMPTY_LABEL promised `signal_<index>`, which is right only while nothing else claims that
+      name — and EDF labels are free text, so a channel may literally be labelled `signal_0`.
+      Then both collide and both are suffixed, and the one sentence the run printed named a
+      column that exists in neither signals.csv nor channels.csv:
+
+          warning: Signal 0 has no label. It will appear as "signal_0".
+          time_s,signal_0_ch0,signal_0_ch1
+
+      The other half was silent: the channel that genuinely carries `signal_0` lost its own
+      column to the collision, and DUPLICATE_LABEL did not fire because the two labels are not
+      the same label.
+
+      The message was raised inside the header loop, where the later channels do not exist yet,
+      so it could not have known. It is raised after the loop now.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-blank-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const base = {
+      dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+      samplesPerRecord: 4, gen: (r, i) => r * 4 + i,
+    };
+
+    const cases = [
+      ['collides', [{ label: '', ...base }, { label: 'signal_0', ...base }]],
+      ['plain', [{ label: '', ...base }, { label: 'ok', ...base }]],
+    ];
+    for (const [name, signals] of cases) {
+      const recording = path.join(scratch, `${name}.edf`);
+      writeEdf({ path: recording, numRecords: 2, recordDuration: 1, signals });
+      const dir = await outDir();
+      const result = await convert(recording, { outputDir: dir });
+
+      const empty = result.diagnostics.filter((d) => d.code === 'EMPTY_LABEL');
+      assert.equal(empty.length, 1, `${name}: ${JSON.stringify(result.diagnostics)}`);
+
+      /*
+        The claim checked against the file rather than against the wording: every column name
+        the message quotes has to be one signals.csv actually has. That is the property that
+        broke, and it holds whatever the sentence is rewritten to say.
+      */
+      const columns = (await readCsv(dir, 'signals.csv'))[0].split(',').slice(1);
+      const quoted = [...empty[0].message.matchAll(/"([^"]+)"/gu)].map((m) => m[1]);
+      const named = quoted.filter((text) => /^signal_\d/u.test(text));
+      assert.ok(named.length > 0, `${name}: the message quotes no column-like name`);
+      for (const claim of named) {
+        if (name === 'plain') {
+          assert.ok(columns.includes(claim), `${name}: message says ${claim}, file has ${columns}`);
+        } else {
+          // Under a collision the message quotes the name that was *taken*, and says both are
+          // suffixed instead — so that exact name must NOT be a column.
+          assert.ok(!columns.includes(claim), `${name}: ${claim} should have been suffixed away`);
+          assert.ok(
+            columns.every((c) => c.startsWith(`${claim}_ch`)),
+            `${name}: expected both columns suffixed, got ${columns}`,
+          );
+        }
+      }
+
+      // And the collision case explains the other channel too, which nothing did before.
+      if (name === 'collides') assert.match(empty[0].message, /signal 1 already carries/u);
+    }
+  });
+
   it('says which field carries the control byte, and what that costs', async () => {
     /*
       The message said "label or unit" and then made two claims that are only true of a label:

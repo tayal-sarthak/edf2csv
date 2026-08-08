@@ -286,6 +286,15 @@ A channel's label field is blank.
 warning: Signal 0 has no label. It will appear as "signal_0".
 ```
 
+Unless another channel is literally labelled `signal_0`, which EDF permits — labels are free text and nothing enforces anything about them. Then the synthesised name and the real one collide and both columns are suffixed with their position, and the warning says so rather than naming a column that will not exist:
+
+```
+warning: Signal 0 has no label, so it takes the name "signal_0" — which signal 1 already
+         carries as a label, so both columns are suffixed with their position instead.
+```
+
+That also covers the second channel, which loses its own column name to the collision. `DUPLICATE_LABEL` does not fire for it, because the two labels are not the same label.
+
 **What to do.** Consult your recording notes to work out what the channel is. `channels.csv` gives you the transducer type, prefiltering string, unit and physical range for that signal, which together are often enough to identify it.
 
 ### DUPLICATE_LABEL

@@ -3,6 +3,39 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.73
+
+### Fixed: EMPTY_LABEL named a column the file does not have
+
+An unlabelled channel takes `signal_<index>`, and the warning said so. It is right only while
+nothing else claims that name — and EDF labels are free text, so a channel may be labelled
+`signal_0` literally. Then the synthesised name and the real one collide, both columns are
+suffixed, and:
+
+```
+warning: Signal 0 has no label. It will appear as "signal_0".
+
+time_s,signal_0_ch0,signal_0_ch1
+```
+
+The one sentence the run printed named a column that exists in neither signals.csv nor
+channels.csv. It could not have known: the message was raised inside the header loop, where the
+later channels have not been parsed yet.
+
+The other half was silent. The channel that genuinely carries the label `signal_0` lost its own
+column name to the collision, and nothing said so — `DUPLICATE_LABEL` does not fire, because the
+two labels are not the same label.
+
+Raised after the loop now, where every label is known, and both halves are one sentence because
+they are one event: "Signal 0 has no label, so it takes the name "signal_0" — which signal 1
+already carries as a label, so both columns are suffixed with their position instead." No
+suffixed name is quoted; the suffix rule has a second pass for names still shared afterwards,
+and hard-coding `_ch<index>` would be guessing again in the way this fixes. A channel with no
+label and no collision keeps the sentence it always had.
+
+The test checks the claim against the file rather than against the wording: every column name
+the message quotes must be one signals.csv has, or under a collision must be one it does not.
+
 ## 0.5.72
 
 ### Fixed: one unreadable path was reported and counted once per name it was reached by
