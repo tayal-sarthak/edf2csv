@@ -191,8 +191,8 @@ done | jq -s -r '
 ```
 
 ```text
-night-01.edf	EDF+ (continuous)	28800	5	1/10/100	3196800	MIXED_SAMPLING_RATES
-night-02.edf	EDF	3	2	10	20
+night-01.edf	EDF+ (continuous)	28800	5	1/10/100	3196800	MIXED_SAMPLING_RATES;LARGE_OUTPUT
+night-02.edf	EDF	2	2	10	20
 ```
 
 Nothing is read past the header for plain EDF and continuous EDF+, so this stays fast over a

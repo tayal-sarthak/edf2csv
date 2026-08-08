@@ -618,7 +618,7 @@ error: Writing to stdout failed: 150904 of 2063736 bytes did not reach the desti
 A reader that stops reading is a different thing, and gets a different line. `edf2csv recording.edf --stdout | head -1` is an ordinary thing to type and not a failure, but it is not a conversion either, so it does not get a conversion's summary:
 
 ```
-Stopped: the reader closed the pipe after 52,507 rows had been written. The recording was not converted in full.
+Stopped: the reader closed the pipe after 52,507 of 102,400 rows had been written. The recording was not converted in full.
 ```
 
 Up to 0.5.11 that read "Wrote 52,507 rows to stdout" — a number that is neither the recording's 102,400 nor the one row `head` took, but however many had been formatted before the closed pipe was noticed. How many reached the reader is not knowable from this side; that it stopped early is.

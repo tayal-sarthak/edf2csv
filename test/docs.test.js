@@ -584,6 +584,29 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('does not claim --info omits a line it prints', async () => {
+    /*
+      edf-plus-annotations.md said "--info reports the amount of data, not the span", and
+      --info prints a `Time span` line directly under `Duration` for exactly the kind of file
+      that section is about. The claim was true before that line existed and outlived it.
+    */
+    const { stdout } = await run(process.execPath, [
+      CLI,
+      path.join(ROOT, 'test/fixtures/generated/discontinuous.edf'),
+      '--info',
+    ]);
+    const lines = new Set(
+      stdout.split('\n').map((line) => line.split(/\s\s+/u)[0]).filter(Boolean),
+    );
+    assert.ok(lines.has('Duration') && lines.has('Time span'), stdout);
+
+    const page = await read('website/content/edf-plus-annotations.md');
+    assert.ok(
+      !/`--info` reports the amount of data, not the span/u.test(page),
+      'the page still says --info does not report the span',
+    );
+  });
+
   it('names the codes --info can raise, against the codes it raises', async () => {
     /*
       warnings-and-errors.md said --info "reads the header and builds a conversion plan

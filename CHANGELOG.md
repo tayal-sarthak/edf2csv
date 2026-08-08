@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.41
+
+### Fixed: three documents describing output the tool no longer produces, or never did
+
+- **edf-plus-annotations.md said "`--info` reports the amount of data, not the span."** It
+  prints `Duration 3s (3 records of 1s)` and, on the line directly under it, `Time span 11s
+  (includes discontinuities)` — for exactly the kind of file that section is about. The claim
+  was true before that line existed and outlived it. A test reads both lines out of a real
+  `--info` run and fails if the sentence comes back.
+- **cli-reference.md showed the pre-0.5.22 `--stdout` hang-up message**, without the "of
+  102,400" that 0.5.22 added so the number means something.
+- **recipes.md's survey block showed a row no recording can produce.** `night-02.edf EDF 3 2
+  10 20`: two channels at 10 Hz over three seconds is thirty rows, not twenty. The recording
+  it was captured from is two seconds long. The first row was missing `LARGE_OUTPUT`, which a
+  3,196,800-row estimate always raises. Both rows are now real output from the recipe above
+  them.
+
 ## 0.5.40
 
 ### Fixed: two names for one recording made the run stop being a batch

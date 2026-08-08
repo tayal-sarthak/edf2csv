@@ -165,9 +165,11 @@ That isn't an error, and the record at 10 s isn't clipped away. It writes the te
 samples from `10.000` to `10.900`. The same window against a naively flattened
 version of this file would have been rejected as starting past the end.
 
-**`--info` reports the amount of data, not the span.** For this file it prints
-`Duration 3s (3 records of 1s)`, because that's how many seconds of signal exist.
-The gap is reported separately, by the EDF+D warning.
+**`--info` reports both the amount of data and the span.** For this file it prints
+`Duration 3s (3 records of 1s)`, because that's how many seconds of signal exist, and
+`Time span 11s (includes discontinuities)` on the line under it, because that's how
+long the recording covers. The gap is the difference between them, and is reported
+again by the EDF+D warning.
 
 **Rows are written in file order.** If a file's timekeeping TALs are themselves out
 of order, so that a record claims to start before the one preceding it, edf2csv
