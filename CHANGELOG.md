@@ -3,6 +3,37 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.69
+
+### Fixed: metadata.json described a long table with the wide layout's contract
+
+`rate_groups` is documented as "for each output file, its sampling rate, the columns it
+contains in order". Under `--layout long` that is three false statements at once. A mixed-rate
+recording produced:
+
+```json
+"rate_groups": [
+  { "file": "signals.csv", "sampling_rate_hz": 256, "channels": ["EEG Fpz-Cz"], "decimals": [3] },
+  { "file": "signals.csv", "sampling_rate_hz": 128, "channels": ["ECG"],        "decimals": [5] },
+  { "file": "signals.csv", "sampling_rate_hz": 1,   "channels": ["Temp rectal"],"decimals": [5] }
+]
+```
+
+for a file whose columns are `time_s,channel,value`. One file named three times, three
+different sampling rates for it, and channel names that are values in a column rather than
+columns of the table.
+
+The array itself is right — it is the grouping decision, and the grouping is real under both
+layouts. What was missing is the one fact that makes it readable: **`metadata.json` now records
+`layout`**, `"wide"` or `"long"`, so a pipeline handed an output directory can tell which shape
+`signals.csv` is in. Nothing else in the archive distinguished them, and the two files have
+different columns. The `rate_groups` documentation now states both readings.
+
+The invariant sweep that would have caught this — "what the run says it produced must match
+what is on disk", run over every fixture — only ever ran the wide layout, plain, windowed and
+annotations-only. It runs the long layout now, with the expectation each layout actually
+promises.
+
 ## 0.5.68
 
 ### Fixed: `--decimals` read its value the way `Number()` felt like reading it

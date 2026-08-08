@@ -1562,6 +1562,9 @@ describe('converting', () => {
         ['plain', {}],
         ['window', { start: 0, end: 1 }],
         ['annotationsOnly', { annotationsOnly: true }],
+        // The long layout was never swept, which is how metadata.json came to describe it
+        // with the wide layout's contract. See the rate_groups check below.
+        ['long', { layout: 'long' }],
       ]) {
         const dir = await outDir();
         let result;
@@ -1578,10 +1581,32 @@ describe('converting', () => {
           assert.equal(rows.length - 1, written.rows, `${where}: ${written.name} row count`);
         }
 
-        for (const group of metadata.conversion.rate_groups ?? []) {
+        /*
+          What `rate_groups` means depends on the layout, and until 0.5.69 metadata.json did
+          not record which layout it was — so a pipeline reading the archive could not tell.
+
+          Wide: one entry per file, and its `channels` are that file's columns after `time_s`.
+          Long: every entry names the one shared table, whose columns are `channel,value`, and
+          its `channels` are values in that table's `channel` column. Three entries all naming
+          `signals.csv` is the grouping, not a list of three files.
+        */
+        assert.equal(metadata.conversion.layout, options.layout ?? 'wide', `${where}: layout`);
+        const groups = metadata.conversion.rate_groups ?? [];
+        for (const group of groups) {
           const header = (await readCsv(dir, group.file))[0].split(',').slice(1);
-          assert.deepEqual(header, group.channels, `${where}: ${group.file} columns vs rate_groups`);
+          if (metadata.conversion.layout === 'long') {
+            assert.deepEqual(header, ['channel', 'value'], `${where}: ${group.file} columns`);
+          } else {
+            assert.deepEqual(header, group.channels, `${where}: ${group.file} columns vs rate_groups`);
+          }
           assert.equal(group.decimals.length, group.channels.length, `${where}: decimals length`);
+        }
+        if (metadata.conversion.layout === 'long' && groups.length > 0) {
+          assert.equal(
+            new Set(groups.map((g) => g.file)).size,
+            1,
+            `${where}: the long layout writes one table, whatever the grouping says`,
+          );
         }
 
         const annotations = result.files.find((f) => f.name === 'annotations.csv');

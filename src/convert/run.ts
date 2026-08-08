@@ -1385,6 +1385,18 @@ async function writeMetadata(
       whole_recording: plan.range.isWholeRecording,
       records_converted: [plan.range.startRecord, plan.range.endRecord],
       annotations_written: annotationCount,
+      /*
+        Which shape the signal table is in, which nothing recorded.
+
+        A wide `signals.csv` and a long one are different files with different columns, and
+        metadata.json described them identically — so a pipeline handed an output directory
+        could not tell from the archive which it had. It matters most for `rate_groups` right
+        below: in the wide layout those entries are one per file and their `channels` are that
+        file's columns, and in the long layout every entry names the one shared table and its
+        `channels` are values in that table's `channel` column. Same array, two readings, and
+        no way to know which applied.
+      */
+      layout: plan.layout,
       files: written.map((f) => ({ name: f.name, rows: f.rows })),
       rate_groups: plan.groups.map((g) => ({
         file: g.fileName,

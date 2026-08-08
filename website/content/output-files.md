@@ -405,6 +405,7 @@ a conversion reproducible six months later.
     "whole_recording": true,
     "records_converted": [0, 28800],
     "annotations_written": 412,
+    "layout": "wide",
     "files": [
       { "name": "signals_256hz.csv", "rows": 7372800 },
       { "name": "signals_128hz.csv", "rows": 3686400 },
@@ -508,11 +509,21 @@ warning: The input changed while it was being converted, so this output covers t
 - `files` lists every CSV written with its data row count, again excluding the header row. Add one
   per file if you're checking line counts on disk. `metadata.json` describes the run and isn't
   listed among the files the run produced.
-- `rate_groups` records the grouping decision: for each output file, its sampling rate, the columns
-  it contains in order, and the decimal precision used for each of those columns. This is the
+- `layout` is `"wide"` or `"long"`, matching [`--layout`](/docs/cli-reference#--layout). It is what
+  tells a pipeline which shape the signal table is in, since the two have different columns and
+  nothing else in the archive distinguishes them.
+- `rate_groups` records the grouping decision: for each group, the file it was written to, its
+  sampling rate, its channels in order, and the decimal precision used for each. This is the
   machine-readable answer to "which file holds which channel", and it's the field to read if a
   pipeline needs to locate the output without knowing in advance whether the recording was
   single-rate or mixed.
+
+  Read it against `layout`. In the wide layout there is one entry per file and its `channels` are
+  that file's columns, in order, after `time_s`. In the long layout every entry names the one
+  shared table, whose columns are `time_s,channel,value`, and its `channels` are values appearing
+  in that table's `channel` column rather than columns of it — so a mixed-rate recording produces
+  three entries all naming `signals.csv`, one per rate, which is the grouping and not a list of
+  files.
 
 ### notes: every diagnostic, in the archive
 
