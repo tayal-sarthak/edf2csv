@@ -57,7 +57,9 @@ class EdfFile {
   readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
-    malformed: number;
+    malformed: number;             // TALs that could not be parsed at all
+    malformedTimekeeping: number;  // of those, ones carrying a record's start time
+    unreadableDurations: number;   // events kept whose stated duration is not a number
   }>;
   close(): Promise<void>;
 }
@@ -356,13 +358,15 @@ Note also that a small `chunkBytes` doesn't change the results, only how often t
 ```ts
 interface Annotation {
   onset: number;           // seconds from the start of the recording
-  duration: number | null; // null when the TAL omitted a duration
+  duration: number | null; // null when the TAL stated no duration that could be read
   text: string;
   recordIndex: number;     // the data record this annotation was stored in
 }
 ```
 
-`readAnnotations()` returns every event in the file, the start time each record declares, and a count of entries that couldn't be decoded.
+`readAnnotations()` returns every event in the file, the start time each record declares, and three counts of what could not be decoded — kept apart because each is a different loss. `malformed` counts TALs that could not be parsed at all, so their events are gone; `malformedTimekeeping` counts the ones of those that sat in first position and carried a record's start time rather than an event, so no event was lost but a record's position in time was; and `unreadableDurations` counts events that were kept whole except for a duration the file stated and this could not read.
+
+That last one is why `duration` being `null` is not by itself the same as the file giving no duration. An event written with a duration of `abc` comes back with `duration: null`, indistinguishable from one that never had a duration — the count is what tells you it happened, and the conversion raises `ANNOTATION_DECODE_FAILED` for it.
 
 ```js
 import { EdfFile } from 'edf2csv';

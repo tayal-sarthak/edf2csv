@@ -764,6 +764,41 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('documents the fields readAnnotations actually returns', async () => {
+    /*
+      The names it exports are checked below; the shape of what they return was not, and the
+      signature on the page had been missing `malformedTimekeeping` since 0.4.42 added it.
+      0.5.55 added a third count and would have left the same gap. Someone destructuring
+      from the documented signature gets `undefined` for a count that exists, which reads as
+      "nothing was wrong with this file".
+
+      Called for real rather than matched against the source, because what a caller can
+      destructure is what the object has at runtime.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const file = await api.EdfFile.open(path.join(ROOT, 'test/fixtures/generated/annotations.edf'));
+    let returned;
+    let event;
+    try {
+      const result = await file.readAnnotations();
+      returned = Object.keys(result).sort();
+      event = Object.keys(result.annotations[0]).sort();
+    } finally {
+      await file.close();
+    }
+
+    const page = await read('website/content/api.md');
+    const block = /readAnnotations\(\): Promise<\{([^}]*)\}>/u.exec(page);
+    assert.ok(block, 'api.md no longer shows the readAnnotations signature');
+    const documented = [...block[1].matchAll(/^\s*(\w+):/gmu)].map((m) => m[1]).sort();
+    assert.deepEqual(documented, returned, 'api.md lists different fields than it returns');
+
+    const shape = /interface Annotation \{([^}]*)\}/u.exec(page);
+    assert.ok(shape, 'api.md no longer shows the Annotation interface');
+    const fields = [...shape[1].matchAll(/^\s*(\w+):/gmu)].map((m) => m[1]).sort();
+    assert.deepEqual(fields, event, 'api.md lists different fields than an Annotation has');
+  });
+
   it('documents every name the package exports', async () => {
     /*
       `formatWallClock` was exported and undocumented, which mattered more than a missing

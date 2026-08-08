@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.57
+
+### Fixed: api.md's `readAnnotations()` signature was missing two of its three counts
+
+The page shows the return type, and it showed three fields where the function returns five.
+`malformedTimekeeping` has been returned since 0.4.41 and was never added; `unreadableDurations`
+arrived in 0.5.55 two versions ago and would have gone the same way. Someone destructuring
+from the documented signature gets `undefined` for a count that exists, and `undefined` reads
+exactly like "nothing was wrong with this file" — on the page whose subject is how to read a
+recording without being lied to.
+
+The prose beneath it said the function returns "a count of entries that couldn't be decoded",
+singular, which is the wording the three counts were separated out of: a failed TAL, a failed
+timekeeping TAL and an event that lost only its duration are three different losses and were
+made three different numbers precisely so they could not be reported as one. The `Annotation`
+interface had the same drift in one line — `duration` was still commented "null when the TAL
+omitted a duration", which 0.5.55 had just made untrue.
+
+All corrected, and a test now calls `readAnnotations()` on a fixture and compares the keys of
+what comes back with the fields listed in the page's own code block, along with the same check
+for `Annotation`. Matched against the runtime object rather than the source, because what a
+caller can destructure is what the object has.
+
 ## 0.5.56
 
 ### Fixed: an interrupted conversion warned about files in a directory it had never created
