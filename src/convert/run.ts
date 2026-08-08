@@ -402,10 +402,23 @@ async function findStaleOutput(
     {
       code: 'STALE_OUTPUT',
       severity: 'warning',
+      /*
+        Through `listed`, like every other message that enumerates something this run does not
+        control. How many stale files a directory holds is up to the directory, and a
+        mixed-rate recording converted into a reused one is exactly how it fills up: 120 old
+        `signals_<rate>hz.csv` files produced a single 2,373-character warning line. That is
+        the failure `listed` was written for — its own comment quotes the 1,600-character
+        version of it — and this was the one message still joining its own list.
+
+        The hint said "Delete them" whatever the count, so one stale file read "signals_999hz
+        .csv is left over ... Delete them."
+      */
       message:
-        `${stale.join(', ')} ${stale.length === 1 ? 'is' : 'are'} left over from an earlier ` +
+        `${listed(stale)} ${stale.length === 1 ? 'is' : 'are'} left over from an earlier ` +
         `conversion into this directory and ${stale.length === 1 ? 'was' : 'were'} not rewritten.`,
-      hint: 'Delete them, or convert into a fresh directory, so the two runs do not get mixed up.',
+      hint:
+        `Delete ${stale.length === 1 ? 'it' : 'them'}, or convert into a fresh directory, so ` +
+        'the two runs do not get mixed up.',
     },
   ];
 }

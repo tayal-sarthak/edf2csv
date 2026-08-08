@@ -589,6 +589,8 @@ warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over fro
          Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
 ```
 
+A directory that has been converted into several times can hold a great many of these — a mixed-rate recording writes one file per rate — so past eight the rest are counted rather than named, the same as every other message here that lists something the run does not control. One leftover reads as one, in the advice as well as in the sentence above it.
+
 **What to do.** Delete the named files yourself once you've confirmed you don't need them, or convert into a fresh directory with `--out`. `metadata.json` always describes the run that wrote it, so its `conversion.files` list is the authoritative record of which files belong to the current conversion.
 
 ### EMPTY_WINDOW

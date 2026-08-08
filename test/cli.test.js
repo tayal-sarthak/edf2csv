@@ -438,6 +438,37 @@ describe('stale output detection', () => {
       assert.ok(!stderr.includes(name), `${name} is the user's file and must be left alone`);
     }
   });
+
+  it('keeps the warning readable however many files are left over', async () => {
+    /*
+      How many stale files a directory holds is up to the directory, and a mixed-rate
+      recording converted into a reused one is exactly how it fills up. 120 old
+      `signals_<rate>hz.csv` files produced a single 2,373-character warning line — the
+      failure `listed` was written for, in the one message that still joined its own list.
+
+      And the hint said "Delete them" whatever the count, so one leftover read
+      "signals_999hz.csv is left over ... Delete them."
+    */
+    const many = await outDir();
+    await mkdir(many, { recursive: true });
+    for (let rate = 100; rate < 220; rate++) {
+      await writeFile(path.join(many, `signals_${rate}hz.csv`), '');
+    }
+    const crowded = await cli([fixture('tiny.edf'), '--out', many, '--force']);
+    assert.equal(crowded.code, 0, crowded.stderr);
+    const warning = crowded.stderr.split('\n').find((line) => line.includes('left over'));
+    assert.ok(warning, crowded.stderr);
+    assert.ok(warning.length < 400, `the warning is ${warning.length} characters:\n${warning}`);
+    assert.match(warning, /and 112 more are left over/u, warning);
+
+    // One leftover reads as one, in the hint as well as in the sentence above it.
+    const single = await outDir();
+    await mkdir(single, { recursive: true });
+    await writeFile(path.join(single, 'signals_999hz.csv'), '');
+    const one = await cli([fixture('tiny.edf'), '--out', single, '--force']);
+    assert.match(one.stderr, /signals_999hz\.csv is left over/u, one.stderr);
+    assert.match(one.stderr, /Delete it, or convert into a fresh directory/u, one.stderr);
+  });
 });
 
 describe('concurrent runs', () => {

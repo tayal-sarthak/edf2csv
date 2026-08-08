@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.77
+
+### Fixed: the stale-output warning grew without bound, and told you to delete "them" when there was one
+
+How many leftover files a directory holds is up to the directory, and a mixed-rate recording
+converted into a reused one is exactly how it fills up — one `signals_<rate>hz.csv` per rate.
+120 of them produced a single 2,373-character warning line.
+
+That is the failure `listed` was written for. Its own comment quotes the 1,600-character
+version of the same thing, from the sampling-rate warning, and every message that enumerates
+something the run does not control has gone through it since — except this one, which joined
+its own list. Past eight the rest are counted now: 258 characters instead of 2,373.
+
+The hint was hard-coded plural, so a directory with one leftover read "signals_999hz.csv is
+left over from an earlier conversion into this directory and was not rewritten. Delete them."
+The sentence above it had agreed since it was written; the advice underneath had not.
+
 ## 0.5.76
 
 ### Fixed: the reference described a line 0.4.51 had already removed, and said elsewhere that it was wrong
