@@ -58,10 +58,10 @@ function mountPointOf(attachOutput) {
   return point;
 }
 
-async function withSmallVolume(body) {
+async function withSmallVolume(body, size = '2m') {
   await rm(IMAGE, { force: true });
   await run('hdiutil', [
-    'create', '-size', '2m', '-fs', 'HFS+', '-volname', VOLUME_NAME, '-quiet', IMAGE,
+    'create', '-size', size, '-fs', 'HFS+', '-volname', VOLUME_NAME, '-quiet', IMAGE,
   ]);
   const { stdout } = await run('hdiutil', ['attach', IMAGE, '-nobrowse']);
   const volume = mountPointOf(stdout);
@@ -86,6 +86,71 @@ async function toFile(args, destination) {
     return { code: error.code ?? 1, stderr: String(error.stderr ?? '') };
   }
 }
+
+describe('--out onto a destination that fills up', () => {
+  after(async () => {
+    await rm(IMAGE, { force: true });
+  });
+
+  it('reports the write failure instead of dying on an unhandled event', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    /*
+      The shortfall has to land in the *final* flush, which is what makes this different from
+      the ordinary out-of-space case: an fs.WriteStream whose write failed emits 'error' again
+      during its own auto-destroy, after end()'s callback has settled. 0.5.36 released the
+      writer's 'error' listener at that callback, so the second emit reached Node as an
+      unhandled event — a raw stack trace, the process down, convert() never rejecting, and
+      none of the WRITE_FAILED message the tool is built to print.
+
+      A conversion that overshoots by a lot fails in a mid-stream flush instead and prints
+      correctly, which is why every existing test here missed it. Leaving a little under the
+      whole output free is what puts the failure in the last one.
+    */
+    await withSmallVolume(async (volume) => {
+      const whole = (
+        await run(process.execPath, [CLI, fixture('long-stream.edf'), '--stdout'], {
+          maxBuffer: 1 << 24,
+        })
+      ).stdout.length;
+      const free = Number(
+        (await run('/bin/sh', ['-c', `df -k "${volume}" | tail -1 | awk '{print $4}'`])).stdout,
+      );
+      const leave = Math.floor(whole / 1024) - 100;
+      await run('dd', [
+        'if=/dev/zero',
+        `of=${path.join(volume, 'filler')}`,
+        'bs=1024',
+        `count=${free - leave}`,
+      ]);
+
+      let stderr = '';
+      let code = 0;
+      try {
+        await run(process.execPath, [
+          CLI,
+          fixture('long-stream.edf'),
+          '--out',
+          path.join(volume, 'out'),
+        ]);
+      } catch (error) {
+        code = error.code ?? 1;
+        stderr = String(error.stderr ?? '');
+      }
+
+      assert.equal(code, 1, `expected a reported failure, got ${code}:\n${stderr}`);
+      assert.ok(
+        !/Unhandled 'error' event/u.test(stderr),
+        `died on an unhandled event rather than reporting:\n${stderr}`,
+      );
+      assert.match(stderr, /failed: ENOSPC/u);
+      assert.match(stderr, /The files written so far are incomplete/u);
+    }, '8m');
+  });
+});
 
 describe('--stdout onto a destination that fills up', () => {
   // withSmallVolume detaches its own volume in a finally; this is only for the image, in

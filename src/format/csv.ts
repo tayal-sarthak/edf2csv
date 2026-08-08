@@ -100,9 +100,23 @@ export class BufferedLineWriter {
     this.#stream.on('error', this.#onError);
   }
 
-  /** Take the 'error' listener off a stream that outlives this writer. */
+  /**
+   * Take the 'error' listener off a stream that outlives this writer.
+   *
+   * Only those streams. 0.5.36 released it from every stream once `end()`'s callback had
+   * settled, and an `fs.WriteStream` whose write failed emits 'error' again during its own
+   * auto-destroy — after that callback. With the listener already gone that reached Node as
+   * an unhandled 'error' event: a raw stack trace, the process down, `convert()` never
+   * rejecting, and no `WRITE_FAILED` message. Which is the failure this listener exists to
+   * prevent, and the one the constructor's comment describes.
+   *
+   * A stream this writer opened is finished with and about to be collected, so a listener
+   * left on it leaks nothing. The leak was only ever about `process.stdout`, which outlives
+   * every writer in the process.
+   */
   #release(): void {
     if (!this.#onError) return;
+    if (this.#stream !== process.stdout && this.#stream !== process.stderr) return;
     this.#stream.off('error', this.#onError);
     this.#onError = null;
   }

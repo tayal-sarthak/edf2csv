@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.45
+
+### Fixed: 0.5.36 let a full disk take the process down with a raw stack trace
+
+The listener that turns a stream failure into a message came off one tick too early. An
+`fs.WriteStream` whose write failed emits `'error'` a second time during its own auto-destroy,
+after `end()`'s callback has settled — and 0.5.36 released the listener at that callback. So a
+destination that filled up during the final flush produced this:
+
+```
+node:events:485
+      throw er; // Unhandled 'error' event
+      ^
+Error: ENOSPC: no space left on device, write
+```
+
+The process down, no `WRITE_FAILED` line, `signals.csv` truncated with no `channels.csv`
+beside it and nothing saying so, and `convert()` never rejecting — a library caller's
+try/catch bypassed and their process taken with it. Which is, word for word, the failure the
+constructor's comment says this listener exists to prevent.
+
+Released only from `process.stdout` and `process.stderr` now. Those are the streams that
+outlive the writer, and the leak 0.5.36 fixed was only ever about them; a stream this writer
+opened is finished with and about to be collected, so a listener left on it leaks nothing.
+
+The existing disk-full tests missed it because a conversion that overshoots by a lot fails in
+a mid-stream flush and reports correctly. Leaving a little under the whole output free is what
+puts the failure in the last flush, and that is what the new test does.
+
 ## 0.5.44
 
 ### Fixed: `--info` promised nothing for a recording that converts to three files
