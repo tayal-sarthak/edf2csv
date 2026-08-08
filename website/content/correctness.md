@@ -6,7 +6,7 @@ order: 7
 
 ## Eight separate claims
 
-Correctness here covers seven different things, verified seven different ways. The list grew
+Correctness here covers eight different things, verified eight different ways. The list grew
 past the "three" this section used to promise as the batch, fuzz and estimate harnesses were
 added, and the heading did not keep up until 0.4.34.
 
@@ -375,20 +375,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 269
+ℹ tests 270
 ℹ suites 51
-ℹ pass 269
+ℹ pass 270
 ℹ fail 0
 ```
 
-The 269 tests are split across six files by what they exercise:
+The 270 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 39 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 83 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 120 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
-| `test/docs.test.js` | 19 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 20 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 4 | `--stdout` onto a destination that fills up, which needs a filesystem of a known small size and so is kept apart |
 | `test/large.test.js` | 4 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 

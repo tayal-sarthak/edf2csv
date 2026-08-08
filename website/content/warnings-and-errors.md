@@ -347,7 +347,7 @@ These come from reading the EDF+ annotation channel and working out where each d
 
 ### DISCONTINUOUS
 
-This code covers five related conditions, and a single file can raise more than one of them.
+This code covers six related conditions, and a single file can raise more than one of them.
 
 **The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records aren't contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
 
@@ -371,6 +371,17 @@ warning: 1 data record start earlier than the record before it.
 
 Rows are written in file order, not sorted by time, so `time_s` will step backwards at those points.
 
+**The file is marked continuous, and its own records disagree.** `EDF+C` means the records sit end to end, and each record's timekeeping annotation says where it really is. When those two disagree by more than the recording can express, the file is contradicting itself.
+
+```
+warning: This file is marked continuous (EDF+C), but 2 of its 3 data records say they start
+         somewhere other than where continuity puts them.
+         Times are written as if the records were contiguous, which is what EDF+C means.
+         If the recording really has gaps, the file should have been marked EDF+D.
+```
+
+Compared against what the file can express rather than for equality, since a recording of 0.1 s records sitting at 0.1, 0.2, 0.3 is contiguous by construction and `0.1 + 2 * 0.1` is `0.30000000000000004`. Anything below half of one sample of the fastest channel is arithmetic, not a gap.
+
 **Records start before the record before them ends.** The timekeeping annotations increase, but not by as much as a record lasts, so consecutive records cover overlapping spans of time. A device re-sending a buffer produces this.
 
 ```
@@ -391,7 +402,7 @@ warning: This recording's timekeeping annotations place it -10000000000000002s f
 
 The magnitude is what matters, not the sign — a negative origin the same distance out fails identically. Until 0.5.17 the check looked only in the positive direction, seeded from zero, so an all-negative recording never reached it: twelve rows became four, exit 0, and nothing was said, while the byte-for-byte positive mirror of the same file wrote all twelve and explained itself.
 
-**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Don't assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third and fourth cases, either sort by `time_s` in your analysis or investigate the file, since out-of-order or overlapping records usually mean the annotations were written incorrectly. For the fifth, nothing needs doing — every row is written and `time_s` is measured from the start of the recording rather than from an origin the arithmetic cannot hold — but the absolute timestamps in that file's annotation channel should be treated as unreliable, since the file is claiming a position no double can express at that resolution.
+**What to do.** For the first case, nothing: gaps in `time_s` are real and your analysis should respect them. Don't assume a fixed sample interval when converting a discontinuous file. For the second case, treat all timestamps as nominal offsets rather than true recording times. For the third, the file is contradicting itself and its timestamps should be treated as suspect until you know which half is wrong. For the fourth and fifth, either sort by `time_s` in your analysis or investigate the file, since out-of-order or overlapping records usually mean the annotations were written incorrectly. For the sixth, nothing needs doing — every row is written and `time_s` is measured from the start of the recording rather than from an origin the arithmetic cannot hold — but the absolute timestamps in that file's annotation channel should be treated as unreliable, since the file is claiming a position no double can express at that resolution.
 
 ### ANNOTATION_DECODE_FAILED
 

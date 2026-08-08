@@ -212,6 +212,19 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(broken, [], broken.join('\n'));
   });
 
+  it('cites the version being released', async () => {
+    /*
+      CITATION.cff said 0.4.19 while package.json said 0.5.26 — 107 releases behind. It is the
+      file a citation is generated from, so it is the one number that ends up in somebody
+      else's bibliography rather than only on this page.
+    */
+    const manifest = JSON.parse(await read('package.json'));
+    const citation = await read('CITATION.cff');
+    const declared = /^version:\s*(.+)$/mu.exec(citation);
+    assert.ok(declared, 'CITATION.cff declares no version');
+    assert.equal(declared[1].trim(), manifest.version);
+  });
+
   it('has a changelog entry for the version being released', async () => {
     /*
       The file records what each version changed, and it stopped: its newest entry was 0.4.19

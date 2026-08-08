@@ -13,7 +13,7 @@ edf2csv is built as a command-line tool, but the parser and the converter undern
 
 Everything else in the API is a supporting part of those two: the scaling function that turns digital codes into physical units, the annotation decoder, the planner that decides which channels go into which file.
 
-The package is ESM only and needs Node 20 or newer. There's no CommonJS build, so `require("edf2csv")` won't work. TypeScript declarations ship with the package, so `import type` works without installing anything else — including `@types/node`, which the declarations deliberately avoid needing. Raw bytes are typed as `Uint8Array` rather than `Buffer` for that reason; a `Buffer` is still what arrives at runtime, since `Buffer` extends `Uint8Array`. The package has no dependencies.
+The package is ESM only and needs Node 20 or newer. There's no CommonJS build. `require("edf2csv")` nevertheless works on any Node that can require an ESM graph — verified on 22.16 and 24.4 — because nothing here has top-level `await`. It fails on the older Node 20 releases that predate that, which are inside the supported range, so `await import("edf2csv")` is the form that works everywhere. TypeScript declarations ship with the package, so `import type` works without installing anything else — including `@types/node`, which the declarations deliberately avoid needing. Raw bytes are typed as `Uint8Array` rather than `Buffer` for that reason; a `Buffer` is still what arrives at runtime, since `Buffer` extends `Uint8Array`. The package has no dependencies.
 
 ```bash
 npm install edf2csv

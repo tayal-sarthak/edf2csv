@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.35
+
+### Fixed: four documents disagreeing with the tool or with themselves
+
+- **`CITATION.cff` declared 0.4.19** while package.json said 0.5.34 — 107 releases behind. It
+  is the file a citation is generated from, so it is the one version number that ends up in
+  somebody else's bibliography rather than only on a page here. A test holds it to
+  package.json now.
+- **warnings-and-errors.md said `DISCONTINUOUS` "covers five related conditions"** and listed
+  five; the code raises six. The missing one is the EDF+C file whose own records disagree
+  about its continuity, which appeared nowhere on the page despite being the condition with
+  the most careful implementation behind it — the tolerance it compares against is what
+  0.4.41 exists for.
+- **correctness.md opened with "Eight separate claims"** over a sentence reading "covers seven
+  different things, verified seven different ways". Consecutive lines.
+- **api.md said `require("edf2csv")` "won't work".** It works on any Node that can require an
+  ESM graph, since nothing here uses top-level `await` — verified on 22.16 and 24.4. It does
+  fail on the older Node 20 releases that predate that support, which are inside the declared
+  range, so the page now says that and points at `await import()` as the portable form.
+
 ## 0.5.34
 
 ### Fixed: `--info` over a folder left its warnings unattributable
