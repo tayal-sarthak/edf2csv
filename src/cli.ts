@@ -651,15 +651,18 @@ async function showInfo(
       predicted 8 rows where the conversion wrote 10, on a file whose discontinuous twin —
       identical but for the reserved field — agreed with itself.
     */
+    const scan =
+      !needsEveryRecordStart && file.header.continuity === 'EDF+C' && hasAnnotations
+        ? await file.scanOrigin()
+        : null;
     const annotationData = needsEveryRecordStart
       ? await file.readAnnotations()
       : {
           annotations: [],
-          recordStarts:
-            file.header.continuity === 'EDF+C' && hasAnnotations
-              ? [await file.readOrigin()]
-              : [],
+          recordStarts: scan ? [scan.origin] : [],
           malformed: 0,
+          // Counted rather than assumed: see EdfFile.scanOrigin.
+          malformedTimekeeping: scan?.malformedTimekeeping ?? 0,
         };
     const timing = deriveRecordStarts(file, annotationData);
     const plan = buildPlan(

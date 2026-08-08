@@ -1082,6 +1082,36 @@ describe('converting several recordings at once', () => {
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
+  it('reports an unreadable timekeeping TAL it read, on a continuous recording', async () => {
+    /*
+      --info avoids scanning every record on a continuous file: it reads at most sixteen to
+      find the origin. That read decodes the TAL and sees it fail — and the count was
+      hard-coded to zero at the call site, so the failure was read and thrown away. The file
+      raised ANNOTATION_DECODE_FAILED when converted and nothing under --info, while its
+      byte-identical EDF+D twin, differing only in a reserved field that has nothing to do
+      with the defect, raised it both ways.
+    */
+    // Matched on the code rather than the sentence: the continuous and discontinuous paths
+    // word this differently, and the point is that both raise it at all.
+    const codes = async (args) =>
+      new Set(JSON.parse((await cli([...args, '--json'])).stdout).warnings.map((w) => w.code));
+
+    for (const name of ['lost-timekeeping.edf', 'lost-timekeeping-d.edf']) {
+      const fromInfo = await codes([fixture(name), '--info']);
+      assert.ok(fromInfo.has('ANNOTATION_DECODE_FAILED'), `${name}: --info said nothing`);
+
+      const fromRun = await codes([fixture(name), '--out', await outDir(), '--quiet']);
+      assert.ok(fromRun.has('ANNOTATION_DECODE_FAILED'), `${name}: the conversion said nothing`);
+
+      // And --strict agrees with itself across the two modes.
+      assert.equal((await cli([fixture(name), '--info', '--strict'])).code, 1, name);
+    }
+
+    // A recording whose timekeeping is readable says nothing, either way.
+    const quiet = await codes([fixture('annotations.edf'), '--info']);
+    assert.ok(!quiet.has('ANNOTATION_DECODE_FAILED'), [...quiet].join());
+  });
+
   it('does not promise nothing for a recording that has no signal channels', async () => {
     /*
       0.4.51 removed "Would write 0 rows, roughly 0 B." for `--annotations-only`. A recording

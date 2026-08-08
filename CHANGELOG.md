@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.46
+
+### Fixed: `--info` read an unreadable timekeeping entry and threw the failure away
+
+On a continuous recording `--info` does not scan every record — it reads at most sixteen to
+find where the recording begins, which is what keeps it a header read. That read decodes the
+timekeeping TAL and sees it fail. The count was hard-coded to zero at the call site, so the
+failure went nowhere.
+
+`lost-timekeeping.edf` therefore raised `ANNOTATION_DECODE_FAILED` when converted and nothing
+under `--info`, and `--info --strict` exited 0 where the conversion exits 1. Its
+byte-identical EDF+D twin — the same bytes but for a reserved field that has nothing to do
+with the defect — raised it both ways, because that path reads every record and counts as it
+goes.
+
+`EdfFile.scanOrigin()` returns the origin and what the search saw on the way to it;
+`readOrigin()` keeps its shape for callers who only want the number. `--info` and the
+conversion now agree about this on every fixture, and no recording whose timekeeping is
+readable says anything.
+
 ## 0.5.45
 
 ### Fixed: 0.5.36 let a full disk take the process down with a raw stack trace

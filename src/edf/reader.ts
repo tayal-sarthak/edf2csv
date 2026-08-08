@@ -401,25 +401,46 @@ export class EdfFile {
    * Returns null when there is nothing to read it from, in which case the origin is zero.
    */
   async readOrigin(): Promise<number | null> {
+    return (await this.scanOrigin()).origin;
+  }
+
+  /**
+   * The origin, and what the search saw on the way to it.
+   *
+   * `--info` takes this route for a continuous recording rather than reading every record,
+   * and reported nothing when the timekeeping it read was unreadable: the count was hard-coded
+   * to zero at the call site, so a file whose first TAL cannot be parsed raised
+   * ANNOTATION_DECODE_FAILED when converted and nothing under `--info`. Its byte-identical
+   * EDF+D twin — same bytes but for the reserved field, which has nothing to do with the
+   * defect — raised it both ways, because that path reads every record and counts as it goes.
+   *
+   * The failure was being read and then thrown away. `readOrigin` keeps its shape for callers
+   * who only want the number.
+   */
+  async scanOrigin(): Promise<{ origin: number | null; malformedTimekeeping: number }> {
     this.#assertOpen();
 
+    let malformedTimekeeping = 0;
     const channel = this.timekeepingSignal;
-    if (!channel || this.recordCount === 0) return null;
+    if (!channel || this.recordCount === 0) return { origin: null, malformedTimekeeping };
 
     const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
     const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
-    if (buffer.length === 0) return null;
+    if (buffer.length === 0) return { origin: null, malformedTimekeeping };
 
     const searched = Math.min(this.recordCount, RECORDS_SEARCHED_FOR_ORIGIN);
     for (let record = 0; record < searched; record++) {
       const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
       const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
-      if (bytesRead < buffer.length) return null;
+      if (bytesRead < buffer.length) return { origin: null, malformedTimekeeping };
 
-      const start = decodeRecordAnnotations(buffer, record).recordStart;
-      if (start !== null) return start - record * recordDuration;
+      const decoded = decodeRecordAnnotations(buffer, record);
+      malformedTimekeeping += decoded.malformedTimekeeping;
+      if (decoded.recordStart !== null) {
+        return { origin: decoded.recordStart - record * recordDuration, malformedTimekeeping };
+      }
     }
-    return null;
+    return { origin: null, malformedTimekeeping };
   }
 
   async readAnnotations(): Promise<{

@@ -46,6 +46,8 @@ class EdfFile {
   get dataSignals(): EdfSignal[];      // signals, excluding annotation channels
   get annotationSignals(): EdfSignal[];
   get timekeepingSignal(): EdfSignal | undefined;   // the first with room to hold a TAL
+  readOrigin(): Promise<number | null>;
+  scanOrigin(): Promise<{ origin: number | null; malformedTimekeeping: number }>;
   get durationSeconds(): number;       // recordCount * header.recordDuration
 
   readRecords(options?: ReadRecordsOptions): AsyncGenerator<RecordBatch>;
