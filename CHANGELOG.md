@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.40
+
+### Fixed: two names for one recording made the run stop being a batch
+
+`edf2csv one.edf alias.edf --out o`, where `alias.edf` is a symbolic link to `one.edf`, names
+two things. It is converted once, which is right. But the shape of the run was decided by the
+count that survived deduplication rather than by the count that was named, so it collapsed to
+one — and `--out` stopped being a parent. The files landed in `o/` instead of `o/one/`, and
+`--json` printed one indented document where two recordings would have given JSON Lines. The
+same flags over two genuinely different recordings gave the other shape.
+
+cli-reference says of that exact command that it writes `out/one`, and the comment above the
+count has said since 0.4.20 that "a batch is what you asked for, not what happened to be
+there" — the principle was written down and then applied to the wrong number. It reads the
+named inputs now.
+
+One recording named once is unchanged, and so is everything about which name the output takes.
+
 ## 0.5.39
 
 ### Fixed: three lost events reported as "No event was lost"

@@ -582,8 +582,16 @@ describe('converting several recordings at once', () => {
       '--out', path.join(dir, 'one'), '--quiet',
     ]);
     assert.equal(twice.code, 0, twice.stderr);
-    // One recording, so --out is the output directory itself rather than a parent.
-    assert.ok((await readdir(path.join(dir, 'one'))).includes('signals.csv'));
+    /*
+      Two names is a batch, so --out is a parent — even though the two names turn out to be
+      one recording, converted once. Until 0.5.40 the deduplicated count decided this, so the
+      same command wrote signals.csv directly into --out and printed an indented JSON document
+      instead of JSON Lines. The shape of a run is what you asked for, which is what the
+      comment above that count has said since 0.4.20, and what cli-reference says of exactly
+      this command.
+    */
+    assert.deepEqual(await readdir(path.join(dir, 'one')), ['a']);
+    assert.ok((await readdir(path.join(dir, 'one', 'a'))).includes('signals.csv'));
 
     // A glob overlapping an explicit name is two recordings, not three.
     const overlap = await cli([
@@ -717,6 +725,36 @@ describe('converting several recordings at once', () => {
         `the folder's own name must win over the link, not "${alias}"`,
       );
     }
+  });
+
+  it('keeps the batch shape when two names turn out to be one recording', async () => {
+    /*
+      The shape of a run — whether --out is a parent, whether --json is JSON Lines — is
+      decided by what was named. It was decided by what survived deduplication, so naming a
+      recording and a symbolic link to it made the run stop being a batch: the files landed
+      in --out itself rather than in a directory under it, and --json printed one indented
+      document. Two genuinely different recordings gave the other shape from the same flags.
+    */
+    const dir = await stage({ 'one.edf': 'tiny.edf' });
+    await symlink(path.join(dir, 'one.edf'), path.join(dir, 'alias.edf'));
+
+    for (const order of [['one.edf', 'alias.edf'], ['alias.edf', 'one.edf']]) {
+      const out = path.join(dir, `out-${order[0]}`);
+      const { code, stderr } = await cli([
+        ...order.map((name) => path.join(dir, name)),
+        '--out', out, '--quiet',
+      ]);
+      assert.equal(code, 0, stderr);
+      assert.deepEqual(await readdir(out), ['one'], `given ${order.join(' ')}`);
+    }
+
+    // And --json stays JSON Lines, one compact object rather than an indented document.
+    const { stdout } = await cli([
+      path.join(dir, 'one.edf'), path.join(dir, 'alias.edf'), '--out', path.join(dir, 'j'), '--json',
+    ]);
+    const lines = stdout.trimEnd().split('\n');
+    assert.equal(lines.length, 1, stdout);
+    assert.doesNotThrow(() => JSON.parse(lines[0]));
   });
 
   it('picks the same name whether a recording is named directly or through its folder', async () => {

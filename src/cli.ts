@@ -258,8 +258,16 @@ export async function main(argv: readonly string[]): Promise<number> {
     the other — and it broke the day a recording was added, not the day the script changed.
     An input going missing did it in reverse. This is the same count 0.4.20 took out of
     `--out` for the same reason.
+
+    Counted from what was named, not from what survived deduplication. `edf2csv one.edf
+    alias.edf --out o`, where `alias.edf` is a link to `one.edf`, is two names for one
+    recording — converted once, which is right — and the count collapsing to 1 made the run
+    stop being a batch: `--out` became the output directory itself, so the files landed in
+    `o/` rather than `o/one/`, and `--json` printed one indented document where two
+    recordings would have given JSON Lines. cli-reference says of exactly that command that
+    it writes `out/one`.
   */
-  const batch = inputs.length > 1 || namedDirectory;
+  const batch = positionals.length > 1 || namedDirectory;
   const quiet = values['quiet'] === true;
   const asJson = values['json'] === true;
   const strict = values['strict'] === true;
