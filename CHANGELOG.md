@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.33
+
+### Fixed: the library accepted a `layout` the command line rejects
+
+`edf2csv rec.edf --layout tall` has always been a usage error. `convert(path, { layout:
+'tall' })` took it, wrote the wide layout, and handed back a plan whose `layout` read
+`'tall'` — so a programmatic caller with a typo got a conversion that was not the one they
+asked for, described by a plan that agreed with the typo rather than with the files.
+
+`assertOptions` checks every other option that has a shape, and rejects each before a
+directory is created. `layout` arrived in 0.5.0 and never joined them. It has now, with the
+same wording the CLI uses.
+
 ## 0.5.32
 
 ### Fixed: `--info` was refused over output it does not write

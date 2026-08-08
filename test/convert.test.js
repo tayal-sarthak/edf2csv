@@ -313,6 +313,15 @@ describe('option checking', () => {
       [{ start: -5 }, /got -5/u],
       [{ duration: Infinity }, /duration must be a number of seconds/u],
       [{ end: NaN }, /end must be a number of seconds/u],
+      /*
+        The command line has always rejected `--layout tall`. The library took it, wrote the
+        wide layout, and handed back a plan whose `layout` said "tall" — so a caller with a
+        typo got a conversion that was not the one they asked for, described by a plan that
+        agreed with the typo.
+      */
+      [{ layout: 'tall' }, /layout must be "wide" or "long", got "tall"/u],
+      [{ layout: '' }, /layout must be "wide" or "long", got ""/u],
+      [{ layout: 'LONG' }, /got "LONG"/u],
     ];
 
     for (const [options, expected] of cases) {

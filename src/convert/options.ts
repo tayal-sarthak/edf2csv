@@ -31,6 +31,7 @@ export function assertOptions(options: {
   start?: number | undefined;
   duration?: number | undefined;
   end?: number | undefined;
+  layout?: string | undefined;
 }): void {
   const { decimals } = options;
   if (decimals !== undefined) {
@@ -50,6 +51,20 @@ export function assertOptions(options: {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
       throw new OptionError(`${name} must be a number of seconds, got ${describe(value)}.`);
     }
+  }
+
+  /*
+    Two words, and a caller who writes a third means something the tool cannot do.
+
+    The command line has always rejected `--layout tall`. The library took it, put it in
+    `plan.layout` for the caller to read back, and wrote the wide layout — so a programmatic
+    caller with a typo got a conversion that was not the one they asked for, described by a
+    plan that agreed with the typo. Every other option that has a shape is checked here; this
+    one was added in 0.5.0 and never joined them.
+  */
+  const { layout } = options;
+  if (layout !== undefined && layout !== 'wide' && layout !== 'long') {
+    throw new OptionError(`layout must be "wide" or "long", got ${describe(layout)}.`);
   }
 }
 

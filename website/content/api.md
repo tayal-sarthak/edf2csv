@@ -423,6 +423,7 @@ interface ConvertOptions {
 
   // shape and encoding
   layout?: 'wide' | 'long';       // 'wide' (default), or one table of time_s/channel/value
+                                  // any other value is an OptionError, as on the CLI
   gzip?: boolean;                 // compress every CSV, giving each a .csv.gz name
   bom?: boolean;                  // start each CSV with a UTF-8 byte order mark
 
