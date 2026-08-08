@@ -1546,6 +1546,43 @@ describe('a folder the process cannot read', () => {
     }
   });
 
+  it('counts an unreadable path in the closing line, not only in the exit code', async () => {
+    /*
+      A folder holding one recording beside a sub-directory without read permission printed
+      "Converted 1 of 1 recordings." and exited 1: a line agreeing with itself and with
+      nothing else. The unreadable paths were added to the failure count after the summary
+      had already printed.
+
+      This is the sentence the walk's own comment quotes as the thing it fixed. What was
+      fixed then was the error line and the exit code; the summary went on saying everything
+      worked.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-unread-'));
+    temporaries.push(dir);
+    const inside = path.join(dir, 'in');
+    const locked = path.join(inside, 'locked');
+    await mkdir(locked, { recursive: true });
+    await writeFile(path.join(inside, 'night.edf'), await readFile(fixture('tiny.edf')));
+    await writeFile(path.join(locked, 'other.edf'), await readFile(fixture('annotations.edf')));
+    await chmod(locked, 0o000);
+    try {
+      const { code, stderr } = await cli([inside, '--out', path.join(dir, 'out')]);
+      assert.equal(code, 1, stderr);
+      assert.match(stderr, /Converted 1 of 1 recordings; 1 path could not be read\./u);
+    } finally {
+      await chmod(locked, 0o755);
+    }
+
+    // An ordinary batch says what it always said.
+    const clean = path.join(dir, 'clean');
+    await mkdir(clean, { recursive: true });
+    await writeFile(path.join(clean, 'a.edf'), await readFile(fixture('tiny.edf')));
+    await writeFile(path.join(clean, 'b.edf'), await readFile(fixture('annotations.edf')));
+    const ok = await cli([clean, '--out', path.join(dir, 'clean-out')]);
+    assert.equal(ok.code, 0, ok.stderr);
+    assert.match(ok.stderr, /Converted 2 of 2 recordings\./u);
+  });
+
   it('still calls an empty folder empty, and that a usage error', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-emptydir-'));
     temporaries.push(dir);

@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.27
+
+### Fixed: the batch summary said everything converted while the exit code said otherwise
+
+A folder holding one recording beside a sub-directory without read permission printed
+"Converted 1 of 1 recordings." and exited 1. The line agreed with itself and with nothing
+else.
+
+That sentence is the one the directory walk's own comment quotes as the thing it fixed: "a
+folder holding three recordings, one of them inside a sub-directory without read permission,
+converted two and said Converted 2 of 2 recordings — a total that agreed with itself and with
+nothing else." What was fixed then was the error line and the exit code. The unreadable paths
+were added to the failure count on the line *after* the summary printed, so the summary went
+on saying everything worked.
+
+Counted before it prints now, and counted separately from the recordings, because an
+unreadable path is not one of them — how many it held is exactly what nobody knows:
+
+```
+Converted 1 of 1 recordings; 1 path could not be read.
+```
+
+A batch where a recording genuinely fails to convert still reads "Converted 2 of 3
+recordings; 1 failed", and a clean batch is unchanged.
+
 ## 0.5.26
 
 ### Fixed: 0.5.20's memory test asserted a heap size only one machine has

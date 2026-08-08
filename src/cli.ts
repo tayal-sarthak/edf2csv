@@ -522,10 +522,29 @@ export async function main(argv: readonly string[]): Promise<number> {
       }
     }
 
+    /*
+      A path that could not be read is a failure of this run, and the closing line has to
+      count it before it prints rather than after.
+
+      It was counted afterwards, so a folder holding one recording beside a sub-directory
+      without read permission printed "Converted 1 of 1 recordings." and exited 1. The line
+      agreed with itself and with nothing else — which is the failure the walk's own comment
+      says was fixed, quoting that very sentence. What was fixed then was the error line and
+      the exit code; the summary went on saying everything worked.
+
+      Counted separately from the recordings, because an unreadable path is not one of them:
+      how many recordings it held is the thing nobody knows.
+    */
+    if (unreadable.length > 0) failures.push(EXIT_ERROR);
+
     if (batch && !quiet && !asJson) {
+      const unread =
+        unreadable.length > 0
+          ? `; ${unreadable.length} path${unreadable.length === 1 ? '' : 's'} could not be read`
+          : '';
+      const failed = converted < inputs.length ? `; ${inputs.length - converted} failed` : '';
       process.stderr.write(
-        `\nConverted ${converted} of ${inputs.length} recordings` +
-          `${failures.length > 0 ? `; ${failures.length} failed` : ''}.\n`,
+        `\nConverted ${converted} of ${inputs.length} recordings${failed}${unread}.\n`,
       );
     }
 
@@ -541,7 +560,6 @@ export async function main(argv: readonly string[]): Promise<number> {
     */
     process.send?.({ edf2csv: { converted, warnings } });
 
-    if (unreadable.length > 0) failures.push(EXIT_ERROR);
     if (failures.length > 0) return worstOf(failures);
 
     /*

@@ -116,6 +116,12 @@ error: /data/locked: could not be read, so any recordings inside it were skipped
 Nothing could be converted: that path could not be read, so whether it holds recordings is unknown.
 ```
 
+When some recordings *were* found alongside it, the closing line counts the unreadable paths beside the conversions, since how many recordings they held is the thing nobody knows:
+
+```
+Converted 1 of 1 recordings; 1 path could not be read.
+```
+
 Anything that is not a directory is passed to the reader as given, so a missing path or a special file reports itself rather than being skipped.
 
 `-o, --out <dir>` sets the destination. Without it, the output directory is the input file's name with its extension replaced by `_csv`, created next to the input: `/data/recordings/sleep-study.edf` becomes `/data/recordings/sleep-study_csv`. The directory is created if it doesn't exist, including missing parents.
