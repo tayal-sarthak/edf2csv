@@ -1581,6 +1581,51 @@ describe('converting several recordings at once', () => {
     assert.match(without.stdout, /no annotations\.csv\.gz either/u);
   });
 
+  it('starts every recording where --info says it does', async () => {
+    /*
+      output-files.md defined the column as "seconds elapsed since the start of the recording.
+      Zero is the first sample of the first data record" — and the second sentence has been
+      false since 0.4.9 made the first record's timekeeping annotation the origin. The page's
+      only other mention of record start times is scoped to EDF+D, and `fractional-start.edf`
+      is EDF+C and begins at 0.500.
+
+      Swept rather than spot-checked, since the claim is about every recording: whatever
+      `--info` prints as `Timed from` — or its absence, meaning zero — has to be the first
+      value in the file the conversion writes.
+    */
+    const names = (await readdir(path.join(ROOT, 'test', 'fixtures', 'generated'))).filter((n) =>
+      /\.(edf|bdf)$/u.test(n),
+    );
+    assert.ok(names.length > 10, 'fixtures should be generated before this runs');
+
+    let shifted = 0;
+    for (const name of names) {
+      const info = await cli([fixture(name), '--info']);
+      if (info.code !== 0) continue;
+      const claimed = /^Timed from ([\d.-]+)s/mu.exec(info.stdout);
+
+      const dir = await outDir();
+      const converted = await cli([fixture(name), '--out', dir, '--quiet']);
+      if (converted.code !== 0) continue;
+      let rows;
+      try {
+        rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+      } catch {
+        continue; // no signal table: annotations only, or no channel carries samples
+      }
+      if (rows.length < 2) continue;
+
+      const first = Number(rows[1].split(',')[0]);
+      if (claimed) {
+        shifted++;
+        assert.equal(first, Number(claimed[1]), `${name}: --info says ${claimed[1]}, file says ${first}`);
+      } else {
+        assert.equal(first, 0, `${name}: --info printed no origin, so the file must start at 0`);
+      }
+    }
+    assert.ok(shifted >= 2, `no fixture exercises a non-zero origin (found ${shifted})`);
+  });
+
   it('agrees with the conversion about where a recording starts', async () => {
     // --info reads one record's annotation bytes rather than scanning the file, which is
     // what keeps it a header read. It stopped at record 0, so the moment that record's

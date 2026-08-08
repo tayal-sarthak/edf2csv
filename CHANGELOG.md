@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.70
+
+### Fixed: the page that defines `time_s` said zero is the first sample
+
+"`time_s` is seconds elapsed since the start of the recording. Zero is the first sample of the
+first data record." The second sentence has been false since 0.4.9 made the first data record's
+timekeeping annotation the origin: `fractional-start.edf` writes its first row as `0.500` and
+`late-start.edf` as `30.000`.
+
+The page's only other mention of record start times is the bullet headed "On a discontinuous
+recording it jumps", scoped to EDF+D — and `fractional-start.edf` is EDF+C. So a reader working
+from output-files.md had no way to learn this, on the page whose job is to define the column,
+while cli-reference.md, `--info`'s `Timed from` line and the 0.5.59 changelog all say the
+opposite. The sentence beside it, "add `time_s` to `recording.start_datetime_local` to get an
+absolute instant", is right and only makes sense once zero is the header's start time rather
+than the first sample.
+
+Rewritten to say what the tool does, and pinned rather than left as prose: a test now sweeps
+every fixture and requires the first value in `signals.csv` to equal what `--info` prints as
+`Timed from`, or zero where it prints no such line. Behaviour is unchanged — it was correct
+throughout, and only the page was wrong.
+
 ## 0.5.69
 
 ### Fixed: metadata.json described a long table with the wide layout's contract

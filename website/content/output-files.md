@@ -89,9 +89,16 @@ smoothed, resampled or filled.
 
 ### The time_s column
 
-`time_s` is seconds elapsed since the start of the recording. Zero is the first sample of the first
-data record. It isn't a wall clock and isn't a Unix timestamp. To get an absolute instant, add
-`time_s` to `recording.start_datetime_local` in `metadata.json`.
+`time_s` is seconds elapsed since the start of the recording — the instant
+`recording.start_datetime_local` names in `metadata.json` — so adding one to the other gives an
+absolute instant. It isn't a wall clock and isn't a Unix timestamp.
+
+Zero is usually the first sample, and does not have to be. An EDF+ file's first data record
+carries a timekeeping annotation stating where that record sits relative to the header's start
+time, and `edf2csv` uses it rather than assuming zero: a recording whose first record says `+0.5`
+writes its first row as `0.500`, and one saying `+30` writes `30.000`. That is a property of the
+annotation, not of continuity — a plain EDF+C file can begin anywhere. `--info` prints a
+`Timed from` line whenever it is not zero, and `--start` and `--end` are read on the same clock.
 
 Three properties of the column:
 
