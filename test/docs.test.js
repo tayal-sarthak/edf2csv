@@ -764,6 +764,45 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('states the fallback record placement the same way on every page', async () => {
+    /*
+      A record whose timekeeping TAL is unreadable is placed at `origin + index *
+      recordDuration`, where the origin comes from the first record that does state a time.
+      api.md said exactly that, and spelled out why: "not at `index * recordDuration`, which
+      silently assumes the recording begins at zero". edf-plus-annotations.md then said
+      `index * record_duration` — the very form api.md warns against — which puts the record
+      at the wrong instant on every recording whose first record says anything but `+0`.
+
+      Anchored on the claim rather than on every appearance of the arithmetic. Both pages also
+      name the bare form in order to reject it, and a check that flagged those would need a
+      phrase blacklist that grows with the prose, which is the kind of test people delete.
+    */
+    const pages = ['website/content/edf-plus-annotations.md', 'website/content/api.md'];
+    for (const page of pages) {
+      const text = (await read(page)).replace(/\s+/gu, ' ');
+      // The origin-aware form has to be on the page at all.
+      assert.match(
+        text,
+        /origin \+ (?:record_)?index \* record[_ ]?[Dd]uration/u,
+        `${page} no longer gives the origin-aware placement formula`,
+      );
+    }
+
+    /*
+      And the sentence that states the fallback has to be the origin-aware one. This is the
+      sentence that was wrong: "The affected record is timed as if it were contiguous with
+      the start of the recording, at `index * record_duration`".
+    */
+    const annotations = (await read(pages[0])).replace(/\s+/gu, ' ');
+    const fallback = /timed as if it were contiguous[^.]*\./u.exec(annotations);
+    assert.ok(fallback, `${pages[0]} no longer describes the fallback placement`);
+    assert.match(
+      fallback[0],
+      /origin/u,
+      `the fallback sentence gives a formula with no origin: ${fallback[0]}`,
+    );
+  });
+
   it('lists no parser error among the usage errors', async () => {
     /*
       The usage-errors table opens "They exit **2** rather than 1, so a script can tell 'you

@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.75
+
+### Fixed: two pages gave different formulas for where an untimed record goes, and one was wrong
+
+A data record whose timekeeping annotation cannot be read has to be placed somewhere.
+`deriveRecordStarts` puts it at `origin + index * recordDuration`, where the origin comes from
+the first record that does state a time.
+
+api.md says exactly that, and says why: "not at `index * recordDuration`, which silently assumes
+the recording begins at zero". edf-plus-annotations.md then said `index * record_duration` — the
+form the other page names in order to warn against it. On `lost-timekeeping-d.edf`, whose origin
+is 0.5 s, the documented arithmetic gives 0.000 for a record the conversion writes at 0.500.
+
+Corrected, with the reason attached rather than only the formula, since the formula alone is
+what drifted. A test anchors the claim: both pages must carry the origin-aware form, and the
+sentence in edf-plus-annotations.md that states the fallback must be that one. Anchored on the
+sentence rather than on every appearance of the arithmetic — both pages also name the bare form
+in order to reject it, and flagging those would take a phrase blacklist that grows with the
+prose.
+
 ## 0.5.74
 
 ### Fixed: "1 records", "1 bytes"

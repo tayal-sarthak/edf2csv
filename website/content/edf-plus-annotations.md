@@ -250,8 +250,11 @@ When it's absent or can't be parsed, that position is simply not knowable from
 the file.
 
 edf2csv doesn't stop, and it doesn't guess quietly. The affected record is timed
-as if it were contiguous with the start of the recording, at `index *
-record_duration`, and the substitution is reported by name:
+as if it were contiguous with the records around it, at `origin + index *
+record_duration` — where `origin` comes from the first record that does state a
+time, since a recording need not begin at zero. Writing it as `index *
+record_duration` would put the record at the wrong instant on every file whose
+first record says anything but `+0`. The substitution is reported by name:
 
 ```
 warning: 1 of 3 data records carry no readable timekeeping annotation (record 1), so their true position in time is unknown.
