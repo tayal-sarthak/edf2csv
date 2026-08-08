@@ -195,6 +195,48 @@ describe('argument errors exit 2', () => {
     assert.match(lines[1], /^ {7}Run with --info/u, 'the second line lines up under the first');
   });
 
+  it('tells a column name apart from a typo, and gives the form that works', async () => {
+    /*
+      `--channels` matches the label, and where labels collide the column gains a
+      `_ch<index>` suffix. `T8-P8_ch1` is therefore a name this tool invented, prints in the
+      COLUMN column of --info, writes into channels.csv and puts at the head of signals.csv —
+      and then rejected with "No channel named "T8-P8_ch1". Run with --info to list the
+      channels in this file", pointing back at the table it was copied from. The reference
+      documents the trap; the message someone actually hits did not.
+    */
+    const column = await cli([
+      fixture('quirky-labels.edf'), '--channels', 'T8-P8_ch1', '--out', await outDir(),
+    ]);
+    assert.equal(column.code, 2, column.stderr);
+    assert.match(column.stderr, /is a column name, not a channel name/u, column.stderr);
+    assert.doesNotMatch(column.stderr, /Run with --info to list/u, column.stderr);
+
+    // The form it offers has to be the one that works, and select the channel asked for.
+    const dir = await outDir();
+    const picked = await cli([
+      fixture('quirky-labels.edf'), '--channels', '#1', '--out', dir, '--quiet',
+    ]);
+    assert.equal(picked.code, 0, picked.stderr);
+    const header = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).split('\n')[0];
+    assert.equal(header, 'time_s,T8-P8_ch1');
+
+    /*
+      A label that merely looks like a column name is still a label. In this file channel 2
+      is really called `T8_ch0`, which channel 0 also claims as its column, so the label has
+      to win — the suffix rule cannot make a channel unreachable by its own name.
+    */
+    const real = await outDir();
+    const byLabel = await cli([
+      fixture('label-suffix-collision.edf'), '--channels', 'T8_ch0', '--out', real, '--quiet',
+    ]);
+    assert.equal(byLabel.code, 0, byLabel.stderr);
+    assert.equal(
+      (await readFile(path.join(real, 'signals.csv'), 'utf8')).split('\n')[0],
+      'time_s,T8_ch0_ch2',
+      'the channel whose label it is, not the channel whose column it is',
+    );
+  });
+
   it('rejects an unknown channel and suggests a real one', async () => {
     const { code, stderr } = await cli([fixture('mixed-rates.edf'), '--channels', 'ECQ']);
     assert.equal(code, 2);

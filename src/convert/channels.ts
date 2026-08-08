@@ -168,6 +168,39 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
 
     const matched = byLabel.get(term.toLowerCase());
     if (!matched || matched.length === 0) {
+      /*
+        The one term that is certainly not a typo: a column name.
+
+        Matching is on the label, and where a label collides the column gains a `_ch<index>`
+        suffix — so `T8-P8_ch1` is a name this tool invented, prints in the COLUMN column of
+        --info, writes into channels.csv and puts at the head of signals.csv, and then
+        rejects with "No channel named "T8-P8_ch1". Run with --info to list the channels in
+        this file", which is where the user copied it from. The reference documents the trap;
+        the message a user actually hits did not.
+
+        Answered where it is asked instead, and with the thing that works: `#<index>` selects
+        one channel of a colliding pair, which is exactly what someone reaching for the
+        suffixed column name wants and the only way to get it.
+      */
+      const columns = buildColumnNames(candidates);
+      const owner = candidates.find(
+        (signal) => (columns.get(signal.index) ?? '').toLowerCase() === term.toLowerCase(),
+      );
+      if (owner) {
+        // A channel with no label at all gets the column `signal_<index>`, and offering its
+        // label back would be offering `""` — there is nothing to type. Position is the only
+        // way to reach it, and saying so is more use than quoting an empty string twice.
+        throw new ChannelSelectionError(
+          owner.label === ''
+            ? `"${term}" is a column name, not a channel name: --channels matches the label, ` +
+              `and this channel has none.\n` +
+              `Use "#${owner.index}" — a channel with no label can only be addressed by position.`
+            : `"${term}" is a column name, not a channel name: --channels matches the label, ` +
+              `which for this channel is "${owner.label}".\n` +
+              `Use "#${owner.index}" to select just this one, or "${owner.label}" for every ` +
+              `channel sharing that label.`,
+        );
+      }
       throw new ChannelSelectionError(
         `No channel named "${term}".${suggest(term, candidates)}\n` +
           `Run with --info to list the channels in this file.`,

@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.61
+
+### Fixed: `--channels` rejected the column name it had just printed, and called it unknown
+
+Matching is on the label. Where two channels share one, their columns gain a `_ch<index>`
+suffix — so `T8-P8_ch1` is a name this tool invented. It prints it in the COLUMN column of
+`--info`, writes it into channels.csv, and puts it at the head of signals.csv. Passing it back
+got:
+
+```
+error: No channel named "T8-P8_ch1". Run with --info to list the channels in this file.
+```
+
+which is the table it was copied out of. The reference has documented the trap for a long
+time; the message someone actually hits did not, and the advice it gave was a loop.
+
+It says what the term is now, and gives the form that works — `#<index>`, which is also the
+only way to select one channel of a colliding pair and exactly what someone reaching for the
+suffixed column name wants:
+
+```
+error: "T8-P8_ch1" is a column name, not a channel name: --channels matches the label, which for this channel is "T8-P8".
+       Use "#1" to select just this one, or "T8-P8" for every channel sharing that label.
+```
+
+Only for a term that really is some channel's column name; a typo still gets "No channel
+named "ECQ". Did you mean "ECG"?". A label that merely looks like a column name still wins,
+which `label-suffix-collision.edf` pins: its third channel is genuinely called `T8_ch0`, the
+same text as the first channel's column, and `--channels T8_ch0` selects the channel whose
+label it is. A channel with no label has nothing to match at all, so that case is told to use
+the position rather than offered an empty string to type.
+
 ## 0.5.60
 
 ### Fixed: two window messages that were false about a recording not timed from zero

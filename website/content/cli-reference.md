@@ -214,7 +214,14 @@ error: --channels was given but lists no channel names.
 
 A term matches a channel when it equals that channel's **label**, compared case-insensitively, with no partial or prefix matching and no wildcards. `ecg` matches `ECG`; `EEG Fpz` matches nothing. Labels routinely contain spaces and punctuation, so quote them in the shell.
 
-Match against the label from the `LABEL` column of `--info`, not the `COLUMN` name. Where the two differ, the label is the one that works: in a file with two channels labelled `T8-P8`, the columns are named `T8-P8_ch0` and `T8-P8_ch1`, but `--channels "T8-P8_ch0"` matches nothing and errors out.
+Match against the label from the `LABEL` column of `--info`, not the `COLUMN` name. Where the two differ, the label is the one that works: in a file with two channels labelled `T8-P8`, the columns are named `T8-P8_ch0` and `T8-P8_ch1`, and passing one of those says so rather than treating it as a typo:
+
+```
+error: "T8-P8_ch1" is a column name, not a channel name: --channels matches the label, which for this channel is "T8-P8".
+       Use "#1" to select just this one, or "T8-P8" for every channel sharing that label.
+```
+
+A label that merely looks like a column name is still a label, and wins: if a third channel really is called `T8_ch0`, `--channels "T8_ch0"` selects that channel and not the one whose column happens to be spelled the same way. The suffix rule cannot make a channel unreachable by its own name. A channel with no label at all has nothing to match, so `#<index>` is the only way to ask for it, and the error says that too.
 
 The EDF+ annotation channel can't be selected. It isn't a signal, it's never a column in `signals.csv`, and asking for `EDF Annotations` by name is an unknown-channel error. Annotations are exported through `annotations.csv` instead, automatically.
 
