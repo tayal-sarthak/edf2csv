@@ -225,6 +225,23 @@ export class EdfFile {
     return this.header.signals.filter((s) => !s.isAnnotations);
   }
 
+  /**
+   * The annotation channel a record's start time is read from.
+   *
+   * EDF+ puts the timekeeping TAL first in the first annotation channel, and this was read as
+   * `annotationSignals[0]` — the first one declared, whether or not it can hold anything. A
+   * writer that declares an annotation channel and gives it zero samples per record leaves a
+   * slot of zero bytes, so nothing was read from it, and the timekeeping in the channel after
+   * it went unread: a three-record EDF+D reported "3 of 3 data records carry no readable
+   * timekeeping annotation" about three that were perfectly readable, and timed the file from
+   * zero.
+   *
+   * A channel with no room carries nothing, so it is not the one the TAL is in.
+   */
+  get timekeepingSignal(): EdfSignal | undefined {
+    return this.annotationSignals.find((signal) => signal.samplesPerRecord > 0);
+  }
+
   get annotationSignals(): EdfSignal[] {
     return this.header.signals.filter((s) => s.isAnnotations);
   }
@@ -371,7 +388,7 @@ export class EdfFile {
   async readOrigin(): Promise<number | null> {
     this.#assertOpen();
 
-    const channel = this.annotationSignals[0];
+    const channel = this.timekeepingSignal;
     if (!channel || this.recordCount === 0) return null;
 
     const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
@@ -411,6 +428,7 @@ export class EdfFile {
 
     const { headerBytes, recordBytes, bytesPerSample } = this.header;
     const buffers = channels.map((c) => Buffer.alloc(c.samplesPerRecord * bytesPerSample));
+    const timekeeping = this.timekeepingSignal;
 
     for (let record = 0; record < this.recordCount; record++) {
       for (const [position, channel] of channels.entries()) {
@@ -424,8 +442,8 @@ export class EdfFile {
         }
 
         const decoded = decodeRecordAnnotations(buffer, record);
-        // Only the first annotation channel carries the record's timekeeping TAL.
-        if (position === 0) recordStarts[record] = decoded.recordStart;
+        // Only the timekeeping channel carries the record's start; see timekeepingSignal.
+        if (channel === timekeeping) recordStarts[record] = decoded.recordStart;
         for (const annotation of decoded.annotations) annotations.push(annotation);
         malformed += decoded.malformed;
         malformedTimekeeping += decoded.malformedTimekeeping;

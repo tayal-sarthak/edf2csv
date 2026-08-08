@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.29
+
+### Fixed: an annotation channel with no room in it hid the timekeeping in the channel after it
+
+EDF+ puts the timekeeping TAL first in the first annotation channel, and the reader took that
+literally: `annotationSignals[0]`, whether or not it can hold a byte. A writer that declares
+an annotation channel and gives it zero samples per record leaves a zero-byte slot, and
+nothing is read from a zero-byte slot — so a three-record EDF+D whose second annotation
+channel carried perfectly readable timekeeping reported "3 of 3 data records carry no
+readable timekeeping annotation" and timed itself from zero.
+
+A channel with no room carries nothing, so it is not the one the TAL is in. `EdfFile` gains
+`timekeepingSignal`, the first annotation channel with room, and both the origin read and the
+full annotation pass ask it rather than counting from zero. Events were never affected: those
+are collected from every annotation channel, which is why the same file under EDF+C looked
+perfectly fine and gave no hint.
+
 ## 0.5.28
 
 ### Fixed: an EDF+C file contradicting continuity went unreported when its first record sat at zero

@@ -1171,6 +1171,32 @@ describe('converting', () => {
     for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
   });
 
+  it('reads timekeeping from an annotation channel that has room for it', async () => {
+    /*
+      EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read
+      as `annotationSignals[0]` — the first one declared, whether or not it can hold a byte.
+      A channel with zero samples per record leaves a zero-byte slot, so the timekeeping in
+      the channel after it went unread: "3 of 3 data records carry no readable timekeeping
+      annotation" about three that are perfectly readable, and the file timed from zero.
+    */
+    const dir = await outDir();
+    const result = await convert(fixture('zero-first-annotation.edf'), { outputDir: dir });
+    assert.ok(
+      !result.diagnostics.some((d) => /no readable timekeeping/u.test(d.message)),
+      `they are readable: ${JSON.stringify(result.diagnostics)}`,
+    );
+
+    // Records start at 0, 2 and 4, so the times are the file's rather than continuity's.
+    const times = (await readCsv(dir, 'signals.csv')).slice(1).map((row) => Number(row.split(',')[0]));
+    assert.deepEqual(times.slice(0, 3), [0, 0.25, 0.5]);
+    assert.equal(times[4], 2, 'record 1 starts where its timekeeping TAL says, not at 1');
+
+    // And the event in the second channel is still exported.
+    const events = await readCsv(dir, 'annotations.csv');
+    assert.equal(events.length - 1, 1);
+    assert.match(events[1], /^2\.5,,Lights off,1$/u);
+  });
+
   it('checks continuity from a first record at zero, like any other first record', async () => {
     /*
       The EDF+C branch derives an origin from the first record that states one, then compares

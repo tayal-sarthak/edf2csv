@@ -303,6 +303,34 @@ export function generate() {
   });
 
   /*
+    Two annotation channels, the first of which has no room to hold anything.
+
+    EDF+ puts the timekeeping TAL first in the first annotation channel, and the reader took
+    that literally: `annotationSignals[0]`, whether or not it can hold a byte. A writer that
+    declares a channel and gives it zero samples per record leaves a zero-byte slot, so the
+    timekeeping in the channel after it went unread — this file reported "3 of 3 data records
+    carry no readable timekeeping annotation" about three that are perfectly readable, and
+    timed itself from zero.
+
+    Declared by label rather than with `annotations: true`, so the fixture writer leaves the
+    empty slot alone while the reader still counts the channel as an annotation channel —
+    which is the whole point of it.
+  */
+  writeEdf({
+    path: at('zero-first-annotation.edf'),
+    reserved: 'EDF+D',
+    numRecords: 3,
+    recordDuration: 1,
+    talsForRecord: (record) =>
+      buildTal(record * 2, record === 1 ? [{ onset: 2.5, text: 'Lights off' }] : []),
+    signals: [
+      { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 0, gen: () => 0 },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ],
+  });
+
+  /*
     The same lie told from zero.
 
     `continuous-liar.edf` starts at 0.5s, so the origin derived from it is 0.5 and the

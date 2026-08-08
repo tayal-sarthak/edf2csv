@@ -45,6 +45,7 @@ class EdfFile {
 
   get dataSignals(): EdfSignal[];      // signals, excluding annotation channels
   get annotationSignals(): EdfSignal[];
+  get timekeepingSignal(): EdfSignal | undefined;   // the first with room to hold a TAL
   get durationSeconds(): number;       // recordCount * header.recordDuration
 
   readRecords(options?: ReadRecordsOptions): AsyncGenerator<RecordBatch>;
@@ -164,7 +165,7 @@ interface EdfSignal {
 }
 ```
 
-`header.signals` holds every signal including annotation channels. `file.dataSignals` and `file.annotationSignals` are the two halves, split on `isAnnotations`. Match on `index` rather than on `label` if you need to be certain which channel you've: labels are free text and aren't guaranteed unique.
+`header.signals` holds every signal including annotation channels. `file.dataSignals` and `file.annotationSignals` are the two halves, split on `isAnnotations`. `file.timekeepingSignal` is the one a record's start time is read from: EDF+ puts that TAL first in the first annotation channel, but a channel declared with zero samples per record has a zero-byte slot and can hold nothing, so it is the first channel with room rather than the first declared. Match on `index` rather than on `label` if you need to be certain which channel you've: labels are free text and aren't guaranteed unique.
 
 ### Diagnostic
 
