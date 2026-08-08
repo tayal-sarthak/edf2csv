@@ -81,7 +81,18 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   const { header } = file;
   const lines: string[] = [];
 
-  lines.push(`File       ${file.path}`);
+  /*
+    Escaped, like every other value that came out of the filesystem.
+
+    A path is untrusted text: a folder may be named with an ESC byte, and a file name may
+    hold a newline on every platform this runs on. The `[n/m]` header a batch prints has
+    always escaped it and these two lines did not, so one line of a run reached the terminal
+    as `study/esc\x1b[31mred.edf` and the next as a live colour change — and a name holding a
+    newline split `Wrote` across two lines, so the summary reported a path that reads as two.
+    NONPRINTABLE_LABEL exists because a header field can carry these bytes; a directory entry
+    can carry them just as easily.
+  */
+  lines.push(`File       ${printable(file.path)}`);
   lines.push(`Format     ${describeFormat(header)}`);
   lines.push(
     `Recorded   ${
@@ -326,7 +337,7 @@ export function formatSummary(result: ConvertResult): string {
       /\.csv(\.gz)?$/u.test(file.name) ? 'rows' : '',
     ]);
   }
-  lines.push(`Wrote ${result.outputDir}`);
+  lines.push(`Wrote ${printable(result.outputDir)}`);  // Escaped; see the File line above.
   lines.push(table(rows, new Set([1])));
   lines.push(`Done in ${(result.elapsedMs / 1000).toFixed(1)}s.`);
   return lines.join('\n');

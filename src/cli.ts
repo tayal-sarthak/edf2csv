@@ -790,11 +790,11 @@ async function convertOne(
         (toStdout
           ? `       The CSV on stdout stops mid-recording and should not be used.\n`
           : !wrote
-            ? `       Nothing was written: "${destination}" was never created.\n`
+            ? `       Nothing was written: "${printable(destination)}" was never created.\n`
             : destinationExistedBefore
-              ? `       "${destination}" was already there, so what is in it may be this run's ` +
+              ? `       "${printable(destination)}" was already there, so what is in it may be this run's ` +
                 `incomplete output.\n`
-              : `       Files already written to "${destination}" are incomplete and should not ` +
+              : `       Files already written to "${printable(destination)}" are incomplete and should not ` +
                 `be used.\n`),
     );
     // 128 + signal number, the conventional exit status for dying to a signal.
@@ -1257,7 +1257,7 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
     const first = claimed.get(key);
     if (first !== undefined) {
       throw new OptionError(
-        `"${inputs[index]}" and "${first}" would both be converted into "${destination}", ` +
+        `"${printable(inputs[index] as string)}" and "${printable(first)}" would both be converted into "${printable(destination)}", ` +
           `so one would overwrite the other.\n` +
           `Convert them separately, or rename one of them.`,
       );
@@ -1306,7 +1306,7 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
       const owner = byDestination.get(identity(ancestor));
       if (owner === undefined || owner === index) continue;
       throw new OptionError(
-        `"${inputs[index]}" would be converted into "${destination}", which is inside ` +
+        `"${printable(inputs[index] as string)}" would be converted into "${printable(destination)}", which is inside ` +
           `"${destinations[owner]}" — where "${inputs[owner]}" is converted.\n` +
           `One recording's output cannot sit inside another's. Convert them separately, or ` +
           `rename one of them.`,
@@ -1430,7 +1430,7 @@ async function convertInChild(
       if (signal !== null && !stopping) {
         err +=
           `error: stopped by ${signal} before it finished.\n` +
-          `       Incomplete, and should not be used: ${destination}\n`;
+          `       Incomplete, and should not be used: ${printable(destination)}\n`;
       }
       resolve({ code: code ?? EXIT_ERROR, out, err, report });
     });

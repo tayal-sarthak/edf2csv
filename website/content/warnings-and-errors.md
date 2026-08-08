@@ -619,7 +619,7 @@ warning: Signal 0's label or unit contains 2 control characters (\x1b), which wi
          the name cannot be typed. Printing the CSV to a terminal may do more than print it.
 ```
 
-**What edf2csv does.** Passes the label through exactly as the header has it. Losing what the file says is not an improvement, and CSV quoting keeps the row parseable whatever the bytes are — the warning exists so that you know, not because anything is rewritten. `--info` is the exception: it escapes them for display, since an ANSI escape in a header could otherwise drive your terminal.
+**What edf2csv does.** Passes the label through exactly as the header has it. Losing what the file says is not an improvement, and CSV quoting keeps the row parseable whatever the bytes are — the warning exists so that you know, not because anything is rewritten. `--info` is the exception: it escapes them for display, since an ANSI escape in a header could otherwise drive your terminal. The same goes for paths, which the filesystem supplies and nobody vets — a directory named with an ESC byte, or a file name holding a newline, is escaped everywhere edf2csv prints it, so a summary line stays one line and stays inert.
 
 **What to do.** Address the channel by position (`--channels "#0"`) rather than by name. Be careful about printing the CSV to a terminal — `\x1b[2J` clears the screen, so `cat signals.csv` can hide the rest of your session's output. `head`, `less -R` off, or opening the file in an editor are all safe. A tab (`\x09`) is harmless to a terminal but still makes a column name that is hard to match reliably in a script.
 

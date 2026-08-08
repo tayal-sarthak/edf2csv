@@ -335,6 +335,54 @@ describe('terminal safety', () => {
     });
     assert.deepEqual(offending, [], 'control bytes must be escaped before reaching the terminal');
   });
+
+  it('escapes the path too, which the filesystem supplies and nobody vets', async () => {
+    /*
+      The tests above cover the header fields. A path is untrusted text of exactly the same
+      kind — a directory may be named with an ESC byte, and a file name may hold a newline on
+      every platform this runs on — and the `[n/m]` header a batch prints had always escaped
+      it while the two lines beneath it did not. So one line reached the terminal as
+      `study/esc\x1b[31mred.edf` and the next as a live colour change, from the same name.
+
+      The newline is the worse half: it split `Wrote` across two lines, so a summary line that
+      anything reading the output treats as one path reported two.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-escpath-'));
+    temporaries.push(dir);
+    const study = path.join(dir, 'study');
+    await mkdir(study);
+    const source = await readFile(fixture('tiny.edf'));
+    await writeFile(path.join(study, 'esc\u001b[31mred.edf'), source);
+
+    const control = (text) =>
+      [...text].filter((c) => {
+        const n = c.codePointAt(0);
+        return (n < 32 && n !== 10) || (n >= 127 && n <= 159);
+      });
+
+    const converted = await cli([study, '--out', path.join(dir, 'out')]);
+    assert.equal(converted.code, 0, converted.stderr);
+    assert.deepEqual(control(converted.stdout + converted.stderr), [], 'the Wrote line');
+    // The summary goes to stderr, keeping stdout for --json and --stdout; either way it is
+    // the escaped form that must be there.
+    assert.match(converted.stderr, /Wrote .*esc\\x1b\[31mred/u, converted.stderr);
+
+    const info = await cli([study, '--info']);
+    assert.deepEqual(control(info.stdout + info.stderr), [], 'the File line');
+
+    /*
+      A newline in the name must not turn one reported path into two lines. No --out here on
+      purpose: the destination is then derived from the recording's own name, so the newline
+      is in the path the summary prints rather than only in the one it was given.
+    */
+    const split = path.join(dir, 'nl\nname.edf');
+    await writeFile(split, source);
+    const single = await cli([split], { cwd: dir });
+    assert.equal(single.code, 0, single.stderr);
+    const wrote = single.stderr.split('\n').filter((line) => line.startsWith('Wrote '));
+    assert.equal(wrote.length, 1, JSON.stringify(single.stderr));
+    assert.match(wrote[0], /\\x0a/u, wrote[0]);
+  });
 });
 
 describe('stale output detection', () => {

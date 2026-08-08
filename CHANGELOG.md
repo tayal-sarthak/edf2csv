@@ -3,6 +3,39 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.67
+
+### Fixed: a path reached the terminal unescaped, on the lines that report where output went
+
+Header fields have been escaped for display since 0.2.x, because an ANSI escape in a patient
+identification field could otherwise drive the reader's terminal. A path is untrusted text of
+exactly the same kind: a directory may be named with an ESC byte, and a file name may hold a
+newline on every platform this runs on.
+
+The `[n/m]` header a batch prints escaped it. The two lines underneath did not:
+
+```
+[1/1] study/esc\x1b[31mred.edf
+Wrote o/esc<ESC>[31mred
+```
+
+One line of the same run showing the name, the next handing it to the terminal. `--info`'s
+`File` line had it too, and so did the collision refusals, the nesting refusal, the killed-child
+line and the three interrupt messages — every place a path is printed except the ones that had
+been fixed one at a time.
+
+The newline is the worse half, because nothing about it looks wrong:
+
+```
+Wrote nl
+name_csv
+```
+
+One recording, and a summary line that reads as two paths to anything parsing the output. It
+prints `Wrote nl\x0aname_csv` now.
+
+All of them go through the same `printable` the header fields use.
+
 ## 0.5.66
 
 ### Fixed: 0.5.49's warning attribution never reached `--jobs`
