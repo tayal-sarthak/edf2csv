@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.52
+
+### Fixed: a bound on one channel is not a bound on a file's channels
+
+Every channel is handed a cache of its formatted values, because a channel has only
+`digitalMax - digitalMin + 1` distinct readings and the same handful of strings then serve
+millions of rows. 0.2.5 sized that cache to the range a channel declares rather than to the
+whole 16-bit domain, which fixed the dense montage of 12-bit channels — and left the ceiling
+at 512 KB per channel, with nothing whatever said about how many channels a file may have.
+
+The full 16-bit range is legal, usual, and what an ordinary EEG amplifier writes. 256 such
+channels claim the ceiling 256 times: 134 MB of pointer arrays reserved before a single row
+is written, and it is the channel count that does it, not the file size. A 229 KB recording
+exits 134 with a native V8 stack and an empty output directory under a 96 MB heap; a 7.9 MB
+one needs 192 MB to finish, where the site advertises 48 MB and means it.
+
+One budget for the conversion, 16 MB, the same shape of fix the time-offset cache got in
+0.4.23 one level over — there the unbounded count was rate groups, here it is channels.
+A 32-channel montage at the full range keeps every cache it had, as do 512 channels of a
+12-bit ADC. Past that, channels format each value directly: about a quarter slower on a
+recording where almost none of them are cached, and byte-for-byte the same output. The
+229 KB file now converts under 48 MB, and the 7.9 MB one holds a 28 MB working set.
+
 ## 0.5.51
 
 ### Fixed: 0.5.32 removed the collision refusal from `--info` and put nothing in its place

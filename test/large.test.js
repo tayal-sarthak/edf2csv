@@ -94,6 +94,101 @@ describe('a record with a great many samples in it', () => {
   });
 });
 
+describe('a recording with a great many channels', () => {
+  /*
+    A dense montage at one rate — the other half of the fan-out the previous suite covers.
+
+    Every channel is handed its own formatted-value cache, sized to the digital range it
+    declares. 0.2.5 capped that range at 16 bits, which bounds one channel at 512 KB and
+    bounds nothing at all about a file's channel count. The full 16-bit range is what an
+    ordinary EEG amplifier writes, so 256 of them reserved 134 MB of pointers before a row
+    was written.
+
+    The file below is 229 KB. Channel count, not file size, is what makes it expensive.
+  */
+  const CHANNELS = 256;
+  const RECORDS = 20;
+  const PER_RECORD = 16;
+
+  const denseMontage = async (dir) => {
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(dir, 'dense.edf');
+    writeEdf({
+      path: recording,
+      numRecords: RECORDS,
+      recordDuration: 1,
+      signals: Array.from({ length: CHANNELS }, (unused, index) => ({
+        label: `EEG ${index}`,
+        dimension: 'uV',
+        physMin: -250,
+        physMax: 250,
+        // The whole 16-bit range, which is both legal and usual, and the worst case for a
+        // per-channel cache: every channel claims the maximum a channel may claim.
+        digMin: -32768,
+        digMax: 32767,
+        samplesPerRecord: PER_RECORD,
+        // Identical in every channel, so the columns can be compared against each other.
+        gen: (record, sample) => ((record * 31 + sample * 7) % 65536) - 32768,
+      })),
+    });
+    return recording;
+  };
+
+  it('sizes its value caches for the conversion, not for each channel', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-dense-'));
+    temporaries.push(dir);
+    const recording = await denseMontage(dir);
+
+    /*
+      96 MB, the same cap as the many-rates test above, and portable for the same reason it
+      is not: this one is a fixed reservation rather than a garbage-collector question. The
+      caches alone were 134 MB, so no machine's collector could have fitted them under this
+      cap; they are 16 MB now, so none has to try. The old code exited 134 with a native V8
+      stack and an empty output directory.
+    */
+    const out = path.join(dir, 'out');
+    await run(
+      process.execPath,
+      ['--max-old-space-size=96', CLI, recording, '--out', out, '--quiet'],
+      { maxBuffer: 1 << 22 },
+    );
+
+    const { readFile } = await import('node:fs/promises');
+    const lines = (await readFile(path.join(out, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(lines.length - 1, RECORDS * PER_RECORD, 'every row was written');
+    assert.equal(lines[0].split(',').length, CHANNELS + 1, 'and every channel has a column');
+  });
+
+  it('formats a channel that missed the cache exactly as one that kept it', async () => {
+    /*
+      What the budget gives up is speed, not agreement. A channel past the budget formats
+      each value directly instead of looking it up, and the two paths call the same scaler
+      and the same `fixed` — so the columns have to come out identical, which is the only
+      reason it is safe to hand the cache to some channels and not others.
+
+      Every channel here is fed the same digital samples and declares the same scale, so
+      the first column and the last must match cell for cell. They only exercise different
+      code if the budget has run out by the time the last one asks, which 256 channels of
+      the full 16-bit range guarantees.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-dense-agree-'));
+    temporaries.push(dir);
+    const recording = await denseMontage(dir);
+
+    const out = path.join(dir, 'out');
+    await run(process.execPath, [CLI, recording, '--out', out, '--quiet'], { maxBuffer: 1 << 22 });
+
+    const { readFile } = await import('node:fs/promises');
+    const rows = (await readFile(path.join(out, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    const cells = rows.slice(1).map((row) => row.split(','));
+    const cached = cells.map((row) => row[1]);
+    const direct = cells.map((row) => row[CHANNELS]);
+    assert.deepEqual(direct, cached, 'the uncached channel reads the same as the cached one');
+    // Not vacuous: the samples have to actually vary, or two empty columns would agree.
+    assert.ok(new Set(cached).size > 1, 'and the values are not all the same');
+  });
+});
+
 describe('a recording that mixes many sampling rates', () => {
   /*
     200 rates, not 40.

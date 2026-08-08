@@ -19,6 +19,44 @@ import { makeScaler } from '../edf/scale.js';
 const MAX_CACHED_SPAN = 1 << 16;
 
 /**
+ * How many cached sample slots a conversion has left to spend.
+ *
+ * MAX_CACHED_SPAN is a bound on one channel, and a bound on one channel is not a bound: a
+ * file may declare as many channels as it likes, and each was handed its own cache. A
+ * channel declaring the ordinary full 16-bit digital range takes the whole 512 KB, so a
+ * 256-channel montage reserved 134 MB of pointers before writing a row — a 7.9 MB
+ * recording that needed a 192 MB heap and died with a V8 out-of-memory fatal error under
+ * anything smaller. The caches were the live set; nothing else in the conversion came near
+ * them. It is the same shape of mistake the offset budget below was made to fix, one level
+ * over: there the unbounded count was rate groups, here it is channels.
+ *
+ * One budget for the whole conversion leaves the ordinary recording exactly as it was and
+ * puts a ceiling on the dense montage: the same 256-channel file now holds its caches to
+ * 16 MB and converts under a 48 MB heap. Channels ask in the order the groups are written,
+ * which is fastest rate first, so the cache goes to the channels with the most cells to
+ * format. The ones that miss out fall back to formatting directly, which produces
+ * identical text — the output is byte-for-byte what it was.
+ */
+export interface SampleCacheBudget {
+  remaining: number;
+}
+
+/**
+ * Slots for the whole conversion: 16 MB of pointers if every one is claimed.
+ *
+ * Enough that a full 32-channel montage declaring the whole 16-bit range keeps every cache
+ * it had before, and 512 channels of an ordinary 12-bit ADC do too. Past that the extra
+ * channels format directly, which costs about a quarter of the conversion's time on a
+ * recording where almost none of them are cached — against a file that did not convert at
+ * all under a 128 MB heap.
+ */
+const MAX_CACHED_SAMPLES = 1 << 21;
+
+export function newSampleCacheBudget(): SampleCacheBudget {
+  return { remaining: MAX_CACHED_SAMPLES };
+}
+
+/**
  * Format with a fixed number of decimals, normalising negative zero.
  *
  * Without this, a sample that scales to a very small negative value prints as
@@ -58,15 +96,25 @@ export function fixed(value: number, decimals: number): string {
 /** Maps a raw digital sample to its formatted physical value. */
 export type SampleFormatter = (digital: number) => string;
 
-export function makeSampleFormatter(signal: EdfSignal, decimals: number): SampleFormatter {
+export function makeSampleFormatter(
+  signal: EdfSignal,
+  decimals: number,
+  budget: SampleCacheBudget = newSampleCacheBudget(),
+): SampleFormatter {
   const scale = makeScaler(signal);
   const low = Math.min(signal.digitalMin, signal.digitalMax);
   const high = Math.max(signal.digitalMin, signal.digitalMax);
   const span = high - low + 1;
 
-  if (!Number.isFinite(span) || span <= 0 || span > MAX_CACHED_SPAN) {
+  if (
+    !Number.isFinite(span) ||
+    span <= 0 ||
+    span > MAX_CACHED_SPAN ||
+    span > budget.remaining
+  ) {
     return (digital: number): string => fixed(scale(digital), decimals);
   }
+  budget.remaining -= span;
 
   /*
     The cache covers the channel's declared digital range, not the whole int16 domain.
@@ -75,7 +123,8 @@ export function makeSampleFormatter(signal: EdfSignal, decimals: number): Sample
     dense montage cannot afford: a 400-channel recording needed over 200 MB of cache alone
     and died with a V8 out-of-memory fatal error before writing a row. Sizing to the
     declared span makes the ordinary 12-bit channel 32 KB instead — the same 400 channels
-    now fit in about 13 MB.
+    now fit in about 13 MB. Channels that declare the full range still take the whole 512 KB,
+    which is what the budget above is for.
 
     Samples outside the declared range still occur in non-conforming files. They simply
     miss the cache and are formatted directly, which produces identical text.

@@ -532,6 +532,15 @@ recording of one enormous record ran out of heap where the same samples split ac
 converted fine. The row buffer is now emptied whenever it fills, wherever in the record that
 happens.
 
+Channel count used to be a third, and no longer is. Each channel gets a cache of its formatted
+values — the same handful of strings serve millions of rows — sized to the digital range it
+declares, up to 512 KB for one declaring the whole 16-bit range, which is what an ordinary EEG
+amplifier declares. A per-channel ceiling bounds nothing about a file's channel count, so a
+229 KB recording of 256 such channels reserved 134 MB before writing a row and died out of heap
+under anything smaller. Since 0.5.52 the caches share one 16 MB budget for the conversion,
+handed out fastest rate first; channels past it format each value directly, which is slower and
+produces exactly the same text.
+
 ## How do I check whether a conversion had problems from a script?
 
 Use the exit code for pass or fail, and `--json` for the detail. The exit codes are 0 for success,

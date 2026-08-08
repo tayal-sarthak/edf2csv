@@ -34,6 +34,7 @@ import {
   makeSampleFormatter,
   makeTimeFormatter,
   newOffsetBudget,
+  newSampleCacheBudget,
 } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
@@ -538,6 +539,8 @@ async function writeSignalFiles(
 ): Promise<WrittenFile[]> {
   // One budget for every table in this conversion, not one per table: see OffsetBudget.
   const offsets = newOffsetBudget();
+  // Likewise one for every channel, not one per channel: see SampleCacheBudget.
+  const sampleCaches = newSampleCacheBudget();
   // Only the stdout path needs this; --out finds a full disk on its own, because it always
   // has another file to write afterwards. See auditStdout.
   const audit = outputDir === null ? auditStdout() : null;
@@ -635,7 +638,7 @@ async function writeSignalFiles(
     return {
       group,
       writer,
-      formatters: group.channels.map((c) => makeSampleFormatter(c.signal, c.decimals)),
+      formatters: group.channels.map((c) => makeSampleFormatter(c.signal, c.decimals, sampleCaches)),
       formatTime: makeTimeFormatter(
         group.samplesPerRecord,
         group.rate,
