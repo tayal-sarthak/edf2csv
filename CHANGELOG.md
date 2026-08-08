@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.38
+
+### Fixed: the API reference's `buildPlan` recipe halved the row estimate it exists to predict
+
+`buildPlan` answers "what would a conversion produce", and api.md gives a recipe for feeding
+it record start times by hand: take `recordStarts` from `readAnnotations()` and use
+`index * recordDuration` where an entry is `null`.
+
+That last part assumes the recording begins at zero. `convert` places an unreadable record at
+`origin + index * recordDuration`, where the origin comes from the first record that does
+state one. On `lost-timekeeping-d.edf` — first timekeeping TAL unreadable, the rest saying 1.5
+and 2.5 — the recipe puts record 0 at 0 rather than 0.5, so planning a window of
+`{ start: 0.5, duration: 1 }` estimates 2 rows. The conversion writes 4.
+
+Which is the one thing this API is for: a plan that disagrees with the conversion by half is
+worse than no plan, because it looks like an answer.
+
+The recipe now reads `readOrigin()` and fills from it, as the conversion does, and is a
+complete program rather than a fragment — so the example runner added in 0.4.76 executes it
+too. A test builds the array that way, plans the same window, converts the same recording, and
+requires the estimate, the resolved range and the rows on disk to agree.
+
 ## 0.5.37
 
 ### Fixed: the page listing what `--info` cannot report was wrong about most of it

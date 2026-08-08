@@ -644,7 +644,38 @@ signals_1hz.csv  1 Hz  1 channels
 
 `estimate.rows` is the total data rows across every signal file. `estimate.bytes` is an approximation of their combined size, good enough to warn on and not meant to be exact. `exceedsSpreadsheetLimit` is true when any single file would pass 1,048,576 rows including the header.
 
-One caveat when planning a window on a discontinuous file: pass `recordStarts`. Without it the planner assumes records sit end to end, and a recording with a 95 second gap in the middle would have its window clipped to the amount of data rather than the span of time it covers. `convert` derives this array itself from the timekeeping annotations. To do it by hand, take `recordStarts` from `readAnnotations()` and fill a `Float64Array`, using `index * recordDuration` where an entry is `null`.
+One caveat when planning a window on a discontinuous file: pass `recordStarts`. Without it the planner assumes records sit end to end, and a recording with a 95 second gap in the middle would have its window clipped to the amount of data rather than the span of time it covers. `convert` derives this array itself from the timekeeping annotations.
+
+Doing it by hand means matching that derivation, and a record whose timekeeping TAL is unreadable is where the two can part company. `convert` places it at `origin + index * recordDuration`, where `origin` comes from the first record that does state one — not at `index * recordDuration`, which silently assumes the recording begins at zero:
+
+```js
+import { EdfFile, buildPlan } from 'edf2csv';
+
+const file = await EdfFile.open('/data/recordings/sleep-study.edf');
+try {
+  const { recordStarts } = await file.readAnnotations();
+  const origin = (await file.readOrigin()) ?? 0;
+  const starts = Float64Array.from(recordStarts, (declared, index) =>
+    declared ?? origin + index * file.header.recordDuration,
+  );
+
+  const plan = buildPlan(
+    {
+      signals: file.header.signals,
+      recordDuration: file.header.recordDuration,
+      recordCount: file.recordCount,
+      hasAnnotationChannel: file.annotationSignals.length > 0,
+      recordStarts: starts,
+    },
+    { start: 0.5, duration: 1 },
+  );
+  console.log(plan.estimate, plan.range.recordingStartSeconds);
+} finally {
+  await file.close();
+}
+```
+
+On `lost-timekeeping-d.edf`, whose first record's TAL is unreadable while the rest say 1.5 and 2.5, filling from zero puts record 0 at 0 rather than 0.5. Planning `{ start: 0.5, duration: 1 }` against that estimates 2 rows; the conversion writes 4.
 
 `ResolvedRange` describes the window that was chosen:
 

@@ -422,6 +422,67 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+    it('gives a buildPlan recipe that predicts what convert actually writes', async () => {
+    /*
+      api.md told the reader to fill a missing record start with `index * recordDuration`,
+      which silently assumes the recording begins at zero. convert places it at
+      `origin + index * recordDuration`, where origin comes from the first record that does
+      state one. On lost-timekeeping-d.edf — first TAL unreadable, the rest saying 1.5 and
+      2.5 — the recipe put record 0 at 0 instead of 0.5, and planning a window of
+      { start: 0.5, duration: 1 } against it estimated 2 rows for a conversion that writes 4.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const recording = path.join(ROOT, 'test/fixtures/generated/lost-timekeeping-d.edf');
+    const window = { start: 0.5, duration: 1 };
+
+    const file = await api.EdfFile.open(recording);
+    const { recordStarts } = await file.readAnnotations();
+    const origin = (await file.readOrigin()) ?? 0;
+    const starts = Float64Array.from(
+      recordStarts,
+      (declared, index) => declared ?? origin + index * file.header.recordDuration,
+    );
+    const byHand = api.buildPlan(
+      {
+        signals: file.header.signals,
+        recordDuration: file.header.recordDuration,
+        recordCount: file.recordCount,
+        hasAnnotationChannel: file.annotationSignals.length > 0,
+        recordStarts: starts,
+      },
+      window,
+    );
+    await file.close();
+    assert.ok(recordStarts.includes(null), 'this fixture exists for its unreadable first TAL');
+
+    // And the page shows that construction rather than the one that assumes zero.
+    const page = await read('website/content/api.md');
+    assert.match(
+      page,
+      /declared \?\? origin \+ index \* file\.header\.recordDuration/u,
+      'the recipe no longer places an unreadable record start from the recording origin',
+    );
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-plan-'));
+    try {
+      const result = await api.convert(recording, {
+        outputDir: path.join(work, 'out'),
+        quiet: true,
+        ...window,
+      });
+      assert.equal(byHand.estimate.rows, result.plan.estimate.rows, 'row estimates disagree');
+      assert.equal(
+        byHand.range.recordingStartSeconds,
+        result.plan.range.recordingStartSeconds,
+        'the recordings start in different places',
+      );
+      const written = result.files.find((entry) => entry.name.startsWith('signals'));
+      assert.equal(byHand.estimate.rows, written.rows, 'and neither matches what was written');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('runs every JavaScript example in the API reference', async () => {
     /*
       The examples are the part of the documentation a reader is most likely to paste, and
