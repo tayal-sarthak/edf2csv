@@ -537,6 +537,48 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(missing, [], `api.md does not mention: ${missing.join(', ')}`);
   });
 
+  it('packs a tarball that holds the code it says it does', async () => {
+    /*
+      `npm pack` on a clean checkout produced a four-file tarball with no `dist/` in it — no
+      bin, nothing importable — and reported success. `prepublishOnly` builds, but it runs
+      only for `npm publish`; `npm pack` and an install from a git URL both went round it.
+      Published versions were fine, which is exactly why it could sit there.
+
+      Checked from the file list rather than by packing, which would mean running a build
+      inside the test suite: `files` says what ships and `bin`/`exports`/`types` say what has
+      to be in it, and `prepack` is what guarantees the second exists when the first is read.
+    */
+    const manifest = JSON.parse(await read('package.json'));
+    assert.ok(
+      /(^|&&\s*)npm run build/u.test(manifest.scripts.prepack ?? ''),
+      'prepack must build, or `npm pack` ships whatever dist happens to be lying around',
+    );
+
+    // Everything the manifest points at has to be under something `files` includes.
+    const shipped = manifest.files ?? [];
+    const targets = [
+      manifest.types,
+      ...Object.values(manifest.bin ?? {}),
+      ...Object.values(manifest.exports ?? {}).flatMap((entry) =>
+        typeof entry === 'string' ? [entry] : Object.values(entry),
+      ),
+      // package.json is in every tarball whatever `files` says, so exporting it is not a
+      // claim about `files`.
+    ].filter((target) => typeof target === 'string' && !target.endsWith('package.json'));
+    assert.ok(targets.length >= 2, `nothing to check: ${JSON.stringify(targets)}`);
+    for (const target of targets) {
+      const relative = target.replace(/^\.\//u, '');
+      assert.ok(
+        shipped.some((entry) => relative === entry || relative.startsWith(`${entry}/`)),
+        `${target} is not under any entry of "files": ${JSON.stringify(shipped)}`,
+      );
+      await assert.doesNotReject(
+        () => readFile(path.join(ROOT, relative)),
+        `${target} does not exist`,
+      );
+    }
+  });
+
   it('ships source maps that resolve to something', async () => {
     /*
       Every .js.map names `../src/*.ts` as its source, and `src` is not in package.json's

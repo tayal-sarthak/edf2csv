@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.30
+
+### Fixed: `npm pack` on a clean checkout produced a package with no code in it
+
+Four files, no `dist/`, no bin, nothing importable — and `npm pack` reported success. Anyone
+packing the repository, or installing it from a git URL, got a package that installs cleanly
+and does nothing.
+
+`prepublishOnly` builds, and runs only for `npm publish`. `npm pack` goes round it, as does a
+git-URL install. Published versions were therefore always fine, which is exactly why this
+could sit there unnoticed: the one path that was covered is the one everybody sees.
+
+A `prepack` script builds now, which is the hook both `npm pack` and `npm publish` run. The
+tarball goes from 4 files to 76; installed into a fresh directory it answers `npx edf2csv
+--version`, exports its 28 names, and converts a recording.
+
+A test holds the shape rather than the tarball, since packing inside the suite would mean
+running a build inside a build: `files` says what ships, `bin`/`exports`/`types` say what has
+to be in it, and `prepack` is what makes the second true when the first is read.
+
 ## 0.5.29
 
 ### Fixed: an annotation channel with no room in it hid the timekeeping in the channel after it
