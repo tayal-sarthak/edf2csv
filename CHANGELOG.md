@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.65
+
+### Fixed: a file error was listed among the usage errors, on the page a script reads to tell them apart
+
+The usage-errors table opens by explaining why the distinction exists: "They exit **2** rather
+than 1, so a script can tell 'you asked for something impossible' apart from 'this recording is
+broken'." Its third row was "The recording changed size while it was being read", which exits 1.
+
+That message comes from `changedWhileReading` in the parser, as an `EdfError` with code
+`UNREADABLE`, and the same page's `UNREADABLE` section describes the same case and gives the
+right code. One page, two answers, about the one thing a script branches on. Reproduced by
+shrinking a sparse 262 MB recording mid-conversion: exit 1, every time.
+
+The row is gone — the case was already documented where it belongs — and the section now says
+so, since a reader who built a branch on the old table needs to know which way it was wrong.
+
+A test holds the classification rather than the row. A usage error is raised by the CLI or the
+planner and never by the parser, so no example message in that table may be a string `src/edf`
+produces; the check matches on the longest run of plain words in each example, since every one
+of them carries interpolated byte counts and record numbers that no source string contains.
+
 ## 0.5.64
 
 ### Fixed: a leading `./` decided whether a batch ran at all

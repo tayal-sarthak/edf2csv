@@ -792,7 +792,6 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | --- | --- |
 | Unknown flag | Reported by the argument parser, followed by a pointer to `--help` |
 | No input file | Usage text is printed |
-| The recording changed size while it was being read | `Expected 8388600 bytes of data at record 41943 but only 0 were available; the file appears to have changed size while it was being read.` |
 | Two recordings that would convert into the same directory | `"n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.` |
 | Several recordings with `--stdout` | `--stdout writes a single CSV, so it cannot take 3 recordings.` |
 | `--channels` given with no names | `--channels was given but lists no channel names.` |
@@ -807,6 +806,8 @@ These mean the command was invoked in a way that can't be carried out. They exit
 A term that matches no channel is an error rather than a silent omission, and the message suggests the closest labels in the file. Quietly dropping a channel you explicitly asked for would hand you a CSV missing data you believe is in it.
 
 The last two entries are about the recording's length but are still classed as usage errors, because the fix is to change the command rather than the file.
+
+The reverse mistake was on this page until 0.5.65: "the recording changed size while it was being read" was listed here, and it exits **1**. It is the parser reporting that the file moved under it, which is the definition of a file error — the command was fine — and [`UNREADABLE`](#unreadable) above describes it, with the exit code it really uses. Nothing else in this table comes from the parser, and a test now holds that.
 
 ## Exit codes
 

@@ -764,6 +764,51 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('lists no parser error among the usage errors', async () => {
+    /*
+      The usage-errors table opens "They exit **2** rather than 1, so a script can tell 'you
+      asked for something impossible' apart from 'this recording is broken'" — and then listed
+      "the recording changed size while it was being read", which exits 1. That message comes
+      from `changedWhileReading` in the parser, as an EdfError with code UNREADABLE, and the
+      same page's UNREADABLE section describes it with the right code. One page, two answers,
+      about the one thing a script branches on.
+
+      Checked structurally rather than by running each row: a usage error is raised by the CLI
+      or the planner, never by the parser, so no example message in that table may be a string
+      the parser produces. That is the property the wrong row broke, and it needs no repro for
+      a table that will keep growing.
+    */
+    const page = await read('website/content/warnings-and-errors.md');
+    const table = /## Usage errors\n([\s\S]*?)\n## /u.exec(page);
+    assert.ok(table, 'the usage errors section is gone');
+    const examples = [...table[1].matchAll(/^\| [^|]+\| `([^`]+)` \|$/gmu)].map((m) => m[1]);
+    assert.ok(examples.length > 5, `expected the table's messages, found ${examples.length}`);
+
+    const parser = (
+      await Promise.all(
+        (await readdir(path.join(ROOT, 'src/edf'))).map((name) => read(path.join('src/edf', name))),
+      )
+    ).join('\n');
+
+    for (const example of examples) {
+      /*
+        Match on the longest run of plain words in the example, since every message carries
+        interpolated values — byte counts, record numbers, the user's own text — that no
+        source string contains. Four words is long enough that a coincidence is not credible
+        and short enough that every row has one.
+      */
+      const phrases = (example.match(/[a-z][a-z ]{15,}[a-z]/gu) ?? [])
+        .map((phrase) => phrase.trim())
+        .filter((phrase) => phrase.split(' ').length >= 4);
+      for (const phrase of phrases) {
+        assert.ok(
+          !parser.includes(phrase),
+          `a usage error quotes the parser, which exits 1, not 2: "${phrase}"`,
+        );
+      }
+    }
+  });
+
   it('counts the conditions it says a diagnostic covers', async () => {
     /*
       The warnings page opens ANNOTATION_DECODE_FAILED with "This code covers three
