@@ -709,6 +709,26 @@ describe('documentation and source agree on their lists', () => {
     const words = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
     assert.equal(words[shape[2]], layouts.OPTIONS.length, `it runs ${layouts.OPTIONS.length}`);
 
+    /*
+      And the output block pasted below it, which is where this went wrong: the claim said
+      49 recordings and the sample output six lines down said 48, on the one page whose
+      subject is that its numbers can be reproduced. The two counts beside it move — how
+      many conversions a sweep makes depends on which windows each recording can honour —
+      but the recording count is `names.length`, the fixture list itself, so it is the same
+      number in both places and in the estimate claim above.
+
+      Only this block. The batch sweep prints a recording count too, and that one is how
+      many files a seed happened to scatter across its random trees, which is not the
+      fixture count and has no business being pinned to it.
+    */
+    const pasted = /([\d,]+) conversions compared over ([\d,]+) recordings/u.exec(page);
+    assert.ok(pasted, 'the page no longer shows the layout sweep output');
+    assert.equal(
+      Number(pasted[2].replaceAll(',', '')),
+      fixtures,
+      'the pasted layout output counts the same recordings the claim above does',
+    );
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),

@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.53
+
+### Fixed: the correctness page's layout sweep disagreed with itself about how many recordings it ran
+
+Claim 7 says the two layouts are checked over 49 recordings. Six lines further down, the
+pasted output of the command that checks it read `266 conversions compared over 48
+recordings`. Both numbers were on screen at once, on the page whose whole argument is that
+its figures can be reproduced by running the command printed above them.
+
+The output block was pasted when there were 48 fixtures and never repasted. A test already
+held the claim to the fixture count; it did not look at the block below it, so the two drifted
+apart the moment a fixture was added.
+
+Repasted, and the test now reads both. The recording count in that output is `names.length` —
+the fixture list itself — so it is the same number in both places by construction. The
+conversion and channel-sequence counts beside it genuinely do move with which windows each
+recording can honour, and are left alone; so is the batch sweep's recording count, which is
+how many files a seed scattered across its random trees and was never the fixture count.
+
 ## 0.5.52
 
 ### Fixed: a bound on one channel is not a bound on a file's channels

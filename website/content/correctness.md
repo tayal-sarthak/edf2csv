@@ -81,11 +81,11 @@ npm run layouts
 ```
 
 ```
-266 conversions compared over 48 recordings (586 channel sequences, 22 refused by both).
+272 conversions compared over 49 recordings (592 channel sequences, 22 refused by both).
 Both layouts hold the same samples, in the same order, per channel.
 ```
 
-The two counts in the middle move with the fixture set and with which windows a given recording can honour, which is why the claim above is stated as the sweep's shape rather than as a total. What must not move is the last line.
+The conversion and channel-sequence counts move with the fixture set and with which windows a given recording can honour, which is why the claim above is stated as the sweep's shape rather than as a total. The recording count between them is the fixture set itself, so it is the same number claim 7 states and the same one the estimate and batch sweeps report; a test holds the three to it. What must not move is the last line.
 
 `--layout long` writes one table of `time_s,channel,value` where the default writes a column per channel and a file per rate. Every page describing it says the same thing: a different shape, not different data. That is the claim, and until 0.5.16 nothing ran it — during which the long layout shipped four defects, three of them found by reading rather than by running.
 
