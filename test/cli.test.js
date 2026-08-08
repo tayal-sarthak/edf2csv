@@ -1517,6 +1517,34 @@ describe('what the summary says it did', () => {
   });
 });
 
+describe('--info over a folder', () => {
+  it('names the recording each warning came from, as a conversion does', async () => {
+    /*
+      The table goes to stdout and the warnings to stderr, which is the point of the split.
+      Over a folder that left several warnings in a row on stderr with nothing saying which
+      recording raised any of them: two recordings, two warnings, and no way to pair them up
+      short of running the tool again one file at a time. A batch conversion has named its
+      recordings since 0.4.20.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-infodir-'));
+    temporaries.push(dir);
+    for (const [name, source] of [
+      ['night-01.edf', 'mixed-rates.edf'],
+      ['night-02.edf', 'truncated.edf'],
+    ]) {
+      await writeFile(path.join(dir, name), await readFile(fixture(source)));
+    }
+    const { code, stderr } = await cli([dir, '--info']);
+    assert.equal(code, 0, stderr);
+    assert.match(stderr, /warning: .*night-01\.edf: Channels use 3 different sampling rates/u);
+    assert.match(stderr, /warning: .*night-02\.edf: The header declares 10 data records/u);
+
+    // One recording has nothing to be confused with, so it says what it always said.
+    const single = await cli([fixture('mixed-rates.edf'), '--info']);
+    assert.match(single.stderr, /^warning: Channels use 3 different sampling rates/mu);
+  });
+});
+
 describe('--info and the destination guards', () => {
   it('describes the recordings instead of refusing over output it will not write', async () => {
     /*

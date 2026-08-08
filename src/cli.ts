@@ -386,7 +386,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         // A blank line between reports, so several tables read as one document.
         if (batch && !asJson && index > 0) process.stdout.write('\n');
         try {
-          warnings += await showInfo(input as string, shared, asJson, jsonIndent);
+          warnings += await showInfo(input as string, shared, asJson, jsonIndent, batch);
         } catch (error) {
           failures.push(reportError(error, batch ? (input as string) : undefined));
         }
@@ -604,6 +604,7 @@ async function showInfo(
   shared: Record<string, unknown>,
   asJson: boolean,
   jsonIndent: number | null,
+  batch = false,
 ): Promise<number> {
   const file = await EdfFile.open(input);
   try {
@@ -659,7 +660,20 @@ async function showInfo(
     // conversion, so stderr stays empty and the whole result is one parseable thing.
     const diagnostics = [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics];
     if (!asJson && diagnostics.length > 0) {
-      process.stderr.write(`\n${formatDiagnostics(diagnostics)}\n`);
+      /*
+        Named when there is more than one recording to confuse it with.
+
+        The table goes to stdout and the warnings to stderr, which is the point of the split
+        — but over a folder that left several warnings in a row on stderr with nothing saying
+        which recording raised any of them. Two recordings, two warnings, and no way to pair
+        them up short of running the tool again one file at a time. A batch conversion has
+        named its recordings since 0.4.20; this is the same report from the same tool about
+        the same files.
+      */
+      const where = batch ? `${printable(input)}: ` : '';
+      process.stderr.write(
+        `\n${formatDiagnostics(diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n`,
+      );
     }
     return diagnostics.length;
   } finally {

@@ -156,7 +156,7 @@ On a long recording, `--info` tells you four things before you spend any disk:
 - Whether the recording is discontinuous or mixed-rate.
 - Any header problem — a truncated file, a record count that disagrees with the data, a channel whose calibration can't be applied.
 
-Because the table goes to stdout and the warnings go to stderr, `edf2csv sleep-study.edf --info > structure.txt` saves the table on its own.
+Because the table goes to stdout and the warnings go to stderr, `edf2csv sleep-study.edf --info > structure.txt` saves the table on its own. Over a folder each warning carries the recording it came from, the way a batch conversion does — several warnings in a row are otherwise unattributable, since the tables they belong to went to the other stream.
 
 ## Convert a slice instead of the whole recording
 

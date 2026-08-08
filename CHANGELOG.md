@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.34
+
+### Fixed: `--info` over a folder left its warnings unattributable
+
+The table goes to stdout and the warnings to stderr, which is the point of the split — you
+can save one without the other. Over a folder it also meant several warnings in a row on
+stderr with nothing saying which recording raised any of them. Two recordings, two warnings,
+and no way to pair them up short of running the tool again one file at a time; the tables
+that would have identified them went to the other stream.
+
+Each warning names its recording now, the way a batch conversion's have since 0.4.20. A
+single recording has nothing to be confused with, so it says exactly what it always said.
+
 ## 0.5.33
 
 ### Fixed: the library accepted a `layout` the command line rejects
