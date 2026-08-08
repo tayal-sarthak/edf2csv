@@ -509,6 +509,52 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
+  it('agrees with itself about number when the count is one', async () => {
+    /*
+      Every one of these was written `${n} records`, which is right until the file has one of
+      them — and a one-record recording and a one-byte tail are both ordinary. `--info` opened
+      with "Duration 1s  (1 records of 1s)" and a truncated file warned that "1 bytes after the
+      last complete data record were ignored", on the two lines a reader looks at first.
+
+      Checked by pattern rather than by listing the sentences, so a message added later that
+      counts something is covered without anyone remembering to add it here.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-plural-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { appendFileSync } = await import('node:fs');
+    const channel = {
+      label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+      samplesPerRecord: 4, gen: () => 1,
+    };
+
+    // One record, and one stray byte after it, so both counts land on one at once.
+    const one = path.join(dir, 'one.edf');
+    writeEdf({ path: one, numRecords: 1, recordDuration: 1, signals: [channel] });
+    appendFileSync(one, Buffer.from([0]));
+
+    // And one record where the header promised five, for the mismatch wording.
+    const short = path.join(dir, 'short.edf');
+    writeEdf({ path: short, numRecords: 5, recordDuration: 1, truncateRecords: 1, signals: [channel] });
+
+    for (const recording of [one, short]) {
+      const info = await cli([recording, '--info']);
+      const converted = await cli([recording, '--out', await outDir(), '--quiet']);
+      const text = `${info.stdout}\n${info.stderr}\n${converted.stderr}`;
+      const wrong = [...text.matchAll(/\b1 ([a-z]+s)\b/gu)]
+        .map((m) => m[1])
+        // "is"/"was"/"has" are verbs, and a word may simply end in s.
+        .filter((word) => !['is', 'was', 'has', 'less', 'this', 'its'].includes(word));
+      assert.deepEqual(wrong, [], `${path.basename(recording)} counts one of something plural:\n${text}`);
+    }
+
+    // Above one the plural is still there, or the fix would have gone the other way.
+    const many = await cli([fixture('tiny.edf'), '--info']);
+    assert.match(many.stdout, /\(2 records of 1s\)/u, many.stdout);
+    const truncated = await cli([fixture('truncated.edf'), '--info']);
+    assert.match(truncated.stderr, /Converting the 4 records that are present/u, truncated.stderr);
+  });
+
   it('says where a recording starts when that is not zero', async (t) => {
     /*
       0.4.9 made the first record's timekeeping TAL the point a recording is timed from, so a

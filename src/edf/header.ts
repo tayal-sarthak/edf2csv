@@ -31,7 +31,7 @@
 
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
-import { listed } from '../format/list.js';
+import { counted, listed } from '../format/list.js';
 import { decodeLatin1 } from './bytes.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
@@ -584,7 +584,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       severity: 'warning',
       message:
         `The header does not say how many data records the file has (-1), which the spec allows ` +
-        `for recordings still in progress. Using the ${recordCount} records the file actually contains.`,
+        `for recordings still in progress. Using the ${counted(recordCount, 'record')} the file actually contains.`,
     });
   } else if (declaredRecordCount !== recordCount) {
     diagnostics.push({
@@ -592,7 +592,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       severity: 'warning',
       message:
         `The header declares ${declaredRecordCount} data records but the file contains ` +
-        `${recordCount}. Converting the ${recordCount} records that are present.`,
+        `${recordCount}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
       hint:
         declaredRecordCount > recordCount
           ? 'The recording looks truncated. It may have been cut short or copied incompletely.'
@@ -604,7 +604,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'TRAILING_BYTES',
       severity: 'warning',
-      message: `${trailingBytes} bytes after the last complete data record were ignored.`,
+      message: `${counted(trailingBytes, 'byte')} after the last complete data record ${trailingBytes === 1 ? 'was' : 'were'} ignored.`,
     });
   }
 

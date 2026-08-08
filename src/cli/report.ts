@@ -9,6 +9,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { formatBytes, formatDuration } from '../format/number.js';
+import { counted } from '../format/list.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -101,7 +102,7 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     }`,
   );
   lines.push(
-    `Duration   ${formatDuration(file.durationSeconds)}  (${file.recordCount} records of ${header.recordDuration}s)`,
+    `Duration   ${formatDuration(file.durationSeconds)}  (${counted(file.recordCount, 'record')} of ${header.recordDuration}s)`,
   );
   const elapsedSpan = plan.range.recordingEndSeconds - plan.range.recordingStartSeconds;
   if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {
@@ -181,7 +182,7 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
       plan.layout === 'long'
         ? `Sampling rates differ, and the long layout puts them in one table anyway: each row ` +
           `carries its own time, so nothing has to line up. No channel is resampled.`
-        : `Sampling rates differ, so channels are written to ${plan.groups.length} files, one per rate. ` +
+        : `Sampling rates differ, so channels are written to ${counted(plan.groups.length, 'file')}, one per rate. ` +
           `No channel is resampled.`,
     );
   }

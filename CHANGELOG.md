@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.74
+
+### Fixed: "1 records", "1 bytes"
+
+`--info` opened a one-record recording with
+
+```
+Duration   1s  (1 records of 1s)
+```
+
+and a file with a single stray byte after its last record warned that "1 bytes after the last
+complete data record were ignored". A one-record recording, a one-byte tail and a truncation
+down to one record are all ordinary things, and these are the first two lines a reader looks at.
+
+Counts and their nouns agree now, through one helper rather than a conditional at each site:
+the record count in the duration line, the trailing-byte count, both record counts in the
+mismatch warnings, and the file count in the mixed-rate message. The verbs with them too — "1
+byte ... was ignored", "the 1 record that is present".
+
+The test checks by pattern rather than by listing the sentences: it converts a recording built
+to make every count land on one and fails on any "1 <word>s" in the output, so a message added
+later that counts something is covered without anyone remembering to come back here.
+
 ## 0.5.73
 
 ### Fixed: EMPTY_LABEL named a column the file does not have
