@@ -293,7 +293,20 @@ export async function main(argv: readonly string[]): Promise<number> {
     one recording is exactly what it can take. What it cannot take is a folder, whose contents
     are not known until they are walked.
   */
-  if (toStdout && batch) {
+  /*
+    Asked of the recordings to stream, not of the run's shape.
+
+    These are different questions and 0.5.40 conflated them: it made `batch` count the names
+    rather than the recordings, which is right for `--out` and for `--json`, and this guard
+    read `batch`. So `edf2csv one.edf one.edf --stdout` — one recording, named twice,
+    converted once, perfectly streamable — was refused with the message written for a folder,
+    telling the reader to "name the recording itself" and quoting the name they had just
+    given twice.
+
+    A folder is still refused however few recordings it turns out to hold, for the reason
+    0.5.5 gives: what it holds is not known until it is walked.
+  */
+  if (toStdout && (inputs.length > 1 || namedDirectory)) {
     process.stderr.write(
       inputs.length === 1
         ? `--stdout writes a single CSV, and a folder is converted as a batch even when it ` +

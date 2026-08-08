@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.43
+
+### Fixed: 0.5.40 made `--stdout` refuse a recording named twice, quoting a folder nobody named
+
+`edf2csv one.edf one.edf --stdout` is one recording, named twice, converted once, and
+perfectly streamable. It came back with:
+
+```
+--stdout writes a single CSV, and a folder is converted as a batch even when it holds one recording.
+Name the recording itself — one.edf — or convert to a directory instead.
+```
+
+No folder was named, and "name the recording itself" quotes back the name just given twice.
+
+0.5.40 made the run's shape count the names rather than the surviving recordings, which is
+right for `--out` and for `--json` — and this guard was reading that flag when the question it
+needs answered is how many recordings there are to stream. Two different questions that
+happened to share an answer until the shape changed.
+
+It asks the recordings now. A folder is still refused however few it turns out to hold, for
+the reason 0.5.5 gives: what a folder holds is not known until it is walked.
+
 ## 0.5.42
 
 ### Fixed: nineteen declaration maps pointing at source the package does not ship

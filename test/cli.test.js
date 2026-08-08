@@ -1781,6 +1781,41 @@ describe('what --stdout says about itself', () => {
     assert.equal(works.stdout.split('\n')[0], 'time_s,channel,value');
   });
 
+  it('streams a recording named twice, which is still one recording', async () => {
+    /*
+      0.5.40 made the run's shape count the names rather than the recordings, which is right
+      for --out and for --json. This guard read that count, and they are different questions:
+      `edf2csv one.edf one.edf --stdout` is one recording, named twice, converted once, and
+      perfectly streamable. It was refused with the message written for a folder — telling
+      the reader to "name the recording itself" and quoting the name they had just given
+      twice.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-twice-'));
+    temporaries.push(dir);
+    await writeFile(path.join(dir, 'one.edf'), await readFile(fixture('tiny.edf')));
+    await writeFile(path.join(dir, 'two.edf'), await readFile(fixture('annotations.edf')));
+    const one = path.join(dir, 'one.edf');
+    await symlink(one, path.join(dir, 'alias.edf'));
+
+    for (const args of [[one, one], [one, path.join(dir, 'alias.edf')]]) {
+      const { code, stdout, stderr } = await cli([...args, '--stdout']);
+      assert.equal(code, 0, stderr);
+      assert.equal(stdout.split('\n')[0], 'time_s,ch1,ch2');
+    }
+
+    // Two recordings still cannot be one stream, and a folder is still a folder.
+    const several = await cli([one, path.join(dir, 'two.edf'), '--stdout']);
+    assert.equal(several.code, 2);
+    assert.match(several.stderr, /cannot take 2 recordings/u);
+
+    const alone = path.join(dir, 'alone');
+    await mkdir(alone, { recursive: true });
+    await writeFile(path.join(alone, 'night.edf'), await readFile(fixture('tiny.edf')));
+    const folder = await cli([alone, '--stdout']);
+    assert.equal(folder.code, 2);
+    assert.match(folder.stderr, /a folder is converted as a batch/u);
+  });
+
   it('counts a folder of one as a folder, not as one recording it cannot take', async () => {
     // "--stdout writes a single CSV, so it cannot take 1 recordings" — ungrammatical, and
     // wrong on its face, since one recording is exactly what it can take. What it cannot
