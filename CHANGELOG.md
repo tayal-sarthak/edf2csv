@@ -3,6 +3,39 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.59
+
+### Fixed: `--info` never said where a recording starts, on the recordings that do not start at zero
+
+0.4.9 made the first data record's timekeeping annotation the point a recording is timed
+from. A file whose first record says `+1000` therefore writes `time_s` from `1000.000`, and
+`--start` and `--end` are read on that same clock. None of that appeared in `--info`, which
+said
+
+```
+Duration   3s  (3 records of 1s)
+```
+
+and nothing else — three seconds, which reads as 0 to 3. `--start 0 --end 1` on that file
+then converted nothing and explained: "The window is inside the recording but lands where
+there is no data — past the last sample, or inside a gap in a discontinuous file. Run with
+--info to see where the records actually sit." `--info` was the one place the number was
+missing, and the advice was a loop.
+
+It is printed now, whenever it is not zero, and in seconds rather than through the duration
+formatter — this number exists to be typed back in, and `--start` takes `1000s` where it does
+not take "16m 40s":
+
+```
+Duration   3s  (3 records of 1s)
+Timed from 1000.000s  (first sample; --start and --end use this clock)
+```
+
+Under `--json` it is `first_sample_seconds`. `duration_seconds` and `time_span_seconds` were
+both already there and are both lengths; neither says where the length sits. The value was
+already in `plan.range` and already governed the row estimate printed underneath — it was
+simply never shown. A recording timed from zero, which is nearly all of them, gains no line.
+
 ## 0.5.58
 
 ### Fixed: a duration below zero was exported without comment

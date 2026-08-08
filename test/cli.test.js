@@ -344,6 +344,62 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
+  it('says where a recording starts when that is not zero', async (t) => {
+    /*
+      0.4.9 made the first record's timekeeping TAL the point a recording is timed from, so a
+      file whose TALs start at +1000 writes `time_s` from 1000.000 and takes `--start` and
+      `--end` on that clock. The report said "Duration 3s" and nothing else, which reads as 0
+      to 3 — and `--start 0 --end 1` then selected nothing and answered "The window is inside
+      the recording but lands where there is no data ... Run with --info to see where the
+      records actually sit", pointing at the one report that did not say.
+
+      The number was already in `plan.range` and already governed the estimate printed below
+      it; it was simply never shown.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-origin-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0x00);
+    const shifted = path.join(dir, 'origin.edf');
+    writeEdf({
+      path: shifted,
+      reserved: 'EDF+C',
+      numRecords: 3,
+      recordDuration: 1,
+      talsForRecord: (record) => `+${1000 + record}${T}${T}${Z}`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const info = await cli([shifted, '--info']);
+    assert.equal(info.code, 0, info.stderr);
+    assert.match(info.stdout, /Timed from 1000\.000s/u, info.stdout);
+
+    // In seconds because the number is meant to be typed back in: this is the value that
+    // makes --start select something, and the report is where you go to find it.
+    const converted = await cli([shifted, '--out', path.join(dir, 'out'), '--start', '1000',
+      '--end', '1001', '--quiet']);
+    assert.equal(converted.code, 0, converted.stderr);
+    const rows = (await readFile(path.join(dir, 'out', 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows[1], '1000.000,0.0244', rows.slice(0, 3).join(' | '));
+
+    // And the JSON carries it too, beside the two lengths that never said where they sit.
+    const asJson = JSON.parse((await cli([shifted, '--info', '--json'])).stdout);
+    assert.equal(asJson.first_sample_seconds, 1000);
+
+    // A recording timed from zero — nearly all of them — gains no line and no noise.
+    const ordinary = await cli([fixture('annotations.edf'), '--info']);
+    assert.doesNotMatch(ordinary.stdout, /Timed from/u, ordinary.stdout);
+    const ordinaryJson = JSON.parse((await cli([fixture('annotations.edf'), '--info', '--json'])).stdout);
+    assert.equal(ordinaryJson.first_sample_seconds, 0);
+    t.diagnostic(`origin reported as ${asJson.first_sample_seconds}s`);
+  });
+
   // The estimate exists so someone can decide whether a conversion is worth starting. Reading
   // low is the one direction that makes it useless, so it is checked against every fixture
   // rather than against the one calibration that happened to expose the last shortfall.

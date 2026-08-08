@@ -339,6 +339,15 @@ Sample times in the output are absolute offsets into the recording, not relative
 
 For discontinuous (EDF+D) recordings the window is resolved against real recording time, not against the amount of data present. A ten-second recording with a ninety-five-second gap in the middle ends at 105 seconds, and `--end 100s` means 100 seconds on that timeline. Every data record whose own span overlaps the window is read.
 
+A recording does not always begin at zero. The first data record's timekeeping annotation is what `time_s` is counted from, and a file whose first record says `+1000` writes its samples from `1000.000` — so `--start` and `--end` are read on that clock too, and `--start 0` on such a file selects nothing. `--info` says where it begins whenever that is not zero, in seconds so the number can be typed straight back in:
+
+```
+Duration   3s  (3 records of 1s)
+Timed from 1000.000s  (first sample; --start and --end use this clock)
+```
+
+Under `--json` the same number is `first_sample_seconds`. `duration_seconds` and `time_span_seconds` are both lengths and neither says where that length sits.
+
 ```bash
 # Five minutes starting half an hour in.
 edf2csv sleep-study.edf --start 30m --duration 5m

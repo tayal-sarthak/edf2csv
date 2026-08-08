@@ -96,6 +96,27 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {
     lines.push(`Time span  ${formatDuration(elapsedSpan)}  (includes discontinuities)`);
   }
+  /*
+    Where the samples begin, when that is not zero.
+
+    0.4.9 made the first record's timekeeping TAL the point a recording is timed from, so a
+    file whose TALs start at +1000 writes `time_s` from 1000.000 and takes `--start` and
+    `--end` on that same clock. None of that appeared here: the report said "Duration 3s",
+    which reads as 0 to 3, and `--start 0 --end 1` then selected nothing and answered with
+    "The window is inside the recording but lands where there is no data ... Run with --info
+    to see where the records actually sit" — pointing at this report, which was the one place
+    the number was missing. It is in `plan.range` already and governs the estimate printed
+    below; it was simply never shown.
+  */
+  const startsAt = plan.range.recordingStartSeconds;
+  if (Number.isFinite(startsAt) && Math.abs(startsAt) > 1e-9) {
+    // In seconds rather than through formatDuration, because this number is meant to be
+    // typed back in: `--start` takes `1000s`, and "16m 40s" is not something it accepts.
+    // It is also how the empty-window warning renders the window it was given.
+    lines.push(
+      `Timed from ${startsAt.toFixed(3)}s  (first sample; --start and --end use this clock)`,
+    );
+  }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
   if (header.patientId) lines.push(`Patient    ${printable(header.patientId)}`);
   if (header.recordingId) lines.push(`Recording  ${printable(header.recordingId)}`);
@@ -242,6 +263,10 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
       duration_seconds: file.durationSeconds,
       // For a discontinuous file this exceeds duration_seconds by the length of the gaps.
       time_span_seconds: plan.range.recordingEndSeconds - plan.range.recordingStartSeconds,
+      // Where `time_s` begins, and the clock `--start` and `--end` are read against. Usually
+      // zero; not when the first record's timekeeping TAL puts the recording elsewhere. Both
+      // of the fields above are lengths and neither says where that length sits.
+      first_sample_seconds: plan.range.recordingStartSeconds,
       annotation_channels: file.annotationSignals.length,
       channels: file.dataSignals.map((signal) => ({
         signal_index: signal.index,
