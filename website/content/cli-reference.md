@@ -35,7 +35,7 @@ What `--out` means is decided by what you named, not by what was found. Name one
 
 A recording that cannot be read is reported and the rest still convert — one unreadable file in a folder of five hundred is a reason to name that file, not to discard the work already done. The closing line says how many succeeded, and the exit code is non-zero if any failed.
 
-The same goes for anything the walk cannot look at: a sub-directory it may not list, or a link whose target is not there — a night linked to a drive that is not mounted, say. It is named on stderr and counts against the run, because the walk cannot know what was behind it and converting less than you asked for is not a success:
+The same goes for anything the walk cannot look at: a sub-directory it may not list, or a link whose target is not there — a night linked to a drive that is not mounted, say. It is named on stderr and counts against the run, because the walk cannot know what was behind it and converting less than you asked for is not a success. Once each, however many ways it was reached, the same as the recordings:
 
 ```
 error: study/night-02: could not be read, so any recordings inside it were skipped.

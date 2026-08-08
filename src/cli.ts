@@ -987,7 +987,40 @@ async function expandInputs(
   const unique = [...byIdentity.values()];
   unique.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
-  return { inputs: unique, unreadable, namedDirectory };
+  /*
+    One unreadable path, however many ways it was named — the same rule the recordings above
+    get, which this did not.
+
+    Each named directory is walked separately and its findings appended, so a folder given
+    twice, given relatively and absolutely, or given alongside a link to it, reported every
+    path it could not read once per name. `edf2csv study study` on a study holding one locked
+    sub-directory printed the error twice and closed with "Converted 1 of 1 recordings; 2
+    paths could not be read" — one path, counted two — while the recordings beside it were
+    correctly converted once. The count is the part that matters: it is what tells someone how
+    much of their study was not looked at.
+
+    Identity, not spelling, for the reason 0.5.64 gives: `study/locked` and `alias/locked` are
+    one directory. `realpathSync` resolves it even when the directory itself cannot be opened,
+    since that needs search permission on the parent rather than on the target. A path that
+    cannot be resolved at all keeps its own identity, so a name that is simply not there still
+    reports itself.
+  */
+  const seen = new Set<string>();
+  const distinct: string[] = [];
+  for (const entry of unreadable) {
+    let identity: string;
+    try {
+      identity = realpathSync(entry);
+    } catch {
+      identity = `?${path.resolve(entry)}`;
+    }
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    // The first spelling is kept, which is the one the caller typed first.
+    distinct.push(entry);
+  }
+
+  return { inputs: unique, unreadable: distinct, namedDirectory };
 }
 
 /**

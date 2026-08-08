@@ -2291,6 +2291,43 @@ describe('a folder the process cannot read', () => {
       const { code, stderr } = await cli([inside, '--out', path.join(dir, 'out')]);
       assert.equal(code, 1, stderr);
       assert.match(stderr, /Converted 1 of 1 recordings; 1 path could not be read\./u);
+
+      /*
+        And once however many ways the folder was named. Each named directory is walked
+        separately and its findings appended, with no deduplication — while the recordings
+        beside them were deduplicated by identity a few lines later. So `edf2csv study study`
+        printed the error twice and closed with "1 of 1 recordings; 2 paths could not be
+        read": one path, counted two, in the sentence that tells someone how much of their
+        study was never looked at.
+      */
+      const alias = path.join(dir, 'alias');
+      await symlink(inside, alias);
+      for (const [label, args] of [
+        ['named twice', [inside, inside]],
+        ['through a link', [inside, alias]],
+      ]) {
+        const twice = await cli([...args, '--out', path.join(dir, `out-${label.split(' ')[0]}`)]);
+        assert.match(
+          twice.stderr,
+          /Converted 1 of 1 recordings; 1 path could not be read\./u,
+          `${label}: ${twice.stderr}`,
+        );
+        const errors = twice.stderr.split('\n').filter((line) => line.startsWith('error: '));
+        assert.equal(errors.length, 1, `${label} reported it ${errors.length} times`);
+      }
+
+      // Two genuinely different unreadable paths are still two.
+      const second = path.join(dir, 'other');
+      await mkdir(path.join(second, 'shut'), { recursive: true });
+      await writeFile(path.join(second, 'r.edf'), await readFile(fixture('tiny.edf')));
+      await chmod(path.join(second, 'shut'), 0o000);
+      try {
+        const both = await cli([inside, second, '--out', path.join(dir, 'out-both')]);
+        assert.match(both.stderr, /Converted 2 of 2 recordings; 2 paths could not be read\./u,
+          both.stderr);
+      } finally {
+        await chmod(path.join(second, 'shut'), 0o755);
+      }
     } finally {
       await chmod(locked, 0o755);
     }

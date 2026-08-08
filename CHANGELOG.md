@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.72
+
+### Fixed: one unreadable path was reported and counted once per name it was reached by
+
+Each named directory is walked separately and its findings appended, with no deduplication —
+while the recordings found beside them are deduplicated by identity a few lines later. So the
+two halves of one run disagreed about what "one" means:
+
+```
+$ edf2csv study study --out out
+error: study/locked: could not be read, so any recordings inside it were skipped.
+error: study/locked: could not be read, so any recordings inside it were skipped.
+Converted 1 of 1 recordings; 2 paths could not be read.
+```
+
+One locked directory, named twice. The recordings were right; the count beside them was not,
+and that count is the part that matters — it is what tells someone how much of their study was
+never looked at. The same happened for a folder given relatively and absolutely, and for a
+folder given alongside a symbolic link to it.
+
+Deduplicated by identity now, through `realpathSync`, which resolves a directory even when it
+cannot be opened — that needs search permission on the parent rather than on the target. A path
+that cannot be resolved at all keeps its own identity, so a name that is simply not there still
+reports itself. Two genuinely different unreadable paths are still two.
+
 ## 0.5.71
 
 ### Fixed: NONPRINTABLE_LABEL told a channel with a clean label that its name could not be typed
