@@ -303,6 +303,46 @@ export function generate() {
   });
 
   /*
+    Two annotation channels, the second holding an event whose onset cannot be parsed.
+
+    Only the first annotation channel carries a record's timekeeping TAL. The decoder flagged
+    the first TAL of *every* annotation channel as timekeeping, so this file's three dropped
+    events were counted as lost timekeeping entries — and reported with "No event was lost",
+    beside a claim that the records do not say where in time they sit. Three events had been
+    lost, and the timekeeping was perfectly readable.
+
+    The second channel is written by hand: the fixture writer feeds every annotation channel
+    the same bytes, and the point of this file is that the two differ.
+  */
+  {
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0);
+    const path = at('two-annotation-channels.edf');
+    writeEdf({
+      path,
+      reserved: 'EDF+C',
+      numRecords: 3,
+      recordDuration: 1,
+      talsForRecord: (record) => `+${record}${T}${T}${Z}+${record}.2${T}A${record}${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047, samplesPerRecord: 4, gen: ramp(4) },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 30, annotations: true },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 30, gen: () => 0 },
+      ],
+    });
+    const bytes = readFileSync(path);
+    const headerBytes = 256 + 3 * 256;
+    const recordBytes = (4 + 30 + 30) * 2;
+    for (let record = 0; record < 3; record++) {
+      // `??` is not a signed onset, so this TAL cannot be parsed — and it is an event.
+      const slot = Buffer.alloc(30 * 2, 0);
+      Buffer.from(`??${T}lost${record}${T}${Z}+${record}.6${T}B${record}${T}${Z}`, 'utf8').copy(slot);
+      slot.copy(bytes, headerBytes + record * recordBytes + 4 * 2 + 30 * 2);
+    }
+    writeFileSync(path, bytes);
+  }
+
+  /*
     Two annotation channels, the first of which has no room to hold anything.
 
     EDF+ puts the timekeeping TAL first in the first annotation channel, and the reader took

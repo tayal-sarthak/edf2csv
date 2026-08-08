@@ -52,6 +52,7 @@ export interface DecodedRecordAnnotations {
 export function decodeRecordAnnotations(
   bytes: Uint8Array,
   recordIndex: number,
+  carriesTimekeeping = true,
 ): DecodedRecordAnnotations {
   const annotations: Annotation[] = [];
   let recordStart: number | null = null;
@@ -73,7 +74,17 @@ export function decodeRecordAnnotations(
       // became the record's start time — shifting every sample in that record. Leaving
       // recordStart null instead is what the caller already handles, with a fallback
       // timestamp and an ANNOTATION_DECODE_FAILED warning naming the record.
-      const isTimekeeping = isFirstTal;
+      /*
+        Only one annotation channel carries a record's start time.
+
+        This flagged the first TAL of *every* annotation channel as timekeeping. In a second
+        channel the first TAL is an ordinary event — so when one failed to parse, the event
+        was dropped and counted as a lost timekeeping entry, which produced the warning
+        "3 data records carry a timekeeping annotation that could not be read" followed by
+        "No event was lost". Three events had been lost, and the timekeeping in that file was
+        perfectly readable. Both sentences false, about the same three records.
+      */
+      const isTimekeeping = isFirstTal && carriesTimekeeping;
       isFirstTal = false;
 
       if (parsed) {

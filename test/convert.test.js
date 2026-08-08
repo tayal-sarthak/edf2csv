@@ -1207,6 +1207,32 @@ describe('converting', () => {
     );
   });
 
+  it('charges an unreadable event to events, even in a second annotation channel', async () => {
+    /*
+      Only the first annotation channel carries a record's timekeeping TAL. The decoder
+      flagged the first TAL of every annotation channel as timekeeping, so three dropped
+      events were counted as lost timekeeping entries — and reported with "3 data records
+      carry a timekeeping annotation that could not be read ... No event was lost". Three
+      events had been lost, and that file's timekeeping is perfectly readable. Both sentences
+      false, about the same three records.
+    */
+    const dir = await outDir();
+    const result = await convert(fixture('two-annotation-channels.edf'), { outputDir: dir });
+
+    const notice = result.diagnostics.find((d) => d.code === 'ANNOTATION_DECODE_FAILED');
+    assert.ok(notice, JSON.stringify(result.diagnostics));
+    assert.match(notice.message, /3 annotation entries were unreadable and could not be exported/u);
+    assert.ok(!/No event was lost/u.test(notice.hint ?? ''), notice.hint);
+    assert.ok(
+      !/timekeeping annotation that could not be read/u.test(notice.message),
+      'the timekeeping in this file is readable',
+    );
+
+    // The readable events from both channels are still exported, in onset order.
+    const events = (await readCsv(dir, 'annotations.csv')).slice(1).map((row) => row.split(',')[2]);
+    assert.deepEqual(events, ['A0', 'B0', 'A1', 'B1', 'A2', 'B2']);
+  });
+
   it('reads timekeeping from an annotation channel that has room for it', async () => {
     /*
       EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read

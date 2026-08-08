@@ -456,8 +456,8 @@ export class EdfFile {
           throw changedWhileReading(record, buffer.length, bytesRead, 'annotation data');
         }
 
-        const decoded = decodeRecordAnnotations(buffer, record);
         // Only the timekeeping channel carries the record's start; see timekeepingSignal.
+        const decoded = decodeRecordAnnotations(buffer, record, channel === timekeeping);
         if (channel === timekeeping) recordStarts[record] = decoded.recordStart;
         for (const annotation of decoded.annotations) annotations.push(annotation);
         malformed += decoded.malformed;

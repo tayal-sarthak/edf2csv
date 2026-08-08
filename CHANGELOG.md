@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.39
+
+### Fixed: three lost events reported as "No event was lost"
+
+Only the first annotation channel carries a record's timekeeping TAL. The decoder flagged the
+first TAL of *every* annotation channel as timekeeping — so in a file with two of them, an
+unreadable first entry in the second channel was an ordinary event being dropped and counted
+as a lost timekeeping entry.
+
+The file then converted with this:
+
+```
+warning: 3 data records carry a timekeeping annotation that could not be read, so they do
+         not say where in time they sit.
+         No event was lost — a timekeeping annotation states a record's start time and is
+         never exported. Times are derived from the records that could be read.
+```
+
+Both sentences false, about the same three records. That file's timekeeping is perfectly
+readable, and three events were lost — silently, since the one warning raised said in as many
+words that nothing had been.
+
+0.5.29 taught the reader which channel carries timekeeping; the decoder is told now too. The
+same file reports "3 annotation entries were unreadable and could not be exported", which is
+what happened.
+
 ## 0.5.38
 
 ### Fixed: the API reference's `buildPlan` recipe halved the row estimate it exists to predict
