@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.80
+
+### Fixed: "Wrote 1 rows to stdout." — and the sweep that kept missing this family
+
+The third message in three versions to disagree with itself about number, and the third found
+the same way: by running a mode the test did not.
+
+0.5.74 fixed the header lines and swept whole-recording conversions. The estimate line and the
+written-files table were never seen at a count of one, so both still read "1 rows" — a window
+narrow enough to select a single sample is what produces that, and 0.5.78 fixed them and added
+the window. It still never ran `--stdout`, whose summary is a separate line: "Wrote 1 rows to
+stdout."
+
+A count that is never one in the run is a count the sweep cannot check, so the modes are
+enumerated now rather than sampled: plain, windowed, `--gzip`, `--layout long`,
+`--annotations-only` and `--stdout`, each with an assertion that the narrow window really does
+estimate, write and stream exactly one row, so a mode cannot quietly stop exercising the case
+it was added for.
+
 ## 0.5.79
 
 ### Fixed: two refusals printed in a shape nothing else uses, so `^error:` missed them

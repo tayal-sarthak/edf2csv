@@ -569,21 +569,35 @@ describe('--info', () => {
     writeEdf({ path: short, numRecords: 5, recordDuration: 1, truncateRecords: 1, signals: [channel] });
 
     /*
-      Windowed as well as whole. 0.5.74 checked only whole-recording runs, so the estimate line
-      and the written-files table were never seen with a count of exactly one — a window narrow
-      enough to select a single sample is what produces that, and both read "1 rows" until
-      0.5.78. A count that is never one in the fixture is a count this cannot check.
+      Every mode that prints a count, not just the two that happened to be tried.
+
+      This family has surfaced three times. 0.5.74 fixed the header lines and checked only
+      whole-recording conversions, so the estimate line and the written-files table were never
+      seen at one — a window narrow enough to select a single sample is what produces that,
+      and both read "1 rows" until 0.5.78. 0.5.78 added the window and still never ran
+      `--stdout`, whose summary read "Wrote 1 rows to stdout." until 0.5.80. A count that is
+      never one in the run is a count this cannot check, so the modes are enumerated here
+      rather than sampled.
     */
+    const narrow = ['--start', '1.9', '--end', '2.0'];
     const runs = [
-      [one, []],
-      [short, []],
-      [fixture('tiny.edf'), ['--start', '1.9', '--end', '2.0']],
+      [one, [], []],
+      [short, [], []],
+      [fixture('tiny.edf'), narrow, []],
+      [fixture('tiny.edf'), narrow, ['--gzip']],
+      [fixture('tiny.edf'), narrow, ['--layout', 'long']],
+      [fixture('annotations.edf'), [], ['--annotations-only']],
     ];
-    for (const [recording, window] of runs) {
-      const info = await cli([recording, '--info', ...window]);
-      const converted = await cli([recording, '--out', await outDir(), '--quiet', ...window]);
-      const loud = await cli([recording, '--out', await outDir(), ...window]);
-      const text = `${info.stdout}\n${info.stderr}\n${converted.stderr}\n${loud.stdout}\n${loud.stderr}`;
+    for (const [recording, window, mode] of runs) {
+      const info = await cli([recording, '--info', ...window, ...mode]);
+      const converted = await cli([recording, '--out', await outDir(), '--quiet', ...window, ...mode]);
+      const loud = await cli([recording, '--out', await outDir(), ...window, ...mode]);
+      // --stdout has its own summary line, and prints no directory table.
+      const streamed = mode.includes('--annotations-only')
+        ? { stdout: '', stderr: '' }
+        : await cli([recording, '--stdout', ...window, ...mode]);
+      const text = [info.stdout, info.stderr, converted.stderr, loud.stdout, loud.stderr,
+        streamed.stderr].join('\n');
       const wrong = [...text.matchAll(/\b1 ([a-z]+s)\b/gu)]
         .map((m) => m[1])
         // "is"/"was"/"has" are verbs, and a word may simply end in s.
@@ -591,9 +605,11 @@ describe('--info', () => {
       assert.deepEqual(wrong, [], `${path.basename(recording)} counts one of something plural:\n${text}`);
     }
 
-    // Not vacuous: the windowed run really does estimate and write exactly one row.
-    const single = await cli([fixture('tiny.edf'), '--info', '--start', '1.9', '--end', '2.0']);
+    // Not vacuous: the windowed run really does estimate, write and stream exactly one row.
+    const single = await cli([fixture('tiny.edf'), '--info', ...narrow]);
     assert.match(single.stdout, /Would write 1 row,/u, single.stdout);
+    const piped = await cli([fixture('tiny.edf'), '--stdout', ...narrow]);
+    assert.match(piped.stderr, /Wrote 1 row to stdout\./u, piped.stderr);
 
     // Above one the plural is still there, or the fix would have gone the other way.
     const many = await cli([fixture('tiny.edf'), '--info']);

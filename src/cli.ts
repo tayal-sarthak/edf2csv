@@ -877,15 +877,20 @@ async function convertOne(
           the reader is not knowable from this side either way.
         */
         const expected = result.plan.estimate.rows;
+        // Singular at one, like every other count. A window narrow enough to select a single
+        // sample is an ordinary thing to pipe, and this said "Wrote 1 rows to stdout." — the
+        // third message in this family, after 0.5.74 and 0.5.78, each found because the sweep
+        // that checks for it was narrower than the set of modes that print a count.
+        const written = `${rows.toLocaleString('en-US')} ${rows === 1 ? 'row' : 'rows'}`;
         emit(
           'err',
           !result.readerHungUp
-            ? `Wrote ${rows.toLocaleString('en-US')} rows to stdout.\n`
+            ? `Wrote ${written} to stdout.\n`
             : rows < expected
               ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} of ` +
                 `${expected.toLocaleString('en-US')} rows had been written. The recording was ` +
                 `not converted in full.\n`
-              : `Wrote ${rows.toLocaleString('en-US')} rows to stdout, but the reader closed ` +
+              : `Wrote ${written} to stdout, but the reader closed ` +
                 `the pipe before the end, so not all of them reached it.\n`,
         );
       } else {
