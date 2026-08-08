@@ -1171,6 +1171,43 @@ describe('converting', () => {
     for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
   });
 
+  it('checks continuity from a first record at zero, like any other first record', async () => {
+    /*
+      The EDF+C branch derives an origin from the first record that states one, then compares
+      every record against where continuity puts it. It returned early when that origin came
+      out as exactly 0 — right about the times, since contiguous starts from zero are what
+      timing from zero already produces, and wrong to skip the comparison on the way past.
+
+      So records saying 0, 5, 10 on one-second records went unreported, while the same file
+      shifted by a second, saying 1, 6, 11, was reported. The contradiction is in records 1
+      and 2 either way.
+    */
+    // 0, 5, 10 contradicts in records 1 and 2; 0.5, 1.5, 10.5 is contiguous until record 2.
+    const cases = [
+      ['continuous-liar-from-zero.edf', 2],
+      ['continuous-liar.edf', 1],
+    ];
+    for (const [name, contradicting] of cases) {
+      const result = await convert(fixture(name), { outputDir: await outDir() });
+      const notice = result.diagnostics.find((d) => /marked continuous \(EDF\+C\)/u.test(d.message));
+      assert.ok(notice, `${name}: ${JSON.stringify(result.diagnostics)}`);
+      assert.match(
+        notice.message,
+        new RegExp(`${contradicting} of its 3 data records`, 'u'),
+        `${name}: ${notice.message}`,
+      );
+    }
+
+    // A recording that really is contiguous stays quiet, whatever its records say they are.
+    for (const name of ['tiny.edf', 'annotations.edf', 'contiguous-fractional.edf']) {
+      const quiet = await convert(fixture(name), { outputDir: await outDir(), quiet: true });
+      assert.ok(
+        !quiet.diagnostics.some((d) => /marked continuous \(EDF\+C\)/u.test(d.message)),
+        `${name} was called a liar`,
+      );
+    }
+  });
+
   it('reports records that overlap, not only records that reverse', async () => {
     /*
       The check asked whether a record starts before the one before it. Starts of 0, 0.5 and

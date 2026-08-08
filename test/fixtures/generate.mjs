@@ -302,6 +302,31 @@ export function generate() {
     talsForRecord: (r) => buildTal([0.5, 1.5, 10.5][r], []),
   });
 
+  /*
+    The same lie told from zero.
+
+    `continuous-liar.edf` starts at 0.5s, so the origin derived from it is 0.5 and the
+    contradiction in its later records is checked. This one says 0, 5, 10 — the same
+    contradiction, in the same two records — and the origin comes out as exactly 0, which the
+    reader used to treat as "no origin" and return on before the check ran. Where record 0
+    happens to sit decides nothing about whether records 1 and 2 contradict continuity.
+  */
+  writeEdf({
+    path: at('continuous-liar-from-zero.edf'),
+    reserved: 'EDF+C',
+    startDate: '01.01.20',
+    startTime: '00.00.00',
+    patient: 'X X X X',
+    recording: 'Startdate 01-JAN-2020 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 40, annotations: true },
+    ],
+    talsForRecord: (r) => buildTal([0, 5, 10][r], []),
+  });
+
   // An EDF+C recording whose FIRST timekeeping TAL is unreadable, twinned with EDF+D.
   //
   // Records sit at 0.5s, 1.5s and 2.5s. Record 0's timekeeping TAL writes its onset with a

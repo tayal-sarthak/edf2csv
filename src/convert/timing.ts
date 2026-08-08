@@ -91,7 +91,7 @@ export function deriveRecordStarts(
       so any readable record determines the origin for all of them.
     */
     const origin = originOf(annotationData.recordStarts, file.header.recordDuration);
-    if (origin === null || origin === 0) return { starts: null, diagnostics };
+    if (origin === null) return { starts: null, diagnostics };
 
     const contiguous = new Float64Array(file.recordCount);
     for (let i = 0; i < file.recordCount; i++) {
@@ -140,6 +140,18 @@ export function deriveRecordStarts(
       diagnostics.push(unusableOrigin(first, file));
       return { starts: null, diagnostics };
     }
+    /*
+      An origin of zero is the same as no origin, for timing. It is not the same for the
+      check above.
+
+      This returned early on `origin === 0`, which is right about the times — contiguous
+      starts from zero are what timing from zero already produces — and skipped the
+      contradiction check on the way past. So an EDF+C file whose records say 0, 5 and 10 on
+      one-second records went unreported, while the same file shifted one second, saying 1, 6
+      and 11, was reported. The contradiction is in records 1 and 2 either way; where record 0
+      happens to sit decides nothing about it.
+    */
+    if (origin === 0) return { starts: null, diagnostics };
     return { starts: contiguous, diagnostics };
   }
 

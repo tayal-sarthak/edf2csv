@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.28
+
+### Fixed: an EDF+C file contradicting continuity went unreported when its first record sat at zero
+
+The continuous branch derives an origin from the first record that states one, builds the
+contiguous timeline from it, and compares every record against where continuity puts it. It
+returned early when that origin came out as exactly 0 — correct about the times, since
+contiguous starts from zero are what timing from zero already produces, and wrong to skip the
+comparison on the way past.
+
+So a file whose records say 0, 5 and 10 on one-second records said nothing, while the same
+file shifted by one second, saying 1, 6 and 11, warned that two of its three records start
+somewhere other than where continuity puts them. Same contradiction, same two records; where
+record 0 happens to sit decides nothing about it.
+
+The zero case now takes the same path and returns after the check rather than before it. No
+fixture that is genuinely contiguous was newly called a liar, including the fractional-record
+one that 0.4.41's tolerance exists for.
+
 ## 0.5.27
 
 ### Fixed: the batch summary said everything converted while the exit code said otherwise
