@@ -283,7 +283,22 @@ export class EdfFile {
     if (start >= end) return;
 
     const { recordBytes } = this.header;
+    /*
+      Checked rather than handed to Buffer.alloc.
+
+      `chunkBytes: NaN` came back as `RangeError: The value of "size" is out of range` from
+      inside Node, with no mention of the option that caused it — while a fractional
+      `startRecord` two lines up gets a typed EdfError naming the field. Every other option
+      here is checked; this one reached the allocator.
+    */
     const budget = options.chunkBytes ?? DEFAULT_CHUNK_BYTES;
+    if (!Number.isFinite(budget) || budget < 1) {
+      throw new EdfError(
+        'UNREADABLE',
+        `chunkBytes must be a positive number of bytes, got ${String(options.chunkBytes)}.`,
+        'It is a ceiling on how much of the file is held at once; one record is read whatever it says.',
+      );
+    }
     /*
       The budget is a ceiling, not an amount to reserve.
 

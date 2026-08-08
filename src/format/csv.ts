@@ -65,13 +65,23 @@ export class BufferedLineWriter {
   #hungUp = false;
   #failure: Error | null = null;
 
+  /** Kept so the listener can come off again; see the constructor. */
+  #onError: ((error: NodeJS.ErrnoException) => void) | null = null;
+
   constructor(stream: Writable, threshold: number = DEFAULT_FLUSH_THRESHOLD) {
     this.#stream = stream;
     this.#threshold = threshold;
-    // A stream with no 'error' listener throws asynchronously and takes the whole
-    // process down with a raw stack trace. Capturing the error here lets the next
-    // flush surface it as a normal failure with a usable message.
-    this.#stream.on('error', (error: NodeJS.ErrnoException) => {
+    /*
+      A stream with no 'error' listener throws asynchronously and takes the whole process
+      down with a raw stack trace. Capturing the error here lets the next flush surface it as
+      a normal failure with a usable message.
+
+      Removed again when the writer is finished with, because one of these streams outlives
+      the writer: `process.stdout`. A library caller converting twelve recordings with
+      `toStdout` left twelve listeners on it and got Node's MaxListenersExceededWarning on
+      the eleventh — a leak warning that was, for once, describing a real leak.
+    */
+    this.#onError = (error: NodeJS.ErrnoException) => {
       /*
         EPIPE is the reader hanging up, not a write failure.
 
@@ -86,7 +96,15 @@ export class BufferedLineWriter {
         return;
       }
       this.#failure ??= error;
-    });
+    };
+    this.#stream.on('error', this.#onError);
+  }
+
+  /** Take the 'error' listener off a stream that outlives this writer. */
+  #release(): void {
+    if (!this.#onError) return;
+    this.#stream.off('error', this.#onError);
+    this.#onError = null;
   }
 
   /** True once the reader closed the pipe. Nothing more can reach the consumer. */
@@ -223,21 +241,38 @@ export class BufferedLineWriter {
       routine shell idiom, a claim about files that were never written, and advice about disk
       space — reappearing on the one path 0.3.1 said would behave identically.
     */
-    if (this.#hungUp) return;
+    if (this.#hungUp) {
+      this.#release();
+      return;
+    }
     // stdout must not be closed; ending it would break piping for the rest of the process.
     // The failure still has to be reported: returning here without looking meant an error
     // recorded on the stream, but not yet surfaced by a later flush, was simply dropped.
     if (this.#stream === process.stdout || this.#stream === process.stderr) {
-      if (this.#failure) throw this.#failure;
+      const failure = this.#failure;
+      this.#release();
+      if (failure) throw failure;
       return;
     }
-    await new Promise<void>((resolve, reject) => {
-      this.#stream.end((error?: Error | null) => {
-        const failure = error ?? this.#failure;
-        if (failure) reject(failure);
-        else resolve();
+    /*
+      Released after the stream has finished ending, not before.
+
+      Releasing first meant an EACCES arriving during that final end had no listener left and
+      went out as an unhandled 'error' event — a raw stack trace, which is the one thing this
+      listener exists to prevent. The leak it was added to fix is about streams this writer
+      does not own; the window it must stay attached for runs to the last byte either way.
+    */
+    try {
+      await new Promise<void>((resolve, reject) => {
+        this.#stream.end((error?: Error | null) => {
+          const failure = error ?? this.#failure;
+          if (failure) reject(failure);
+          else resolve();
+        });
       });
-    });
+    } finally {
+      this.#release();
+    }
   }
 
   /** Close the stream without caring whether the data made it out. */
@@ -246,6 +281,7 @@ export class BufferedLineWriter {
     this.#ended = true;
     this.#parts = [];
     this.#pending = 0;
+    this.#release();
     this.#stream.destroy();
   }
 }

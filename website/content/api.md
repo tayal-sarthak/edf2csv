@@ -347,7 +347,7 @@ Use `new Uint8Array(batch.data)` rather than `batch.data.slice()`. `batch.data` 
 
 The same applies to anything derived from the buffer without copying, including `annotationBytes()`, which returns a `subarray` of it. Decoded values are safe: numbers returned by `sampleAt` are copies by nature, and strings produced from the bytes are too. The rule is only about buffers and buffer views.
 
-Note also that a small `chunkBytes` doesn't change the results, only how often the buffer is refilled. The minimum batch is one record, so `chunkBytes: 1` still reads a whole record at a time.
+Note also that a small `chunkBytes` doesn't change the results, only how often the buffer is refilled. The minimum batch is one record, so `chunkBytes: 1` still reads a whole record at a time. A value that is not a positive number — `0`, a negative, `NaN`, `Infinity` — is an `EdfError` naming the option, rather than a `RangeError` from inside `Buffer.alloc`.
 
 ## Reading annotations
 

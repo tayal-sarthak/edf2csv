@@ -218,6 +218,35 @@ describe('reading samples', () => {
     assert.deepEqual(await readAll(1), await readAll(1 << 20));
   });
 
+  it('names the option when chunkBytes is not a number of bytes', async () => {
+    /*
+      `chunkBytes: NaN` came back as `RangeError: The value of "size" is out of range` from
+      inside Node's Buffer.alloc, with no mention of the option that caused it — while a
+      fractional startRecord gets a typed EdfError naming the field. Every other option here
+      is checked; this one reached the allocator.
+    */
+    const file = await load('tiny.edf');
+    for (const value of [Number.NaN, 0, -5, Number.POSITIVE_INFINITY]) {
+      await assert.rejects(
+        async () => {
+          for await (const unused of file.readRecords({ chunkBytes: value })) break;
+        },
+        (error) => {
+          assert.equal(error.constructor.name, 'EdfError');
+          assert.match(error.message, /chunkBytes must be a positive number of bytes/u);
+          return true;
+        },
+        `chunkBytes: ${value}`,
+      );
+    }
+
+    // A budget below one record still reads one record, which is what the docs promise.
+    let records = 0;
+    for await (const batch of file.readRecords({ chunkBytes: 1 })) records += batch.recordCount;
+    assert.equal(records, 2);
+    await file.close();
+  });
+
   it('hands out views of one reused buffer, which is what the API reference says', async () => {
     /*
       api.md calls this the one contract that fails silently if you get it wrong, so the

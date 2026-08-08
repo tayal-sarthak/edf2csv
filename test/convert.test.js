@@ -1180,6 +1180,33 @@ describe('converting', () => {
     for (let i = 1; i < times.length; i++) assert.ok(times[i] > times[i - 1], 'time increases');
   });
 
+  it('leaves no listener behind on a stream it does not own', async () => {
+    /*
+      The writer attaches an 'error' listener so a stream failure surfaces as a message
+      rather than an async throw, and never took it off. One of these streams outlives the
+      writer: process.stdout. A caller converting twelve recordings with toStdout left twelve
+      listeners on it and got Node's MaxListenersExceededWarning on the eleventh — a leak
+      warning that was, for once, describing a real leak.
+    */
+    const before = process.stdout.listenerCount('error');
+    const warnings = [];
+    const onWarning = (warning) => warnings.push(warning.name);
+    process.on('warning', onWarning);
+    try {
+      for (let i = 0; i < 15; i++) {
+        await convert(fixture('tiny.edf'), { toStdout: true, quiet: true });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      process.off('warning', onWarning);
+    }
+    assert.equal(process.stdout.listenerCount('error'), before, 'listeners were left behind');
+    assert.ok(
+      !warnings.includes('MaxListenersExceededWarning'),
+      `Node warned: ${warnings.join(', ')}`,
+    );
+  });
+
   it('reads timekeeping from an annotation channel that has room for it', async () => {
     /*
       EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read

@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.36
+
+### Fixed: every `toStdout` conversion left a listener on `process.stdout`
+
+The CSV writer attaches an `'error'` listener so a stream failure surfaces as a message
+rather than an asynchronous throw, and never took it off. Most of those streams are the
+writer's own and go away with it. One does not: `process.stdout`. A library caller converting
+twelve recordings with `toStdout` left twelve listeners on it and got Node's
+`MaxListenersExceededWarning` on the eleventh — a leak warning that was, for once, describing
+a real leak.
+
+Taken off when the writer is finished with the stream. After it has finished ending it, not
+before: releasing first meant an `EACCES` arriving during that final `end()` had no listener
+left and went out as an unhandled `'error'` event, a raw stack trace, which is precisely what
+the listener exists to prevent. Fifteen conversions now leave the count where they found it.
+
+### Fixed: `readRecords({ chunkBytes: NaN })` failed from inside Node
+
+`RangeError: The value of "size" is out of range` out of `Buffer.alloc`, with no mention of
+the option that caused it — while a fractional `startRecord` two lines earlier gets a typed
+`EdfError` naming the field. Every other option there is checked; this one reached the
+allocator. `0`, negatives, `NaN` and `Infinity` are now an `EdfError` that says which option
+it is about. `chunkBytes: 1` still reads a whole record, as documented.
+
 ## 0.5.35
 
 ### Fixed: four documents disagreeing with the tool or with themselves
