@@ -1294,23 +1294,39 @@ describe('converting', () => {
       listeners on it and got Node's MaxListenersExceededWarning on the eleventh — a leak
       warning that was, for once, describing a real leak.
     */
-    const before = process.stdout.listenerCount('error');
-    const warnings = [];
-    const onWarning = (warning) => warnings.push(warning.name);
-    process.on('warning', onWarning);
-    try {
-      for (let i = 0; i < 15; i++) {
-        await convert(fixture('tiny.edf'), { toStdout: true, quiet: true });
+    /*
+      Both ways of writing to stdout, because the leak came back through the other one.
+
+      This test passed for forty versions while `{ toStdout: true, gzip: true }` leaked a
+      listener per call on the same stream, warning on the eleventh exactly as the sentence
+      above describes. The fix it guards is `BufferedLineWriter`'s `#release()`, and under
+      gzip the writer's stream is the compressor — `process.stdout` is only ever the
+      compressor's destination, so the release could not reach the listener that mattered.
+      One flag away from what was covered, on the identical failure.
+    */
+    for (const gzip of [false, true]) {
+      const before = process.stdout.listenerCount('error');
+      const warnings = [];
+      const onWarning = (warning) => warnings.push(warning.name);
+      process.on('warning', onWarning);
+      try {
+        for (let i = 0; i < 15; i++) {
+          await convert(fixture('tiny.edf'), { toStdout: true, quiet: true, gzip });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      } finally {
+        process.off('warning', onWarning);
       }
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    } finally {
-      process.off('warning', onWarning);
+      assert.equal(
+        process.stdout.listenerCount('error'),
+        before,
+        `listeners were left behind with gzip: ${gzip}`,
+      );
+      assert.ok(
+        !warnings.includes('MaxListenersExceededWarning'),
+        `Node warned with gzip: ${gzip}: ${warnings.join(', ')}`,
+      );
     }
-    assert.equal(process.stdout.listenerCount('error'), before, 'listeners were left behind');
-    assert.ok(
-      !warnings.includes('MaxListenersExceededWarning'),
-      `Node warned: ${warnings.join(', ')}`,
-    );
   });
 
   it('charges an unreadable event to events, even in a second annotation channel', async () => {

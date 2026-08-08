@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.81
+
+### Fixed: the listener leak 0.5.36 fixed, still there one flag away
+
+```js
+for (let i = 0; i < 12; i++) await convert(rec, { toStdout: true, gzip: true });
+```
+
+leaves twelve `'error'` listeners on `process.stdout` and prints Node's
+MaxListenersExceededWarning on the eleventh — which is 0.5.36's entry word for word, including
+the count. That version fixed it for the writer's own listener, through
+`BufferedLineWriter`'s `#release()`, and wrote a regression test that loops fifteen `toStdout`
+conversions and asserts the count comes back. The test never passes `gzip: true`.
+
+It could not have caught this one anyway. `#release()` only detaches from a stream the writer
+holds, and under gzip the writer's stream is the compressor — `process.stdout` is the
+compressor's *destination*, and the listener on it is `compressed()`'s error forwarding, which
+was attached and never removed. Same leak, same stream, same warning, behind one flag.
+
+The forwarder is removable now, released after the conversion settles and in a `finally`, with
+the ownership rule the writer already uses: detach from `process.stdout` and `process.stderr`,
+leave a file stream alone, since a file stream is created for the conversion and closed with
+it. In a `finally` for 0.5.45's reason — a conversion that fails still has to leave stdout as
+it found it, and a failure is exactly when a caller goes on to convert something else.
+
+The CLI could never accumulate these: `--stdout` takes one recording and the process exits.
+It is the library API that leaks, which is the surface 0.5.36's entry says its fix was for.
+
+The regression test runs both paths now.
+
 ## 0.5.80
 
 ### Fixed: "Wrote 1 rows to stdout." — and the sweep that kept missing this family

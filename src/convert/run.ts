@@ -133,6 +133,8 @@ interface OpenGroup {
   rows: number;
   /** Resolves once a compressed stream's bytes have reached the file behind it. */
   settled: Promise<void>;
+  /** Detaches the compressor's error forwarding from a stream this tool does not own. */
+  release: () => void;
 }
 
 export async function convert(inputPath: string, options: ConvertOptions = {}): Promise<ConvertResult> {
@@ -579,6 +581,7 @@ async function writeSignalFiles(
   let shared: {
     stream: Writable;
     settled: Promise<void>;
+    release: () => void;
     target: Writable;
     writer: BufferedLineWriter;
   } | null = null;
@@ -624,7 +627,7 @@ async function writeSignalFiles(
         : createWriteStream(path.join(outputDir, group.fileName), {
             highWaterMark: streamBuffer,
           }));
-    const { stream, settled } = shared ?? compressed(target, options.gzip === true);
+    const { stream, settled, release } = shared ?? compressed(target, options.gzip === true);
     /*
       Under --gzip the writer feeds the compressor, so its byte count is the CSV before
       compression and says nothing about what reached the descriptor. The compressor's own
@@ -651,7 +654,7 @@ async function writeSignalFiles(
       order.
     */
     const writer = shared?.writer ?? new BufferedLineWriter(stream, flushThreshold);
-    if (plan.layout === 'long' && !shared) shared = { stream, settled, target, writer };
+    if (plan.layout === 'long' && !shared) shared = { stream, settled, release, target, writer };
 
     // Only the first group writes the header of a shared table, and the mark before it.
     if (plan.layout !== 'long' || groupIndex === 0) {
@@ -674,6 +677,7 @@ async function writeSignalFiles(
       ),
       rows: 0,
       settled,
+      release,
     };
   });
 
@@ -1002,11 +1006,18 @@ async function streamSignalRows(
   for (const entry of open) {
     if (closed.has(entry.writer)) continue;
     closed.add(entry.writer);
-    await entry.writer.end();
-    // With --gzip the writer's stream is the compressor, whose end callback fires when the
-    // compressor is done rather than when the file behind it is. Awaiting only that would
-    // report success with the tail of the file still in flight.
-    await entry.settled;
+    try {
+      await entry.writer.end();
+      // With --gzip the writer's stream is the compressor, whose end callback fires when the
+      // compressor is done rather than when the file behind it is. Awaiting only that would
+      // report success with the tail of the file still in flight.
+      await entry.settled;
+    } finally {
+      // In a finally for the reason 0.5.45 gives about the writer's own release: a
+      // conversion that fails here still has to leave process.stdout as it found it, and a
+      // failure is exactly when a caller goes on to convert something else.
+      entry.release();
+    }
   }
 
   // A shared table is one file, and its row count is every group's rows, not the first's.
@@ -1026,10 +1037,34 @@ async function streamSignalRows(
  * so they are forwarded onto the compressor: that is the stream the writer watches, and
  * routing them there keeps one error path rather than two.
  */
-function compressed(target: Writable, gzip: boolean): { stream: Writable; settled: Promise<void> } {
-  if (!gzip) return { stream: target, settled: Promise.resolve() };
+function compressed(
+  target: Writable,
+  gzip: boolean,
+): { stream: Writable; settled: Promise<void>; release: () => void } {
+  if (!gzip) return { stream: target, settled: Promise.resolve(), release: (): void => {} };
   const compressor = createGzip();
-  target.on('error', (error: Error) => compressor.destroy(error));
+  /*
+    Removable, because one of the streams this can be handed outlives the conversion.
+
+    0.5.36 fixed exactly this leak for the writer's own listener: a library caller running
+    twelve `toStdout` conversions left twelve 'error' listeners on `process.stdout` and got
+    Node's MaxListenersExceededWarning on the eleventh. That fix is `BufferedLineWriter`'s
+    `#release()`, and it cannot reach this one — under `gzip` the writer's stream is the
+    compressor, and `process.stdout` is only ever the compressor's destination. So the same
+    leak survived on the same stream, behind one extra flag, and the regression test written
+    to catch it does not pass `gzip: true`.
+
+    A file stream is a different matter and needs no release: it is created for this
+    conversion and closed with it. The discipline is the writer's — release only from a
+    stream this tool does not own.
+  */
+  const forward = (error: Error): void => {
+    compressor.destroy(error);
+  };
+  target.on('error', forward);
+  const release = (): void => {
+    if (target === process.stdout || target === process.stderr) target.off('error', forward);
+  };
 
   /*
     pipe() ends its destination when the source ends, and stdout must survive the
@@ -1039,7 +1074,7 @@ function compressed(target: Writable, gzip: boolean): { stream: Writable; settle
   */
   const toStdout = target === process.stdout;
   compressor.pipe(target, { end: !toStdout });
-  if (toStdout) return { stream: compressor, settled: Promise.resolve() };
+  if (toStdout) return { stream: compressor, settled: Promise.resolve(), release };
 
   /*
     A failure under the compressor rejects both this promise and the writer's own end(),
@@ -1053,7 +1088,7 @@ function compressed(target: Writable, gzip: boolean): { stream: Writable; settle
   */
   const settled = finished(target);
   settled.catch(() => {});
-  return { stream: compressor, settled };
+  return { stream: compressor, settled, release };
 }
 
 /**
