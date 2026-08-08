@@ -568,16 +568,32 @@ describe('--info', () => {
     const short = path.join(dir, 'short.edf');
     writeEdf({ path: short, numRecords: 5, recordDuration: 1, truncateRecords: 1, signals: [channel] });
 
-    for (const recording of [one, short]) {
-      const info = await cli([recording, '--info']);
-      const converted = await cli([recording, '--out', await outDir(), '--quiet']);
-      const text = `${info.stdout}\n${info.stderr}\n${converted.stderr}`;
+    /*
+      Windowed as well as whole. 0.5.74 checked only whole-recording runs, so the estimate line
+      and the written-files table were never seen with a count of exactly one — a window narrow
+      enough to select a single sample is what produces that, and both read "1 rows" until
+      0.5.78. A count that is never one in the fixture is a count this cannot check.
+    */
+    const runs = [
+      [one, []],
+      [short, []],
+      [fixture('tiny.edf'), ['--start', '1.9', '--end', '2.0']],
+    ];
+    for (const [recording, window] of runs) {
+      const info = await cli([recording, '--info', ...window]);
+      const converted = await cli([recording, '--out', await outDir(), '--quiet', ...window]);
+      const loud = await cli([recording, '--out', await outDir(), ...window]);
+      const text = `${info.stdout}\n${info.stderr}\n${converted.stderr}\n${loud.stdout}\n${loud.stderr}`;
       const wrong = [...text.matchAll(/\b1 ([a-z]+s)\b/gu)]
         .map((m) => m[1])
         // "is"/"was"/"has" are verbs, and a word may simply end in s.
         .filter((word) => !['is', 'was', 'has', 'less', 'this', 'its'].includes(word));
       assert.deepEqual(wrong, [], `${path.basename(recording)} counts one of something plural:\n${text}`);
     }
+
+    // Not vacuous: the windowed run really does estimate and write exactly one row.
+    const single = await cli([fixture('tiny.edf'), '--info', '--start', '1.9', '--end', '2.0']);
+    assert.match(single.stdout, /Would write 1 row,/u, single.stdout);
 
     // Above one the plural is still there, or the fix would have gone the other way.
     const many = await cli([fixture('tiny.edf'), '--info']);
@@ -2217,7 +2233,9 @@ describe('what the summary says it did', () => {
     for (const name of ['signals.csv.gz', 'annotations.csv.gz', 'channels.csv.gz']) {
       assert.match(
         stderr,
-        new RegExp(`${name.replaceAll('.', '\\.')}\\s+[\\d,]+\\s+rows`, 'u'),
+        // `rows?`: what this checks is that the unit is there at all, and a one-row table
+        // says "row" since 0.5.78.
+        new RegExp(`${name.replaceAll('.', '\\.')}\\s+[\\d,]+\\s+rows?\\b`, 'u'),
         `${name} has no unit:\n${stderr}`,
       );
     }

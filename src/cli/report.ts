@@ -226,7 +226,11 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   // Reporting it as the size on disk would overstate a compressed conversion several-fold.
   const compressing = plan.gzip;
   lines.push(
-    `Would write ${plan.estimate.rows.toLocaleString('en-US')} rows, roughly ` +
+    // A window narrow enough to select one sample is an ordinary thing to ask for, and this
+    // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
+    // and missed here, because the recording that test builds never estimates exactly one.
+    `Would write ${plan.estimate.rows.toLocaleString('en-US')} ` +
+      `${plan.estimate.rows === 1 ? 'row' : 'rows'}, roughly ` +
       `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
   );
 
@@ -335,7 +339,9 @@ export function formatSummary(result: ConvertResult): string {
     rows.push([
       `  ${file.name}`,
       file.rows.toLocaleString('en-US'),
-      /\.csv(\.gz)?$/u.test(file.name) ? 'rows' : '',
+      // Singular at one, like every other count this prints: a one-row table is what a
+      // narrow window produces, and "1 rows" is the same slip 0.5.74 fixed elsewhere.
+      /\.csv(\.gz)?$/u.test(file.name) ? (file.rows === 1 ? 'row' : 'rows') : '',
     ]);
   }
   lines.push(`Wrote ${printable(result.outputDir)}`);  // Escaped; see the File line above.

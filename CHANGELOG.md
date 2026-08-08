@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.78
+
+### Fixed: "Would write 1 rows" — the two lines 0.5.74's test could not reach
+
+0.5.74 made counts agree with their nouns and added a sweep that fails on any `1 <word>s` in a
+run's output. It passed while two of the most-read lines were still wrong:
+
+```
+$ edf2csv rec.edf --info --start 1.9 --end 2.0
+Would write 1 rows, roughly 39 B.
+
+$ edf2csv rec.edf --out out --start 1.9 --end 2.0
+  signals.csv   1  rows
+```
+
+The sweep only ran whole-recording conversions, and the recording it builds never estimates or
+writes exactly one row. A count that is never one in the fixture is a count it cannot check —
+so the test was as green as it would have been if the fix were complete.
+
+Both lines agree now, and the sweep runs a window narrow enough to select a single sample, with
+an assertion that the window really does produce one row so it cannot quietly stop exercising
+the case. It found this before this version was written, which is the point of extending it
+rather than adding two more conditionals.
+
+One existing test needed a word: it asserted `.csv.gz` summary lines carry a unit by matching
+`rows`, and `annotations.edf` has one channel, so `channels.csv.gz` now says `row`. What that
+test checks is that the unit is there at all, so it matches `rows?`.
+
 ## 0.5.77
 
 ### Fixed: the stale-output warning grew without bound, and told you to delete "them" when there was one
