@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.71
+
+### Fixed: NONPRINTABLE_LABEL told a channel with a clean label that its name could not be typed
+
+The message said "Signal 0's label **or unit** contains 1 control character", and then said two
+things that are only ever true of a label: that the bytes "will appear in the CSV column name",
+and that "the name cannot be typed, so address the channel by position".
+
+A channel labelled plainly `ECG`, in a unit of `u\x07V`, got all of it. Its column is `ECG`,
+`--channels ECG` selects it and exits 0, and the byte is in channels.csv's `unit` cell — which
+the warning never mentioned, so the one thing a reader needed to know was the one thing missing.
+Three sentences, none of them true of the file that raised it, on a warning whose entire purpose
+is to say where an invisible byte went.
+
+It names the field now, and where the bytes land follows from that: a label becomes the column
+name in signals.csv, a unit is a cell of channels.csv and nothing else, and a header carrying
+them in both says both. When only the unit is affected the hint says the column name is
+unaffected and gives the label that still selects it, rather than sending the reader to a
+position they do not need.
+
+Checked against the file rather than against the wording: the test asserts the column really is
+`ECG`, that selecting by that name really works, and that the byte really is in the unit cell.
+
 ## 0.5.70
 
 ### Fixed: the page that defines `time_s` said zero is the first sample

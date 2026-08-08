@@ -384,22 +384,46 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         control character in it. NONPRINTABLE_LABEL has been declared and documented as
         reserved since 0.1; this is it doing its job.
       */
-      const control = [...label, ...physicalDimension].filter(isControlCharacter);
+      /*
+        Which of the two fields carries them, because the consequences are not the same.
+
+        The message said "label or unit", and then said the bytes "will appear in the CSV
+        column name" and that "the name cannot be typed" — both of which are about the label.
+        A channel labelled plainly `ECG` in a unit of `u\x07V` got all of it: its column is
+        `ECG`, `--channels ECG` selects it and exits 0, and the byte is in channels.csv's
+        `unit` cell, which the warning never mentioned. Three sentences, none of them true of
+        the file that raised it, on a warning whose whole purpose is to say where an invisible
+        byte went.
+      */
+      const inLabel = [...label].filter(isControlCharacter);
+      const inUnit = [...physicalDimension].filter(isControlCharacter);
+      const control = [...inLabel, ...inUnit];
       if (control.length > 0) {
         const shown = [...new Set(control)]
           .map((c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`)
           .join(', ');
+        const plural = control.length === 1 ? '' : 's';
+        const both = inLabel.length > 0 && inUnit.length > 0;
+        const field = both ? 'label and unit contain' : inLabel.length > 0 ? 'label contains' : 'unit contains';
+        // Where they land, which is the question the reader has. A label becomes a column
+        // name in signals.csv; a unit is a cell of channels.csv and nothing else.
+        const lands = both
+          ? 'which will appear in the CSV column name and in channels.csv\'s unit cell'
+          : inLabel.length > 0
+            ? 'which will appear in the CSV column name'
+            : 'which will appear in channels.csv\'s unit cell';
         diagnostics.push({
           code: 'NONPRINTABLE_LABEL',
           severity: 'warning',
           message:
-            `Signal ${i}'s label or unit contains ${control.length} control ` +
-            `character${control.length === 1 ? '' : 's'} (${shown}), which will appear in the ` +
-            `CSV column name exactly as the header has them.`,
+            `Signal ${i}'s ${field} ${control.length} control character${plural} ` +
+            `(${shown}), ${lands} exactly as the header has them.`,
           hint:
-            'Address the channel by position with --channels "#' +
-            `${i}" rather than by name, since the name cannot be typed. Printing the CSV to a ` +
-            'terminal may do more than print it.',
+            (inLabel.length > 0
+              ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
+                'since the name cannot be typed. '
+              : `The column name is unaffected, so --channels "${label}" still selects it. `) +
+            'Printing the CSV to a terminal may do more than print it.',
         });
       }
 

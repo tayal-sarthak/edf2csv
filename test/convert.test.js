@@ -124,7 +124,7 @@ describe('column naming', () => {
 
     const raised = result.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
     assert.equal(raised.length, 3, `expected one per affected signal: ${raised.length}`);
-    assert.match(raised[0].message, /Signal 0's label or unit contains 2 control characters/u);
+    assert.match(raised[0].message, /Signal 0's label and unit contain 2 control characters/u);
     assert.match(raised[0].message, /\\x1b/u, 'the bytes are named, escaped');
     assert.match(raised[1].message, /\\x07/u);
     // A tab is harmless to a terminal but makes a column name nobody can type reliably.
@@ -136,6 +136,46 @@ describe('column naming', () => {
     const header = (await readCsv(dir, 'signals.csv'))[0];
     assert.ok(header.includes(String.fromCharCode(27)), 'the escape is still in the column');
     assert.ok(header.includes('plain'));
+  });
+
+  it('says which field carries the control byte, and what that costs', async () => {
+    /*
+      The message said "label or unit" and then made two claims that are only true of a label:
+      that the bytes "will appear in the CSV column name", and that "the name cannot be typed".
+      A channel labelled plainly `ECG` in a unit of `u\x07V` got both. Its column is `ECG`,
+      `--channels ECG` selects it and exits 0, and the byte is in channels.csv's `unit` cell —
+      which the warning never mentioned. Three sentences, none true of the file that raised it,
+      on a warning whose whole job is to say where an invisible byte went.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-ctrl-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(scratch, 'ctrl-unit.edf');
+    writeEdf({
+      path: recording,
+      numRecords: 2,
+      recordDuration: 1,
+      signals: [
+        { label: 'ECG', dimension: `u${String.fromCharCode(7)}V`, physMin: -100, physMax: 100,
+          digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: (r, i) => r * 4 + i },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(recording, { outputDir: dir });
+    const raised = result.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+    assert.equal(raised.length, 1, JSON.stringify(result.diagnostics));
+    assert.match(raised[0].message, /Signal 0's unit contains 1 control character/u, raised[0].message);
+    assert.match(raised[0].message, /channels\.csv's unit cell/u, raised[0].message);
+    assert.doesNotMatch(raised[0].hint, /cannot be typed/u, raised[0].hint);
+
+    // Both claims the old message made, checked against the file rather than against a regex.
+    assert.equal((await readCsv(dir, 'signals.csv'))[0], 'time_s,ECG', 'the column is unaffected');
+    const byName = await convert(recording, { outputDir: await outDir(), channels: ['ECG'] });
+    assert.equal(byName.files.length > 0, true, 'and the name is perfectly typeable');
+    // The byte really is in the unit cell, which is what the message now points at.
+    const unit = (await readCsv(dir, 'channels.csv'))[1].split(',')[3];
+    assert.ok(unit.includes(String.fromCharCode(7)), unit);
   });
 
   it('leaves an ordinary label alone', async () => {
