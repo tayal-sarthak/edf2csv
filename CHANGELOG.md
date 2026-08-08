@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.64
+
+### Fixed: a leading `./` decided whether a batch ran at all
+
+A recording named both directly and through a folder keeps the position the folder gives it.
+That rule is documented, and the depth comparison in `outnames` is what applies it — but it
+was never reached. The comparison above it settled the two names on lexicographic order of the
+paths *as typed*, so `study/night-01/rec.edf` and `./study/night-01/rec.edf` were two different
+names for one file, and the loser was picked by string order rather than by the rule.
+
+With a `study/rec.edf` beside it, whose bare name collides:
+
+```
+$ edf2csv study study/night-01/rec.edf --out out
+Converted 2 of 2 recordings.
+
+$ edf2csv study ./study/night-01/rec.edf --out out
+error: "study/rec.edf" and "./study/night-01/rec.edf" would both be converted into "out/rec",
+       so one would overwrite the other.
+```
+
+Same files, same folder, same request. Without the colliding sibling it was quieter and no
+better: one spelling wrote `out/night-01/rec` and the other `out/rec`, so a script that started
+passing absolute paths moved its output without saying so.
+
+Names are compared by identity now. Through `realpathSync` rather than a lexical resolve,
+because lexical is not enough: on macOS `$TMPDIR` sits under `/var`, a link to `/private/var`,
+so a folder walked from the name the caller gave and a recording named relative to the
+process's own directory come out with different prefixes for one file — which the test found
+before this shipped. Following links here is safe, since the rule preferring a real name over a
+link pointing at it has already run.
+
 ## 0.5.63
 
 ### Fixed: a value beginning with a dash was refused in Node's words, with a placeholder for advice

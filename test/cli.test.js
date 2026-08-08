@@ -28,9 +28,14 @@ after(async () => {
 });
 
 /** Run the CLI and capture stdout, stderr and the exit code without throwing. */
-async function cli(args) {
+// `options` reaches execFile, which is how a case that turns on relative paths sets the
+// directory they are relative to.
+async function cli(args, options = {}) {
   try {
-    const { stdout, stderr } = await run(process.execPath, [CLI, ...args], { maxBuffer: 64 << 20 });
+    const { stdout, stderr } = await run(process.execPath, [CLI, ...args], {
+      maxBuffer: 64 << 20,
+      ...options,
+    });
     return { code: 0, stdout, stderr };
   } catch (error) {
     return { code: error.code ?? 1, stdout: error.stdout ?? '', stderr: error.stderr ?? '' };
@@ -843,6 +848,46 @@ describe('converting several recordings at once', () => {
     // the survivor is named after the recording rather than the link pointing at it.
     assert.deepEqual(await readdir(path.join(dir, 'out')), ['one']);
     assert.ok((await readdir(path.join(dir, 'out', 'one'))).includes('signals.csv'));
+  });
+
+  it('reads two spellings of one path as one name, not two', async (t) => {
+    /*
+      A recording named both directly and through a folder keeps the position the folder gives
+      it — that is the documented rule, and the depth comparison in `outnames` is what applies
+      it. It was never reached: the comparison above it settled the two names on lexicographic
+      order of the paths *as typed*, so `study/night-01/rec.edf` and `./study/night-01/rec.edf`
+      were two different names for one file.
+
+      What that decided was not cosmetic. With a `study/rec.edf` beside it, one spelling
+      converted both recordings and exited 0, and the other was refused — "would both be
+      converted into "out/rec", so one would overwrite the other" — exit 2, nothing written.
+      A leading `./` decided whether the run happened.
+    */
+    const dir = await stage({
+      'study/night-01/rec.edf': 'tiny.edf',
+      // The sibling whose bare name collides, which is what turns the disagreement into a
+      // refusal rather than a rename.
+      'study/rec.edf': 'mixed-rates.edf',
+    });
+    const study = path.join(dir, 'study');
+    const nested = path.join('study', 'night-01', 'rec.edf');
+
+    const spellings = [
+      path.join(dir, nested),
+      `.${path.sep}${nested}`,
+      nested,
+    ];
+    const written = [];
+    for (const [index, spelling] of spellings.entries()) {
+      const out = path.join(dir, `out${index}`);
+      // The relative spellings have to be read from the staging directory to mean anything.
+      const ran = await cli([study, spelling, '--out', out, '--quiet'], { cwd: dir });
+      assert.equal(ran.code, 0, `spelled "${spelling}" was refused:\n${ran.stderr}`);
+      written.push((await readdir(out)).sort().join(','));
+    }
+    assert.equal(new Set(written).size, 1, `spellings disagreed: ${written.join(' | ')}`);
+    assert.equal(written[0], 'night-01,rec', 'the folder gives the nested one its position');
+    t.diagnostic(`three spellings, one answer: ${written[0]}`);
   });
 
   it('picks the same name for a folder reached two ways, whatever the order', async () => {

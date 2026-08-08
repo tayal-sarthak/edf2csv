@@ -990,7 +990,41 @@ function outnames(
   held: { entry: Input; link: boolean },
 ): boolean {
   if (candidate.link !== held.link) return !candidate.link;
-  if (candidate.entry.path !== held.entry.path) return candidate.entry.path < held.entry.path;
+  /*
+    Resolved, not as typed. `study/night-01/rec.edf` and `./study/night-01/rec.edf` are the
+    same file spelled two ways, and comparing the raw strings made them two different names —
+    so this returned here, on lexicographic order of the spelling, and never reached the depth
+    rule below that exists for exactly this case.
+
+    What that cost is not cosmetic. `edf2csv study study/night-01/rec.edf` converted both
+    recordings and exited 0; the identical request written `edf2csv study
+    ./study/night-01/rec.edf` was refused with "would both be converted into "out/rec", so one
+    would overwrite the other", exit 2, nothing written. Same files, same folder, same
+    intention — and a leading `./` decided whether the run happened. Without the sibling that
+    collides it was quieter and no better: one spelling wrote `out/night-01/rec` and the other
+    `out/rec`, so a script that started passing absolute paths moved its output.
+
+    Through `realpathSync`, not `path.resolve`, because a lexical resolve is not enough: on
+    macOS `$TMPDIR` sits under `/var`, which is a link to `/private/var`, so a folder walked
+    from the name the caller gave and a recording named relative to the process's own
+    directory come out with different absolute prefixes for the same file. Falls back to the
+    lexical form for a path that cannot be resolved, which is the same answer as before.
+
+    Following links here is safe: a link and its target reach this as two genuinely different
+    names, and the rule above has already preferred the real one, so the only pairs left with
+    one identity are two spellings or two links — and both should fall through to the depth
+    rule below rather than be settled by how they were typed.
+  */
+  const spelled = (entry: Input): string => {
+    try {
+      return realpathSync(entry.path);
+    } catch {
+      return path.resolve(entry.path);
+    }
+  };
+  if (spelled(candidate.entry) !== spelled(held.entry)) {
+    return spelled(candidate.entry) < spelled(held.entry);
+  }
   /*
     One recording, one path, two names — reached directly and through a named folder.
 
