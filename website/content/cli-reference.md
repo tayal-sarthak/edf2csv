@@ -145,7 +145,7 @@ If the destination path exists but is a regular file rather than a directory, th
 
 ## -i, --info
 
-Prints a description of the recording to stdout and exits without writing anything. `--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right.
+Prints a description of the recording to stdout and exits without writing anything. Because it writes nothing, it is not held to the rules about where output would land: two recordings whose names would collide, or one whose output directory would sit inside another's, are both described rather than refused. Those are usage errors for a conversion — and `--info --out` is how you would want to find out about them. `--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right.
 
 ```bash
 edf2csv sleep-study.edf --info

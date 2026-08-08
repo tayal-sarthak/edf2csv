@@ -1517,6 +1517,58 @@ describe('what the summary says it did', () => {
   });
 });
 
+describe('--info and the destination guards', () => {
+  it('describes the recordings instead of refusing over output it will not write', async () => {
+    /*
+      Both collision guards refused --info. A folder holding `rec.edf` beside
+      `rec/inner.edf` gave exit 2 and "would be converted into yy/rec/inner, which is inside
+      yy/rec", printing nothing about either recording; two recordings whose names collide
+      got the overwrite refusal the same way. Both messages assert a conversion and an
+      overwrite that --info does not perform, and the identical command without --out
+      described both files happily.
+
+      Which makes the refused command the useful one: --info --out is how you ask what a run
+      would produce before committing to it, and a collision is exactly what you would want
+      it to show you.
+    */
+    const nested = await mkdtemp(path.join(tmpdir(), 'edf2csv-nested-'));
+    temporaries.push(nested);
+    await mkdir(path.join(nested, 'study', 'rec'), { recursive: true });
+    await writeFile(path.join(nested, 'study', 'rec.edf'), await readFile(fixture('tiny.edf')));
+    await writeFile(
+      path.join(nested, 'study', 'rec', 'inner.edf'),
+      await readFile(fixture('annotations.edf')),
+    );
+
+    const info = await cli([path.join(nested, 'study'), '--info', '--out', path.join(nested, 'yy')]);
+    assert.equal(info.code, 0, info.stderr);
+    assert.equal((info.stdout.match(/^File /gmu) ?? []).length, 2, 'both recordings described');
+
+    // The conversion it was warning about is still refused.
+    const run = await cli([path.join(nested, 'study'), '--out', path.join(nested, 'yy2')]);
+    assert.equal(run.code, 2);
+    assert.match(run.stderr, /cannot sit inside another's/u);
+  });
+
+  it('describes recordings whose names would collide, rather than refusing', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-collide-'));
+    temporaries.push(dir);
+    for (const [name, source] of [['n1', 'tiny.edf'], ['n2', 'annotations.edf']]) {
+      await mkdir(path.join(dir, name), { recursive: true });
+      await writeFile(path.join(dir, name, 'rec.edf'), await readFile(fixture(source)));
+    }
+    const both = [path.join(dir, 'n1', 'rec.edf'), path.join(dir, 'n2', 'rec.edf')];
+
+    const info = await cli([...both, '--info', '--out', path.join(dir, 'xx')]);
+    assert.equal(info.code, 0, info.stderr);
+    assert.equal((info.stdout.match(/^File /gmu) ?? []).length, 2);
+
+    const run = await cli([...both, '--out', path.join(dir, 'xx2')]);
+    assert.equal(run.code, 2);
+    assert.match(run.stderr, /would both be converted into/u);
+  });
+});
+
 describe('a folder the process cannot read', () => {
   it('is a failure, not a usage error, and does not claim the folder is empty', async () => {
     /*

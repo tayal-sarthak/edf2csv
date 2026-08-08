@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.32
+
+### Fixed: `--info` was refused over output it does not write
+
+Both destination guards applied to it. A folder holding `rec.edf` beside `rec/inner.edf` gave
+`edf2csv study --info --out yy` exit 2 and "would be converted into yy/rec/inner, which is
+inside yy/rec — where rec.edf is converted", printing nothing about either recording. Two
+recordings whose names collide got the overwrite refusal the same way.
+
+Both messages assert a conversion and an overwrite that `--info` does not perform. The
+identical command without `--out` described both files happily, which is the tell: the guards
+were reading a plan nobody was going to execute.
+
+And the refused command is the useful one. `--info --out` is how you ask what a run would
+produce before committing to it, so a collision is precisely the thing you would want it to
+show you rather than decline to look. It describes them now; the conversion is refused exactly
+as before.
+
 ## 0.5.31
 
 ### Fixed: the API reference's sample-time recipe disagreed with the tool by half a second

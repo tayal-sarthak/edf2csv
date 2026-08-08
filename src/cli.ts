@@ -340,7 +340,21 @@ export async function main(argv: readonly string[]): Promise<number> {
   try {
     const outOption = typeof values['out'] === 'string' ? values['out'] : undefined;
     const destinations = destinationsFor(expanded, outOption, batch);
-    assertDistinct(inputs, destinations);
+    /*
+      Where the output would land is not --info's problem, because --info has no output.
+
+      Both guards refused it: `edf2csv study --info --out yy` on a folder holding `rec.edf`
+      beside `rec/inner.edf` exited 2 with "would be converted into yy/rec/inner, which is
+      inside yy/rec — where rec.edf is converted", and printed nothing about either
+      recording. Two recordings whose names collide got the overwrite refusal the same way.
+      Both messages assert a conversion and an overwrite that --info does not perform, and
+      the identical command without --out describes both files happily.
+
+      Which makes the refused command the useful one: `--info --out` is how you ask what a
+      run would produce before committing to it, and a collision is exactly the thing you
+      would want it to tell you about rather than refuse to look.
+    */
+    if (values['info'] !== true) assertDistinct(inputs, destinations);
 
     const shared = {
       channels: splitChannels(values['channels']),
