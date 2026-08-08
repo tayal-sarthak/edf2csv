@@ -1431,8 +1431,21 @@ function parseJobs(raw: unknown, inputs: number): number {
   if (raw === undefined) return 1;
   const text = String(raw).trim();
   if (text === 'auto') return Math.max(1, Math.min(inputs, cpus().length - 1));
+  /*
+    A whole number as written, not as `Number()` chooses to read it.
+
+    `Number.isInteger(Number(text))` accepted `0x10`, `1e3`, ` 4 ` and
+    `999999999999999999999` — the last of which is not an integer any more, only the nearest
+    double to one — while refusing `4.7`. The message says "a whole number of 1 or more" and
+    the refusal of 4.7 is what makes a reader believe it, so the others read as the tool
+    silently reinterpreting what they typed. `--jobs` is the flag 0.4.2 hardened because
+    accepting `--jobs 0` in silence "is the kind of quiet this tool avoids".
+  */
+  if (!/^\d+$/u.test(text)) {
+    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${text}".`);
+  }
   const value = Number(text);
-  if (!Number.isInteger(value) || value < 1) {
+  if (!Number.isSafeInteger(value) || value < 1) {
     throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${text}".`);
   }
   return Math.min(value, Math.max(1, inputs));

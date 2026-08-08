@@ -1489,10 +1489,23 @@ describe('converting several recordings at once', () => {
     // --stdout converts one recording however many jobs are asked for, but a request that
     // cannot be met is a usage error rather than something to accept in silence.
     for (const mode of [['--info'], ['--stdout']]) {
-      for (const jobs of ['0', 'abc', '1.5', '']) {
+      /*
+        The last four went through `Number()`, which reads `0x10` as 16, `1e3` as 1000, and
+        `999999999999999999999` as the nearest double to it — while `1.5` was refused. The
+        message promises "a whole number of 1 or more", and refusing 1.5 is what makes a
+        reader believe it, so the others read as the tool silently reinterpreting what they
+        typed.
+      */
+      for (const jobs of ['0', 'abc', '1.5', '', '0x10', '1e3', '999999999999999999999', '+4']) {
         const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, ...mode]);
         assert.equal(code, 2, `--jobs ${JSON.stringify(jobs)} ${mode.join(' ')}`);
         assert.match(stderr, /--jobs must be a whole number/u);
+      }
+
+      // What it does take: a plain decimal, padded or not, and "auto".
+      for (const jobs of ['1', '4', ' 4 ', 'auto']) {
+        const { code, stderr } = await cli([fixture('tiny.edf'), '--jobs', jobs, ...mode]);
+        assert.equal(code, 0, `--jobs ${JSON.stringify(jobs)} ${mode.join(' ')}: ${stderr}`);
       }
     }
   });

@@ -384,7 +384,7 @@ error: --decimals needs a number, for example --decimals 3.
 
 ## --jobs
 
-Converts several recordings at once. It only means anything for a batch — one recording is one conversion however many jobs are asked for.
+Converts several recordings at once. It only means anything for a batch — one recording is one conversion however many jobs are asked for. The value is a plain decimal integer of 1 or more, or `auto`: `0x10`, `1e3` and `+4` are refused rather than read as 16, 1000 and 4, the way `Number()` would have them.
 
 ```bash
 edf2csv /data/recordings/*.edf --out /data/csv --jobs 4

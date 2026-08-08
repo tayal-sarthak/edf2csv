@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.50
+
+### Fixed: `--jobs` read its value the way `Number()` felt like reading it
+
+`--jobs 0x10` ran sixteen. `--jobs 1e3` ran a thousand. `--jobs 999999999999999999999` was
+accepted as an integer it is not — only the nearest double to one. And `--jobs 4.7` was
+refused, which is what makes a reader believe the message: "a whole number of 1 or more".
+
+So the flag rejected the malformed value a person is most likely to type and quietly
+reinterpreted three they did not mean at all. It is the flag 0.4.2 hardened because accepting
+`--jobs 0` in silence "is the kind of quiet this tool avoids".
+
+A plain decimal integer now, or `auto`. Surrounding whitespace is still trimmed, since a shell
+supplies that rather than a person.
+
 ## 0.5.49
 
 ### Fixed: `--quiet` took a batch's warning attribution away with the summary
