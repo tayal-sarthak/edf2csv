@@ -451,6 +451,7 @@ export async function main(argv: readonly string[]): Promise<number> {
             asJson,
             showProgress,
             jsonIndent,
+            batch,
           },
           emit,
         );
@@ -715,6 +716,7 @@ async function convertOne(
     showProgress: boolean;
     toStdout: boolean;
     jsonIndent: number | null;
+    batch?: boolean;
   },
   emit: Emit = writeThrough,
 ): Promise<number> {
@@ -764,7 +766,22 @@ async function convertOne(
     if (showProgress) process.stderr.write('\r\u001b[K');
 
     if (result.diagnostics.length > 0 && !asJson) {
-      emit('err', `${formatDiagnostics(result.diagnostics)}\n\n`);
+      /*
+        Named when nothing else is naming it.
+
+        A batch prints a `[n/m] <path>` header before each recording, and that header is what
+        pairs a warning with the file it came from. `--quiet` suppresses it — it is the
+        summary line it is documented to suppress, and it took the attribution with it. Two
+        recordings, two warnings, and no way to tell which raised which, while `error:` lines
+        in the same run stay named because 0.4.20 prefixes those separately.
+
+        Same fix 0.5.34 made for `--info` over a folder, which has no header to lose.
+      */
+      const where = options.batch === true && quiet ? `${printable(input)}: ` : '';
+      emit(
+        'err',
+        `${formatDiagnostics(result.diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n\n`,
+      );
     }
     if (asJson) {
       // One object per line, so a batch is JSON Lines — `jq` reads a record at a time

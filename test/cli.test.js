@@ -1082,6 +1082,37 @@ describe('converting several recordings at once', () => {
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
+  it('names the recording in a batch warning when --quiet removes the header', async () => {
+    /*
+      A batch prints `[n/m] <path>` before each recording, and that header is what pairs a
+      warning with the file it came from. --quiet suppresses it — the summary line it is
+      documented to suppress — and took the attribution with it: two recordings, two
+      warnings, no way to tell which raised which, while `error:` lines in the same run stay
+      named. Same shape as the --info defect 0.5.34 fixed.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-quiet-'));
+    temporaries.push(dir);
+    for (const [name, source] of [
+      ['night-01.edf', 'mixed-rates.edf'],
+      ['night-02.edf', 'truncated.edf'],
+    ]) {
+      await writeFile(path.join(dir, name), await readFile(fixture(source)));
+    }
+
+    const quiet = await cli([dir, '--out', path.join(dir, 'out'), '--quiet']);
+    assert.match(quiet.stderr, /warning: .*night-01\.edf: Channels use 3 different sampling/u);
+    assert.match(quiet.stderr, /warning: .*night-02\.edf: The header declares 10 data records/u);
+
+    // With the header there to do the pairing, the warnings say what they always said.
+    const loud = await cli([dir, '--out', path.join(dir, 'out2')]);
+    assert.match(loud.stderr, /^\[1\/2\] /mu);
+    assert.match(loud.stderr, /^warning: Channels use 3 different sampling/mu);
+
+    // And one recording has nothing to be confused with.
+    const single = await cli([fixture('mixed-rates.edf'), '--out', await outDir(), '--quiet']);
+    assert.match(single.stderr, /^warning: Channels use 3 different sampling/mu);
+  });
+
   it('reports a window that selects nothing, which is a fact about the plan', async () => {
     /*
       EMPTY_WINDOW was pushed from the rows a conversion actually wrote, so --info never said

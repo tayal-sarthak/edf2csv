@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.49
+
+### Fixed: `--quiet` took a batch's warning attribution away with the summary
+
+A batch prints `[n/m] <path>` before each recording, and that header is what pairs a warning
+with the file that raised it. `--quiet` suppresses it — correctly; it is the summary line the
+flag is documented to suppress — and the warnings, which `--quiet` deliberately keeps, were
+left with nothing saying which recording each belonged to. Two recordings, two warnings, no
+way to tell them apart, while `error:` lines in the same run stay named because 0.4.20
+prefixes those separately.
+
+The same shape as the `--info` defect 0.5.34 fixed, in the mode that had a header and lost it
+rather than the mode that never had one. Warnings carry the recording under `--quiet` now, and
+do not when the header is there to do it.
+
 ## 0.5.48
 
 ### Fixed: cli-reference said `--info` reads only the header, on the page describing `--info`

@@ -633,6 +633,8 @@ It applies to a regular file only. A pipe, a terminal or a socket has no size to
 
 Suppresses the closing summary and the progress meter. It doesn't suppress warnings or errors: a conversion that raises a warning about mixed sampling rates or a truncated file still says so on stderr under `--quiet`, because those describe your data rather than the tool's own status. A clean conversion under `--quiet` prints nothing at all and exits 0.
 
+In a batch it also suppresses the `[n/m] <path>` header, which is what pairs each warning with the recording that raised it — so under `--quiet` the warnings carry that name themselves. Without `--quiet` they do not, because the header above them already says it.
+
 The progress meter is separate from the summary. It's drawn only when `--quiet` is off, `--json` is off, and stderr is a terminal. In a script, in a pipeline, or under `nohup`, it never appears, so log files don't fill with carriage returns. It updates at most ten times a second and erases itself when the conversion finishes.
 
 ## --json
