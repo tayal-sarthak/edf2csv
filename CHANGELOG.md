@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.48
+
+### Fixed: cli-reference said `--info` reads only the header, on the page describing `--info`
+
+"`--info` reads only the header for plain EDF and continuous EDF+, so it returns in
+milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception."
+
+Two of the three are wrong. A continuous EDF+ has its annotation slot read for up to sixteen
+records, which is what finds the offset the recording starts at — the offset 0.4.9 made the
+point samples are timed from, and the very read that 0.5.46 made report its failures. The
+claim was false in the way that matters: it made a warning `--info` genuinely raises look
+impossible.
+
+The page now says what each of the three kinds costs, and what follows from it — `--info`
+sees an unreadable timekeeping entry in those first records and reports it, and does not see
+an unreadable *event* later in a continuous file, because it never looks there. warnings-and-
+errors.md has said this correctly since 0.5.37; the two pages now agree, and link.
+
 ## 0.5.47
 
 ### Fixed: `--info` never said a window selects nothing, and told you to run `--info`

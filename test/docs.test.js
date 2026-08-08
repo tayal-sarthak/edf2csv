@@ -607,6 +607,36 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('does not say --info reads only the header for a continuous EDF+', async () => {
+    /*
+      cli-reference said "--info reads only the header for plain EDF and continuous EDF+".
+      It reads the annotation slot of up to sixteen records on a continuous EDF+ to find the
+      offset the recording starts at, which is exactly what 0.5.46 made it report failures
+      from — so the claim was false, and false in a way that made a real warning look
+      impossible.
+    */
+    const page = await read('website/content/cli-reference.md');
+    assert.ok(
+      !/reads only the header for plain EDF and continuous EDF\+/u.test(page),
+      'the page still says --info reads only the header for a continuous EDF+',
+    );
+
+    // The behaviour the corrected sentence describes: a continuous recording whose
+    // timekeeping is unreadable in the first records is reported by --info.
+    const { stdout } = await run(process.execPath, [
+      CLI,
+      path.join(ROOT, 'test/fixtures/generated/lost-timekeeping.edf'),
+      '--info',
+      '--json',
+    ]);
+    const info = JSON.parse(stdout);
+    assert.equal(info.format, 'EDF+ (continuous)');
+    assert.ok(
+      info.warnings.some((warning) => warning.code === 'ANNOTATION_DECODE_FAILED'),
+      'a header-only read could not have seen this',
+    );
+  });
+
   it('names the codes --info can raise, against the codes it raises', async () => {
     /*
       warnings-and-errors.md said --info "reads the header and builds a conversion plan
