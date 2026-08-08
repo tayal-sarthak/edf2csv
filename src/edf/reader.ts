@@ -451,6 +451,8 @@ export class EdfFile {
     malformedTimekeeping: number;
     /** Events kept whose stated duration could not be read; see Annotation.duration. */
     unreadableDurations: number;
+    /** Events kept whose stated duration read as a number below zero. */
+    negativeDurations: number;
   }> {
     this.#assertOpen();
 
@@ -459,10 +461,18 @@ export class EdfFile {
     let malformed = 0;
     let malformedTimekeeping = 0;
     let unreadableDurations = 0;
+    let negativeDurations = 0;
 
     const channels = this.annotationSignals;
     if (channels.length === 0) {
-      return { annotations, recordStarts, malformed, malformedTimekeeping, unreadableDurations };
+      return {
+        annotations,
+        recordStarts,
+        malformed,
+        malformedTimekeeping,
+        unreadableDurations,
+        negativeDurations,
+      };
     }
 
     const { headerBytes, recordBytes, bytesPerSample } = this.header;
@@ -487,11 +497,19 @@ export class EdfFile {
         malformed += decoded.malformed;
         malformedTimekeeping += decoded.malformedTimekeeping;
         unreadableDurations += decoded.unreadableDurations;
+        negativeDurations += decoded.negativeDurations;
       }
     }
 
     annotations.sort((a, b) => a.onset - b.onset || a.recordIndex - b.recordIndex);
-    return { annotations, recordStarts, malformed, malformedTimekeeping, unreadableDurations };
+    return {
+      annotations,
+      recordStarts,
+      malformed,
+      malformedTimekeeping,
+      unreadableDurations,
+      negativeDurations,
+    };
   }
 
   async close(): Promise<void> {

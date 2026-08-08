@@ -8,6 +8,8 @@ export interface AnnotationTimingData {
   malformedTimekeeping?: number;
   /** Events kept whose stated duration could not be read. */
   unreadableDurations?: number;
+  /** Events kept whose stated duration read as a number below zero. */
+  negativeDurations?: number;
 }
 
 /**
@@ -47,6 +49,30 @@ export function deriveRecordStarts(
     else about it is intact. The count is of rows in annotations.csv, since a TAL may carry
     several texts and each becomes a row with the same empty cell.
   */
+  /*
+    A length of time below zero.
+
+    Exported as the file wrote it, because a zero this tool invented would be a number no
+    writer wrote. But every use of it goes quietly wrong: the recipe the documentation gives
+    for the samples an event covers is `onset_s + duration_s`, and a duration of -3 ends the
+    window three seconds before the event begins and selects nothing, with nothing raised
+    anywhere to say why.
+  */
+  const negativeDurations = annotationData.negativeDurations ?? 0;
+  if (negativeDurations > 0) {
+    const one = negativeDurations === 1;
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${negativeDurations} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration ` +
+        `below zero, which is not a length of time.`,
+      hint:
+        'The value is written to annotations.csv as the file gave it. Adding it to onset_s ' +
+        'ends the event before it starts, so check these rows before using the durations.',
+    });
+  }
+
   const unreadableDurations = annotationData.unreadableDurations ?? 0;
   if (unreadableDurations > 0) {
     const one = unreadableDurations === 1;

@@ -1286,6 +1286,45 @@ describe('converting', () => {
     );
   });
 
+  it('says when a duration is a number but not a length of time', async () => {
+    /*
+      A duration below zero parses perfectly and is written to annotations.csv as the file
+      gave it, so nothing about the row looks wrong — while the recipe this documentation
+      gives for the samples an event covers, `onset_s + duration_s`, ends the window before
+      the event starts and selects nothing.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-negdur-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const recording = path.join(scratch, 'negative-duration.edf');
+    writeEdf({
+      path: recording,
+      reserved: 'EDF+C',
+      numRecords: 1,
+      recordDuration: 1,
+      talsForRecord: () => `+0${T}${T}${Z}+0.1${D}-3${T}backwards${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 4, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(recording, { outputDir: dir });
+    const notice = result.diagnostics.find((d) => /duration below zero/u.test(d.message));
+    assert.ok(notice, JSON.stringify(result.diagnostics));
+    assert.equal(notice.code, 'ANNOTATION_DECODE_FAILED');
+
+    // Written as the file gave it: a zero invented here would be a number no writer wrote.
+    const rows = (await readCsv(dir, 'annotations.csv')).slice(1);
+    assert.deepEqual(rows.map((row) => row.split(',').slice(0, 3)), [['0.1', '-3', 'backwards']]);
+  });
+
   it('reads timekeeping from an annotation channel that has room for it', async () => {
     /*
       EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read

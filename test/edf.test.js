@@ -434,7 +434,38 @@ describe('EDF+ annotations', () => {
     // must stay quiet.
     const quiet = decodeRecordAnnotations(bytes(`+2${T}plain${T}${Z}+3${D}1.5${T}timed${T}${Z}`), 0);
     assert.equal(quiet.unreadableDurations, 0);
+    assert.equal(quiet.negativeDurations, 0);
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
+  });
+
+  it('counts a duration below zero without rewriting it', async () => {
+    /*
+      A length of time below zero is not one, and every use of it goes quietly wrong: the
+      recipe the documentation gives for the samples an event covers is `onset_s +
+      duration_s`, which for -3 ends the window three seconds before the event begins and
+      selects nothing. It was exported with no comment of any kind.
+
+      Kept as the file gave it — a zero invented here would be a number no writer wrote —
+      and counted, which is what the warning is for. Counted separately from a duration that
+      could not be read: this one parsed perfectly, and what is wrong with it is arithmetic.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const bytes = (text) => new TextEncoder().encode(text);
+
+    const decoded = decodeRecordAnnotations(
+      bytes(`+0${T}${T}${Z}+0.1${D}-3${T}backwards${T}${Z}+0.2${D}0${T}instant${T}${Z}`),
+      0,
+    );
+    assert.equal(decoded.negativeDurations, 1, 'only the negative one is counted');
+    assert.equal(decoded.unreadableDurations, 0, 'it read fine; it is the value that is wrong');
+    assert.deepEqual(
+      decoded.annotations.map((a) => [a.text, a.duration]),
+      [['backwards', -3], ['instant', 0]],
+      'the value is preserved, and a duration of exactly zero is not negative',
+    );
   });
 
   it('recovers the true start time of every record in a discontinuous file', async () => {

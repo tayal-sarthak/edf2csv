@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.58
+
+### Fixed: a duration below zero was exported without comment
+
+`+0.1<0x15>-3<0x14>backwards` parses perfectly. It came out as
+
+```
+onset_s,duration_s,description,record_index
+0.1,-3,backwards,0
+```
+
+with nothing on stderr and nothing in metadata.json, and there is nothing about that row to
+look at twice. A duration is a length of time and a length below zero is not one, so every
+use of it goes quietly wrong — starting with the recipe this project's own annotations page
+gives for the samples an event covers, `onset_s + duration_s`, which for -3 ends the window
+three seconds before the event begins and selects nothing at all.
+
+The value is still written exactly as the file gave it. Replacing it with a zero, or emptying
+the cell, would put a number in annotations.csv that no writer wrote, and not inventing
+numbers is the point of the tool. What it does now is say so: "1 annotation states a duration
+below zero, which is not a length of time", with the arithmetic spelled out in the hint.
+
+Counted apart from a duration that could not be read, which 0.5.55 added — that one failed to
+parse and lost its value, this one parsed and kept it, and what is wrong is arithmetic rather
+than decoding. `readAnnotations()` returns the new count as `negativeDurations`, documented
+alongside the other three, and a duration of exactly zero is not negative.
+
 ## 0.5.57
 
 ### Fixed: api.md's `readAnnotations()` signature was missing two of its three counts

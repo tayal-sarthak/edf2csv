@@ -55,6 +55,13 @@ export interface DecodedRecordAnnotations {
    * be exported" describes a loss that did not happen and hides the one that did.
    */
   unreadableDurations: number;
+  /**
+   * Events kept whose stated duration is a readable number below zero.
+   *
+   * Separate from the count above because the value survives: it is written to the CSV as
+   * the file gave it, and what is wrong with it is arithmetic rather than parsing.
+   */
+  negativeDurations: number;
 }
 
 /**
@@ -75,6 +82,7 @@ export function decodeRecordAnnotations(
   let malformed = 0;
   let malformedTimekeeping = 0;
   let unreadableDurations = 0;
+  let negativeDurations = 0;
 
   let start = 0;
   for (let i = 0; i <= bytes.length; i++) {
@@ -107,6 +115,7 @@ export function decodeRecordAnnotations(
         if (isTimekeeping) recordStart = parsed.onset;
         for (const annotation of parsed.annotations) annotations.push(annotation);
         unreadableDurations += parsed.unreadableDurations;
+        negativeDurations += parsed.negativeDurations;
       } else {
         /*
           Counted apart from the events, because losing one is a different loss.
@@ -125,7 +134,14 @@ export function decodeRecordAnnotations(
     start = i + 1;
   }
 
-  return { recordStart, annotations, malformed, malformedTimekeeping, unreadableDurations };
+  return {
+    recordStart,
+    annotations,
+    malformed,
+    malformedTimekeeping,
+    unreadableDurations,
+    negativeDurations,
+  };
 }
 
 interface ParsedTal {
@@ -133,6 +149,8 @@ interface ParsedTal {
   annotations: Annotation[];
   /** How many of those annotations carry a duration the file stated and this could not read. */
   unreadableDurations: number;
+  /** How many carry a duration that read as a number below zero. */
+  negativeDurations: number;
 }
 
 function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
@@ -174,6 +192,18 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
     else durationUnreadable = true;
   }
 
+  /*
+    A duration is a length of time, and a length below zero is not one.
+
+    The value is kept and written as the file gave it — inventing a zero, or dropping it to
+    an empty cell, would put a number in annotations.csv that no writer wrote, which is the
+    one thing this tool does not do. But it is reported, because everything downstream
+    quietly does the wrong thing with it: the recipe this documentation gives for the samples
+    an event covers is `onset_s + duration_s`, which for a duration of -3 ends three seconds
+    before the event starts and selects nothing at all, with no error anywhere.
+  */
+  const durationNegative = duration !== null && duration < 0;
+
   const annotations: Annotation[] = [];
   for (const raw of parts.slice(1)) {
     // A trailing separator yields an empty segment; a timekeeping TAL is all empty.
@@ -182,8 +212,13 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   }
 
   // Per event rather than per TAL: one TAL may carry several texts, and each becomes a row
-  // of annotations.csv with the same empty cell in it.
-  return { onset, annotations, unreadableDurations: durationUnreadable ? annotations.length : 0 };
+  // of annotations.csv with the same cell in it.
+  return {
+    onset,
+    annotations,
+    unreadableDurations: durationUnreadable ? annotations.length : 0,
+    negativeDurations: durationNegative ? annotations.length : 0,
+  };
 }
 
 export { SEP_TEXT, SEP_DURATION, TAL_END };
