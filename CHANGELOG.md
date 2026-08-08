@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.66
+
+### Fixed: 0.5.49's warning attribution never reached `--jobs`
+
+That version made a batch's warnings carry the recording's name under `--quiet`, because
+`--quiet` suppresses the `[n/m] <path>` header and the header is what pairs a warning with the
+file that raised it. The fix keyed off the conversion's own `batch` flag — and a forked child
+does not have one. It is handed a single recording and a single destination, so it believes it
+is a single conversion and names nothing:
+
+```
+$ edf2csv study --out out --quiet
+warning: study/a.edf: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+warning: study/b.edf: The header declares 10 data records but the file contains 4.
+
+$ edf2csv study --out out --quiet --jobs 2
+warning: The header declares 10 data records but the file contains 4.
+warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+```
+
+Worse in the parallel case than it had been in the serial one: conversions finish in whatever
+order they finish, so there is not even a position to infer the attribution from.
+
+Named by the parent now, which is where both facts are known — that this is a batch, and which
+recording the child was given. `error:` lines have been named there since 0.4.20; warnings join
+them under `--quiet`, and only under `--quiet`, or the header and the prefix would both say it.
+
 ## 0.5.65
 
 ### Fixed: a file error was listed among the usage errors, on the page a script reads to tell them apart

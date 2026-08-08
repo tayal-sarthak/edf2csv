@@ -562,10 +562,22 @@ export async function main(argv: readonly string[]): Promise<number> {
           // The child saw one recording, so it printed the indented document a single
           // conversion prints. A batch is one object per line.
           sink.emit('out', asJson ? compactJson(child.out) : child.out);
-          // The child converted a single recording, so it named no file in its errors the
-          // way a batch does. Naming it here keeps the two paths identical to a reader and
-          // to anything grepping a log, where the [n/m] header may not be alongside.
-          sink.emit('err', named(child.err, input));
+          /*
+            The child converted a single recording, so it named no file in its errors the way
+            a batch does. Naming it here keeps the two paths identical to a reader and to
+            anything grepping a log, where the [n/m] header may not be alongside.
+
+            Warnings too, under --quiet, and for exactly the reason 0.5.49 gave for the serial
+            path: the `[n/m] <path>` header is what pairs a warning with the file that raised
+            it, --quiet suppresses that header, and it took the attribution with it. That fix
+            keyed off the child's own `batch` flag, which a forked child does not have — it
+            was handed one recording and one destination, so it believes it is a single
+            conversion and says nothing. Two recordings, two warnings, no way to tell which
+            raised which, and under --jobs not even a stable order to guess from.
+
+            Not when the header is printed, or every warning would carry the name twice.
+          */
+          sink.emit('err', named(child.err, input, quiet));
           sink.flush();
         }
       };
@@ -1425,12 +1437,19 @@ async function convertInChild(
   });
 }
 
-/** Put the recording's name into the error lines a child produced. */
-function named(text: string, input: string): string {
+/**
+ * Put the recording's name into the lines a child produced.
+ *
+ * Errors always: a failure has to say which recording failed, whatever else is on screen.
+ * Warnings only when `alsoWarnings` — under --quiet, where the `[n/m]` header that would
+ * otherwise carry the attribution is not printed. See the call site.
+ */
+function named(text: string, input: string, alsoWarnings = false): string {
   // A function, not a string: `$&`, `$\'`, `` $` `` and `$1` in a replacement string are
   // patterns, and a file may legitimately be called any of them. `bad$&name.edf` re-injected
   // the text it had just matched and reported itself as `baderror: name.edf`.
-  return text.replace(/^error: /gmu, () => `error: ${printable(input)}: `);
+  const heads = alsoWarnings ? /^(error|warning|note): /gmu : /^error: /gmu;
+  return text.replace(heads, (head) => `${head}${printable(input)}: `);
 }
 
 /** Re-render a child's pretty-printed summary onto one line, leaving anything else alone. */

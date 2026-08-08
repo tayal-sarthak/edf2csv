@@ -1377,6 +1377,25 @@ describe('converting several recordings at once', () => {
     // And one recording has nothing to be confused with.
     const single = await cli([fixture('mixed-rates.edf'), '--out', await outDir(), '--quiet']);
     assert.match(single.stderr, /^warning: Channels use 3 different sampling/mu);
+
+    /*
+      And under --jobs, which 0.5.49 missed: it keyed the naming off the child's own `batch`
+      flag, and a forked child does not have one. It is handed a single recording and a
+      single destination, so it believes it is a single conversion and says nothing — leaving
+      the parallel path exactly as the serial path had been, minus even a stable order to
+      guess the attribution from.
+    */
+    const parallel = await cli([dir, '--out', path.join(dir, 'out3'), '--quiet', '--jobs', '2']);
+    assert.equal(parallel.code, 0, parallel.stderr);
+    assert.match(parallel.stderr, /warning: .*night-01\.edf: Channels use 3 different sampling/u,
+      parallel.stderr);
+    assert.match(parallel.stderr, /warning: .*night-02\.edf: The header declares 10 data records/u,
+      parallel.stderr);
+
+    // Not twice, when the header is there to do the pairing.
+    const loudJobs = await cli([dir, '--out', path.join(dir, 'out4'), '--jobs', '2']);
+    assert.match(loudJobs.stderr, /^warning: Channels use 3 different sampling/mu, loudJobs.stderr);
+    assert.doesNotMatch(loudJobs.stderr, /warning: .*night-01\.edf: /u, loudJobs.stderr);
   });
 
   it('reports a window that selects nothing, which is a fact about the plan', async () => {
