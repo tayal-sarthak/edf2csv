@@ -16,7 +16,17 @@
     "isolatedModules": true,
 
     "declaration": true,
-    "declarationMap": true,
+    /*
+      Off, because a declaration map can only point at source the package does not ship.
+
+      `files` is ["dist", ...] on purpose, and `inlineSources` puts the TypeScript inside the
+      .js.map so a stack trace resolves in an installed copy. TypeScript has no equivalent for
+      declaration maps: every .d.ts.map shipped said `"sources": ["../src/index.ts"]` with no
+      `sourcesContent`, so "Go to Definition" in a consumer's editor followed it to a path
+      that is not there. Without the map the same jump lands in the .d.ts, which is accurate
+      and present.
+    */
+    "declarationMap": false,
     "sourceMap": true,
     // Sources embedded in the maps, because src/ is not in the published package and a map
     // pointing at ../src/cli.ts resolves to nothing once installed. A stack frame inside

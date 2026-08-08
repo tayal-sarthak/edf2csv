@@ -795,6 +795,24 @@ describe('documentation and source agree on their lists', () => {
         `${name} names ${map.sources?.join(', ')} but carries no sources, and the package ships neither`,
       );
     }
+
+    /*
+      And no declaration maps at all, for the same reason and one difference: TypeScript has
+      no `inlineSources` for them. Every `.d.ts.map` shipped said `"sources":
+      ["../src/index.ts"]` with no `sourcesContent`, so "Go to Definition" in a consumer's
+      editor followed it to a path the package does not contain. Without the map the same
+      jump lands in the `.d.ts`, which is accurate and present.
+    */
+    const declarations = await readdir(path.join(ROOT, 'dist'), { recursive: true });
+    assert.deepEqual(
+      declarations.filter((name) => String(name).endsWith('.d.ts.map')),
+      [],
+      'a declaration map can only point at source this package does not ship',
+    );
+    assert.ok(
+      declarations.some((name) => String(name).endsWith('.d.ts')),
+      'the declarations themselves must still be there',
+    );
   });
 
   it('shows a metadata.json with the keys a conversion actually writes', async () => {

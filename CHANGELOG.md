@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.42
+
+### Fixed: nineteen declaration maps pointing at source the package does not ship
+
+Every `.d.ts.map` in the tarball said `"sources": ["../src/index.ts"]` and carried no
+`sourcesContent`. `files` is `["dist", ...]` on purpose, so in an installed copy "Go to
+Definition" followed those maps to a path that is not there.
+
+0.4.66 fixed the same thing for the `.js.map` files by turning on `inlineSources`, which puts
+the TypeScript inside the map so a stack frame resolves without shipping the tree twice.
+TypeScript has no equivalent for declaration maps — that is why the JS maps carry their
+sources and these never did, under the same setting.
+
+So they are no longer emitted. The declarations themselves still ship, all nineteen of them,
+and "Go to Definition" lands in the `.d.ts`: less precise than the original line, and present,
+which the alternative was not. The test that has checked the source maps since 0.4.66 now
+checks for the absence of the other kind too.
+
 ## 0.5.41
 
 ### Fixed: three documents describing output the tool no longer produces, or never did
