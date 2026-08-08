@@ -24,11 +24,21 @@ sleep-study_csv/
 
 Which of these appear is governed by four rules:
 
-- `signals.csv` is written unless you pass `--annotations-only`, or unless every channel you selected carries zero samples per data record — a file with nothing to put in it is not written, and the run says so:
+- `signals.csv` is written unless you pass `--annotations-only`, or unless there are no samples to put in it — a file with nothing in it is not written, and the run says which of the two happened. Either every channel you selected carries zero samples per data record:
 
   ```
   warning: No signal file was written: every channel selected carries zero samples per data
            record, so there is nothing to put in one.
+           channels.csv still describes them. Run with --info to see which channels do carry
+           samples.
+  ```
+
+  or the recording has no signal channels at all, holding only EDF+ annotations — in which case nothing was selected and there is nothing for `channels.csv` to describe:
+
+  ```
+  warning: No signal file was written: there is no signal data in this recording to put in one.
+           annotations.csv holds whatever events it carries. channels.csv lists signal
+           channels, so it has none to list.
   ```
 - When channels were recorded at more than one sampling rate, `signals.csv` is replaced by one
   `signals_<rate>hz.csv` per rate. See [one file per sampling rate](#one-file-per-sampling-rate).

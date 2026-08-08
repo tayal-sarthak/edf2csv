@@ -264,16 +264,30 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         signals.csv at all. The NO_SAMPLES warning explains the channel; nothing explained the
         missing file, and the documentation says signals.csv is written unless
         --annotations-only was passed. Someone looking for it should be told where it went.
+
+        There are two ways to arrive with no groups, and the wording above is only true of
+        one of them. A recording that holds nothing but EDF+ annotations has no channel that
+        could have been selected, its channels.csv is a header row and nothing else, and no
+        channel of it carries samples — so "every channel selected", "channels.csv still
+        describes them" and "which channels do carry samples" were three false statements in
+        one warning, printed under a warning that had just said the file has no signal
+        channels. `--stdout` distinguishes the two cases a few lines up and `--info` prints
+        one accurate line; this path was the only one that did not.
       */
+      const noChannelsAtAll = file.dataSignals.length === 0;
       plan.diagnostics.push({
         code: 'NO_SAMPLES',
         severity: 'warning',
-        message:
-          'No signal file was written: every channel selected carries zero samples per data ' +
-          'record, so there is nothing to put in one.',
-        hint:
-          'channels.csv still describes them. Run with --info to see which channels do carry ' +
-          'samples.',
+        message: noChannelsAtAll
+          ? 'No signal file was written: there is no signal data in this recording to put in ' +
+            'one.'
+          : 'No signal file was written: every channel selected carries zero samples per data ' +
+            'record, so there is nothing to put in one.',
+        hint: noChannelsAtAll
+          ? 'annotations.csv holds whatever events it carries. channels.csv lists signal ' +
+            'channels, so it has none to list.'
+          : 'channels.csv still describes them. Run with --info to see which channels do carry ' +
+            'samples.',
       });
     }
 

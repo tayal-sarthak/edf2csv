@@ -1053,6 +1053,39 @@ describe('converting several recordings at once', () => {
     assert.match(real, /\(not selected\)/u, real);
   });
 
+  it('does not blame the selection when there was nothing to select', async () => {
+    /*
+      Same missing file, a different reason for it, and the warning gave the first reason for
+      the second case. A recording of nothing but EDF+ annotations reached the branch above
+      and was told that "every channel selected carries zero samples per data record", that
+      "channels.csv still describes them", and to run --info to see "which channels do carry
+      samples" — three statements about channels, printed directly beneath a warning saying
+      the file has none. Its channels.csv is a header row and nothing else.
+
+      `--stdout` on the same file distinguishes the two cases, and `--info` prints one
+      accurate line; this was the only path that did not.
+    */
+    const dir = await outDir();
+    const converted = await cli([fixture('annotations-only.edf'), '--out', dir]);
+    assert.equal(converted.code, 0, converted.stderr);
+    assert.match(converted.stderr, /no signal data in this recording/u);
+    assert.doesNotMatch(converted.stderr, /every channel selected/u);
+    assert.doesNotMatch(converted.stderr, /which channels do carry samples/u);
+
+    // The hint's two claims, both checkable: the events are in annotations.csv, and
+    // channels.csv lists signal channels so it lists none.
+    const channels = await readFile(path.join(dir, 'channels.csv'), 'utf8');
+    assert.equal(channels.trimEnd().split('\n').length, 1, 'channels.csv is a header row alone');
+    const events = await readFile(path.join(dir, 'annotations.csv'), 'utf8');
+    assert.ok(events.trimEnd().split('\n').length > 1, 'and the events are where the hint says');
+
+    // The other route keeps its own wording, which is true of it and not of this one.
+    const selected = await cli([
+      fixture('single-rate-empty-channel.edf'), '--channels', 'unused', '--out', await outDir(),
+    ]);
+    assert.match(selected.stderr, /every channel selected/u);
+  });
+
   it('does not promise nothing for a run that writes a file', async () => {
     // The estimate describes the signal tables, so under --annotations-only there was
     // nothing to describe and the line read "Would write 0 rows, roughly 0 B." — for a

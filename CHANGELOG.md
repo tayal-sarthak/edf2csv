@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.54
+
+### Fixed: a recording with no channels was told its channels carry no samples
+
+`signals.csv` is not written when there is nothing to put in it, and the run says so. There
+are two ways to get there, and the warning gave the reason for one of them in both cases.
+
+Converting a recording that holds nothing but EDF+ annotations printed, directly beneath a
+warning saying the file has no signal channels: "every channel selected carries zero samples
+per data record", "channels.csv still describes them", and "Run with --info to see which
+channels do carry samples". No channel was selected, because there are none to select; its
+channels.csv is a header row and nothing else, so it describes nothing; and `--info` on that
+file prints an empty channel table. Three statements about channels, on a file with none.
+
+The other two paths already had this right. `--stdout` on the same recording distinguishes
+the two cases and says "this recording has no signal channels, only EDF+ annotations";
+`--info` says "Would write annotations.csv and channels.csv, and no signal data". Only the
+conversion path did not.
+
+It says "there is no signal data in this recording to put in one" now, pointing at
+annotations.csv for the events and explaining that channels.csv lists signal channels and so
+has none to list — both checkable, and both checked. Selecting a channel that carries no
+samples keeps the original wording, which is true of that case and was only ever true of it.
+
 ## 0.5.53
 
 ### Fixed: the correctness page's layout sweep disagreed with itself about how many recordings it ran
