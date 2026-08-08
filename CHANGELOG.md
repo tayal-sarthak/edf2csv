@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.51
+
+### Fixed: 0.5.32 removed the collision refusal from `--info` and put nothing in its place
+
+That version stopped both destination guards refusing `--info`, which was right — `--info`
+writes nothing, so a rule about where output would land has no business stopping it. The
+sentence it added to cli-reference reads "`--info --out` is how you would want to find out
+about them."
+
+It was not. Two recordings whose names collide were described one after the other with no
+mention of the collision at all, so the command documented as the way to learn about it was
+the one command that would not tell you.
+
+Reported as a warning now, using the guard's own message so there is one wording rather than
+two. Still exit 0, still both recordings described, and stderr stays empty when there is
+nothing to collide.
+
 ## 0.5.50
 
 ### Fixed: `--jobs` read its value the way `Number()` felt like reading it

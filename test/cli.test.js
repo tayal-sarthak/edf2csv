@@ -1751,6 +1751,18 @@ describe('--info and the destination guards', () => {
     const info = await cli([...both, '--info', '--out', path.join(dir, 'xx')]);
     assert.equal(info.code, 0, info.stderr);
     assert.equal((info.stdout.match(/^File /gmu) ?? []).length, 2);
+    /*
+      And it says so. 0.5.32 stopped the guard refusing --info and put nothing in its place,
+      while the sentence it added to cli-reference says "--info --out is how you would want
+      to find out about them" — so the one command documented as the way to learn about a
+      collision said nothing about it.
+    */
+    assert.match(info.stderr, /would both be converted into/u);
+    assert.match(info.stderr, /^warning: /mu, 'reported, not refused');
+
+    // A run with nothing to collide leaves stderr alone.
+    const clean = await cli([both[0], '--info', '--out', path.join(dir, 'clean')]);
+    assert.equal(clean.stderr, '');
 
     const run = await cli([...both, '--out', path.join(dir, 'xx2')]);
     assert.equal(run.code, 2);

@@ -145,7 +145,13 @@ If the destination path exists but is a regular file rather than a directory, th
 
 ## -i, --info
 
-Prints a description of the recording to stdout and exits without writing anything. Because it writes nothing, it is not held to the rules about where output would land: two recordings whose names would collide, or one whose output directory would sit inside another's, are both described rather than refused. Those are usage errors for a conversion — and `--info --out` is how you would want to find out about them. How much it reads depends on the file. A plain EDF is the header and nothing else. A continuous EDF+ is the header plus the annotation slot of at most the first sixteen records, which is what finds the offset the recording starts at — 0.4.9 made that offset the point samples are timed from, and a window placed against zero instead lands somewhere else. A discontinuous EDF+ is the header plus every record's annotation slot, because that is the only place its record times are stored, and the span and the row estimate are wrong without them. All three return in milliseconds on any ordinary recording; only the last scales with record count.
+Prints a description of the recording to stdout and exits without writing anything. Because it writes nothing, it is not held to the rules about where output would land: two recordings whose names would collide, or one whose output directory would sit inside another's, are both described rather than refused. Those are usage errors for a conversion — and `--info --out` is how you would want to find out about them, so it says so, as a warning on stderr rather than a refusal:
+
+```
+warning: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.
+         Convert them separately, or rename one of them.
+```
+ How much it reads depends on the file. A plain EDF is the header and nothing else. A continuous EDF+ is the header plus the annotation slot of at most the first sixteen records, which is what finds the offset the recording starts at — 0.4.9 made that offset the point samples are timed from, and a window placed against zero instead lands somewhere else. A discontinuous EDF+ is the header plus every record's annotation slot, because that is the only place its record times are stored, and the span and the row estimate are wrong without them. All three return in milliseconds on any ordinary recording; only the last scales with record count.
 
 So `--info` sees an unreadable timekeeping entry in those first sixteen records and reports it, and does not see an unreadable *event* later in a continuous file, because it never looks there. [Warnings and errors](/docs/warnings-and-errors#what---info-can-and-cant-tell-you) lists what that means code by code.
 

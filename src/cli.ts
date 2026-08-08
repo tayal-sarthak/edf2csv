@@ -362,6 +362,25 @@ export async function main(argv: readonly string[]): Promise<number> {
     const outOption = typeof values['out'] === 'string' ? values['out'] : undefined;
     const destinations = destinationsFor(expanded, outOption, batch);
     /*
+      Where the output would land is not --info's problem to refuse over. It is still
+      --info's job to mention it.
+
+      0.5.32 stopped the guards refusing `--info`, and left nothing in their place — while
+      the sentence it added to cli-reference says "`--info --out` is how you would want to
+      find out about them". So the one command documented as the way to learn about a
+      collision said nothing at all about it. Reported as a warning now, using the guard's own
+      message so there is one wording rather than two.
+    */
+    if (values['info'] === true) {
+      try {
+        assertDistinct(inputs, destinations);
+      } catch (error) {
+        if (!(error instanceof OptionError)) throw error;
+        process.stderr.write(`warning: ${printableLines(error.message, '         ')}\n`);
+      }
+    }
+
+    /*
       Where the output would land is not --info's problem, because --info has no output.
 
       Both guards refused it: `edf2csv study --info --out yy` on a folder holding `rec.edf`
