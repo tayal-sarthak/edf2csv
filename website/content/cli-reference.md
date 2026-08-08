@@ -339,7 +339,16 @@ Sample times in the output are absolute offsets into the recording, not relative
 
 For discontinuous (EDF+D) recordings the window is resolved against real recording time, not against the amount of data present. A ten-second recording with a ninety-five-second gap in the middle ends at 105 seconds, and `--end 100s` means 100 seconds on that timeline. Every data record whose own span overlaps the window is read.
 
-A recording does not always begin at zero. The first data record's timekeeping annotation is what `time_s` is counted from, and a file whose first record says `+1000` writes its samples from `1000.000` — so `--start` and `--end` are read on that clock too, and `--start 0` on such a file selects nothing. `--info` says where it begins whenever that is not zero, in seconds so the number can be typed straight back in:
+A recording does not always begin at zero. The first data record's timekeeping annotation is what `time_s` is counted from, and a file whose first record says `+1000` writes its samples from `1000.000` — so `--start` and `--end` are read on that clock too. On such a file `--start 0 --end 1` converts nothing and says why, and a start past the end names both the recording's length and where it sits, rather than calling the end of its clock its length:
+
+```
+warning: No samples fall inside the requested window (0.000s to 1.000s), so the signal files hold their headers and no data.
+         This recording starts at 1000.000s, so the whole window sits before it. --start and --end are read on the recording's own clock, which --info prints as "Timed from".
+
+error: --start "5000" is at or past the end of this 3s recording, which runs from 1000s to 1003s.
+```
+
+`--info` says where it begins whenever that is not zero, in seconds so the number can be typed straight back in:
 
 ```
 Duration   3s  (3 records of 1s)

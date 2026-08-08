@@ -461,9 +461,24 @@ function emptyWindow(range: ResolvedRange, recordCount: number): Diagnostic {
       : `This recording's ${recordCount} data records carry no samples in range, so the ` +
         `signal files hold their headers and no data.`,
     hint: asked
-      ? 'The window is inside the recording but lands where there is no data — past the ' +
-        'last sample, or inside a gap in a discontinuous file. Run with --info to see where ' +
-        'the records actually sit.'
+      ? /*
+          Which of the two it was, rather than the second one always.
+
+          A recording does not have to start at zero: its first record's timekeeping TAL is
+          what it is timed from, so a file whose records begin at 1000s is asked for with
+          `--start 1000`. `--start 0 --end 1` on that file was told "The window is inside the
+          recording but lands where there is no data — past the last sample, or inside a gap
+          in a discontinuous file", when the window sits entirely before the recording and
+          neither offered explanation applies to it. A start at or past the *end* is already
+          an error, so the window being outside can only mean it is before the beginning.
+        */
+        range.endSeconds <= range.recordingStartSeconds
+        ? `This recording starts at ${fixed(range.recordingStartSeconds, 3)}s, so the whole ` +
+          'window sits before it. --start and --end are read on the recording\'s own clock, ' +
+          'which --info prints as "Timed from".'
+        : 'The window is inside the recording but lands where there is no data — past the ' +
+          'last sample, or inside a gap in a discontinuous file. Run with --info to see where ' +
+          'the records actually sit.'
       : 'Run with --info to see what the header declares.',
   };
 }

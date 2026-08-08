@@ -1081,6 +1081,54 @@ describe('converting several recordings at once', () => {
     assert.match(short.stderr, /at or past the end of this 2s recording/u);
   });
 
+  it('describes a recording that does not start at zero by its length, not its end', async () => {
+    /*
+      The end of a recording is its length only when it begins at zero, and one timed from
+      its first record's timekeeping TAL need not. A file whose records run 1000s to 1003s is
+      three seconds long; `--start 5000` called it "this 16m 43s recording", while --info two
+      lines away said "Duration 3s". Same file, same session, two answers.
+
+      And a window before such a recording was told it "is inside the recording but lands
+      where there is no data — past the last sample, or inside a gap in a discontinuous
+      file", when it sits entirely before the first sample and neither explanation applies.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-shifted-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0x00);
+    const shifted = path.join(dir, 'shifted.edf');
+    writeEdf({
+      path: shifted,
+      reserved: 'EDF+C',
+      numRecords: 3,
+      recordDuration: 1,
+      talsForRecord: (record) => `+${1000 + record}${T}${T}${Z}`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const past = await cli([shifted, '--start', '5000', '--out', path.join(dir, 'a')]);
+    assert.equal(past.code, 2, past.stderr);
+    assert.match(past.stderr, /this 3s recording, which runs from 1000s to 1003s/u, past.stderr);
+    assert.doesNotMatch(past.stderr, /16m 43s/u, past.stderr);
+
+    const before = await cli([shifted, '--start', '0', '--end', '1', '--out', path.join(dir, 'b')]);
+    assert.equal(before.code, 0, before.stderr);
+    assert.match(before.stderr, /This recording starts at 1000\.000s/u, before.stderr);
+    assert.doesNotMatch(before.stderr, /inside a gap in a discontinuous file/u, before.stderr);
+
+    // A window that really does land in a gap keeps the explanation that fits it.
+    const gap = await cli([
+      fixture('discontinuous.edf'), '--start', '3', '--end', '9', '--out', path.join(dir, 'c'),
+    ]);
+    assert.match(gap.stderr, /inside a gap in a discontinuous file/u, gap.stderr);
+  });
+
   it('says where signals.csv went when there was nothing to put in it', async () => {
     // Selecting a channel that carries zero samples per record leaves no table to write, so
     // the run produces channels.csv and metadata.json and no signals.csv — while the

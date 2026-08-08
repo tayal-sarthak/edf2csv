@@ -253,8 +253,20 @@ export function resolveRange(options: {
         The typed value keeps `quoted`, since that is the user's own text and should come
         back exactly as they wrote it.
       */
-      `--start ${quoted(options.startText, startSeconds)} is at or past the end of this ` +
-        `${formatDuration(latest)} recording.`,
+      /*
+        `latest` is where the recording ends on its own clock, which is its length only when
+        it starts at zero. A file timed from its first record's timekeeping TAL need not: one
+        whose records run 1000s to 1003s is three seconds long, and this called it "this
+        16m 43s recording" — while --info two lines away said "Duration 3s". Where the
+        recording sits is the useful thing to say in that case, and it is the number --start
+        has to be given.
+      */
+      earliest === 0
+        ? `--start ${quoted(options.startText, startSeconds)} is at or past the end of this ` +
+          `${formatDuration(latest)} recording.`
+        : `--start ${quoted(options.startText, startSeconds)} is at or past the end of this ` +
+          `${formatDuration(latest - earliest)} recording, which runs from ` +
+          `${formatSeconds(earliest)} to ${formatSeconds(latest)}.`,
     );
   }
   if (endSeconds <= startSeconds) {

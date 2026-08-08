@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.60
+
+### Fixed: two window messages that were false about a recording not timed from zero
+
+The same three-second file as 0.5.59 — records running 1000s to 1003s, because that is what
+its first timekeeping annotation says — got two answers about itself, neither true.
+
+`--start 5000` said "is at or past the end of this **16m 43s** recording", while `--info` two
+lines away said "Duration 3s". 1003 seconds is where the recording ends on its own clock and
+is its length only when it begins at zero. It now names both, and only when they differ:
+"is at or past the end of this 3s recording, which runs from 1000s to 1003s." A recording
+timed from zero keeps the sentence it has always had.
+
+`--start 0 --end 1` warned that "The window **is inside the recording** but lands where there
+is no data — past the last sample, or inside a gap in a discontinuous file". The window sits
+entirely before the recording, which is neither of the two things offered, and following the
+advice led back to a report that did not mention the origin at all until two versions ago.
+When the window ends at or before the first sample it says so instead, and points at the
+`Timed from` line that now exists. A start at or past the end is already an error, so a window
+outside the recording can only be one that falls short of it — the gap wording is left exactly
+as it was for the case it describes, and the EDF+D fixture still gets it.
+
 ## 0.5.59
 
 ### Fixed: `--info` never said where a recording starts, on the recordings that do not start at zero
