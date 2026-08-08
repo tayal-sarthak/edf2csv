@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.63
+
+### Fixed: a value beginning with a dash was refused in Node's words, with a placeholder for advice
+
+`edf2csv rec.edf --out -nightly` printed:
+
+```
+Option '--out' argument is ambiguous.
+Did you forget to specify the option argument for '--out'?
+To specify an option argument starting with a dash use '--out=-XYZ'.
+```
+
+which is `parseArgs` talking, not this tool. The user did not forget the argument — they gave
+one — and `-XYZ` is a placeholder, where every other message here quotes what was actually typed
+and prints the command to run instead. A destination named `-nightly` is not exotic, and neither
+is a negative `--start` on a recording timed from before zero.
+
+0.4.34 already fixed this message where the tool produced it itself, building child argv for
+`--jobs`: `--out ./-nightly` reached the child as two arguments and died on it while the serial
+path converted the same command without complaint. The half a user can hit was left alone.
+
+```
+error: --out was given "-nightly", which begins with a dash and so reads as another flag rather than as its value.
+       Write it as one argument instead: --out=-nightly
+```
+
+The two shapes join differently and the message says which, because getting it wrong would be
+worse than the text it replaces: `parseArgs` reads `-o=-nightly` as the value `=-nightly` and
+converts happily into a directory of that name. Long options join with `=`, short ones join
+directly, and the test runs both forms rather than matching the sentence.
+
+Node's other three refusals — an unknown option, a switch given a value, an option missing its
+value — say something true in words a reader can act on, and are left as they are.
+
 ## 0.5.62
 
 ### Fixed: the warnings reference described two codes as they were two versions ago

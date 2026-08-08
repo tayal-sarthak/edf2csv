@@ -101,6 +101,15 @@ No EDF or BDF recordings found in "/data/empty".
 
 Short options are single letters and the version flag is a capital `V`. Unknown flags are rejected; there's no pass-through.
 
+A value that begins with a dash has to be written as one argument, or it reads as another flag. This comes up with a destination named `-nightly`, or a negative `--start` on a recording timed from before zero. The refusal says which form to use, and the two forms differ: a long option joins with `=`, a short one joins directly.
+
+```
+error: --out was given "-nightly", which begins with a dash and so reads as another flag rather than as its value.
+       Write it as one argument instead: --out=-nightly
+```
+
+So `--out=-nightly` and `-o-nightly` both work; `-o=-nightly` does not — it makes the destination `=-nightly`.
+
 ## Input, output directory and overwriting
 
 An input can be a recording or a folder of them, and several can be given at once. A recording that cannot be read is a file error (exit 1); a folder holding none is a usage error (exit 2), since the command as written asked for nothing:

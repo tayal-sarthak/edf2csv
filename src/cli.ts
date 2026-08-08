@@ -184,7 +184,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     values = parsed.values as Record<string, unknown>;
     positionals = parsed.positionals;
   } catch (error) {
-    process.stderr.write(`${message(error)}\n\nRun edf2csv --help to see the options.\n`);
+    process.stderr.write(`${usageMessage(error, argv)}\n\nRun edf2csv --help to see the options.\n`);
     return EXIT_USAGE;
   }
 
@@ -1540,6 +1540,55 @@ function optionalDecimals(raw: unknown): number | undefined {
   declaring a negative sample count under a label containing `\x1b[2J` cleared the reader's
   screen on the way out.
 */
+/**
+ * A `parseArgs` failure, in this tool's words where they are better than Node's.
+ *
+ * Node refuses `--out -nightly` with "Option '--out' argument is ambiguous. Did you forget to
+ * specify the option argument for '--out'? To specify an option argument starting with a dash
+ * use '--out=-XYZ'." The user did not forget anything — they gave a value — and `-XYZ` is a
+ * placeholder, where every other message this tool prints quotes what was actually typed and
+ * says exactly what to type instead. A destination whose name starts with a dash is not exotic,
+ * and neither is a negative `--start` on a recording timed from before zero.
+ *
+ * 0.4.34 already fixed this message where the tool produced it internally, building child argv
+ * for `--jobs` — `--out ./-nightly` reached the child as two arguments and died on it, while the
+ * serial path converted the same command. The half a user can hit was left as Node wrote it.
+ *
+ * Only this case is reworded. Node's other three — an unknown option, a switch given a value, an
+ * option missing its value — say something true in words a reader can act on, and replacing them
+ * with near-identical sentences would be churn.
+ */
+function usageMessage(error: unknown, argv: readonly string[]): string {
+  const raw = message(error);
+  if ((error as { code?: unknown } | null)?.code !== 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    return raw;
+  }
+  const ambiguous = /^Option '(-[^']+)' argument is ambiguous/u.exec(raw);
+  if (!ambiguous) return raw;
+
+  const flag = ambiguous[1] as string;
+  // The value is whatever followed the flag. Read from argv rather than from the message,
+  // which does not carry it — and if it is not there after all, Node's text is still true.
+  const at = argv.indexOf(flag);
+  const value = at >= 0 ? argv[at + 1] : undefined;
+  if (value === undefined) return raw;
+
+  /*
+    How the two shapes join, which is not the same and matters.
+
+    A long option takes `--out=-nightly`. A short one does NOT take `-o=-nightly`: parseArgs
+    reads the equals sign as the first character of the value and hands back "=-nightly", so
+    that advice would have produced a directory named `=-nightly` without a word — a worse
+    failure than the message it replaced, and a silent one. Short options join directly.
+  */
+  const joined = flag.startsWith('--') ? `${flag}=${value}` : `${flag}${value}`;
+  return printableLines(
+    `error: ${flag} was given "${value}", which begins with a dash and so reads as another ` +
+      `flag rather than as its value.\n` +
+      `       Write it as one argument instead: ${joined}`,
+  );
+}
+
 function message(error: unknown, indent = ''): string {
   // The indent lines continuation up under an "error: " prefix. Usage problems print without
   // one, alongside the usage text, so they pass nothing and stay flush left.

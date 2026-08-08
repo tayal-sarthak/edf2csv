@@ -125,6 +125,48 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--help/);
   });
 
+  it('says what to type when a value begins with a dash', async () => {
+    /*
+      Node's parseArgs refuses `--out -nightly` with "Option '--out' argument is ambiguous. Did
+      you forget to specify the option argument for '--out'? To specify an option argument
+      starting with a dash use '--out=-XYZ'." The user did not forget anything, and `-XYZ` is a
+      placeholder where every other message this tool prints quotes what was typed and gives
+      the command to run instead. 0.4.34 fixed the same message where the tool produced it
+      itself, building child argv for --jobs; the half a user can hit was left as Node wrote it.
+
+      A destination beginning with a dash is not exotic, and neither is a negative --start.
+    */
+    const dashed = await cli([fixture('tiny.edf'), '--out', '-nightly']);
+    assert.equal(dashed.code, 2, dashed.stderr);
+    assert.match(dashed.stderr, /--out was given "-nightly"/u, dashed.stderr);
+    assert.match(dashed.stderr, /Write it as one argument instead: --out=-nightly/u, dashed.stderr);
+    assert.doesNotMatch(dashed.stderr, /XYZ/u, 'never a placeholder for a value we were given');
+    assert.doesNotMatch(dashed.stderr, /Did you forget/u, 'they did not forget it');
+
+    /*
+      A short option joins differently, and getting this wrong would be worse than the message
+      it replaces: parseArgs reads `-o=-nightly` as the value "=-nightly" and converts happily
+      into a directory of that name. So the advice must be `-o-nightly`, and it is checked by
+      running it rather than by matching the sentence.
+    */
+    const short = await cli([fixture('tiny.edf'), '-o', '-nightly']);
+    assert.equal(short.code, 2, short.stderr);
+    assert.match(short.stderr, /Write it as one argument instead: -o-nightly/u, short.stderr);
+
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-dashed-'));
+    temporaries.push(dir);
+    for (const [form, name] of [['--out=', '-long'], ['-o', '-short']]) {
+      const target = path.join(dir, name);
+      const ran = await cli([fixture('tiny.edf'), `${form}${target}`, '--quiet']);
+      assert.equal(ran.code, 0, `${form}${name} was refused:\n${ran.stderr}`);
+      assert.ok((await readdir(target)).includes('signals.csv'), `${form}${name} wrote nothing`);
+    }
+
+    // Node's other refusals say something true and are left alone.
+    const unknown = await cli([fixture('tiny.edf'), '--nope']);
+    assert.match(unknown.stderr, /Unknown option '--nope'/u, unknown.stderr);
+  });
+
   it('requires an input file', async () => {
     const { code } = await cli([]);
     assert.equal(code, 2);
