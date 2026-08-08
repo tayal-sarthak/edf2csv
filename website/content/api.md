@@ -290,7 +290,20 @@ try {
 768 samples, mean 0.061, peak 122.161
 ```
 
-The `recordStart` arithmetic above assumes a continuous recording. For an EDF+D file the records aren't contiguous in time, and only the per-record timekeeping annotation says where each one sits. Read `recordStarts` from `readAnnotations()` and use that array instead.
+The `recordStart` arithmetic above assumes two things, and EDF+ guarantees neither.
+
+It assumes the records are contiguous, which an EDF+D file is free not to be: only the per-record timekeeping annotation says where each one sits.
+
+And it assumes the first record sits at zero, which a *continuous* file is also free not to. `fractional-start.edf` is EDF+C with records at 0.5, 1.5 and 2.5 seconds — perfectly contiguous, and half a second later than `index * recordDuration` says. The recipe above times its first sample at 0.000; `convert()` writes 0.500 for the same sample, and the annotation onsets in the same file keep their true values, so an analysis built on the recipe puts events half a second away from the samples they describe.
+
+So: read `recordStarts` from `readAnnotations()` and use that array, for any EDF+ file rather than only for a discontinuous one. `EdfFile.readOrigin()` is the cheap version when you only need the offset — it reads at most sixteen records rather than the whole annotation channel:
+
+```js
+const origin = (await file.readOrigin()) ?? 0;
+const recordStart = origin + (batch.firstRecordIndex + r) * recordDuration;
+```
+
+That is what the conversion itself does, which is why its `time_s` and its `annotations.csv` agree.
 
 `makeScaler` evaluates `gain * (offset + digital)`, EDFlib's arrangement of the spec formula. The spec-literal ordering, `(digital - digitalMin) * gain + physicalMin`, loses low bits to cancellation on a channel spanning plus or minus 800 uV: digital 0 comes out as 0.19536019536019467 when the exact value is 0.19536019536019536. The arrangement used here keeps the intermediate small and returns the correctly rounded result, which is also bit-for-bit what pyEDFlib and EDFbrowser produce. When `digitalMax === digitalMin` there is no mapping at all, so the scaler returns `NaN` for every sample and the CSV writer leaves those cells empty. A gain of zero is different: the mapping is defined but flat, so `physicalMin` is returned and written normally. The header parser has already raised `DEGENERATE_DIGITAL_RANGE` or `DEGENERATE_PHYSICAL_RANGE` in either case. Check `Number.isNaN` if you consume `makeScaler` directly.
 

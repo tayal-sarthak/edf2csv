@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.31
+
+### Fixed: the API reference's sample-time recipe disagreed with the tool by half a second
+
+api.md's streaming example computes each record's start as `index * recordDuration`, and the
+caveat under it named EDF+D as the only case needing the record starts from
+`readAnnotations()`. It assumes two things, and EDF+ guarantees neither.
+
+The second is that the first record sits at zero, which a *continuous* file is free not to do.
+`fractional-start.edf` is EDF+C with records at 0.5, 1.5 and 2.5 seconds — contiguous, and
+half a second later than the arithmetic says. The recipe times its first sample at 0.000;
+`convert()` writes 0.500 for that sample. The annotation onsets in the same file keep their
+true values, so an analysis built on the recipe puts every event half a second away from the
+samples it describes.
+
+The tool has recovered that offset since 0.4.9 and `src/convert/timing.ts` describes the
+failure at length; the recipe was the one place still doing it the old way. It now reads
+`readOrigin()` — the cheap version, at most sixteen records rather than the whole annotation
+channel — and a test runs the recipe against `convert()` on that fixture and requires every
+timestamp to match.
+
 ## 0.5.30
 
 ### Fixed: `npm pack` on a clean checkout produced a package with no code in it

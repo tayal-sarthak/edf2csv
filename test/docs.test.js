@@ -357,6 +357,58 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('gives a sample-time recipe that agrees with what the tool writes', async () => {
+    /*
+      api.md's streaming example computes `recordStart` as `index * recordDuration`, and said
+      the array from readAnnotations() was needed only for a discontinuous file. A continuous
+      one is free not to start at zero: fractional-start.edf is EDF+C with records at 0.5,
+      1.5 and 2.5, so the recipe timed its first sample at 0.000 while convert() wrote 0.500
+      — and the annotation onsets in the same file keep their true values, putting events half
+      a second from the samples they describe.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const recording = path.join(ROOT, 'test/fixtures/generated/fractional-start.edf');
+
+    const file = await api.EdfFile.open(recording);
+    const origin = (await file.readOrigin()) ?? 0;
+    const signal = file.dataSignals[0];
+    const times = [];
+    for await (const batch of file.readRecords()) {
+      for (let r = 0; r < batch.recordCount; r++) {
+        const recordStart = origin + (batch.firstRecordIndex + r) * file.header.recordDuration;
+        for (let i = 0; i < signal.samplesPerRecord; i++) {
+          times.push(recordStart + i / signal.samplingRate);
+        }
+      }
+    }
+    await file.close();
+
+    // The same recording through convert(), whose time_s is the answer to agree with.
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-recipe-'));
+    try {
+      await api.convert(recording, { outputDir: path.join(work, 'out'), quiet: true });
+      const rows = (await readFile(path.join(work, 'out', 'signals.csv'), 'utf8'))
+        .trimEnd()
+        .split('\n')
+        .slice(1);
+      assert.equal(rows.length, times.length, 'the recipe and the conversion see the same samples');
+      rows.forEach((row, index) => {
+        assert.equal(Number(row.split(',')[0]), times[index], `row ${index}`);
+      });
+      assert.notEqual(times[0], 0, 'this fixture exists because it does not start at zero');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    // And the page tells the reader to do that, rather than naming EDF+D as the only case.
+    const page = await read('website/content/api.md');
+    assert.match(page, /readOrigin\(\)/u, 'the page no longer shows how to recover the offset');
+    assert.ok(
+      !/Read `recordStarts` from `readAnnotations\(\)` and use that array instead\.$/mu.test(page),
+      'the page still names discontinuity as the only reason to read record starts',
+    );
+  });
+
   it('runs every JavaScript example in the API reference', async () => {
     /*
       The examples are the part of the documentation a reader is most likely to paste, and
