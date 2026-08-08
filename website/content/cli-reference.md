@@ -639,7 +639,16 @@ The row count still goes to stderr either way, so stdout carries nothing but CSV
 meter is never drawn in this mode.
 
 `--stdout` and `--json` cannot be combined: both write to stdout, and together they would produce a
-document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2).
+document that is neither valid CSV nor valid JSON. Passing both is a usage error (exit 2):
+
+```
+error: --stdout and --json both write to stdout, so they cannot be combined.
+       Use --stdout for the CSV, or --json for the summary.
+```
+
+Every refusal takes that shape — `error:` on the first line, the advice indented under it — so
+stderr can be grepped for `^error:` and find all of them. The two `--stdout` refusals printed
+flush left with no prefix until 0.5.79.
 
 So are `--stdout --out` and `--stdout --checksum` (exit 2 since 0.5.5). Both were accepted and
 dropped in silence before that. `--out` named a directory that was never created, so a run that

@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.79
+
+### Fixed: two refusals printed in a shape nothing else uses, so `^error:` missed them
+
+Every usage error prints `error: <what>` with its advice indented seven spaces underneath. The
+documentation shows them that way. Two did not:
+
+```
+$ edf2csv rec.edf --stdout --json
+--stdout and --json both write to stdout, so they cannot be combined.
+Use --stdout for the CSV, or --json for the summary.
+```
+
+Flush left, no prefix. They were written before the prefix was and kept their own shape — and
+they are the pair a script is most likely to meet, since `--stdout` and `--json` are flags a
+script passes rather than a person. A refusal that does not match `^error:` is invisible to the
+grep that finds every other one, on the stream the reference says to grep.
+
+The same two lines carried two more of what recent versions have been fixing: the recording's
+name went into the folder refusal unescaped, which 0.5.67 corrected everywhere it could find,
+and "cannot take 2 recordings" was hard-coded plural, which 0.5.74 did the same for.
+
+The test checks the shape over every refusal rather than adding two more string assertions:
+first line matches `^error: `, every continuation line is indented seven spaces, stdout is
+empty, exit is 2.
+
 ## 0.5.78
 
 ### Fixed: "Would write 1 rows" — the two lines 0.5.74's test could not reach

@@ -28,7 +28,7 @@ import { OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson } from './cli/report.js';
-import { listed } from './format/list.js';
+import { counted, listed } from './format/list.js';
 import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
@@ -277,9 +277,18 @@ export async function main(argv: readonly string[]): Promise<number> {
   // object onto one stream, producing a document that is neither valid CSV nor valid
   // JSON — and silently, since each half looked right on its own.
   if (toStdout && asJson) {
+    /*
+      `error: ` and the seven-space continuation, like every other refusal.
+
+      These two were written before the prefix was, and kept their own shape: every other
+      usage error in this tool prints "error: <what>" with the advice indented under it, the
+      documentation shows them that way, and stderr is what a script greps. A refusal that
+      does not match `^error:` is invisible to that grep — and this pair is the one a script
+      is most likely to hit, since both flags are things a script passes rather than a person.
+    */
     process.stderr.write(
-      '--stdout and --json both write to stdout, so they cannot be combined.\n' +
-        'Use --stdout for the CSV, or --json for the summary.\n',
+      'error: --stdout and --json both write to stdout, so they cannot be combined.\n' +
+        '       Use --stdout for the CSV, or --json for the summary.\n',
     );
     return EXIT_USAGE;
   }
@@ -307,13 +316,17 @@ export async function main(argv: readonly string[]): Promise<number> {
     0.5.5 gives: what it holds is not known until it is walked.
   */
   if (toStdout && (inputs.length > 1 || namedDirectory)) {
+    // Prefixed and indented like the rest; see the --json refusal above. The recording's
+    // name goes through `printable` for the reason 0.5.67 gives: a path is untrusted text,
+    // and this one is read straight out of a directory the caller named.
     process.stderr.write(
       inputs.length === 1
-        ? `--stdout writes a single CSV, and a folder is converted as a batch even when it ` +
-          `holds one recording.\nName the recording itself — ${inputs[0]} — or convert to a ` +
-          `directory instead.\n`
-        : `--stdout writes a single CSV, so it cannot take ${inputs.length} recordings.\n` +
-          `Convert them to directories instead, or run edf2csv once per file.\n`,
+        ? `error: --stdout writes a single CSV, and a folder is converted as a batch even ` +
+          `when it holds one recording.\n       Name the recording itself — ` +
+          `${printable(inputs[0] as string)} — or convert to a directory instead.\n`
+        : `error: --stdout writes a single CSV, so it cannot take ` +
+          `${counted(inputs.length, 'recording')}.\n` +
+          `       Convert them to directories instead, or run edf2csv once per file.\n`,
     );
     return EXIT_USAGE;
   }

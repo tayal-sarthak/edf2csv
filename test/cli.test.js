@@ -3194,6 +3194,45 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('shapes every refusal like the others, so a log can be grepped for one', async () => {
+    /*
+      Every usage error in this tool prints "error: <what>" with its advice indented seven
+      spaces under it, and the documentation shows them that way — except the two --stdout
+      refusals written before the prefix was, which printed flush left with no prefix at all.
+      They are the pair a script is most likely to hit, since both flags are things a script
+      passes rather than a person, and a refusal that does not match `^error:` is invisible to
+      the grep that finds every other one.
+
+      Checked as a shape over all of them rather than as two more string assertions.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-shape-'));
+    temporaries.push(dir);
+    await writeFile(path.join(dir, 'only.edf'), await readFile(fixture('tiny.edf')));
+
+    const refusals = [
+      [fixture('tiny.edf'), '--stdout', '--json'],
+      [fixture('tiny.edf'), fixture('annotations.edf'), '--stdout'],
+      [dir, '--stdout'],
+      [fixture('tiny.edf'), '--stdout', '--annotations-only'],
+      [fixture('tiny.edf'), '--duration', '1', '--end', '2'],
+      [fixture('tiny.edf'), '--layout', 'sideways'],
+    ];
+    for (const args of refusals) {
+      const { code, stdout, stderr } = await cli(args);
+      assert.equal(code, 2, `${args.join(' ')} did not exit 2:\n${stderr}`);
+      assert.equal(stdout, '', `${args.join(' ')} wrote to stdout`);
+      const lines = stderr.trimEnd().split('\n');
+      assert.match(lines[0], /^error: /u, `${args.join(' ')} first line: ${lines[0]}`);
+      for (const line of lines.slice(1)) {
+        assert.match(line, /^ {7}\S/u, `${args.join(' ')} continuation: ${JSON.stringify(line)}`);
+      }
+    }
+
+    // And the count in the one that has one agrees with itself.
+    const two = await cli([fixture('tiny.edf'), fixture('annotations.edf'), '--stdout']);
+    assert.match(two.stderr, /cannot take 2 recordings/u, two.stderr);
+  });
+
   it('refuses --annotations-only, which has no signal data to stream', async () => {
     const { code, stderr } = await cli([fixture('annotations.edf'), '--stdout', '--annotations-only']);
     assert.equal(code, 2, stderr);
