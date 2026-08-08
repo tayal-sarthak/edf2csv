@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.44
+
+### Fixed: `--info` promised nothing for a recording that converts to three files
+
+"Would write 0 rows, roughly 0 B." — for a recording holding only EDF+ annotations, which
+goes on to write `annotations.csv` with its events in it, `channels.csv`, and
+`metadata.json`.
+
+That is the sentence 0.4.51 removed, arriving by the other route. It asked only whether
+`--annotations-only` had been given; a recording that simply has no signal channels has no
+rate groups either, and fell past the check to the estimate line. `--info` exists to say what
+a conversion will do, so asserting it will write nothing when it will write three files is
+the one thing it must not do — which is what that entry said when it fixed the first route.
+
+Both reach the same sentence now: "Would write annotations.csv and channels.csv, and no
+signal data. How many events there are cannot be told from the header."
+
 ## 0.5.43
 
 ### Fixed: 0.5.40 made `--stdout` refuse a recording named twice, quoting a folder nobody named

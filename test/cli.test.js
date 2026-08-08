@@ -1082,6 +1082,29 @@ describe('converting several recordings at once', () => {
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
+  it('does not promise nothing for a recording that has no signal channels', async () => {
+    /*
+      0.4.51 removed "Would write 0 rows, roughly 0 B." for `--annotations-only`. A recording
+      that simply has no signal channels reaches the same state by a different route — no
+      rate groups to describe — and got the same sentence, for a conversion that writes an
+      annotations.csv with events in it beside channels.csv and metadata.json.
+    */
+    const { code, stdout } = await cli([fixture('annotations-only.edf'), '--info']);
+    assert.equal(code, 0);
+    assert.ok(!/Would write 0 rows/u.test(stdout), stdout);
+    assert.match(stdout, /Would write annotations\.csv and channels\.csv/u);
+
+    // And the conversion it described does write them.
+    const dir = await outDir();
+    await cli([fixture('annotations-only.edf'), '--out', dir, '--quiet']);
+    assert.deepEqual(
+      (await readdir(dir)).sort(),
+      ['annotations.csv', 'channels.csv', 'metadata.json'],
+    );
+    const events = await readFile(path.join(dir, 'annotations.csv'), 'utf8');
+    assert.ok(events.trimEnd().split('\n').length > 1, 'and it holds events');
+  });
+
   it('names the annotation-only files as --gzip will actually write them', async () => {
     /*
       The two sentences above were string literals, and the gzip check below them reads the

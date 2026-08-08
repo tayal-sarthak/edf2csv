@@ -166,7 +166,16 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     to be read record by record, which is the scan --info is for avoiding. So it says which
     file, and that the count is not knowable this cheaply, rather than inventing a zero.
   */
-  if (!plan.writeSignals) {
+  /*
+    No signal table to describe, whichever way that came about.
+
+    This asked only whether `--annotations-only` had been given. A recording that has no
+    signal channels — one holding nothing but EDF+ annotations — has none either, and fell
+    through to the estimate line: "Would write 0 rows, roughly 0 B." for a conversion that
+    goes on to write an annotations.csv with events in it, beside channels.csv and
+    metadata.json. That is the sentence 0.4.51 removed, arriving by the other route.
+  */
+  if (!plan.writeSignals || plan.groups.length === 0) {
     // Named as they will be written. --info is read to find out what a run leaves behind,
     // and a script that opens the name it was given must find a file there.
     const suffix = plan.gzip ? '.csv.gz' : '.csv';
