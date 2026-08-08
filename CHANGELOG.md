@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.56
+
+### Fixed: an interrupted conversion warned about files in a directory it had never created
+
+A conversion writes nothing for the first part of its run. Under `--checksum` it hashes the
+input before anything else, and an EDF+ file has its whole annotation channel scanned for
+record start times before the output directory is claimed — on a 40 MB EDF+C recording that
+window is about three seconds wide. The SIGINT handler is installed before any of it.
+
+Ctrl-C inside that window printed:
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Files already written to "oa" are incomplete and should not be used.
+```
+
+and `ls -A oa` then said no such file or directory. Nothing had been written, no directory
+had been created, and the advice was to go and distrust nothing. It is the same defect
+0.2.30 removed from this path's *error* message — "files that were never written" — left in
+place one branch over.
+
+Three cases now, because they call for three different things. Nothing written: "Nothing was
+written: "oa" was never created." Written into a directory this run created: the sentence
+above, which was always true of that case. And `--force` over a directory that was already
+there: what is in it may be the previous run's output or this one's, which the message says
+rather than guessing. Whether the directory existed beforehand is read once at the start,
+since at interrupt time there is no other way to tell the last two apart.
+
 ## 0.5.55
 
 ### Fixed: a duration that could not be read was exported as a duration nobody wrote

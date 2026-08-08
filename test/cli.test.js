@@ -1412,6 +1412,69 @@ describe('converting several recordings at once', () => {
     JSON.parse(named.stdout);
   });
 
+  it('does not warn about files in a directory it never created', async (t) => {
+    /*
+      `convert()` hashes the input under --checksum and scans the whole annotation channel
+      for record start times before it claims the output directory, so there is a window —
+      seconds wide on a long EDF+ — in which an interrupt finds nothing written at all. The
+      handler printed the one sentence it had: "Files already written to "oa" are incomplete
+      and should not be used", about a directory `ls` then reported did not exist. Nothing
+      had been written, and the advice was to distrust nothing.
+
+      The recording below is 300,000 records of an EDF+C file, sparse beyond its header, so
+      it costs four kilobytes on disk and takes about three seconds to scan. The signal is
+      sent at 400 ms, and the window only gets wider on a slower machine.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-preint-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { statSync, truncateSync, existsSync } = await import('node:fs');
+    const recording = path.join(dir, 'long-scan.edf');
+    const records = 300_000;
+    writeEdf({
+      path: recording,
+      reserved: 'EDF+C',
+      numRecords: records,
+      recordDuration: 1,
+      truncateRecords: 0,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 4, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 30, annotations: true },
+      ],
+    });
+    truncateSync(recording, statSync(recording).size + records * (4 + 30) * 2);
+
+    const out = path.join(dir, 'out');
+    const { spawn } = await import('node:child_process');
+    const run = spawn(process.execPath, [CLI, recording, '--out', out, '--quiet'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    run.stderr.setEncoding('utf8').on('data', (chunk) => {
+      stderr += chunk;
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (existsSync(out)) {
+      // The scan finished faster than the signal arrived, so this run is not the case under
+      // test. Skipped rather than failed: losing the race says nothing about the message.
+      run.kill('SIGKILL');
+      t.skip('the pre-write scan finished before the signal was sent');
+      return;
+    }
+    run.kill('SIGINT');
+    const code = await new Promise((resolve) => run.on('close', resolve));
+
+    assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
+    assert.match(stderr, /interrupted \(SIGINT\)/u);
+    assert.match(stderr, /Nothing was written/u, stderr);
+    assert.match(stderr, /was never created/u, stderr);
+    assert.doesNotMatch(stderr, /Files already written/u, stderr);
+    assert.equal(existsSync(out), false, 'and the directory really is not there');
+  });
+
   it('stops its children when interrupted, and says the output is incomplete', async () => {
     // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
     // signal sent to this process alone does not, which is how a batch runs from a script,

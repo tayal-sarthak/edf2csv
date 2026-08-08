@@ -10,7 +10,7 @@
 
 import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { lstat, readdir, realpath, stat } from 'node:fs/promises';
 import { cpus } from 'node:os';
 import { fork } from 'node:child_process';
@@ -748,16 +748,42 @@ async function convertOne(
     data is missing. Saying so on the way out is the whole point of a tool that
     claims it will not go quiet when something is wrong.
   */
+  /*
+    Whether the destination was already there before this run touched it.
+
+    Read once, up front, because at interrupt time it is the difference between three
+    different true statements and there is no other way to tell them apart. A directory that
+    exists now and did not exist then was created by this conversion; one that existed then
+    holds files this conversion may never have reached.
+  */
+  const destinationExistedBefore = toStdout ? false : existsSync(destination);
+
   const onInterrupt = (signal: NodeJS.Signals): void => {
     if (showProgress) process.stderr.write('\r\u001b[K');
-    // --stdout writes no directory, so there is none to warn about. Naming one anyway
-    // pointed at a path that was never created — the same "files that were never written"
-    // that 0.2.30 removed from this path's error message.
+    /*
+      Say which of the three happened, rather than the middle one every time.
+
+      --stdout writes no directory, so there is none to warn about. Naming one anyway
+      pointed at a path that was never created — the same "files that were never written"
+      that 0.2.30 removed from this path's error message. The directory case had the same
+      defect one step further in: `convert()` hashes the input under --checksum and scans
+      the whole annotation channel for record start times *before* it claims the directory,
+      so a Ctrl-C in the first second of a large EDF+ printed "Files already written to
+      "oa" are incomplete and should not be used" about a directory that `ls` then reported
+      did not exist. Nothing had been written, and the advice was to distrust nothing.
+    */
+    const wrote = !toStdout && existsSync(destination);
     process.stderr.write(
       `\ninterrupted (${signal}): the conversion stopped part way through.\n` +
         (toStdout
           ? `       The CSV on stdout stops mid-recording and should not be used.\n`
-          : `       Files already written to "${destination}" are incomplete and should not be used.\n`),
+          : !wrote
+            ? `       Nothing was written: "${destination}" was never created.\n`
+            : destinationExistedBefore
+              ? `       "${destination}" was already there, so what is in it may be this run's ` +
+                `incomplete output.\n`
+              : `       Files already written to "${destination}" are incomplete and should not ` +
+                `be used.\n`),
     );
     // 128 + signal number, the conventional exit status for dying to a signal.
     process.exit(signal === 'SIGINT' ? 130 : 143);

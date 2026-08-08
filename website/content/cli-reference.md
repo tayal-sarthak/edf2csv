@@ -429,6 +429,22 @@ The rest of the batch carries on, and the closing count and exit code report it 
 
 `--stdout` ignores it, since that path takes a single recording anyway.
 
+Interrupting one conversion — Ctrl-C on a single file rather than a batch — exits 130 and says which of three things happened, because they call for different responses. A conversion writes nothing for the first part of its run: under `--checksum` it hashes the input first, and an EDF+ file has its whole annotation channel scanned for record start times before the output directory is claimed, which on a long recording is seconds. Interrupted in that window there is nothing to distrust and nothing to delete:
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Nothing was written: "night-02_csv" was never created.
+```
+
+Interrupted after the directory was claimed, the files in it stop mid-recording while still parsing as whole CSVs, which is the case worth warning about:
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Files already written to "night-02_csv" are incomplete and should not be used.
+```
+
+And with `--force` over a directory that was already there, what is in it may be the previous run's output or this one's, and the message says so rather than guessing. Under `--stdout` there is no directory to name, so it warns about the stream instead.
+
 ## --layout
 
 How the samples are arranged in the CSV. `wide`, the default, or `long`.
