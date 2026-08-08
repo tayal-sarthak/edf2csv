@@ -417,7 +417,7 @@ Use `--decimals` when you want a uniform column width across channels, or when y
 
 `--decimals` doesn't affect the `time_s` column, whose precision is derived from the sampling rate so that sample times are exact rather than rounded. It doesn't affect `channels.csv`, `annotations.csv` or `metadata.json` either.
 
-Out-of-range and non-integer values are usage errors. An empty value is rejected explicitly rather than read as zero, since `--decimals ""` would otherwise round every physical value to a whole number:
+Out-of-range and non-integer values are usage errors, and so is anything that is not written in plain digits: `0x3`, `0b11`, `0o5`, `3e0` and `+3` are all numbers to JavaScript and none of them is a count of decimals anyone typed, so accepting them would mean converting at a precision the command does not say. Same rule as `--jobs` and `--channels "#N"`. An empty value is rejected explicitly rather than read as zero, since `--decimals ""` would otherwise round every physical value to a whole number:
 
 ```
 error: --decimals must be a whole number between 0 and 20, got "21".

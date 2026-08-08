@@ -211,6 +211,34 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--decimals needs a number/);
   });
 
+  it('refuses a precision that is not written in plain digits', async () => {
+    /*
+      `Number()` did the parsing here too, and accepts far more than a count of decimals:
+      `0x3` and `3e0` and `+3` all reached three places, `0b11` reached three, `0o5` reached
+      five. Every one converted and exited 0, so a slip did not fail — it wrote a CSV at a
+      precision that reads as that precision to nobody, and nothing about the file says so.
+      `3.5` was refused all along, which is exactly what makes the message believable.
+
+      The same hardening `--jobs` and `--channels '#N'` already have.
+    */
+    for (const value of ['0x3', '0b11', '0o5', '3e0', '+3', '3.5', '21', '-1']) {
+      const refused = await cli([fixture('tiny.edf'), `--decimals=${value}`, '--out', await outDir()]);
+      assert.equal(refused.code, 2, `--decimals=${value} was accepted:\n${refused.stderr}`);
+      assert.match(refused.stderr, /--decimals must be a whole number between 0 and 20/u);
+      // The value comes back as typed, so the reader can see what was rejected.
+      assert.ok(refused.stderr.includes(`"${value}"`), refused.stderr);
+    }
+
+    // Plain digits still work, at both ends of the documented range.
+    for (const [value, expected] of [['0', '0.000,0,0'], ['3', '0.000,0.000,0.000']]) {
+      const dir = await outDir();
+      const ran = await cli([fixture('tiny.edf'), `--decimals=${value}`, '--out', dir, '--quiet']);
+      assert.equal(ran.code, 0, ran.stderr);
+      const row = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).split('\n')[1];
+      assert.equal(row, expected);
+    }
+  });
+
   it('refuses a position that is not written in plain digits', async () => {
     // Number() did the parsing and accepts far more than a position: #0x2 reached channel 2
     // through hex, #0b1 channel 1, and a bare # was Number('') === 0. Each one selected a

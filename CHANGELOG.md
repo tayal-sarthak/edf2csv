@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.68
+
+### Fixed: `--decimals` read its value the way `Number()` felt like reading it
+
+`--decimals 0o5` wrote five decimal places. `--decimals 0b11` wrote three. So did `0x3`,
+`3e0`, `+3` and ` 3 `. Every one converted, exited 0, and produced a CSV that looks exactly as
+intended — at a precision that reads as that precision to nobody.
+
+`3.5` was refused all along, which is what makes the message believable: a reader who sees
+"must be a whole number between 0 and 20" reject `3.5` has no reason to suspect `0o5` of
+quietly meaning five.
+
+Plain digits now, the same rule `--jobs` was given in 0.5.50 and `--channels "#N"` before it —
+where the comment records why it matters: "Every one of them selected a channel and exited 0,
+so a slip did not fail — it quietly converted a different channel than the one asked for, which
+for this tool is the worst way to be wrong." A precision is the same kind of quiet. The value
+still comes back quoted as typed, and a leading or trailing space is still trimmed, exactly as
+`--jobs` does.
+
 ## 0.5.67
 
 ### Fixed: a path reached the terminal unescaped, on the lines that report where output went

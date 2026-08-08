@@ -1580,8 +1580,22 @@ function optionalDecimals(raw: unknown): number | undefined {
   if (text === '') {
     throw new OptionError('--decimals needs a number, for example --decimals 3.');
   }
+  /*
+    A whole number as written, not as `Number()` chooses to read it.
+
+    `Number.isInteger(Number(text))` accepted `0x3`, `0b11`, `0o5`, `3e0`, `+3` and ` 3 `,
+    while refusing `3.5` — and the refusal of `3.5` is what makes a reader believe the message
+    that says "a whole number between 0 and 20". So `--decimals 0o5` wrote five decimals for
+    an argument that reads as five to nobody, and `--decimals 0b11` wrote three, in silence,
+    exit 0, with a CSV that looks exactly as intended.
+
+    The same fix `--jobs` got, and the same one `--channels '#N'` got — where the comment
+    records why: "Every one of them selected a channel and exited 0, so a slip did not fail —
+    it quietly converted a different channel than the one asked for, which for this tool is
+    the worst way to be wrong." A precision is the same kind of quiet.
+  */
   const value = Number(text);
-  if (!Number.isInteger(value) || value < 0 || value > 20) {
+  if (!/^\d+$/u.test(text) || !Number.isInteger(value) || value < 0 || value > 20) {
     throw new OptionError(`--decimals must be a whole number between 0 and 20, got "${String(raw)}".`);
   }
   return value;
