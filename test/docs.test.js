@@ -764,6 +764,39 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('shows the line --info --annotations-only actually prints', async () => {
+    /*
+      The reference said, of the estimate, "With `--annotations-only` ... the estimate is 0
+      rows, because that run would write no signal data" — and two hundred lines later, in the
+      `--annotations-only` section, that `Would write 0 rows, roughly 0 B.` was the wording
+      0.4.51 removed for being "true of the signal tables and false of the run". One page,
+      describing the behaviour and its own fix of that behaviour, in disagreement.
+
+      Pinned by running it: the sample output the page quotes has to be what the tool prints.
+    */
+    const page = await read('website/content/cli-reference.md');
+    const section = page.slice(page.indexOf('## --annotations-only'));
+    const quoted = /```\n(Would write[\s\S]*?)\n```/u.exec(section);
+    assert.ok(quoted, 'the page no longer quotes what --info --annotations-only prints');
+
+    const { stdout } = await run(process.execPath, [
+      CLI, path.join(ROOT, 'test/fixtures/generated/annotations.edf'), '--info', '--annotations-only',
+    ]);
+    // The page wraps the sentence to its own width; compare the words, not the layout.
+    const flat = (text) => text.replace(/\s+/gu, ' ').trim();
+    assert.ok(
+      flat(stdout).includes(flat(quoted[1])),
+      `the page quotes:\n  ${flat(quoted[1])}\nthe tool prints:\n  ${flat(stdout).slice(-200)}`,
+    );
+
+    // And nowhere may the page still promise a row estimate for that mode.
+    assert.doesNotMatch(
+      flat(page),
+      /annotations-only[^.]{0,120}estimate is 0 rows/u,
+      'the reference still says --annotations-only estimates 0 rows',
+    );
+  });
+
   it('states the fallback record placement the same way on every page', async () => {
     /*
       A record whose timekeeping TAL is unreadable is placed at `origin + index *

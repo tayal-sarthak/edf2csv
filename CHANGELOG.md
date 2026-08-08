@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.76
+
+### Fixed: the reference described a line 0.4.51 had already removed, and said elsewhere that it was wrong
+
+In the `--info` section: "With `--annotations-only` the signal channels read `(not selected)`
+and the estimate is 0 rows, because that run would write no signal data."
+
+Two hundred lines further down, in the `--annotations-only` section: "Until 0.4.51 this line
+read `Would write 0 rows, roughly 0 B.`, which was true of the signal tables and false of the
+run." One page describing a behaviour and its own fix of that behaviour, disagreeing.
+
+What `--info --annotations-only` prints is neither: no row estimate at all, and a sentence
+naming the files instead — "Would write annotations.csv and channels.csv, and no signal data.
+How many events there are cannot be told from the header."
+
+The sentence now says that, and says which version it was describing, since a reader who built
+on it should be able to tell when it stopped being true. Pinned by running the command: the
+sample output the page quotes has to be what the tool prints, compared on the words rather than
+the layout, since the page wraps to its own width.
+
 ## 0.5.75
 
 ### Fixed: two pages gave different formulas for where an untimed record goes, and one was wrong
