@@ -523,6 +523,48 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('names the codes --info can raise, against the codes it raises', async () => {
+    /*
+      warnings-and-errors.md said --info "reads the header and builds a conversion plan
+      without touching the data records or the annotation channel", and could not raise
+      ANNOTATION_DECODE_FAILED or the timestamp-derived DISCONTINUOUS variants. It reads the
+      annotation channel for every EDF+ file — its own source comment says so — and raises
+      both. The DISCONTINUOUS section three hundred lines down said "--info raises
+      DISCONTINUOUS too", on the same page.
+    */
+    const page = await read('website/content/warnings-and-errors.md');
+    const section = page.slice(page.indexOf('### What `--info` can and can'), page.indexOf('## Warnings at a glance'));
+    assert.ok(section.length > 200, 'the --info section is gone');
+
+    const raised = new Set();
+    for (const name of [
+      'annotations-bad-timekeeping.edf',
+      'records-overlapping.edf',
+      'records-backwards.edf',
+      'far-origin.edf',
+    ]) {
+      const { stdout } = await run(process.execPath, [
+        CLI,
+        path.join(ROOT, 'test/fixtures/generated', name),
+        '--info',
+        '--json',
+      ]);
+      for (const warning of JSON.parse(stdout).warnings) raised.add(warning.code);
+    }
+    assert.ok(raised.has('ANNOTATION_DECODE_FAILED') && raised.has('DISCONTINUOUS'), [...raised].join());
+
+    /*
+      Only the paragraph that lists them. The section also carries a note about what it used
+      to say, which names the codes in order to say they were named wrongly — reading that as
+      a claim would make the check unfixable.
+    */
+    const from = section.indexOf('What it cannot raise');
+    const cannot = section.slice(from, section.indexOf('\n\n', from));
+    for (const code of raised) {
+      assert.ok(!cannot.includes(code), `the page says --info cannot raise ${code}, and it does`);
+    }
+  });
+
   it('states harness sizes that match the harnesses themselves', async () => {
     /*
       The correctness page said the estimate sweep runs "192 predictions over 34 recordings"

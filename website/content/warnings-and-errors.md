@@ -34,7 +34,13 @@ There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has alre
 
 ### What `--info` can and can't tell you
 
-`--info` reads the header and builds a conversion plan without touching the data records or the annotation channel. It therefore surfaces every structural, calibration and output-shape warning, but it can't raise the ones that only become visible while converting: `ANNOTATION_DECODE_FAILED`, `NO_ANNOTATIONS`, `STALE_OUTPUT`, and the two `DISCONTINUOUS` variants that come from inspecting record timestamps.
+`--info` reads the header and builds a conversion plan, so it surfaces every structural, calibration and output-shape warning without converting anything.
+
+It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first few records of a continuous one to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
+
+What it cannot raise is the handful that need a conversion to exist: `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written, and the EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
+
+Until 0.5.37 this section said the opposite — that `--info` touches neither the data records nor the annotation channel, and cannot raise `ANNOTATION_DECODE_FAILED` or any timestamp-derived `DISCONTINUOUS`. The `DISCONTINUOUS` section further down said "`--info` raises `DISCONTINUOUS` too, since it has to read those record times", on the same page.
 
 ```bash
 edf2csv sleep-study.edf --info

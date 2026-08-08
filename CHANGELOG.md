@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.37
+
+### Fixed: the page listing what `--info` cannot report was wrong about most of it
+
+"`--info` reads the header and builds a conversion plan without touching the data records or
+the annotation channel. It therefore surfaces every structural, calibration and output-shape
+warning, but it can't raise the ones that only become visible while converting:
+`ANNOTATION_DECODE_FAILED`, `NO_ANNOTATIONS`, `STALE_OUTPUT`, and the two `DISCONTINUOUS`
+variants that come from inspecting record timestamps."
+
+It reads the annotation channel for every EDF+ recording — the whole of it for a
+discontinuous file, the first few records of a continuous one — and its own source comment in
+`showInfo` says so at length. Run against the fixtures, `--info` raises
+`ANNOTATION_DECODE_FAILED` and three of the four timestamp-derived `DISCONTINUOUS` variants.
+The `DISCONTINUOUS` section three hundred lines down on the same page says "`--info` raises
+`DISCONTINUOUS` too, since it has to read those record times".
+
+The section now says what it reads and what it therefore raises, and names the three it
+genuinely cannot: `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written,
+and the EDF+C contradiction, which is noticed while the full record-start array is built
+rather than while the origin is found.
+
+A test converts four fixtures with `--info --json`, collects the codes, and fails if any of
+them appears in the page's list of what `--info` cannot raise.
+
 ## 0.5.36
 
 ### Fixed: every `toStdout` conversion left a listener on `process.stdout`
