@@ -61,11 +61,11 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `DEGENERATE_PHYSICAL_RANGE` | A channel's physical minimum equals its physical maximum |
 | `UNUSABLE_PHYSICAL_RANGE` | A channel's physical range is too wide to represent |
 | `INVERTED_PHYSICAL_RANGE` | A channel's calibration inverts its polarity: exactly one of its two bounds pairs is reversed |
-| `NO_SAMPLES` | A channel declares zero samples per data record |
+| `NO_SAMPLES` | A channel declares zero samples per data record, or no signal file was written because nothing carries any |
 | `EMPTY_LABEL` | A channel has a blank label |
 | `DUPLICATE_LABEL` | Two or more channels share a label, or a `--channels` term matched several |
 | `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
-| `ANNOTATION_DECODE_FAILED` | Annotation text couldn't be decoded, or a record's timestamp is missing |
+| `ANNOTATION_DECODE_FAILED` | An annotation entry, a record's timestamp, or an event's duration couldn't be read |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
 | `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so several output files are written |
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
@@ -253,7 +253,26 @@ warning: Signal 0 ("ch1") carries no samples at all (0 per data record).
 
 **What to do.** Nothing, unless you expected data on that channel. A zero-sample channel is left out of the sampling-rate comparison entirely, so it can't make a single-rate recording look mixed — up to 0.2.4 its nominal 0 Hz was counted as a rate, and a file with one real rate warned that it used "2 different sampling rates (4 Hz, 0 Hz)".
 
-Note that `NO_SAMPLES` is also a fatal error code. As a warning it means one channel is empty; as an error it means every channel is, which leaves nothing to convert. See the fatal errors section below.
+The same code also reports the file that was *not* written, when the conversion ends up with no signal table to make at all. Which of the two ways that happened is said explicitly, because the advice differs. Every channel selected carries no samples:
+
+```
+warning: No signal file was written: every channel selected carries zero samples per data
+         record, so there is nothing to put in one.
+         channels.csv still describes them. Run with --info to see which channels do carry
+         samples.
+```
+
+Or the recording has no signal channels at all, holding only EDF+ annotations — in which case nothing was selected, and `channels.csv` has no rows to describe:
+
+```
+warning: No signal file was written: there is no signal data in this recording to put in one.
+         annotations.csv holds whatever events it carries. channels.csv lists signal
+         channels, so it has none to list.
+```
+
+Until 0.5.54 the second case got the first case's wording, which said three things about channels to a file that has none.
+
+Note that `NO_SAMPLES` is also a fatal error code. As a warning it means one channel is empty, or that no signal file was written; as an error it means every channel is empty, which leaves nothing to convert. See the fatal errors section below.
 
 ### EMPTY_LABEL
 
@@ -412,7 +431,7 @@ The magnitude is what matters, not the sign — a negative origin the same dista
 
 ### ANNOTATION_DECODE_FAILED
 
-This code covers three conditions, which are counted separately because they lose different things.
+This code covers five conditions, which are counted separately because they lose different things.
 
 **Annotation entries couldn't be decoded.** The annotation channel stores text as a run of Time-stamped Annotation Lists, each beginning with an explicitly signed onset. A chunk that doesn't begin with `+` or `-`, or whose onset isn't a finite number, can't be decoded.
 
@@ -442,6 +461,26 @@ warning: 1 of 3 data records carry no readable timekeeping annotation (record 2)
 ```
 
 Up to five record indices are listed by number, with the rest elided. The affected records are timed arithmetically as a fallback, and this warning exists precisely because that fallback produces a timestamp indistinguishable from a real one.
+
+**An event's duration couldn't be read.** A TAL may state a duration after its onset, separated by `0x15`. When that text isn't a number — `abc`, or `1e400`, which overflows to infinity — the event is kept whole apart from that one field, and `duration_s` is written empty.
+
+```
+warning: 1 annotation states a duration that is not a number, so its duration_s cell is empty.
+         The onset and the description were read normally. An empty duration_s otherwise
+         means the file stated no duration, so these rows cannot be told apart from those.
+```
+
+The hint is the reason this is counted at all: an empty `duration_s` is documented as meaning the file gave no duration, so without the count these rows are indistinguishable from the ones that genuinely had none. Before 0.5.55 nothing was raised.
+
+**An event's duration is below zero.** A duration is a length of time, and one below zero is not one. The value is written to `annotations.csv` exactly as the file gave it — a zero invented here would be a number no writer wrote — so nothing about the row looks wrong on its own.
+
+```
+warning: 1 annotation states a duration below zero, which is not a length of time.
+         The value is written to annotations.csv as the file gave it. Adding it to onset_s
+         ends the event before it starts, so check these rows before using the durations.
+```
+
+Counted apart from the condition above because that one failed to parse and lost its value, while this one parsed and kept it: what is wrong with it is arithmetic. A duration of exactly zero is not negative and raises nothing. Before 0.5.58 nothing was raised.
 
 **What to do.** Compare the number of rows in `annotations.csv` against the number of events you expect. If entries are missing that you need, the recording may have to be re-exported by the acquisition software. For the timekeeping case, treat the timestamps of the named records as unreliable and, if the exact timing matters, exclude those records from analysis.
 

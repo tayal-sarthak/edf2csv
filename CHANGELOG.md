@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.62
+
+### Fixed: the warnings reference described two codes as they were two versions ago
+
+`ANNOTATION_DECODE_FAILED` opens with "This code covers three conditions, which are counted
+separately because they lose different things", and then lists them. 0.5.55 added a fourth —
+a duration the file stated that could not be read — and 0.5.58 a fifth, a duration below zero.
+Both were counted separately, exactly as that sentence promises, and neither appeared. The
+number is one a reader checks against the list immediately below it.
+
+`NO_SAMPLES` had the other half of the same drift. Its section describes the per-channel case
+and says "as a warning it means one channel is empty", which stopped being the whole story
+when the code also began reporting the signal file that was *not* written — and 0.5.54 gave
+that case two different wordings depending on why, neither of them on the page.
+
+Both sections now list what they cover, with the message each condition actually prints. And
+a test reads the sentence against the list: any section saying how many conditions it covers
+has its bold lead-ins counted, so the next one added has to be written down or the suite goes
+red. It is the same shape of check as the one holding the test counts and the harness sizes —
+the prose still has to be written by a person, but the number in it no longer drifts on its
+own.
+
 ## 0.5.61
 
 ### Fixed: `--channels` rejected the column name it had just printed, and called it unknown

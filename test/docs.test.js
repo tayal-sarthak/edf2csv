@@ -764,6 +764,39 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('counts the conditions it says a diagnostic covers', async () => {
+    /*
+      The warnings page opens ANNOTATION_DECODE_FAILED with "This code covers three
+      conditions" and then lists them in bold. 0.5.55 added a fourth and 0.5.58 a fifth, and
+      the sentence still said three — a number a reader can check against the list directly
+      below it, which is exactly the kind of claim this file exists to hold.
+
+      Counted from the page's own headings rather than from the source: what the sentence
+      promises is that the list under it is complete, and the list is the thing on the page.
+    */
+    const page = await read('website/content/warnings-and-errors.md');
+    const words = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+    // Split into sections first: a claim belongs to the heading above it, and a regex
+    // spanning `###` boundaries reads one section's sentence against another's list.
+    const sections = page.split(/^### /mu).slice(1);
+    let checked = 0;
+    for (const section of sections) {
+      const code = section.slice(0, section.indexOf('\n')).trim();
+      const claim = /This code covers (\w+) conditions/u.exec(section);
+      if (!claim) continue;
+      checked++;
+      // Each condition is a bold lead-in of its own. The page's standard headings —
+      // cause, behaviour, advice — are not conditions and do not count.
+      const conditions = [...section.matchAll(/^\*\*(?!What to do|Cause|What edf2csv does)/gmu)];
+      assert.equal(
+        conditions.length,
+        words[claim[1]],
+        `${code} says it covers ${claim[1]} conditions and lists ${conditions.length}`,
+      );
+    }
+    assert.ok(checked > 0, 'no section states how many conditions it covers');
+  });
+
   it('documents the fields readAnnotations actually returns', async () => {
     /*
       The names it exports are checked below; the shape of what they return was not, and the
