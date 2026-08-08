@@ -1082,6 +1082,32 @@ describe('converting several recordings at once', () => {
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
   });
 
+  it('reports a window that selects nothing, which is a fact about the plan', async () => {
+    /*
+      EMPTY_WINDOW was pushed from the rows a conversion actually wrote, so --info never said
+      it: `--info --start 0.31 --end 0.39` on a 10 Hz recording printed "Would write 0 rows"
+      with no warning and exited 0 under --strict, while converting that window warned and
+      exited 1. The hint reads "Run with --info to see where the records actually sit",
+      advising the reader into the one mode that would not tell them.
+    */
+    const window = ['--start', '0.31', '--end', '0.39'];
+    const codes = async (args) =>
+      JSON.parse((await cli([...args, '--json'])).stdout).warnings.map((w) => w.code);
+
+    assert.deepEqual(await codes([fixture('tiny.edf'), '--info', ...window]), ['EMPTY_WINDOW']);
+    assert.deepEqual(
+      await codes([fixture('tiny.edf'), '--out', await outDir(), ...window]),
+      ['EMPTY_WINDOW'],
+      'and exactly once, not twice',
+    );
+    assert.equal((await cli([fixture('tiny.edf'), '--info', '--strict', ...window])).code, 1);
+
+    // A window that selects something says nothing, and neither does a recording with no
+    // signal channels — it has no signal files for a window to be empty of.
+    assert.deepEqual(await codes([fixture('tiny.edf'), '--info', '--start', '0', '--duration', '1']), []);
+    assert.ok(!(await codes([fixture('annotations-only.edf'), '--info'])).includes('EMPTY_WINDOW'));
+  });
+
   it('reports an unreadable timekeeping TAL it read, on a continuous recording', async () => {
     /*
       --info avoids scanning every record on a continuous file: it reads at most sixteen to

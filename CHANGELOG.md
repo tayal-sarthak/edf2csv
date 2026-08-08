@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.47
+
+### Fixed: `--info` never said a window selects nothing, and told you to run `--info`
+
+`edf2csv rec.edf --info --start 0.31 --end 0.39` on a 10 Hz recording printed "Would write 0
+rows, roughly 15 B." with no warning, and exited 0 under `--strict`. Converting the same
+window raised `EMPTY_WINDOW` and exited 1.
+
+`EMPTY_WINDOW` was pushed from the rows a conversion actually wrote, so the mode that writes
+nothing could never reach it — while its own hint reads "Run with `--info` to see where the
+records actually sit", which is the one mode that would not have told you.
+
+It is a fact about the plan, and the plan is where it is raised now. The estimate's row count
+is exact — `npm run estimate` checks that across every fixture crossed with every option set —
+so the plan says what the rows would have. Reported once in each mode, and still not raised
+for a recording that has no signal channels, which has no signal files for a window to be
+empty of.
+
 ## 0.5.46
 
 ### Fixed: `--info` read an unreadable timekeeping entry and threw the failure away

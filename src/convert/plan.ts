@@ -15,7 +15,7 @@ import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { listed } from '../format/list.js';
-import { timeDecimals } from '../format/number.js';
+import { fixed, timeDecimals } from '../format/number.js';
 import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
@@ -285,6 +285,23 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     });
   }
 
+  /*
+    A window that selects nothing is a fact about the plan, so the plan is where it is raised.
+
+    It was pushed by `convert()` from the rows actually written, which meant `--info` never
+    said it: `--info --start 0.31 --end 0.39` on a 10 Hz recording printed "Would write 0
+    rows" with no warning and exited 0 under `--strict`, while converting the same window
+    warned and exited 1. The hint says "Run with --info to see where the records actually
+    sit" — advising the reader into the one mode that would not tell them.
+
+    The estimate's row count is exact, which `npm run estimate` checks across every fixture
+    crossed with every option set, so raising it from the plan says the same thing the rows
+    would have.
+  */
+  if (writeSignals && groups.length > 0 && estimate.rows === 0) {
+    diagnostics.push(emptyWindow(range, input.recordCount));
+  }
+
   if (estimate.exceedsSpreadsheetLimit) {
     diagnostics.push({
       code: 'LARGE_OUTPUT',
@@ -413,6 +430,42 @@ function widthOf(magnitude: number, decimals: number, signed = false): number {
   if (!Number.isFinite(size)) return sign + 1 + fraction;
   if (size < 1e21) return sign + size.toFixed(Math.min(decimals, 100)).length;
   return sign + (Math.floor(Math.log10(size)) + 1) + fraction;
+}
+
+/**
+ * Raised when the conversion had signal tables to fill and put no data rows in any of them.
+ *
+ * A window can land where there are no samples without being past the end of the recording:
+ * between the last sample and the nominal end of the last record, or — on a discontinuous
+ * file — inside a gap. `--start 2 --end 10` on a recording whose records sit at 0s, 1s and
+ * 10s asks for eight seconds that contain no data at all.
+ *
+ * What came out was a signals.csv holding its header and nothing else, exit 0, no warning,
+ * and `--strict` passing. The closing summary does say "signals.csv 0 rows" and --json
+ * carries `rows: 0`, so it was not quite invisible — but a header-only file is exactly what
+ * a successful extraction of an empty range looks like, and everywhere else that a request
+ * produces nothing this tool says so: a --channels term matching nothing is an error, and
+ * --annotations-only on a file with no events raises NO_ANNOTATIONS. A warning rather than
+ * an error because a batch of five hundred recordings should not stop for one whose gap
+ * happens to line up with the window; --strict turns it into a failure for those who want
+ * that.
+ */
+function emptyWindow(range: ResolvedRange, recordCount: number): Diagnostic {
+  const asked = !range.isWholeRecording;
+  return {
+    code: 'EMPTY_WINDOW',
+    severity: 'warning',
+    message: asked
+      ? `No samples fall inside the requested window (${fixed(range.startSeconds, 3)}s to ` +
+        `${fixed(range.endSeconds, 3)}s), so the signal files hold their headers and no data.`
+      : `This recording's ${recordCount} data records carry no samples in range, so the ` +
+        `signal files hold their headers and no data.`,
+    hint: asked
+      ? 'The window is inside the recording but lands where there is no data — past the ' +
+        'last sample, or inside a gap in a discontinuous file. Run with --info to see where ' +
+        'the records actually sit.'
+      : 'Run with --info to see what the header declares.',
+  };
 }
 
 function estimateOutput(
