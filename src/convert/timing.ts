@@ -6,6 +6,8 @@ export interface AnnotationTimingData {
   malformed: number;
   /** Unreadable TALs in first position, which carry timing rather than an event. */
   malformedTimekeeping?: number;
+  /** Events kept whose stated duration could not be read. */
+  unreadableDurations?: number;
 }
 
 /**
@@ -29,6 +31,34 @@ export function deriveRecordStarts(
         `${annotationData.malformed} annotation entr${annotationData.malformed === 1 ? 'y was' : 'ies were'} ` +
         `unreadable and could not be exported.`,
       hint: 'The rest were exported normally. The file may have been written by a non-conforming tool.',
+    });
+  }
+
+  /*
+    An event that was exported, minus a field.
+
+    `duration_s` is empty in annotations.csv when the file stated no duration, which is what
+    the documentation says an empty cell means. A duration the file did state and this could
+    not read produced exactly the same empty cell, so an event written with a duration of
+    `abc` was exported as an event that never had one — the same row as its neighbour, and
+    nothing said a field had been dropped.
+
+    Not counted among the entries that "could not be exported": this one was, and everything
+    else about it is intact. The count is of rows in annotations.csv, since a TAL may carry
+    several texts and each becomes a row with the same empty cell.
+  */
+  const unreadableDurations = annotationData.unreadableDurations ?? 0;
+  if (unreadableDurations > 0) {
+    const one = unreadableDurations === 1;
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${unreadableDurations} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration ` +
+        `that is not a number, so ${one ? 'its' : 'their'} duration_s cell is empty.`,
+      hint:
+        'The onset and the description were read normally. An empty duration_s otherwise ' +
+        'means the file stated no duration, so these rows cannot be told apart from those.',
     });
   }
 

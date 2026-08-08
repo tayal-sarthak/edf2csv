@@ -25,7 +25,14 @@ const DURATION_SEP_CHAR = String.fromCharCode(SEP_DURATION);
 export interface Annotation {
   /** Seconds from the start of the recording. */
   onset: number;
-  /** Seconds, or null when the TAL omitted a duration. */
+  /**
+   * Seconds, or null when the TAL stated no duration that could be read.
+   *
+   * Null covers two cases the file distinguishes and this field does not: a TAL that omitted
+   * the duration, and a TAL that stated one which is not a number. They are told apart by
+   * `unreadableDurations`, which is what raises the warning; the value itself has nowhere
+   * honest to put "the file said `abc`".
+   */
   duration: number | null;
   text: string;
   /** Index of the data record this annotation was stored in. */
@@ -40,6 +47,14 @@ export interface DecodedRecordAnnotations {
   malformed: number;
   /** Unreadable TALs in first position, which carry a record's start time, not an event. */
   malformedTimekeeping: number;
+  /**
+   * Events kept whose stated duration could not be read.
+   *
+   * Counted apart again, for the same reason the two above are: the entry was exported and
+   * nothing about it is missing except the one field, so calling it an entry that "could not
+   * be exported" describes a loss that did not happen and hides the one that did.
+   */
+  unreadableDurations: number;
 }
 
 /**
@@ -59,6 +74,7 @@ export function decodeRecordAnnotations(
   let isFirstTal = true;
   let malformed = 0;
   let malformedTimekeeping = 0;
+  let unreadableDurations = 0;
 
   let start = 0;
   for (let i = 0; i <= bytes.length; i++) {
@@ -90,6 +106,7 @@ export function decodeRecordAnnotations(
       if (parsed) {
         if (isTimekeeping) recordStart = parsed.onset;
         for (const annotation of parsed.annotations) annotations.push(annotation);
+        unreadableDurations += parsed.unreadableDurations;
       } else {
         /*
           Counted apart from the events, because losing one is a different loss.
@@ -108,12 +125,14 @@ export function decodeRecordAnnotations(
     start = i + 1;
   }
 
-  return { recordStart, annotations, malformed, malformedTimekeeping };
+  return { recordStart, annotations, malformed, malformedTimekeeping, unreadableDurations };
 }
 
 interface ParsedTal {
   onset: number;
   annotations: Annotation[];
+  /** How many of those annotations carry a duration the file stated and this could not read. */
+  unreadableDurations: number;
 }
 
 function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
@@ -136,10 +155,23 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   const onset = Number(onsetText);
   if (!Number.isFinite(onset)) return null;
 
+  /*
+    A duration the file stated and this could not read is not the same as no duration.
+
+    Both came out as `null` and so as an empty `duration_s` cell, which the documentation
+    defines as meaning the file gave no duration — so an event whose duration was written as
+    `abc` was exported as an event with no duration, indistinguishable from one beside it
+    that genuinely had none, and nothing anywhere said a field had been dropped. The onset is
+    already held to this standard: one that is not a number costs the whole TAL and is
+    reported. A duration is one field of an otherwise readable event, so the event is kept —
+    but it is counted, and the run says so.
+  */
   let duration: number | null = null;
+  let durationUnreadable = false;
   if (durationText !== null && durationText !== '') {
     const d = Number(durationText);
-    duration = Number.isFinite(d) ? d : null;
+    if (Number.isFinite(d)) duration = d;
+    else durationUnreadable = true;
   }
 
   const annotations: Annotation[] = [];
@@ -149,7 +181,9 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
     annotations.push({ onset, duration, text: raw, recordIndex });
   }
 
-  return { onset, annotations };
+  // Per event rather than per TAL: one TAL may carry several texts, and each becomes a row
+  // of annotations.csv with the same empty cell in it.
+  return { onset, annotations, unreadableDurations: durationUnreadable ? annotations.length : 0 };
 }
 
 export { SEP_TEXT, SEP_DURATION, TAL_END };

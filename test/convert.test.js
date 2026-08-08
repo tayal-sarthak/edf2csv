@@ -1233,6 +1233,59 @@ describe('converting', () => {
     assert.deepEqual(events, ['A0', 'B0', 'A1', 'B1', 'A2', 'B2']);
   });
 
+  it('says when a duration_s is empty because it could not be read', async () => {
+    /*
+      An empty duration_s is documented as meaning the file stated no duration. A duration
+      the file did state and the decoder could not read produced the same empty cell and no
+      warning, so the two rows below were byte-identical in annotations.csv and the run said
+      nothing about the field it had dropped.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-duration-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const recording = path.join(scratch, 'bad-duration.edf');
+    writeEdf({
+      path: recording,
+      reserved: 'EDF+C',
+      numRecords: 1,
+      recordDuration: 1,
+      talsForRecord: () =>
+        `+0${T}${T}${Z}+0.25${D}abc${T}stated${T}${Z}+0.5${T}absent${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 4, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(recording, { outputDir: dir });
+    const notice = result.diagnostics.find(
+      (d) => d.code === 'ANNOTATION_DECODE_FAILED' && /duration/u.test(d.message),
+    );
+    assert.ok(notice, JSON.stringify(result.diagnostics));
+    assert.match(notice.message, /1 annotation states a duration that is not a number/u);
+
+    // Both events survive; only the field was lost, which is what the warning says.
+    const rows = (await readCsv(dir, 'annotations.csv')).slice(1);
+    assert.deepEqual(
+      rows.map((row) => row.split(',').slice(0, 3)),
+      [['0.25', '', 'stated'], ['0.5', '', 'absent']],
+    );
+
+    // And a file whose durations are all readable or all absent stays quiet, or the warning
+    // would fire on every ordinary recording that has events.
+    const ordinary = await convert(fixture('annotations.edf'), { outputDir: await outDir() });
+    assert.ok(
+      !ordinary.diagnostics.some((d) => /duration that is not a number/u.test(d.message)),
+      JSON.stringify(ordinary.diagnostics),
+    );
+  });
+
   it('reads timekeeping from an annotation channel that has room for it', async () => {
     /*
       EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read

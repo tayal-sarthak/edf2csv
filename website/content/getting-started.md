@@ -106,7 +106,7 @@ onset_s,duration_s,description,record_index
 2,0.5,Seizure onset,2
 ```
 
-`onset_s` is on the same clock as `time_s` in the signal files. `duration_s` is empty for an event that has no stated duration. `record_index` is the data record the event was stored in.
+`onset_s` is on the same clock as `time_s` in the signal files. `duration_s` is empty for an event that has no stated duration, and also for one whose stated duration is not a number — the run warns when that happens. `record_index` is the data record the event was stored in.
 
 ### metadata.json
 

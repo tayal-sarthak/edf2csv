@@ -395,6 +395,48 @@ describe('EDF+ annotations', () => {
     assert.equal(lightsOff.duration, null, 'a missing duration is not the same as zero');
   });
 
+  it('counts a duration it could not read rather than passing it off as absent', async () => {
+    /*
+      Both came out as `duration: null` and so as the same empty `duration_s` cell, which the
+      documentation defines as meaning the file gave no duration. An event written with a
+      duration of `abc` was therefore exported as an event that never had one, sitting beside
+      a genuine one and indistinguishable from it, with nothing anywhere saying a field had
+      been dropped.
+
+      The event is still kept — the onset and the text are perfectly readable, and losing all
+      three over one bad field is the wrong trade — but it is counted, and the conversion
+      raises ANNOTATION_DECODE_FAILED for the count.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const bytes = (text) => new TextEncoder().encode(text);
+
+    const stated = decodeRecordAnnotations(
+      bytes(`+0${T}${T}${Z}+0.25${D}abc${T}bad${T}${Z}+0.5${T}absent${T}${Z}`),
+      0,
+    );
+    assert.equal(stated.unreadableDurations, 1, 'the unreadable one is counted');
+    assert.deepEqual(
+      stated.annotations.map((a) => [a.text, a.duration]),
+      [['bad', null], ['absent', null]],
+      'and both are still exported, since only the duration was unreadable',
+    );
+
+    // A TAL carrying several texts becomes several rows with the same empty cell, so the
+    // count is of rows rather than of TALs.
+    const many = decodeRecordAnnotations(bytes(`+1${D}x${T}one${T}two${T}three${T}${Z}`), 0);
+    assert.equal(many.annotations.length, 3);
+    assert.equal(many.unreadableDurations, 3);
+
+    // Nothing is counted when the file simply said nothing, which is the common case and
+    // must stay quiet.
+    const quiet = decodeRecordAnnotations(bytes(`+2${T}plain${T}${Z}+3${D}1.5${T}timed${T}${Z}`), 0);
+    assert.equal(quiet.unreadableDurations, 0);
+    assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
+  });
+
   it('recovers the true start time of every record in a discontinuous file', async () => {
     const file = await load('discontinuous.edf');
     const { recordStarts } = await file.readAnnotations();

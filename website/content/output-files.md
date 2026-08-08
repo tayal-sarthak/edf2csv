@@ -341,7 +341,7 @@ onset_s,duration_s,description,record_index
 | Column | Meaning |
 | --- | --- |
 | `onset_s` | Seconds from the start of the recording, on the same scale as `time_s` in the signals files, so the two join directly. |
-| `duration_s` | Length of the event in seconds, or empty when the event carries no duration. |
+| `duration_s` | Length of the event in seconds, or empty when the event carries no duration. Also empty when the file stated one that is not a number, which raises an `ANNOTATION_DECODE_FAILED` warning saying how many rows that happened to — the cell itself cannot tell the two apart. |
 | `description` | The annotation text, decoded as UTF-8 and copied verbatim. Quoted per the CSV rules when it contains a comma, a quote or a newline. |
 | `record_index` | The data record the annotation was stored in, counting from 0. Useful for tracing an event back to its position in the source file. |
 

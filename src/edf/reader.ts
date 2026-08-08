@@ -449,6 +449,8 @@ export class EdfFile {
     malformed: number;
     /** Unreadable TALs in first position, which carry timing rather than an event. */
     malformedTimekeeping: number;
+    /** Events kept whose stated duration could not be read; see Annotation.duration. */
+    unreadableDurations: number;
   }> {
     this.#assertOpen();
 
@@ -456,10 +458,11 @@ export class EdfFile {
     const recordStarts: (number | null)[] = new Array<number | null>(this.recordCount).fill(null);
     let malformed = 0;
     let malformedTimekeeping = 0;
+    let unreadableDurations = 0;
 
     const channels = this.annotationSignals;
     if (channels.length === 0) {
-      return { annotations, recordStarts, malformed, malformedTimekeeping };
+      return { annotations, recordStarts, malformed, malformedTimekeeping, unreadableDurations };
     }
 
     const { headerBytes, recordBytes, bytesPerSample } = this.header;
@@ -483,11 +486,12 @@ export class EdfFile {
         for (const annotation of decoded.annotations) annotations.push(annotation);
         malformed += decoded.malformed;
         malformedTimekeeping += decoded.malformedTimekeeping;
+        unreadableDurations += decoded.unreadableDurations;
       }
     }
 
     annotations.sort((a, b) => a.onset - b.onset || a.recordIndex - b.recordIndex);
-    return { annotations, recordStarts, malformed, malformedTimekeeping };
+    return { annotations, recordStarts, malformed, malformedTimekeeping, unreadableDurations };
   }
 
   async close(): Promise<void> {

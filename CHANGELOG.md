@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.55
+
+### Fixed: a duration that could not be read was exported as a duration nobody wrote
+
+`duration_s` is empty in annotations.csv when the event carries no duration, and the
+documentation says so on three pages. The decoder produced the same empty cell for a TAL that
+stated a duration which is not a number — `Number('abc')` is NaN, NaN became `null`, and
+`null` is what an absent duration is. So
+
+```
+onset_s,duration_s,description,record_index
+0.25,,duration-was-given,0
+0.5,,no-duration-given,0
+```
+
+two rows that the file distinguishes and the CSV does not, with nothing on stderr and no
+diagnostic in metadata.json. The onset is already held to a stricter standard: one that is
+not a number costs the whole TAL and raises ANNOTATION_DECODE_FAILED. A duration is one field
+of an otherwise perfectly readable event, so losing the event over it would be the wrong
+trade — but losing it in silence is not the alternative.
+
+Counted now, and reported: "1 annotation states a duration that is not a number, so its
+duration_s cell is empty", with a hint saying the onset and description were read normally
+and that these rows cannot be told apart from the ones whose file gave no duration. Counted
+per row rather than per TAL, since one TAL may carry several texts and each becomes a row
+with the same empty cell. A recording whose durations are all readable or all absent stays
+silent, which is nearly all of them.
+
 ## 0.5.54
 
 ### Fixed: a recording with no channels was told its channels carry no samples

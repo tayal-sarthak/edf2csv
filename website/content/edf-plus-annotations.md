@@ -325,8 +325,9 @@ window = signals[(signals.time_s >= event.onset_s) & (signals.time_s < end)]
 ```
 
 Because `time_s` carries the true recording time in both files, the comparison is
-valid across a gap. `duration_s` is `NaN` wherever the file gave no duration, which
-is why the check above is explicit rather than assuming zero.
+valid across a gap. `duration_s` is `NaN` wherever the file gave no duration — or gave
+one that is not a number, which the run warns about — which is why the check above is
+explicit rather than assuming zero.
 
 ## Programmatic access
 
