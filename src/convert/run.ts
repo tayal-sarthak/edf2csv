@@ -1074,7 +1074,40 @@ function compressed(
   */
   const toStdout = target === process.stdout;
   compressor.pipe(target, { end: !toStdout });
-  if (toStdout) return { stream: compressor, settled: Promise.resolve(), release };
+  if (toStdout) {
+    /*
+      Waited on, even though stdout is not ours to end.
+
+      This returned an already-resolved promise, so `await entry.settled` waited for nothing
+      and the conversion declared itself finished while the compressor still held the tail of
+      the stream. `--stdout --gzip` onto a destination that filled up therefore printed the
+      ENOSPC *and then* "Wrote 102,400 rows to stdout." — and exited 0, over a file 11,270
+      bytes short whose gzip member has no trailer and will not decompress. Through `--out`,
+      on the same volume with the same space, the identical failure is reported and exits 1.
+
+      The byte audit could not see it either: it stats the descriptor as soon as the writers
+      are done, which on this path is before the compressor has pushed its last chunks.
+
+      `finished(compressor)` is the source side, not the destination — it resolves when the
+      compressor has flushed everything into stdout, and it is stdout's own write that fails.
+      That keeps `end: !toStdout` exactly as it was: nothing here closes stdout.
+    */
+    const flushed = finished(compressor).catch((error: unknown) => {
+      /*
+        EPIPE is not a failure here, and turning it into one is the trap this nearly fell
+        into: `--stdout --gzip | head` is an ordinary thing to type, and the documented
+        answer to it is "Stopped: the reader closed the pipe after 52,507 of 102,400 rows
+        had been written", exit 0. Waiting on the compressor surfaced the EPIPE that the
+        uncompressed path already routes through the writer's hang-up flag — the writer
+        sees the same error, forwarded, and records it — so the wait has to let that one
+        through and keep everything else.
+      */
+      if ((error as NodeJS.ErrnoException | null)?.code === 'EPIPE') return;
+      throw error;
+    });
+    flushed.catch(() => {});
+    return { stream: compressor, settled: flushed, release };
+  }
 
   /*
     A failure under the compressor rejects both this promise and the writer's own end(),

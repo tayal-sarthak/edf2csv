@@ -254,4 +254,60 @@ describe('--stdout onto a destination that fills up', () => {
       assert.equal(Number(stdout.trim()), 102_401, 'header plus every data row');
     });
   });
+
+  it('does not report a compressed stream as written when it did not fit', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    /*
+      The compressed output is 470,022 bytes and this leaves about 456 KB free, so the last
+      chunks have nowhere to go.
+
+      `compressed()` returned an already-resolved `settled` for the stdout path, so the
+      conversion declared itself finished while the compressor still held the tail. The run
+      printed the ENOSPC and then "Wrote 102,400 rows to stdout." on the next line, and
+      exited 0 — over a file 11,270 bytes short whose gzip member has no trailer and will not
+      decompress. Through `--out`, on the same volume with the same space, the identical
+      failure exits 1. The byte audit could not see it either: it stats the descriptor as
+      soon as the writers are done, which here is before the compressor has flushed.
+    */
+    await withSmallVolume(async (VOLUME) => {
+      await run('/bin/sh', [
+        '-c', `dd if=/dev/zero of="${path.join(VOLUME, 'filler')}" bs=1024 count=1415 2>/dev/null`,
+      ]);
+      const destination = path.join(VOLUME, 'short.csv.gz');
+      const result = await toFile([fixture('long-stream.edf'), '--stdout', '--gzip'], destination);
+
+      assert.notEqual(result.code, 0, `a truncated stream reported success:\n${result.stderr}`);
+      assert.match(result.stderr, /no space left on device|did not reach the destination/u, result.stderr);
+      assert.doesNotMatch(result.stderr, /Wrote [\d,]+ rows to stdout/u,
+        `a failed run announced its rows:\n${result.stderr}`);
+    });
+  });
+
+  it('still treats a reader that hangs up as the ordinary thing it is', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    /*
+      Waiting for the compressor is what makes the case above reportable, and it must not
+      turn `--stdout --gzip | head` into a failure: a reader closing the pipe is documented
+      as not one, and the answer to it is "Stopped: the reader closed the pipe after N of M
+      rows had been written", exit 0. Waiting surfaced that EPIPE as an error until it was
+      filtered — the same error the writer already records as a hang-up.
+
+      No volume needed, but it belongs beside the case it guards.
+    */
+    const { stderr, code } = await run('/bin/sh', [
+      '-c', `"${process.execPath}" "${CLI}" "${fixture('long-stream.edf')}" --stdout --gzip | head -c 100 > /dev/null`,
+    ]).then((r) => ({ ...r, code: 0 })).catch((e) => ({ stderr: e.stderr ?? '', code: e.code ?? 1 }));
+
+    assert.equal(code, 0, stderr);
+    assert.match(stderr, /Stopped: the reader closed the pipe after/u, stderr);
+    assert.doesNotMatch(stderr, /^error:/mu, `a hang-up was reported as a failure:\n${stderr}`);
+  });
 });

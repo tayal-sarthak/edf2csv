@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.82
+
+### Fixed: `--stdout --gzip` onto a full destination announced every row and exited 0
+
+```
+$ edf2csv rec.edf --stdout --gzip > /Volumes/small/out.csv.gz
+error: Writing to stdout failed: ENOSPC: no space left on device, write
+Wrote 102,400 rows to stdout.
+$ echo $?
+0
+```
+
+Two lines that cannot both be true, and the exit code agreed with the wrong one. The file was
+11,270 bytes short of the 470,022 the stream needs, its gzip member had no trailer, and
+`gzip -dc` refused it. Through `--out`, on the same volume with the same free space, the
+identical failure is reported and exits 1.
+
+`compressed()` returned an already-resolved `settled` for the stdout path, so `await
+entry.settled` waited for nothing: the conversion declared itself finished while the
+compressor still held the tail, and the ENOSPC arrived afterwards, too late to be anything
+but a line on stderr. The byte audit could not catch it either — it stats the descriptor as
+soon as the writers are done, which on this path is before the compressor has flushed.
+
+It waits on `finished(compressor)` now. That is the source side, so `end: !toStdout` is
+untouched and nothing here closes stdout; what it waits for is the compressor pushing its last
+chunks into a write that fails.
+
+One thing the wait must not do is turn `--stdout --gzip | head` into a failure. A reader
+closing the pipe is documented as ordinary and answers with "Stopped: the reader closed the
+pipe after 52,507 of 102,400 rows had been written", exit 0 — and waiting surfaced that EPIPE
+as an error until it was filtered out, which the first attempt at this fix did. It is the same
+error the writer already records as a hang-up. Both cases are tested on the disk image now: the
+one that must fail, and the one that must not.
+
 ## 0.5.81
 
 ### Fixed: the listener leak 0.5.36 fixed, still there one flag away
