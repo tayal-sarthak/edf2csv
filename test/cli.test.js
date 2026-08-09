@@ -3329,11 +3329,20 @@ describe('--stdout', () => {
     temporaries.push(dir);
     await writeFile(path.join(dir, 'only.edf'), await readFile(fixture('tiny.edf')));
 
+    /*
+      Every `--stdout` refusal, not the ones that came to mind. This test was written in
+      0.5.79 and did not enumerate `--stdout --out` or `--stdout --checksum`, which were
+      still printing flush left with no prefix — the very shape it exists to hold.
+    */
     const refusals = [
       [fixture('tiny.edf'), '--stdout', '--json'],
       [fixture('tiny.edf'), fixture('annotations.edf'), '--stdout'],
       [dir, '--stdout'],
       [fixture('tiny.edf'), '--stdout', '--annotations-only'],
+      [fixture('tiny.edf'), '--stdout', '--out', path.join(dir, 'x')],
+      [fixture('tiny.edf'), '--stdout', '--checksum'],
+      [fixture('tiny.edf'), '--stdout', '--force'],
+      [fixture('mixed-rates.edf'), '--stdout'],
       [fixture('tiny.edf'), '--duration', '1', '--end', '2'],
       [fixture('tiny.edf'), '--layout', 'sideways'],
     ];
@@ -3351,6 +3360,16 @@ describe('--stdout', () => {
     // And the count in the one that has one agrees with itself.
     const two = await cli([fixture('tiny.edf'), fixture('annotations.edf'), '--stdout']);
     assert.match(two.stderr, /cannot take 2 recordings/u, two.stderr);
+
+    /*
+      `--force` was accepted and dropped in silence until 0.5.100 — the thing 0.5.5 refused
+      `--out` and `--checksum` for. `--jobs` stays accepted on purpose: a job count is a
+      property of the run rather than a request about this file's output, and a wrapper that
+      passes `--jobs 4` to everything is not asking for something `--stdout` cannot do.
+    */
+    const withJobs = await cli([fixture('tiny.edf'), '--stdout', '--jobs', '4']);
+    assert.equal(withJobs.code, 0, withJobs.stderr);
+    assert.match(withJobs.stdout, /^time_s,/u, 'the CSV still goes to stdout');
   });
 
   it('refuses --annotations-only, which has no signal data to stream', async () => {

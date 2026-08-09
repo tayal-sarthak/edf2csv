@@ -654,7 +654,7 @@ flush left with no prefix until 0.5.79.
 
 With `--info` they combine: `--info` writes no CSV for the summary to collide with, and under `--json` the description *is* the JSON — so `edf2csv rec.edf --info --stdout --json` is how a script asks whether `--stdout` would work on a recording. It answers with a `STDOUT_UNSUPPORTED` warning when it would not.
 
-So are `--stdout --out` and `--stdout --checksum` (exit 2 since 0.5.5). Both were accepted and
+So are `--stdout --out`, `--stdout --checksum` (exit 2 since 0.5.5) and `--stdout --force` (since 0.5.100): `--force` means "write into a directory that already exists", and there is no directory. `--jobs` is not refused — a job count is a property of the run rather than a request about this file's output, and `--stdout` converts one recording whatever it is set to. Both were accepted and
 dropped in silence before that. `--out` named a directory that was never created, so a run that
 wrote nowhere looked like it had written somewhere; `--checksum` computed a SHA-256 of the input —
 a second full pass over the file, before the first record is read — and then discarded it, since

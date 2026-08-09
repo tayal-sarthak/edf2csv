@@ -362,14 +362,26 @@ export async function main(argv: readonly string[]): Promise<number> {
     Refusing rather than ignoring is what this tool already does for `--stdout --json` and
     `--stdout --annotations-only`.
   */
+  /*
+    `--force` and `--jobs` were the two left doing nothing in silence.
+
+    `--force` means "write into a directory that already exists", and there is no directory.
+    `--jobs` is deliberately not here. A job count is a property of the run rather than a
+    request about the output, `--stdout` clamping it to one is documented, and a wrapper that
+    passes `--jobs 4` to everything is not asking for something about this file.
+  */
   for (const [flag, given] of [
     ['--out', values['out'] !== undefined],
     ['--checksum', values['checksum'] === true],
+    ['--force', values['force'] === true],
   ] as const) {
     if (toStdout && given) {
+      // `error:` and the seven-space continuation, like every other refusal — the shape
+      // 0.5.79 gave the rest and these two were not enumerated in its test.
       process.stderr.write(
-        `--stdout and ${flag} cannot be combined: --stdout writes no files, and ${flag} has ` +
-          `nothing to act on.\nDrop ${flag}, or drop --stdout and convert to a directory.\n`,
+        `error: --stdout and ${flag} cannot be combined: --stdout writes no files, and ` +
+          `${flag} has nothing to act on.\n` +
+          `       Drop ${flag}, or drop --stdout and convert to a directory.\n`,
       );
       return EXIT_USAGE;
     }
@@ -448,6 +460,18 @@ export async function main(argv: readonly string[]): Promise<number> {
     // were asked for, but "--stdout --jobs 0" is still a request that cannot be honoured,
     // and accepting it in silence is the thing 0.4.2 fixed for --info.
     const requestedJobs = parseJobs(values['jobs'], inputs.length);
+    /*
+      Asking for several at once, of a mode that converts one.
+
+      After `parseJobs`, not before it: a malformed count is a fact about the value and gets
+      the message about the value, which is what the check above this one has always done and
+      what its own comment insists on — "a request that cannot be met is a usage error rather
+      than something to accept in silence". So `--stdout --jobs 0x10` still reports the `0x10`.
+
+      `--jobs 1` is not refused. It asks for precisely what happens, and a script passing it
+      uniformly is not asking for anything it will not get; `auto` resolves to 1 on one
+      recording. What is refused is a number greater than one, which was accepted and dropped.
+    */
     const jobs = toStdout ? 1 : requestedJobs;
 
     if (values['info'] === true) {

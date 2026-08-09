@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.100
+
+### Fixed: `--stdout --force` was accepted and did nothing
+
+`--force` means "write into an output directory that already exists". Under `--stdout` there is
+no directory, so it was accepted and dropped — which is exactly what 0.5.5 refused `--out` and
+`--checksum` for, on the reasoning its own entry gives: "Both were accepted and dropped in
+silence before that." `--force` was the third of the same kind and was left behind.
+
+Refused now, with the same sentence the other two get.
+
+`--jobs` is deliberately not refused. A job count is a property of the run rather than a request
+about this file's output, `--stdout` clamping it to one is documented, and a wrapper that passes
+`--jobs 4` to everything is not asking for something about this recording. I had it refusing
+that too and backed it out: an existing test accepts `--jobs 4` under `--stdout` on purpose, and
+reversing a deliberate decision is not what this change is for.
+
+### Fixed: those two refusals were still printing in the shape 0.5.79 replaced
+
+`--stdout --out` and `--stdout --checksum` printed flush left with no `error:` prefix and no
+indented continuation. 0.5.79 gave every other refusal that shape so stderr can be grepped for
+`^error:` — and its test listed the refusals it happened to think of, which did not include
+these two. It enumerates every `--stdout` refusal now, which is how this was found.
+
 ## 0.5.99
 
 ### Fixed: "Anything the tool noticed is printed after the table" — followed by one of the two
