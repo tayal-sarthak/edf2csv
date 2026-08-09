@@ -764,6 +764,55 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('names channels the example recording actually has', async () => {
+    /*
+      `edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"` appears on four pages, and that
+      recording has no ECG — the `--info` table on the same page as the first one lists its
+      five channels and none of them is it. Every one of those commands exits 2 with "No
+      channel named "ECG"". getting-started's is the worst placed: it is the page's one
+      example of combining a window, a filter and a destination.
+
+      api.md's JS examples have been run against a fixture since 0.4.x. The shell examples
+      were not checked at all, and this is the part of them that can be checked without a
+      shell: a channel named for this recording either exists in it or does not.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-channels-'));
+    let labels;
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const api = await import(path.join(ROOT, 'dist/index.js'));
+      const file = await api.EdfFile.open(writeSleepStudy(path.join(work, 'sleep-study.edf')));
+      labels = new Set(file.dataSignals.map((signal) => signal.label.toLowerCase()));
+      await file.close();
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.ok(labels.size >= 4, `expected the recording's channels, got ${[...labels]}`);
+
+    const pages = (await readdir(path.join(ROOT, 'website/content'))).filter((n) => n.endsWith('.md'));
+    let checked = 0;
+    for (const page of [...pages.map((n) => `website/content/${n}`), 'README.md']) {
+      // Shell continuations first: getting-started's example wraps with a trailing `\`, and
+      // its --channels sits on the second line — which is the one this failed to read at all
+      // on the first attempt, so the check passed over the very command that prompted it.
+      const text = (await read(page)).replace(/\\\n\s*/gu, ' ');
+      for (const [line] of text.matchAll(/^edf2csv [^\n]*sleep-study\.edf[^\n]*$/gmu)) {
+        const named = /--channels "([^"]+)"/u.exec(line) ?? /--channels ([^\s]+)/u.exec(line);
+        if (!named) continue;
+        for (const term of named[1].split(',').map((t) => t.trim())) {
+          // `#N` addresses a position rather than a label, and is checked by its own tests.
+          if (term.startsWith('#')) continue;
+          checked++;
+          assert.ok(
+            labels.has(term.toLowerCase()),
+            `${page}: "${term}" is not a channel of sleep-study.edf (${[...labels].join(', ')})`,
+          );
+        }
+      }
+    }
+    assert.ok(checked >= 4, `expected several channel examples to check, found ${checked}`);
+  });
+
   it('shows the line --info --annotations-only actually prints', async () => {
     /*
       The reference said, of the estimate, "With `--annotations-only` ... the estimate is 0

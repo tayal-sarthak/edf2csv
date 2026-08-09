@@ -63,7 +63,7 @@ Trimming them would cost resolution.
 If the size is a problem, convert a smaller part of the recording rather than reducing precision:
 
 ```bash
-edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG" --start 1h --duration 20m
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,EOG horizontal" --start 1h --duration 20m
 ```
 
 Run `--info` first to see the row count and approximate byte size before writing anything.
@@ -161,7 +161,7 @@ label out of the `LABEL` column exactly as printed. Labels with spaces need quot
 
 ```bash
 edf2csv sleep-study.edf --info
-edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,EOG horizontal"
 ```
 
 If the label is awkward, or two channels share it, address the channel by its position

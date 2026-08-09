@@ -176,7 +176,7 @@ Combine a window with a channel filter and a destination:
 
 ```bash
 edf2csv sleep-study.edf --start 1h --duration 5m \
-  --channels "EEG Fpz-Cz,ECG" --out ./epoch-42
+  --channels "EEG Fpz-Cz,EOG horizontal" --out ./epoch-42
 ```
 
 Channel names must match the `LABEL` column from `--info`, though matching is case-insensitive. A name that matches nothing is an error rather than a silent omission. When two channels share a label, address one by position with `#N`, for example `--channels "#0"`.

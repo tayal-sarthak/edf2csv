@@ -579,9 +579,9 @@ warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
 **It describes the conversion, not the file.** `--channels` is taken into account, because the warning exists to explain why the output was split. Narrowing a three-rate recording to one channel writes one file and raises nothing; narrowing it to two rates reports two, not three.
 
 ```bash
-edf2csv sleep-study.edf --channels ECG          # one file, no warning
-edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"
-#   warning: Channels use 2 different sampling rates (256 Hz, 128 Hz).
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz"   # one file, no warning
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,Temp rectal"
+#   warning: Channels use 2 different sampling rates (100 Hz, 1 Hz).
 ```
 
 `parseHeader` is the exception, and deliberately: it reports what the header says, having no conversion to describe.

@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.89
+
+### Fixed: the getting-started example asked for a channel the recording does not have
+
+```bash
+edf2csv sleep-study.edf --start 1h --duration 5m \
+  --channels "EEG Fpz-Cz,ECG" --out ./epoch-42
+```
+
+exits 2 with `No channel named "ECG"`. The `--info` table forty lines up the same page lists
+that recording's five channels — EEG Fpz-Cz, EEG Pz-Oz, EOG horizontal, Resp oro-nasal, Temp
+rectal — and none of them is ECG. It is the page's one example of combining a window, a filter
+and a destination, and it is the third command a new reader runs.
+
+The same pair appears on four pages: getting-started, recipes, and faq twice. The fifth is in
+warnings-and-errors, demonstrating the mixed-rate warning, where the quoted rates were wrong for
+this recording too — "2 different sampling rates (256 Hz, 128 Hz)" against a file whose channels
+run at 100, 10 and 1 Hz. That one now pairs `EEG Fpz-Cz` with `Temp rectal` and quotes 100 Hz
+and 1 Hz, which is what the file gives.
+
+api.md's JavaScript examples have been executed against a fixture for a long time. The shell
+examples were checked by nobody, and this is the part of them a test can check without a shell:
+a channel named for this recording either exists in it or does not. It reads every page and the
+README, and it took two attempts — the first missed getting-started's command entirely, because
+that one wraps with a trailing backslash and its `--channels` is on the second line. It joins
+continuations first now.
+
 ## 0.5.88
 
 ### Fixed: a worker killed from outside made the batch exit 2, "the command line is the problem"

@@ -167,7 +167,7 @@ edf2csv sleep-study.edf --info 2>&1 >/dev/null | grep '^warning:'
 If the estimate is larger than you want, narrow the conversion rather than converting and then deleting. Any combination of these works:
 
 ```bash
-edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG" --info
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,EOG horizontal" --info
 edf2csv sleep-study.edf --start 1h --duration 20m --info
 edf2csv sleep-study.edf --decimals 2 --info
 ```
