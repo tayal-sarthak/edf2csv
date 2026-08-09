@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
+import { counted } from '../format/list.js';
 
 export interface AnnotationTimingData {
   recordStarts: (number | null)[];
@@ -157,16 +158,31 @@ export function deriveRecordStarts(
         typeof declared === 'number' && Math.abs(declared - (contiguous[i] as number)) > tolerance,
     ).length;
     if (contradicting > 0) {
+      const continuous = file.header.isBdf ? 'BDF+C' : 'EDF+C';
+      const discontinuous = file.header.isBdf ? 'BDF+D' : 'EDF+D';
       diagnostics.push({
         code: 'DISCONTINUOUS',
         severity: 'warning',
+        /*
+          The markers as the file spells them.
+
+          `continuity` normalises `BDF+C` to the internal `EDF+C` tag, and that tag reached
+          the message: a BDF+ recording was told it is "marked continuous (EDF+C)" — a string
+          it does not contain — and advised that it "should have been marked EDF+D", which is
+          not a value BDF+ defines. A reader grepping the header for either finds nothing.
+
+          The sibling discontinuous warning has done this since 0.3.x: `${'$'}{isBdf ? 'BDF+D' :
+          'EDF+D'}`. Same code, same header field, and the continuous branch never got it.
+        */
         message:
-          `This file is marked continuous (EDF+C), but ${contradicting} of its ` +
-          `${file.recordCount} data records say they start somewhere other than where ` +
-          `continuity puts them.`,
+          `This file is marked continuous (${continuous}), but ${contradicting} of its ` +
+          `${counted(file.recordCount, 'data record')} ` +
+          `${contradicting === 1 ? 'says it starts' : 'say they start'} somewhere other than ` +
+          `where continuity puts ${contradicting === 1 ? 'it' : 'them'}.`,
         hint:
-          'Times are written as if the records were contiguous, which is what EDF+C means. ' +
-          'If the recording really has gaps, the file should have been marked EDF+D.',
+          `Times are written as if the records were contiguous, which is what ${continuous} ` +
+          `means. If the recording really has gaps, the file should have been marked ` +
+          `${discontinuous}.`,
       });
     }
     const first = origin;

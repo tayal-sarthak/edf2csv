@@ -448,6 +448,8 @@ Rows are written in file order, not sorted by time, so `time_s` will step backwa
 ```
 warning: This file is marked continuous (EDF+C), but 2 of its 3 data records say they start
          somewhere other than where continuity puts them.
+
+A BDF+ file gets its own spelling — `BDF+C` and `BDF+D` — the same as the discontinuous entry above. Until 0.5.105 this half of the code printed the EDF markers whatever the format, so a BDF+ recording was told about a string it does not contain and pointed at a marker BDF+ does not define.
          Times are written as if the records were contiguous, which is what EDF+C means.
          If the recording really has gaps, the file should have been marked EDF+D.
 ```

@@ -138,6 +138,47 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('spells the continuity markers the way the file spells them', async () => {
+    /*
+      `continuity` normalises `BDF+C` to the internal `EDF+C` tag, and that tag reached the
+      message: a BDF+ recording was told it is "marked continuous (EDF+C)" — a string the file
+      does not contain — and advised it "should have been marked EDF+D", which is not a value
+      BDF+ defines. A reader grepping the header for either finds nothing.
+
+      The sibling discontinuous warning has substituted the BDF spelling since 0.3.x. Same
+      code, same header field, and the continuous branch never got it.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-bdfc-'));
+    temporaries.push(scratch);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(scratch, 'contradicts.bdf');
+    writeEdf({
+      path: recording, bdf: true, reserved: 'BDF+C', numRecords: 3, recordDuration: 1,
+      talsForRecord: (r) => buildTal([1, 6, 11][r]),
+      signals: [
+        { label: 'A1', dimension: 'uV', physMin: -262144, physMax: 262144, digMin: -8388608,
+          digMax: 8388607, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'BDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -8388608,
+          digMax: 8388607, samplesPerRecord: 16, annotations: true },
+      ],
+    });
+
+    const bdf = await convert(recording, { outputDir: await outDir() });
+    const said = bdf.diagnostics.find((d) => /marked continuous/u.test(d.message));
+    assert.ok(said, JSON.stringify(bdf.diagnostics));
+    assert.match(said.message, /marked continuous \(BDF\+C\)/u, said.message);
+    assert.match(said.hint, /should have been marked BDF\+D/u, said.hint);
+    // Neither EDF marker may appear, since neither is in the file.
+    assert.doesNotMatch(`${said.message} ${said.hint}`, /EDF\+[CD]/u, said.message);
+
+    // An EDF file keeps the EDF spelling, and the count agrees with its verb.
+    const edf = await convert(fixture('continuous-liar.edf'), { outputDir: await outDir() });
+    const other = edf.diagnostics.find((d) => /marked continuous/u.test(d.message));
+    assert.ok(other, JSON.stringify(edf.diagnostics));
+    assert.match(other.message, /marked continuous \(EDF\+C\)/u, other.message);
+    assert.match(other.message, /1 of its 3 data records says it starts/u, other.message);
+  });
+
   it('says when the annotations and the samples are on different clocks', async () => {
     /*
       The reserved field decides whether the origin is applied; the annotation channel is

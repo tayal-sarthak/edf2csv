@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.105
+
+### Fixed: a BDF+ recording was told it is "marked continuous (EDF+C)"
+
+```
+warning: This file is marked continuous (EDF+C), but 2 of its 3 data records say they start
+         somewhere other than where continuity puts them.
+         Times are written as if the records were contiguous, which is what EDF+C means. If
+         the recording really has gaps, the file should have been marked EDF+D.
+```
+
+on a file whose reserved field reads `BDF+C`. Neither `EDF+C` nor `EDF+D` appears anywhere in
+it, so a reader who greps the header for what the warning names finds nothing — and `EDF+D` is
+not a value BDF+ defines, so the remedy is for the wrong format. `continuity` normalises the
+BDF markers to the internal `EDF+` tags, and this message printed the tag.
+
+The sibling discontinuous warning has substituted the BDF spelling since 0.3.x, in the same
+file, from the same header field. The continuous branch never got it.
+
+It reads `BDF+C` and `BDF+D` for a BDF+ file now, and the test refuses either EDF marker
+anywhere in the message or its hint. An EDF file is unchanged.
+
+The same sentence counted with a hard-coded plural: "1 of its 3 data records say they start
+... where continuity puts them". It says "says it starts ... puts it" at one.
+
 ## 0.5.104
 
 ### Fixed: signals.csv and annotations.csv came out a thousand seconds apart, in silence
