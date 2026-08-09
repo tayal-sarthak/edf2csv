@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.102
+
+### Fixed: NONPRINTABLE_LABEL checked two of the four free-text fields
+
+A channel header carries four pieces of free text: label, physical dimension, transducer and
+prefiltering. The warning checked the first two. `transducer` and `prefiltering` land in
+`channels.csv` exactly as the unit does, so
+
+```
+EEG,0,EEG,uV,2,2,-1,1,-1,1,AgAgCl<ESC>[2J,,signals.csv,yes
+```
+
+reached the CSV with nothing said, and `cat channels.csv` would clear the terminal. That is the
+hazard this warning exists for, two columns over.
+
+All four are checked now, and the message names which of them — which 0.5.71 taught it to do
+for the first two, since what it costs differs: a label becomes the column name in
+`signals.csv`, the other three are cells of `channels.csv`. When one field carries them it names
+the cell rather than the file, because `channels.csv` has fourteen columns and "somewhere in
+this file" is not an answer.
+
 ## 0.5.101
 
 ### Fixed: a header with no readable timestamp raised nothing

@@ -79,7 +79,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
-| `NONPRINTABLE_LABEL` | A channel's label or unit contains control characters; the warning says which |
+| `NONPRINTABLE_LABEL` | A channel's label, unit, transducer or prefiltering contains control characters; the warning says which |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
@@ -690,7 +690,7 @@ It is a warning rather than an error because a batch of five hundred recordings 
 
 ### NONPRINTABLE_LABEL
 
-A channel's label or unit contains control characters. The warning names which of the two, because what it costs is not the same: a label becomes the column name in `signals.csv`, while a unit is a cell of `channels.csv` and nothing else.
+One of a channel's four free-text header fields — label, unit, transducer or prefiltering — contains control characters. The warning names which, because what it costs is not the same: a label becomes the column name in `signals.csv`, while the other three are cells of `channels.csv` and nothing else.
 
 **Cause.** A writer that copied a field out of another system without sanitising it, a header edited by a script, or a corrupt file whose label bytes are not text at all. EDF fields are free text and nothing enforces that they are printable.
 
@@ -701,7 +701,7 @@ warning: Signal 0's label and unit contain 2 control characters (\x1b), which wi
          the name cannot be typed. Printing the CSV to a terminal may do more than print it.
 ```
 
-When only the unit carries them, the column name is untouched and the channel can still be selected by name, and the warning says so instead:
+When only a cell field carries them, the column name is untouched and the channel can still be selected by name, and the warning says so instead — naming the cell, since `channels.csv` has fourteen columns:
 
 ```
 warning: Signal 0's unit contains 1 control character (\x07), which will appear in
@@ -711,6 +711,8 @@ warning: Signal 0's unit contains 1 control character (\x07), which will appear 
 ```
 
 **What edf2csv does.** Passes the label through exactly as the header has it. Losing what the file says is not an improvement, and CSV quoting keeps the row parseable whatever the bytes are — the warning exists so that you know, not because anything is rewritten. `--info` is the exception: it escapes them for display, since an ANSI escape in a header could otherwise drive your terminal. The same goes for paths, which the filesystem supplies and nobody vets — a directory named with an ESC byte, or a file name holding a newline, is escaped everywhere edf2csv prints it, so a summary line stays one line and stays inert.
+
+Until 0.5.102 only the label and the unit were checked. `transducer` and `prefiltering` are header text of exactly the same kind and land in `channels.csv` exactly as the unit does, so an ESC byte in a transducer reached the CSV with nothing said, and `cat channels.csv` would drive the terminal — the hazard this warning exists for, two columns over.
 
 **What to do.** When the label is affected, address the channel by position (`--channels "#0"`) rather than by name. Be careful about printing the CSV to a terminal — `\x1b[2J` clears the screen, so `cat signals.csv` can hide the rest of your session's output. `head`, `less -R` off, or opening the file in an editor are all safe. A tab (`\x09`) is harmless to a terminal but still makes a column name that is hard to match reliably in a script.
 

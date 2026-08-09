@@ -396,31 +396,59 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         the file that raised it, on a warning whose whole purpose is to say where an invisible
         byte went.
       */
-      const inLabel = [...label].filter(isControlCharacter);
-      const inUnit = [...physicalDimension].filter(isControlCharacter);
-      const control = [...inLabel, ...inUnit];
+      /*
+        All four free-text fields, not the two that were checked.
+
+        `transducer` and `prefiltering` are free text out of the header exactly as the label
+        and the unit are, and they land in channels.csv exactly as the unit does — so an ESC
+        byte in a transducer field reached the CSV raw with nothing said, and `cat
+        channels.csv` would drive the terminal. That is the hazard this warning exists for,
+        two columns over. 0.5.71 made it name which field carries them; this is the rest of
+        the fields it can name.
+      */
+      const fields = [
+        ['label', label],
+        ['unit', physicalDimension],
+        ['transducer', transducer],
+        ['prefiltering', prefiltering],
+      ] as const;
+      const affected = fields.filter(([, text]) => [...text].some(isControlCharacter));
+      const control = affected.flatMap(([, text]) => [...text].filter(isControlCharacter));
       if (control.length > 0) {
         const shown = [...new Set(control)]
           .map((c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`)
           .join(', ');
         const plural = control.length === 1 ? '' : 's';
-        const both = inLabel.length > 0 && inUnit.length > 0;
-        const field = both ? 'label and unit contain' : inLabel.length > 0 ? 'label contains' : 'unit contains';
+        const inLabel = affected.some(([name]) => name === 'label');
+        // "label and unit", not "label, unit" — `listed` is for long enumerations that get
+        // truncated, and this is a sentence with at most four items in it.
+        const names = affected.map(([name]) => name);
+        const named =
+          names.length === 1
+            ? (names[0] as string)
+            : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] as string}`;
         // Where they land, which is the question the reader has. A label becomes a column
-        // name in signals.csv; a unit is a cell of channels.csv and nothing else.
-        const lands = both
-          ? 'which will appear in the CSV column name and in channels.csv\'s unit cell'
-          : inLabel.length > 0
-            ? 'which will appear in the CSV column name'
-            : 'which will appear in channels.csv\'s unit cell';
+        // name in signals.csv; the other three are cells of channels.csv and nothing else.
+        // Named down to the cell when there is one of them, because that is the answer to
+        // "where did it go" — `channels.csv` alone leaves a reader scanning fourteen columns.
+        const cells = affected.filter(([name]) => name !== 'label').map(([name]) => name);
+        const where =
+          cells.length === 1 ? `channels.csv's ${cells[0] as string} cell` : 'channels.csv';
+        const lands =
+          inLabel && cells.length > 0
+            ? `which will appear in the CSV column name and in ${where}`
+            : inLabel
+              ? 'which will appear in the CSV column name'
+              : `which will appear in ${where}`;
         diagnostics.push({
           code: 'NONPRINTABLE_LABEL',
           severity: 'warning',
           message:
-            `Signal ${i}'s ${field} ${control.length} control character${plural} ` +
-            `(${shown}), ${lands} exactly as the header has them.`,
+            `Signal ${i}'s ${named} ${affected.length === 1 ? 'contains' : 'contain'} ` +
+            `${control.length} control character${plural} (${shown}), ${lands} exactly as the ` +
+            `header has them.`,
           hint:
-            (inLabel.length > 0
+            (inLabel
               ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
                 'since the name cannot be typed. '
               : `The column name is unaffected, so --channels "${label}" still selects it. `) +

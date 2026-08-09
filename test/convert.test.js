@@ -425,6 +425,32 @@ describe('column naming', () => {
     const raised = result.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
     assert.equal(raised.length, 1, JSON.stringify(result.diagnostics));
     assert.match(raised[0].message, /Signal 0's unit contains 1 control character/u, raised[0].message);
+
+    /*
+      And the other two free-text fields, which were not checked at all. `transducer` and
+      `prefiltering` are header text exactly as the label and the unit are, and they land in
+      channels.csv exactly as the unit does — so an ESC byte in a transducer reached the CSV
+      raw with nothing said, and `cat channels.csv` would drive the terminal. That is the
+      hazard this warning exists for, two columns over.
+    */
+    const withTransducer = path.join(scratch, 'transducer.edf');
+    writeEdf({
+      path: withTransducer, numRecords: 2, recordDuration: 1,
+      signals: [{
+        label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+        digMax: 1000, samplesPerRecord: 4, transducer: `AgAgCl${String.fromCharCode(27)}[2J`,
+        gen: () => 0,
+      }],
+    });
+    const other = await outDir();
+    const transducer = await convert(withTransducer, { outputDir: other });
+    const flagged = transducer.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+    assert.equal(flagged.length, 1, JSON.stringify(transducer.diagnostics));
+    assert.match(flagged[0].message, /Signal 0's transducer contains/u, flagged[0].message);
+    assert.doesNotMatch(flagged[0].hint, /cannot be typed/u, flagged[0].hint);
+    // The byte really is in the file it names.
+    const row = (await readCsv(other, 'channels.csv'))[1];
+    assert.ok(row.includes(String.fromCharCode(27)), row);
     assert.match(raised[0].message, /channels\.csv's unit cell/u, raised[0].message);
     assert.doesNotMatch(raised[0].hint, /cannot be typed/u, raised[0].hint);
 
