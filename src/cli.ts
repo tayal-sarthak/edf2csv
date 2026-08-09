@@ -1423,7 +1423,22 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
  * exactly what it always was.
  */
 function worstOf(codes: readonly number[]): number {
-  return codes.includes(EXIT_ERROR) ? EXIT_ERROR : EXIT_USAGE;
+  /*
+    Anything that is not "the command line is the problem" is a failure of the run.
+
+    This tested for `EXIT_ERROR` and fell through to `EXIT_USAGE` for everything else, on the
+    assumption that a child exits 1 or 2. A child killed by a signal exits 130 or 143 — its
+    own interrupt handler does that — so a `--jobs` worker stopped by SIGTERM made the batch
+    exit 2, which cli-reference's table defines as "The command line is the problem" and
+    warnings-and-errors as "The command was invoked incorrectly, or asked for something the
+    recording can't provide". The command was fine; something killed a worker. The
+    out-of-memory killer and a scheduler's time limit both arrive exactly this way, and the
+    serial path reports the same event as the failure it is.
+
+    Asking the question the other way round is also the honest one: 2 is the narrow claim,
+    so it should be the one that has to be earned by every code in the list.
+  */
+  return codes.some((code) => code !== EXIT_USAGE) ? EXIT_ERROR : EXIT_USAGE;
 }
 
 /**
@@ -1761,7 +1776,10 @@ function message(error: unknown, indent = ''): string {
   return printableLines(error instanceof Error ? error.message : String(error), indent);
 }
 
-export { defaultOutputDir };
+// `worstOf` is exported for the test that pins the exit-code mapping. A batch's verdict is
+// one of the few things a script branches on, and the mapping is easier to check directly
+// than by racing a signal at a worker.
+export { defaultOutputDir, worstOf };
 
 /**
  * Whether this file was executed rather than imported.

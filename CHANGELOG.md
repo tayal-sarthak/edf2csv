@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.88
+
+### Fixed: a worker killed from outside made the batch exit 2, "the command line is the problem"
+
+`worstOf` combines the children's exit codes into the run's:
+
+```ts
+return codes.includes(EXIT_ERROR) ? EXIT_ERROR : EXIT_USAGE;
+```
+
+which assumes every child exits 1 or 2. A child killed by a signal exits 130 or 143 — its own
+interrupt handler does that — so a `--jobs` worker stopped by SIGTERM fell through to 2. The
+exit-code table calls 2 "The command line is the problem", and warnings-and-errors "The command
+was invoked incorrectly, or asked for something the recording can't provide". The command was
+fine; something killed a worker, which is how the out-of-memory killer and a scheduler's time
+limit both arrive. A script branching on 2 to mean "I typed it wrong" would retry forever.
+
+Asked the other way round now: 2 is the narrow claim, so every recording has to have earned it,
+and anything else in the list makes the run a failure. `[143]` is 1, `[2]` is still 2, `[2, 143]`
+is 1.
+
+Pinned by testing the mapping directly rather than by racing a signal at a real worker — the
+mapping is the defect, and a batch long enough to catch mid-flight is a race in a test suite.
+
 ## 0.5.87
 
 ### Fixed: `--info --stdout` described files the command never writes

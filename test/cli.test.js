@@ -2003,6 +2003,30 @@ describe('converting several recordings at once', () => {
     assert.equal(existsSync(out), false, 'and the directory really is not there');
   });
 
+  it('calls a killed worker a failure, not a usage error', async () => {
+    /*
+      `worstOf` tested for exit 1 and fell through to exit 2 for everything else, on the
+      assumption that a child exits 1 or 2. A child killed by a signal exits 130 or 143 — its
+      own interrupt handler does that — so a worker stopped by SIGTERM made the whole batch
+      exit 2: "The command line is the problem" in cli-reference's table, "The command was
+      invoked incorrectly" in warnings-and-errors. The command was fine; something killed a
+      worker. The out-of-memory killer and a scheduler's time limit both arrive this way.
+
+      Exercised through the code rather than by killing a real worker, which needs a
+      conversion long enough to catch and is a race in a test suite. The mapping is the defect.
+    */
+    const { worstOf } = await import('../dist/cli.js');
+    assert.equal(typeof worstOf, 'function', 'worstOf is not exported for testing');
+
+    assert.equal(worstOf([143]), 1, 'a worker killed by SIGTERM is a failure');
+    assert.equal(worstOf([130]), 1, 'and so is one stopped by SIGINT');
+    assert.equal(worstOf([1]), 1);
+    assert.equal(worstOf([2]), 2, 'a usage error is still a usage error');
+    assert.equal(worstOf([2, 2]), 2);
+    assert.equal(worstOf([2, 143]), 1, 'anything that is not a usage error wins');
+    assert.equal(worstOf([1, 2]), 1);
+  });
+
   it('stops its children when interrupted, and says the output is incomplete', async () => {
     // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
     // signal sent to this process alone does not, which is how a batch runs from a script,

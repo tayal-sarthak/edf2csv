@@ -895,6 +895,8 @@ The reverse mistake was on this page until 0.5.65: "the recording changed size w
 
 Piping into a consumer that exits early, such as `head`, closes stdout and would normally raise a broken pipe error. That case is treated as success, so `edf2csv recording.edf --info | head -5` exits 0.
 
+Over a batch the codes combine: any recording that failed makes the run exit 1, and 2 only when nothing worse happened — a usage error is the narrow claim, so every recording has to have earned it. A `--jobs` worker killed from outside, by the out-of-memory killer or a scheduler's time limit, counts as a failure like any other; up to 0.5.88 it made the run exit 2, because a signalled child exits 130 or 143 and the mapping only knew about 1 and 2. The command was fine; something killed a worker.
+
 ## Checking warnings from a script
 
 `--json` puts the whole summary, warnings included, on stdout as JSON. Warnings aren't also printed as text in this mode, so stderr stays clean.
