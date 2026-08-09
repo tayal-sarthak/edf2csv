@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.84
+
+### Fixed: a record duration too small to divide into dropped every sample and blamed the window
+
+A sampling rate is samples per record over record duration. EDF's record-duration field is
+eight characters and accepts `1e-308`, so four samples in one of those records is `Infinity` —
+and `1 / Infinity` is zero, which the resolution check reads as "no step to report" rather than
+"no resolution at all".
+
+So a file holding two complete records of four samples wrote none of them, exited 0, and
+printed one warning:
+
+```
+warning: This recording's 2 data records carry no samples in range, so the signal files hold
+         their headers and no data.
+```
+
+Untrue twice: the records carry their eight samples, and no range was asked for. `--info`
+listed the channel at `Infinity Hz` and predicted zero rows, which at least agreed with the
+conversion.
+
+One power of ten away, at 1e-300, the rate is 4e300 and the same file converts all eight rows
+with `TIME_RESOLUTION`. That code covers this now too, in a branch of its own — the existing
+hint promises "Every sample is written, in order", which would have been the third false
+sentence — and `EMPTY_WINDOW` no longer fires over the top of it, since the rate warning is the
+accurate account of the same zero.
+
+The same guard `decimalsAreClamped` had before 0.5.83, one column over: a step of exactly zero
+means the quantity could not be computed, not that there is nothing to say about it.
+
 ## 0.5.83
 
 ### Fixed: a physical span too small to represent became a flat channel, silently

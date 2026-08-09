@@ -234,7 +234,35 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   */
   for (const group of groups) {
     const step = group.rate > 0 ? 1 / group.rate : 0;
-    if (step > 0 && step < 10 ** -group.timeDecimals) {
+    /*
+      The limit of the same failure, which read as the absence of it.
+
+      `samplesPerRecord / recordDuration` is a double, and a record duration of 1e-308 with
+      four samples in it is Infinity. `1 / Infinity` is 0, so `step > 0` was false and this
+      said nothing — while every sample was dropped, the run exited 0, and the only warning
+      printed was EMPTY_WINDOW's "This recording's 2 data records carry no samples in range",
+      which is untrue twice over: the records carry eight samples and no range was asked for.
+
+      One power of ten away, at 1e-300, the rate is 4e300 and the file converts with the
+      warning below. Same guard `decimalsAreClamped` had before 0.5.83, in the column next
+      door: a step of exactly zero means no resolution at all, not nothing to report.
+
+      Its own branch because the hint below is false here — no rows are written at all, so
+      "Every sample is written, in order" would be the third untrue sentence.
+    */
+    if (!Number.isFinite(group.rate)) {
+      diagnostics.push({
+        code: 'TIME_RESOLUTION',
+        severity: 'warning',
+        message:
+          `Channels in ${group.fileName} work out to a sampling rate of ${formatRate(group.rate)} Hz ` +
+          `— their samples per record over a record duration too small to divide into — so ` +
+          `their samples cannot be placed in time and no rows are written for them.`,
+        hint:
+          'Check the record duration in the header. One power of ten larger and the same ' +
+          'file converts, with consecutive rows carrying the same time_s.',
+      });
+    } else if (step > 0 && step < 10 ** -group.timeDecimals) {
       diagnostics.push({
         code: 'TIME_RESOLUTION',
         severity: 'warning',
@@ -298,7 +326,14 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     crossed with every option set, so raising it from the plan says the same thing the rows
     would have.
   */
-  if (writeSignals && groups.length > 0 && estimate.rows === 0) {
+  /*
+    Not when a rate above already explained it. EMPTY_WINDOW says the records "carry no
+    samples in range", and on a recording whose rate overflowed to Infinity that is untrue
+    twice: the records carry their samples, and no range was asked for. The rate warning is
+    the accurate account of the same zero.
+  */
+  const untimeable = groups.some((group) => !Number.isFinite(group.rate));
+  if (writeSignals && groups.length > 0 && estimate.rows === 0 && !untimeable) {
     diagnostics.push(emptyWindow(range, input.recordCount));
   }
 

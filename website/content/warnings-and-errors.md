@@ -363,6 +363,18 @@ warning: Channels at 3000000000000000 Hz sample faster than the time column can 
          them apart, or convert one rate at a time with --channels.
 ```
 
+The same code covers the limit of that, where the rate is not a number at all. A sampling rate is samples per record divided by the record duration, and the record-duration field accepts values small enough that the quotient overflows a double: four samples in a 1e-308 second record is `Infinity`. Those samples cannot be placed in time, so none is written, and the warning says which of the two happened:
+
+```
+warning: Channels in signals.csv work out to a sampling rate of Infinity Hz — their samples per
+         record over a record duration too small to divide into — so their samples cannot be
+         placed in time and no rows are written for them.
+         Check the record duration in the header. One power of ten larger and the same file
+         converts, with consecutive rows carrying the same time_s.
+```
+
+Until 0.5.84 nothing was raised for it: `1 / Infinity` is zero, the check tests for a step greater than zero, and every sample was dropped in silence — under an `EMPTY_WINDOW` warning saying the records "carry no samples in range", on a run that asked for no range.
+
 Up to 0.5.23 this section gave the bound as nine places and a gigahertz, and showed that warning at 10 GHz — a rate that in fact terminates at ten places and is written exactly. Both were true before 0.4.55 raised the search bound.
 
 **What edf2csv does.** Writes every sample, in file order. Nothing is dropped — what stops being true is that `time_s` identifies a row, so joining or plotting on it collapses samples that are genuinely distinct.

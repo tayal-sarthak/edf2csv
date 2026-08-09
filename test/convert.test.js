@@ -138,6 +138,65 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('says when a record duration is too small to give a sampling rate at all', async () => {
+    /*
+      `samplesPerRecord / recordDuration` is a double. Four samples in a 1e-308 second record
+      is Infinity, and `1 / Infinity` is 0 — so the resolution check's `step > 0` guard was
+      false and it said nothing, while every sample was dropped and the run exited 0. The one
+      warning printed was EMPTY_WINDOW's "This recording's 2 data records carry no samples in
+      range", untrue twice over: the records carry eight samples, and no range was asked for.
+
+      One power of ten away, at 1e-300, the same file converts all eight rows with the
+      resolution warning. The same guard `decimalsAreClamped` had before 0.5.83, one column
+      over: a step of exactly zero is no resolution at all, not nothing to report.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-rate-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const build = (duration) => {
+      const file = path.join(scratch, `d${duration}.edf`);
+      writeEdf({
+        path: file, numRecords: 2, recordDuration: duration,
+        signals: [{
+          label: 'CH1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 4, gen: (r, s) => (r * 4 + s) * 1000,
+        }],
+      });
+      return file;
+    };
+
+    const over = await convert(build('1e-308'), { outputDir: await outDir() });
+    const rate = over.diagnostics.filter((d) => d.code === 'TIME_RESOLUTION');
+    assert.equal(rate.length, 1, JSON.stringify(over.diagnostics));
+    assert.match(rate[0].message, /sampling rate of Infinity Hz/u, rate[0].message);
+    assert.match(rate[0].message, /no rows are written/u, rate[0].message);
+
+    // And the account that was false is gone, since this one explains the same zero.
+    assert.ok(
+      !over.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'),
+      `EMPTY_WINDOW still claims a range nobody asked for: ${JSON.stringify(over.diagnostics)}`,
+    );
+
+    /*
+      The neighbour a power of ten away is untouched: a finite rate, every row written, and
+      the warning that says so. Its hint promises "Every sample is written, in order", which
+      is why the overflow case needed a branch of its own rather than this message.
+    */
+    const dir = await outDir();
+    const under = await convert(build('1e-300'), { outputDir: dir });
+    const finite = under.diagnostics.filter((d) => d.code === 'TIME_RESOLUTION');
+    assert.equal(finite.length, 1, JSON.stringify(under.diagnostics));
+    assert.match(finite[0].hint, /Every sample is written, in order/u, finite[0].hint);
+    assert.equal((await readCsv(dir, 'signals.csv')).length - 1, 8, 'all eight rows');
+
+    // An ordinary recording says nothing about resolution at all.
+    const ordinary = await convert(fixture('tiny.edf'), { outputDir: await outDir() });
+    assert.ok(
+      !ordinary.diagnostics.some((d) => d.code === 'TIME_RESOLUTION'),
+      JSON.stringify(ordinary.diagnostics),
+    );
+  });
+
   it('does not turn a span it cannot scale into a flat channel', async () => {
     /*
       The gain is the physical span over the digital range. A span of 2e-320 across 65,536
