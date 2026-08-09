@@ -31,7 +31,14 @@ export type DiagnosticCode =
   | 'TIME_RESOLUTION'
   | 'VALUE_RESOLUTION'
   | 'HEADER_BYTES_MISMATCH'
-  | 'NONPRINTABLE_LABEL';
+  | 'NONPRINTABLE_LABEL'
+  /**
+   * `--info --stdout` on a recording `--stdout` would refuse.
+   *
+   * Only `--info` raises it. A conversion refuses outright instead, with the same words —
+   * this is that refusal shown ahead of time, which is what `--info` is for.
+   */
+  | 'STDOUT_UNSUPPORTED';
 
 export interface Diagnostic {
   code: DiagnosticCode;

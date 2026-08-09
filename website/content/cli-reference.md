@@ -650,6 +650,8 @@ Every refusal takes that shape — `error:` on the first line, the advice indent
 stderr can be grepped for `^error:` and find all of them. The two `--stdout` refusals printed
 flush left with no prefix until 0.5.79.
 
+With `--info` they combine: `--info` writes no CSV for the summary to collide with, and under `--json` the description *is* the JSON — so `edf2csv rec.edf --info --stdout --json` is how a script asks whether `--stdout` would work on a recording. It answers with a `STDOUT_UNSUPPORTED` warning when it would not.
+
 So are `--stdout --out` and `--stdout --checksum` (exit 2 since 0.5.5). Both were accepted and
 dropped in silence before that. `--out` named a directory that was never created, so a run that
 wrote nowhere looked like it had written somewhere; `--checksum` computed a SHA-256 of the input —
@@ -758,7 +760,7 @@ Field by field:
 | `elapsed_ms` | Wall-clock time for the conversion |
 | `warnings` | One entry per diagnostic, each with a stable `code`, a `severity` of `"warning"` or `"info"`, and a human-readable `message`. Empty array when there's nothing to report |
 
-The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES`, `INPUT_CHANGED`, `EMPTY_WINDOW`, `NONPRINTABLE_LABEL`, `TIME_RESOLUTION`, `VALUE_RESOLUTION` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
+The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES`, `INPUT_CHANGED`, `EMPTY_WINDOW`, `NONPRINTABLE_LABEL`, `TIME_RESOLUTION`, `VALUE_RESOLUTION`, `STDOUT_UNSUPPORTED` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
 
 `--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
 

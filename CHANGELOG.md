@@ -3,6 +3,39 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.87
+
+### Fixed: `--info --stdout` described files the command never writes
+
+```
+$ edf2csv mixed-rates.edf --info --stdout
+Would write 1,155 rows, roughly 22.2 KB.
+warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+         They are written to one file per rate so no channel is resampled.
+```
+
+for a command that refuses to run, writes nothing, and names no file:
+
+```
+$ edf2csv mixed-rates.edf --stdout
+error: --stdout needs exactly one table, but this recording produces 3 ...
+```
+
+`--info` exists to say what a conversion will do, and refusing is one of the things it does.
+It was not passed `--stdout` at all, so the plan it described was a different command's.
+
+The conversion's three `--stdout` guards are lifted into `stdoutRefusal` and `--info` asks the
+same question, so there is one wording rather than two that can drift — the test asserts the
+preview contains the refusal's own sentence. Reported as a warning rather than a refusal, for
+the reason 0.5.51 gives about the destination guards: `--info` writes nothing, so a rule about
+the output has no business stopping it from describing the recording, and being told the command
+will not work is exactly what was asked. New diagnostic code `STDOUT_UNSUPPORTED`, documented on
+all three pages.
+
+`--info --stdout --json` is no longer refused either. That guard exists because a CSV and a
+summary cannot share stdout; under `--info` there is no CSV, and the description *is* the JSON.
+It was the one way a script could see this warning at all.
+
 ## 0.5.86
 
 ### Fixed: a file holding half a million samples was told no data was written

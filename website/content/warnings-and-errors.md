@@ -76,6 +76,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
+| `STDOUT_UNSUPPORTED` | `--info --stdout` on a recording `--stdout` would refuse |
 
 ## File structure and integrity
 
@@ -519,6 +520,23 @@ warning: 1 annotation states a duration below zero, which is not a length of tim
 Counted apart from the condition above because that one failed to parse and lost its value, while this one parsed and kept it: what is wrong with it is arithmetic. A duration of exactly zero is not negative and raises nothing. Before 0.5.58 nothing was raised.
 
 **What to do.** Compare the number of rows in `annotations.csv` against the number of events you expect. If entries are missing that you need, the recording may have to be re-exported by the acquisition software. For the timekeeping case, treat the timestamps of the named records as unreliable and, if the exact timing matters, exclude those records from analysis.
+
+### STDOUT_UNSUPPORTED
+
+Raised only by `--info --stdout`, on a recording the conversion would refuse.
+
+**Cause.** `--stdout` writes one table, and the wide layout gives a mixed-rate recording one per rate. It also has nothing to stream for `--annotations-only`, or for a recording with no signal channels.
+
+**What edf2csv does.** Says so, in the words the conversion itself would use, and goes on describing the recording:
+
+```
+warning: --stdout would refuse this recording: needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+         Narrow it to one rate with --channels, write --layout long to get them all in one table, or convert to a directory instead.
+```
+
+A warning rather than a refusal for the reason the destination guards are: `--info` writes nothing, so a rule about the output has no business stopping it from describing the recording — and being told the command will not work is exactly what was asked. Until 0.5.87 `--info` ignored `--stdout` entirely and predicted rows and named files for a command that writes neither.
+
+**What to do.** Take the advice in the hint, or drop `--stdout`. Nothing is wrong with the recording.
 
 ### NO_ANNOTATIONS
 

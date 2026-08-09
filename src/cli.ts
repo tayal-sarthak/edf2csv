@@ -21,7 +21,13 @@ import process from 'node:process';
 import { EdfError } from './edf/errors.js';
 import { EdfFile } from './edf/reader.js';
 import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
-import { ConversionError, USAGE_ERROR_CODES, convert, defaultOutputDir } from './convert/run.js';
+import {
+  ConversionError,
+  USAGE_ERROR_CODES,
+  convert,
+  defaultOutputDir,
+  stdoutRefusal,
+} from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 // Shared with the library so a bad option is the same error whichever way it arrived.
 import { OptionError } from './convert/options.js';
@@ -276,7 +282,17 @@ export async function main(argv: readonly string[]): Promise<number> {
   // Both of these claim stdout. Allowing them together wrote the CSV and then the summary
   // object onto one stream, producing a document that is neither valid CSV nor valid
   // JSON — and silently, since each half looked right on its own.
-  if (toStdout && asJson) {
+  /*
+    Not under --info, which writes no CSV for --json to collide with.
+
+    The two claim stdout because one puts a CSV there and the other a summary. `--info` puts
+    neither: it prints a description, and under --json that description *is* the JSON. So
+    `--info --stdout --json` — a script asking "would --stdout work on this recording, in a
+    form I can parse" — was refused for a conflict that cannot arise, which is the same shape
+    as the destination guards 0.5.51 stopped applying to it. It is also the only way to see
+    the STDOUT_UNSUPPORTED warning from a script.
+  */
+  if (toStdout && asJson && values['info'] !== true) {
     /*
       `error: ` and the seven-space continuation, like every other refusal.
 
@@ -439,7 +455,14 @@ export async function main(argv: readonly string[]): Promise<number> {
         // A blank line between reports, so several tables read as one document.
         if (batch && !asJson && index > 0) process.stdout.write('\n');
         try {
-          warnings += await showInfo(input as string, shared, asJson, jsonIndent, batch);
+          warnings += await showInfo(
+            input as string,
+            shared,
+            asJson,
+            jsonIndent,
+            batch,
+            values['stdout'] === true,
+          );
         } catch (error) {
           failures.push(reportError(error, batch ? (input as string) : undefined));
         }
@@ -671,6 +694,7 @@ async function showInfo(
   asJson: boolean,
   jsonIndent: number | null,
   batch = false,
+  toStdout = false,
 ): Promise<number> {
   const file = await EdfFile.open(input);
   try {
@@ -721,6 +745,30 @@ async function showInfo(
       shared,
     );
     plan.diagnostics.push(...timing.diagnostics);
+    /*
+      What --stdout would do with this recording, which --info did not ask.
+
+      `--info --stdout` on a three-rate file predicted "Would write 1,155 rows, roughly
+      22.2 KB" and said the channels "are written to one file per rate" — for a command that
+      refuses to run, writes nothing and names no file. --info exists to say what a
+      conversion will do, and refusing is one of the things it does.
+
+      A warning rather than a refusal, for the reason 0.5.51 gives about the destination
+      guards: --info writes nothing, so a rule about the output has no business stopping it
+      from describing the recording — and being told the command will not work is exactly
+      what was asked. The conversion's own guard supplies the words, so there is one wording.
+    */
+    if (toStdout) {
+      const refusal = stdoutRefusal(file, plan);
+      if (refusal) {
+        plan.diagnostics.push({
+          code: 'STDOUT_UNSUPPORTED',
+          severity: 'warning',
+          message: `--stdout would refuse this recording: ${refusal.message.replace(/^--stdout /u, '')}`,
+          ...(refusal.hint === undefined ? {} : { hint: refusal.hint }),
+        });
+      }
+    }
     process.stdout.write(
       asJson ? `${infoJson(file, plan, jsonIndent)}\n` : `${formatInfo(file, plan)}\n`,
     );

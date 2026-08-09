@@ -183,54 +183,8 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     plan.diagnostics.push(...timing.diagnostics);
 
     if (options.toStdout === true) {
-      if (!plan.writeSignals) {
-        throw new ConversionError(
-          'UNSUPPORTED_REQUEST',
-          '--stdout has no signal data to write because --annotations-only was given.',
-          'Drop one of the two flags.',
-        );
-      }
-      /*
-        No table at all is its own answer, and neither layout gave it.
-
-        A recording with no signal channels — one holding only EDF+ annotations — produced
-        zero rate groups. The wide layout then said "--stdout needs exactly one table, but
-        this recording produces 0, one for each sampling rate its channels use ()", with an
-        empty parenthetical, advice to narrow to one of no rates, and advice to use
-        `--layout long` — which wrote zero bytes to stdout, not even a header row, and exited
-        0 while warning that "the signal files hold their headers and no data". There were no
-        files and there was no header. The one path that was right about this is
-        `--annotations-only`, which refuses outright, and this is the same situation reached
-        by a different route.
-      */
-      if (plan.groups.length === 0) {
-        throw new ConversionError(
-          'UNSUPPORTED_REQUEST',
-          file.dataSignals.length === 0
-            ? '--stdout has no signal data to write: this recording has no signal channels, ' +
-              'only EDF+ annotations.'
-            : '--stdout has no signal data to write: nothing was selected that carries samples.',
-          file.dataSignals.length === 0
-            ? 'Convert to a directory to get its annotations.csv, or drop --stdout.'
-            : 'Check --channels and the requested window, or convert to a directory instead.',
-        );
-      }
-
-      // The long layout is one table whatever the rates are, so it has nothing to refuse.
-      if (plan.layout !== 'long' && plan.groups.length !== 1) {
-        throw new ConversionError(
-          'UNSUPPORTED_REQUEST',
-          // Naming the rates is the point: the hint says to narrow the selection, and this
-          // is what there is to narrow it to. The parenthetical used to repeat the count
-          // that had just been given — "produces 3 (its channels use 3 different sampling
-          // rates)" — which told nobody anything they could act on.
-          `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
-            `one for each sampling rate its channels use ` +
-            `(${listed(formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
-          'Narrow it to one rate with --channels, write --layout long to get them all in ' +
-            'one table, or convert to a directory instead.',
-        );
-      }
+      const refusal = stdoutRefusal(file, plan);
+      if (refusal) throw refusal;
       let readerHungUp = false;
       const written = await writeSignalFiles(file, plan, null, timing.starts, options, (hungUp) => {
         readerHungUp = hungUp;
@@ -1385,6 +1339,73 @@ function auditStdout(): { count: (bytes: number) => void; verify: () => void } |
       );
     },
   };
+}
+
+/**
+ * Why `--stdout` cannot take this recording, or null when it can.
+ *
+ * Lifted out of the conversion so `--info` can ask the same question. It was not asking:
+ * `--info --stdout` on a three-rate recording predicted "Would write 1,155 rows, roughly
+ * 22.2 KB" and said the channels "are written to one file per rate" — for a command that
+ * refuses to run, writes nothing, and names no files. `--info` exists to say what a
+ * conversion will do, and this is one of the things it does.
+ *
+ * Reported by `--info` as a warning rather than a refusal, for the reason 0.5.51 gives about
+ * the destination guards: `--info` writes nothing, so a rule about what the output would be
+ * has no business stopping it from describing the recording — and being told the command
+ * will not work is exactly what you asked.
+ */
+export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionError | null {
+  if (!plan.writeSignals) {
+    return new ConversionError(
+      'UNSUPPORTED_REQUEST',
+      '--stdout has no signal data to write because --annotations-only was given.',
+      'Drop one of the two flags.',
+    );
+  }
+
+    /*
+      No table at all is its own answer, and neither layout gave it.
+
+      A recording with no signal channels — one holding only EDF+ annotations — produced
+      zero rate groups. The wide layout then said "--stdout needs exactly one table, but
+      this recording produces 0, one for each sampling rate its channels use ()", with an
+      empty parenthetical, advice to narrow to one of no rates, and advice to use
+      `--layout long` — which wrote zero bytes to stdout, not even a header row, and exited
+      0 while warning that "the signal files hold their headers and no data". There were no
+      files and there was no header. The one path that was right about this is
+      `--annotations-only`, which refuses outright, and this is the same situation reached
+      by a different route.
+    */
+    if (plan.groups.length === 0) {
+      return new ConversionError(
+        'UNSUPPORTED_REQUEST',
+        file.dataSignals.length === 0
+          ? '--stdout has no signal data to write: this recording has no signal channels, ' +
+            'only EDF+ annotations.'
+          : '--stdout has no signal data to write: nothing was selected that carries samples.',
+        file.dataSignals.length === 0
+          ? 'Convert to a directory to get its annotations.csv, or drop --stdout.'
+          : 'Check --channels and the requested window, or convert to a directory instead.',
+      );
+    }
+
+    // The long layout is one table whatever the rates are, so it has nothing to refuse.
+    if (plan.layout !== 'long' && plan.groups.length !== 1) {
+      return new ConversionError(
+        'UNSUPPORTED_REQUEST',
+        // Naming the rates is the point: the hint says to narrow the selection, and this
+        // is what there is to narrow it to. The parenthetical used to repeat the count
+        // that had just been given — "produces 3 (its channels use 3 different sampling
+        // rates)" — which told nobody anything they could act on.
+        `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
+          `one for each sampling rate its channels use ` +
+          `(${listed(formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
+        'Narrow it to one rate with --channels, write --layout long to get them all in ' +
+          'one table, or convert to a directory instead.',
+      );
+    }
+  return null;
 }
 
 /** Data rows across every signal table, so "nothing was written" is one question. */

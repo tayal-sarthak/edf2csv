@@ -618,6 +618,52 @@ describe('--info', () => {
     assert.match(truncated.stderr, /Converting the 4 records that are present/u, truncated.stderr);
   });
 
+  it('previews what --stdout would do, instead of describing files it never writes', async () => {
+    /*
+      `--info --stdout` on a three-rate recording predicted "Would write 1,155 rows, roughly
+      22.2 KB" and said the channels "are written to one file per rate" — for a command that
+      refuses to run, writes nothing and names no file. --info exists to say what a conversion
+      will do, and refusing is one of the things it does.
+
+      A warning rather than a refusal, for the reason 0.5.51 gives about the destination
+      guards: --info writes nothing, so a rule about the output has no business stopping it
+      from describing the recording. The conversion's own guard supplies the words, so there
+      is one wording rather than two that can drift.
+    */
+    const preview = await cli([fixture('mixed-rates.edf'), '--info', '--stdout']);
+    assert.equal(preview.code, 0, preview.stderr);
+    assert.match(preview.stderr, /--stdout would refuse this recording/u, preview.stderr);
+    assert.ok(preview.stdout.includes('EEG Fpz-Cz'), 'and it still describes the recording');
+
+    // The words are the conversion's, so the two cannot drift apart.
+    const refused = await cli([fixture('mixed-rates.edf'), '--stdout']);
+    assert.equal(refused.code, 2, refused.stderr);
+    const detail = /needs exactly one table[^\n]*/u.exec(refused.stderr);
+    assert.ok(detail, refused.stderr);
+    assert.ok(preview.stderr.includes(detail[0]), `preview: ${preview.stderr}`);
+
+    // It reaches --json too, which is what a script surveying a directory reads.
+    const asJson = JSON.parse((await cli([fixture('mixed-rates.edf'), '--info', '--stdout', '--json'])).stdout);
+    assert.ok(
+      asJson.warnings.some((w) => w.code === 'STDOUT_UNSUPPORTED'),
+      JSON.stringify(asJson.warnings),
+    );
+
+    // Quiet when --stdout would work: one rate, and the long layout that lifts the rule.
+    for (const args of [
+      [fixture('tiny.edf'), '--info', '--stdout'],
+      [fixture('mixed-rates.edf'), '--info', '--stdout', '--layout', 'long'],
+    ]) {
+      const fine = await cli(args);
+      assert.equal(fine.code, 0, fine.stderr);
+      assert.doesNotMatch(fine.stderr, /would refuse/u, `${args.join(' ')}: ${fine.stderr}`);
+    }
+
+    // And without --stdout nothing changes.
+    const plain = await cli([fixture('mixed-rates.edf'), '--info']);
+    assert.doesNotMatch(plain.stderr, /would refuse/u, plain.stderr);
+  });
+
   it('says where a recording starts when that is not zero', async (t) => {
     /*
       0.4.9 made the first record's timekeeping TAL the point a recording is timed from, so a
