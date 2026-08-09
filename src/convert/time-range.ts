@@ -228,7 +228,24 @@ export function resolveRange(options: {
   else if (options.end !== undefined) endSeconds = options.end;
   else endSeconds = latest;
 
-  if (startSeconds >= latest) {
+  /*
+    At the end, allowing for the arithmetic that produced the end.
+
+    `latest` is `recordCount * recordDuration`, and with a fractional duration that is not the
+    number it prints as: 6003 records of 0.1s is 600.3000000000001, not 600.3. So `--start
+    600.3` on a recording `--info` calls "10m 0.3s" was accepted by a hair, converted nothing,
+    and exited 0 with a signals.csv holding its header — which is the empty conversion this
+    error exists to prevent, and which the same command on a whole-second recording is refused
+    for.
+
+    A relative epsilon, the same shape the long layout uses to decide two sample times are one
+    instant: well below any real interval, and well above the rounding that two different
+    routes to the same quantity produce.
+  */
+  const atTheEnd =
+    startSeconds >= latest ||
+    Math.abs(startSeconds - latest) <= Math.max(Math.abs(startSeconds), Math.abs(latest)) * 1e-12;
+  if (atTheEnd) {
     /*
       Quote what was typed. Reporting the parsed seconds meant `--start 4h` came back as
       "--start 14400s is at or past the end", which reads as a value the user never gave.

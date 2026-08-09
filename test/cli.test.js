@@ -540,6 +540,40 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
+  it('refuses a start at the end, whatever the record duration multiplies out to', async () => {
+    /*
+      The guard compares `--start` against `recordCount * recordDuration`, and with a
+      fractional duration that product is not the number it prints as: 6003 records of 0.1s is
+      600.3000000000001. So `--start 600.3` on a recording `--info` calls "10m 0.3s" slipped
+      past by a hair, converted nothing and exited 0 with a signals.csv holding its header —
+      the empty conversion this error exists to prevent, and which `--start 2` on a
+      whole-second recording is refused for.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-endstart-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(dir, 'tenmin.edf');
+    writeEdf({
+      path: recording, numRecords: 6003, recordDuration: 0.1,
+      signals: [{ label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+        digMax: 2047, samplesPerRecord: 10, gen: (r, s) => ((r * 10 + s) % 400) - 200 }],
+    });
+
+    // Not vacuous: the arithmetic really does overshoot.
+    assert.ok(6003 * 0.1 > 600.3, 'the product no longer overshoots, so this proves nothing');
+
+    const atEnd = await cli([recording, '--start', '600.3', '--out', path.join(dir, 'a')]);
+    assert.equal(atEnd.code, 2, atEnd.stderr);
+    assert.match(atEnd.stderr, /is at or past the end of this 10m 0\.3s recording/u, atEnd.stderr);
+
+    // And a start genuinely inside it still converts, so the epsilon has not eaten a window.
+    const inside = path.join(dir, 'b');
+    const ok = await cli([recording, '--start', '600.2', '--out', inside, '--quiet']);
+    assert.equal(ok.code, 0, ok.stderr);
+    const rows = (await readFile(path.join(inside, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length - 1, 10, 'the last record is one tenth of a second of samples');
+  });
+
   it('agrees with itself about number when the count is one', async () => {
     /*
       Every one of these was written `${n} records`, which is right until the file has one of

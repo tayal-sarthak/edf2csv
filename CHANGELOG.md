@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.91
+
+### Fixed: `--start` at the recording's exact length was accepted when the length was a product
+
+`--start` at or past the end of a recording is an error, because the result would be an empty
+file that looks like a successful conversion. The guard compares against
+`recordCount * recordDuration` — and with a fractional record duration that product is not the
+number it prints as. 6003 records of 0.1s is 600.3000000000001, so on a recording `--info`
+calls "10m 0.3s":
+
+```
+$ edf2csv tenmin.edf --start 600.3 --out out
+warning: No samples fall inside the requested window (600.300s to 600.300s), so the signal
+         files hold their headers and no data.
+$ echo $?
+0
+```
+
+Exactly the empty conversion the error exists to prevent, and exactly what `--start 2` on a
+two-second recording is refused for. Which of the two you get depends on whether your record
+duration is a whole number.
+
+Compared with a relative epsilon now — the same shape the long layout uses to decide two sample
+times are one instant: well below any real sample interval, and well above the rounding that two
+routes to one quantity produce. `--start 600.2` on the same file still converts its ten samples.
+
 ## 0.5.90
 
 ### Fixed: the duration warnings described rows a window had excluded

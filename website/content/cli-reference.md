@@ -349,7 +349,7 @@ The window is half-open: a sample at exactly the start offset is included, a sam
 error: --start "4h" is at or past the end of this 2h 12m 30s recording.
 ```
 
-An end that isn't after the start is likewise an error.
+An end that isn't after the start is likewise an error. A start at the recording's exact length counts as past the end, including when the length is a product that does not land on the number it prints as — 6003 records of 0.1s is 600.3000000000001, and `--start 600.3` on it is refused rather than converting nothing.
 
 Sample times in the output are absolute offsets into the recording, not relative to `--start`. Converting from `30m` produces a `time_s` column beginning at `1800`, so a windowed export lines up with the full one.
 
