@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.93
+
+### Fixed: the padding after a TAL was counted as an annotation that could not be read
+
+```
+$ edf2csv space-padded.edf --out out
+warning: 2 annotation entries were unreadable and could not be exported.
+
+$ cat out/annotations.csv
+onset_s,duration_s,description,record_index
+0.5,,Lights off,0
+```
+
+The file holds one annotation and it was exported in full. The two "entries" are the spaces
+filling the rest of each record's annotation slot.
+
+EDF+ pads that slot with `0x00`, which the decoder skips because NUL is also what ends one TAL
+and starts the next. Writers pad with spaces, and a run of spaces after the last TAL is a
+non-empty chunk that does not begin with a sign — so it took the malformed branch. Under
+`--strict` that is a failed run over the whitespace at the end of a slot, on a file that lost
+nothing.
+
+Whitespace-only chunks are padding now — space, tab, CR, LF and NUL. A chunk of anything else
+that does not parse is still counted and still reported, which is the case the warning exists
+for.
+
 ## 0.5.92
 
 ### Fixed: `--info` redirected into a full filesystem wrote nothing and exited 0

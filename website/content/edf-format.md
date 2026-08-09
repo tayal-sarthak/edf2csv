@@ -363,6 +363,8 @@ Three control bytes do all the work:
 | `0x14` | text separator | Separates the timing from the text, and text from text |
 | `0x00` | TAL terminator | Ends one TAL, and pads the rest of the channel |
 
+The spec pads the remainder of the slot with `0x00`. Writers pad with spaces instead often enough that edf2csv treats a chunk of nothing but whitespace as padding rather than as an entry it failed to read — up to 0.5.93 a space-padded file holding one readable event was told two entries were lost, one per record. A chunk of anything else that does not parse is still counted and reported.
+
 Onsets and durations are seconds relative to the start of the recording, written as decimal text.
 The onset **must** carry an explicit sign, `+` or `-`. That isn't decoration: it's how a reader
 tells a TAL from padding, and `edf2csv` rejects any chunk that doesn't start with one. A negative

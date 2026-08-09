@@ -487,6 +487,38 @@ describe('EDF+ annotations', () => {
     });
   });
 
+  it('does not count the padding after a TAL as a lost annotation', async () => {
+    /*
+      The spec pads the annotation slot with NUL, which the decoder skips because NUL is also
+      what separates one TAL from the next. Writers pad with spaces instead, and a run of
+      spaces after the last TAL is a non-empty chunk — so a file holding one perfectly
+      readable event, exported in full, was told "2 annotation entries were unreadable and
+      could not be exported", one per record. Nothing was lost, and under --strict that is a
+      failed run over the whitespace at the end of a slot.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0x00);
+    const bytes = (text, width) => new TextEncoder().encode(text.padEnd(width, ' '));
+
+    const padded = decodeRecordAnnotations(bytes(`+0${T}${T}${Z}+0.5${T}Lights off${T}${Z}`, 80), 0);
+    assert.equal(padded.malformed, 0, 'trailing spaces are padding, not a lost entry');
+    assert.deepEqual(padded.annotations.map((a) => a.text), ['Lights off']);
+
+    // NUL padding, which always worked, still works.
+    const nulPadded = decodeRecordAnnotations(
+      new TextEncoder().encode(`+0${T}${T}${Z}+0.5${T}Lights off${T}${Z}`.padEnd(80, Z)),
+      0,
+    );
+    assert.equal(nulPadded.malformed, 0);
+    assert.deepEqual(nulPadded.annotations.map((a) => a.text), ['Lights off']);
+
+    // A chunk of anything else that does not parse is a real loss, and is still counted —
+    // that is the case the warning exists for.
+    const junk = decodeRecordAnnotations(bytes(`+0${T}${T}${Z}zzz junk${Z}`, 80), 0);
+    assert.equal(junk.malformed, 1, 'garbage is still reported');
+  });
+
   it('counts a duration below zero without rewriting it', async () => {
     /*
       A length of time below zero is not one, and every use of it goes quietly wrong: the

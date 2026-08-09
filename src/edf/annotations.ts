@@ -101,6 +101,23 @@ export function decodeRecordAnnotations(
 
     if (i > start) {
       const chunk = bytes.subarray(start, i);
+      /*
+        Padding is not a lost annotation.
+
+        The spec pads the slot with NUL, which the loop above already skips because it is what
+        separates one TAL from the next. Writers pad with spaces instead, and a run of spaces
+        after the last TAL is a non-empty chunk — so a file holding one perfectly readable
+        event, exported in full, was told "2 annotation entries were unreadable and could not
+        be exported", one per record. Nothing was lost. Under --strict that is a failed run
+        over the whitespace at the end of a slot.
+
+        Only whitespace. A chunk of anything else that does not parse is a real loss and is
+        still counted, which is the case this warning exists for.
+      */
+      if (chunk.every(isPaddingByte)) {
+        start = i + 1;
+        continue;
+      }
       const parsed = parseTal(chunk, recordIndex);
 
       // The timekeeping TAL is the one in first POSITION, whether or not it decodes.
@@ -162,6 +179,11 @@ interface ParsedTal {
   unreadableDurations: number;
   /** How many carry a duration that read as a number below zero. */
   negativeDurations: number;
+}
+
+/** Space, tab, CR, LF or NUL — what a writer fills the rest of the slot with. */
+function isPaddingByte(byte: number): boolean {
+  return byte === 0x20 || byte === 0x09 || byte === 0x0d || byte === 0x0a || byte === 0x00;
 }
 
 function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
