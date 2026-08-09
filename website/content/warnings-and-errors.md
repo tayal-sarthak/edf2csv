@@ -36,9 +36,17 @@ There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has alre
 
 `--info` reads the header and builds a conversion plan, so it surfaces every structural, calibration and output-shape warning without converting anything.
 
-It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first few records of a continuous one to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
+It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first sixteen records of a continuous one to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
 
-What it cannot raise is the handful that need a conversion to exist: `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written, and the EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found. `EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds.
+It raises them for what it read, which on a continuous file is those first sixteen records. An unreadable *event* further into a continuous recording is not seen, so `two-annotation-channels.edf` raises `ANNOTATION_DECODE_FAILED` when converted and nothing under `--info`. Its byte-identical discontinuous twin raises it either way, because there the whole channel is read.
+
+What it cannot raise is the handful that need a conversion to exist:
+
+- `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written.
+- The `NO_SAMPLES` that reports a signal file *not written* — the per-channel one, about a channel carrying no samples, comes from the header and is raised.
+- The EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
+
+`EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds.
 
 Until 0.5.37 this section said the opposite — that `--info` touches neither the data records nor the annotation channel, and cannot raise `ANNOTATION_DECODE_FAILED` or any timestamp-derived `DISCONTINUOUS`. The `DISCONTINUOUS` section further down said "`--info` raises `DISCONTINUOUS` too, since it has to read those record times", on the same page.
 

@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.98
+
+### Fixed: "what --info can and can't tell you" was wrong in both directions
+
+cli-reference points readers at that section for the answer, which makes being wrong there
+worse than being silent. It was wrong twice.
+
+It said `--info` "also raises `ANNOTATION_DECODE_FAILED`", unqualified. It raises it for what
+it read, and on a continuous file that is sixteen records — so `two-annotation-channels.edf`
+warns about three unreadable events when converted and says nothing at all under `--info`. Its
+byte-identical discontinuous twin warns either way, because there the whole channel is read.
+
+And its list of what `--info` cannot raise — `NO_ANNOTATIONS`, `STALE_OUTPUT`, the EDF+C
+contradiction — left out the `NO_SAMPLES` that reports a signal file *not written*.
+`annotations-only.edf` raises it on conversion and not under `--info`. The per-channel
+`NO_SAMPLES`, about a channel carrying no samples, comes from the header and is raised, so the
+code alone does not settle it and the page now says which form it means.
+
+Held to it by a sweep rather than by review: every fixture is described and converted, and any
+code the conversion raises that `--info` does not has to be one the page names. That is how the
+two missing ones were found, and it is what would find the next.
+
 ## 0.5.97
 
 ### Fixed: three pages said `--info` reads only the header, on files where it reads records

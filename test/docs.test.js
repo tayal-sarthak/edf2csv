@@ -764,6 +764,74 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('lists exactly the warnings --info cannot raise', async () => {
+    /*
+      The page said `--info` "also raises ANNOTATION_DECODE_FAILED", unqualified, and listed
+      what it cannot raise as NO_ANNOTATIONS, STALE_OUTPUT and the EDF+C contradiction. Both
+      halves were wrong. It does not raise ANNOTATION_DECODE_FAILED for an unreadable event
+      further into a *continuous* file, because it only reads sixteen records of one — so
+      `two-annotation-channels.edf` warns when converted and says nothing under `--info`. And
+      it does not raise the `NO_SAMPLES` that reports a signal file not written, which the
+      list did not mention.
+
+      cli-reference points readers at this section for the answer, so being wrong in both
+      directions here is worse than being silent.
+
+      Swept rather than asserted: every fixture is described and converted, and any code the
+      conversion raises that `--info` does not has to be one the page names.
+    */
+    const names = (await readdir(path.join(ROOT, 'test/fixtures/generated'))).filter((n) =>
+      /\.(edf|bdf)$/u.test(n),
+    );
+    assert.ok(names.length > 10, 'fixtures should be generated before this runs');
+
+    const page = await read('website/content/warnings-and-errors.md');
+    /*
+      Both parts: the list of what needs a conversion to exist, and the paragraph above it
+      about what --info does not read far enough to see. A code named in either is accounted
+      for; the two are different reasons and the page keeps them apart on purpose.
+    */
+    const section = page.slice(
+      page.indexOf('It raises them for what it read'),
+      page.indexOf('`EMPTY_WINDOW` used to be on that list'),
+    );
+    assert.ok(section.length > 200, 'the page no longer explains what --info cannot raise');
+    const documented = new Set([...section.matchAll(/`([A-Z_]+)`/gu)].map((m) => m[1]));
+    // The EDF+C contradiction is described in prose rather than by code, and shows up as
+    // DISCONTINUOUS; the section names it in the sentence about it.
+    documented.add('DISCONTINUOUS');
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-inforaise-'));
+    try {
+      const codes = async (args) => {
+        try {
+          const { stdout } = await run(process.execPath, [CLI, ...args], { maxBuffer: 1 << 26 });
+          return new Set((JSON.parse(stdout).warnings ?? []).map((w) => w.code));
+        } catch {
+          return null;
+        }
+      };
+      let compared = 0;
+      for (const name of names) {
+        const recording = path.join(ROOT, 'test/fixtures/generated', name);
+        const described = await codes([recording, '--info', '--json']);
+        const converted = await codes([recording, '--out', path.join(work, name), '--json', '--quiet']);
+        if (!described || !converted) continue;
+        compared++;
+        for (const code of converted) {
+          if (described.has(code)) continue;
+          assert.ok(
+            documented.has(code),
+            `${name}: a conversion raises ${code} and --info does not, and the page does not say so`,
+          );
+        }
+      }
+      assert.ok(compared > 20, `expected most fixtures to be comparable, got ${compared}`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('agrees across pages about how much of a file --info reads', async () => {
     /*
       Three pages said `--info` "reads only the header for plain EDF and continuous EDF+".
