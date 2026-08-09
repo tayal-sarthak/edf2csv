@@ -38,13 +38,24 @@ function num(value, width) {
 }
 
 /** Build the byte string for one record's annotation channel. */
+/*
+  The sign comes from the number, not from a `+` glued on the front.
+
+  EDF+ requires an explicit sign on every onset, and a negative one is legal — the format page
+  says so: "A negative onset is legal and means an event before the recording's nominal start."
+  Hard-coding `+` made this helper unable to write one: `+${-100}` is `+-100`, which no reader
+  parses, so a fixture asking for a recording timed from before zero silently produced one with
+  no timekeeping at all. `String(n)` already carries the minus for a negative number.
+*/
+const signed = (seconds) => (seconds < 0 ? `${seconds}` : `+${seconds}`);
+
 export function buildTal(recordStart, annotations = []) {
-  let text = `+${recordStart}${SEP_TEXT}${SEP_TEXT}${TAL_END}`;
+  let text = `${signed(recordStart)}${SEP_TEXT}${SEP_TEXT}${TAL_END}`;
   for (const a of annotations) {
     text +=
       a.duration === undefined || a.duration === null
-        ? `+${a.onset}${SEP_TEXT}${a.text}${SEP_TEXT}${TAL_END}`
-        : `+${a.onset}${SEP_DURATION}${a.duration}${SEP_TEXT}${a.text}${SEP_TEXT}${TAL_END}`;
+        ? `${signed(a.onset)}${SEP_TEXT}${a.text}${SEP_TEXT}${TAL_END}`
+        : `${signed(a.onset)}${SEP_DURATION}${a.duration}${SEP_TEXT}${a.text}${SEP_TEXT}${TAL_END}`;
   }
   return text;
 }

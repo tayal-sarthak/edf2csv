@@ -138,6 +138,35 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('never predicts fewer bytes than it writes, sign included', async () => {
+    /*
+      Both estimates measured the time column against the window's far end, unsigned, while
+      the value column beside them already allowed for a sign. A recording timed from before
+      zero prints `-100.000` where that budgeted for `100.000`, so every row came out a byte
+      short: 203 predicted against 216 written.
+
+      An estimate reading low is the one direction the correctness page says it never goes,
+      and the sweep that asserts it over every fixture could not see this, because every
+      fixture began at zero or later. `negative-origin.edf` is why there is one now.
+    */
+    for (const layout of ['wide', 'long']) {
+      const dir = await outDir();
+      const result = await convert(fixture('negative-origin.edf'), { outputDir: dir, layout });
+      const name = result.files.find((f) => f.name.startsWith('signals')).name;
+      const actual = Buffer.byteLength(await readFile(path.join(dir, name)));
+      assert.ok(
+        result.plan.estimate.bytes >= actual,
+        `${layout}: predicted ${result.plan.estimate.bytes} for a file of ${actual} bytes`,
+      );
+    }
+
+    // Not vacuous: the file really is timed from before zero, and its cells carry the sign.
+    const dir = await outDir();
+    await convert(fixture('negative-origin.edf'), { outputDir: dir });
+    const first = (await readCsv(dir, 'signals.csv'))[1];
+    assert.match(first, /^-100\.000,/u, first);
+  });
+
   it('says when a record duration is too small to give a sampling rate at all', async () => {
     /*
       `samplesPerRecord / recordDuration` is a double. Four samples in a 1e-308 second record

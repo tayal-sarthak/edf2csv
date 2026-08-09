@@ -194,6 +194,33 @@ export function generate() {
   writeEdf({ ...fractionalStart, path: at('fractional-start.edf'), reserved: 'EDF+C' });
   writeEdf({ ...fractionalStart, path: at('fractional-start-d.edf'), reserved: 'EDF+D' });
 
+  /*
+    A recording timed from before zero, which EDF+ allows and no fixture had.
+
+    A negative onset is legal and means an event before the recording's nominal start, so a
+    timekeeping TAL may state one too — and then every `time_s` carries a minus sign. The byte
+    estimate measured the time column against the window's far end, unsigned, so it budgeted
+    for `100.000` and the file wrote `-100.000`: 203 predicted against 216 written, an
+    estimate reading low, which is the one direction the correctness page says it never goes.
+    The estimate sweep asserts exactly that over every fixture and could not see it, because
+    every fixture began at zero or later.
+  */
+  writeEdf({
+    path: at('negative-origin.edf'),
+    reserved: 'EDF+D',
+    startDate: '02.03.02',
+    startTime: '22.15.00',
+    patient: 'X X X X',
+    recording: 'Startdate 02-MAR-2002 X X X',
+    numRecords: 3,
+    recordDuration: 1,
+    signals: [
+      { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: () => -1000 },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ],
+    talsForRecord: (r) => buildTal(-100 + r, []),
+  });
+
   // 1024 Hz: the rate a BioSemi ActiveTwo records at, and the first power of two whose
   // sample interval needs more than nine decimal places.
   //

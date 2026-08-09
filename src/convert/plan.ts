@@ -446,6 +446,27 @@ export function rateSlug(rate: number): string {
   return `${formatRate(rate).replace('.', '_')}hz`;
 }
 
+/**
+ * Characters the time column occupies, measured over both ends of the window and signed.
+ *
+ * Both estimates measured the column against `range.endSeconds` alone, unsigned — while the
+ * value column two lines below already allowed for a sign when either bound is negative. A
+ * recording timed from before zero prints `-100.000` where that budgeted for `100.000`, so
+ * every row came out a byte short: 203 predicted against 216 written, and 131 against 159 on
+ * a shorter one. An estimate reading low is the one direction the correctness page says it
+ * never goes — "no byte count under the truth" is what the estimate sweep asserts over every
+ * fixture, and no fixture began before zero.
+ *
+ * The far end is not always the widest: from -100s to -97s it is the start.
+ */
+function timeWidthFor(range: ResolvedRange, decimals: number): number {
+  return widthOf(
+    Math.max(Math.abs(range.startSeconds), Math.abs(range.endSeconds)),
+    decimals,
+    range.startSeconds < 0 || range.endSeconds < 0,
+  );
+}
+
 /** Characters a fixed-decimal number of this magnitude occupies, sign included. */
 function widthOf(magnitude: number, decimals: number, signed = false): number {
   const size = Math.abs(magnitude);
@@ -557,7 +578,7 @@ function estimateOutput(
         cell, and the widest the value can print. Same over-counting rule as the wide
         layout — the declared physical range bounds a cell, and most samples sit under it.
       */
-      const timeWidth = widthOf(range.endSeconds, group.timeDecimals);
+      const timeWidth = timeWidthFor(range, group.timeDecimals);
       for (const channel of group.channels) {
         const valueWidth = widthOf(
           Math.max(Math.abs(channel.signal.physicalMin), Math.abs(channel.signal.physicalMax)),
@@ -591,7 +612,7 @@ function estimateOutput(
       physical range too. Such a file can convert larger than the estimate. Clamping the data
       to make the estimate true is not a trade worth making — the samples are what they are.
     */
-    const timeWidth = widthOf(range.endSeconds, group.timeDecimals);
+    const timeWidth = timeWidthFor(range, group.timeDecimals);
     const cellWidth = group.channels.reduce(
       (sum, c) =>
         sum +

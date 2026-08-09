@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.85
+
+### Fixed: the byte estimate read low on a recording timed from before zero
+
+`--info` predicted 203 bytes for a file that came out 216, and 261 against 274 in the long
+layout. An estimate reading low is the one direction the correctness page says it never goes —
+claim 5 is "the byte count never reads low", and the estimate sweep asserts "no byte count
+under the truth" over every fixture.
+
+The time column was measured against the window's far end, unsigned, while the value column
+two lines below already allowed for a sign whenever either physical bound is negative. A
+recording whose first record's timekeeping TAL says `-100` writes `-100.000` where that
+budgeted for `100.000`: one byte a row, every row. Both estimates now measure over both ends
+of the window — from -100s to -97s the widest instant is the start, not the end — and carry
+the sign.
+
+The sweep could not have caught it: every fixture began at zero or later. There is one now,
+`negative-origin.edf`, and it turned up a second defect on the way in. `buildTal` in the
+fixture writer glued a `+` onto every onset, so asking it for a record at -100 produced
+`+-100` — which no reader parses, so the fixture came out with no timekeeping at all and timed
+from zero like every other one. EDF+ requires an explicit sign and the format page says a
+negative onset is legal; the helper could not write one. It takes the sign from the number now.
+
+50 fixtures: 376 estimate predictions and 275 layout comparisons.
+
 ## 0.5.84
 
 ### Fixed: a record duration too small to divide into dropped every sample and blamed the window
