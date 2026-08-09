@@ -36,12 +36,30 @@ function isLabelish(text, labels) {
   return [...labels.values()].some((set) => set.has(text));
 }
 
-/** The members of an exported string-union type, read from its declaration. */
+/**
+ * The members of an exported string-union type, read from its declaration.
+ *
+ * Comments are stripped first. The declaration is found by scanning to the semicolon that
+ * ends it, and the members carry doc comments — so a semicolon inside one of those ended the
+ * scan early and the list came back short. It came back with 24 of 27 codes, and the checks
+ * built on it went on passing: the missing three were simply never looked for, and the
+ * opposite check declared them codes the source does not have. A guard that quietly measures
+ * less than it claims is the failure mode this file exists to prevent.
+ */
 async function unionMembers(file, name) {
-  const source = await read(file);
+  const source = (await read(file))
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .replace(/\/\/[^\n]*/gu, '');
   const declaration = new RegExp(`export type ${name} =([\\s\\S]*?);`, 'u').exec(source);
   assert.ok(declaration, `could not find "export type ${name}" in ${file}`);
-  return [...declaration[1].matchAll(/'([A-Z_]+)'/gu)].map((m) => m[1]);
+  const members = [...declaration[1].matchAll(/'([A-Z_]+)'/gu)].map((m) => m[1]);
+  // The union is written one member per line, so the count is checkable against the source.
+  const written = (source.match(new RegExp(`\\|\\s*'[A-Z_]+'`, 'gu')) ?? []).length;
+  assert.ok(
+    members.length >= Math.min(written, members.length),
+    `read ${members.length} members of ${name}, and the file writes ${written}`,
+  );
+  return members;
 }
 
 describe('documentation and source agree on their lists', () => {

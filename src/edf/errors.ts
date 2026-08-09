@@ -40,6 +40,14 @@ export type DiagnosticCode =
    * `start_datetime_local` null in metadata.json with nothing saying why — on the field the
    * documented recipe for an absolute instant depends on.
    */
+  /**
+   * An annotation channel with a non-zero origin, in a file marked neither EDF+C nor EDF+D.
+   *
+   * The marker decides whether the origin is applied, and the annotation channel is found by
+   * label instead. So a file carrying one without the marker got samples timed from zero and events
+   * timed from the origin, and the two CSVs came out on clocks seconds apart.
+   */
+  | 'MISSING_EDF_PLUS_MARKER'
   | 'START_TIME_UNREADABLE'
   /**
    * `--info --stdout` on a recording `--stdout` would refuse.

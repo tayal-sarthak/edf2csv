@@ -199,6 +199,7 @@ LARGE_OUTPUT           NO_SIGNAL_CHANNELS       NO_SAMPLES
 STALE_OUTPUT           HEADER_BYTES_MISMATCH    NONPRINTABLE_LABEL
 INPUT_CHANGED          EMPTY_WINDOW             TIME_RESOLUTION
 VALUE_RESOLUTION       STDOUT_UNSUPPORTED       START_TIME_UNREADABLE
+MISSING_EDF_PLUS_MARKER
 ```
 
 `file.diagnostics` carries only the ones the header parser can raise. Conversion adds more, which is why `convert()` returns its own combined list.

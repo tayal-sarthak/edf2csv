@@ -75,7 +75,41 @@ export function deriveRecordStarts(
     TAL of +0 needs no table at all, and that is nearly every file.
   */
   if (file.header.continuity !== 'EDF+D') {
-    if (file.header.continuity !== 'EDF+C') return { starts: null, diagnostics };
+    if (file.header.continuity !== 'EDF+C') {
+      /*
+        An annotation channel the reserved field never claimed.
+
+        Without an `EDF+C` or `EDF+D` marker this is a plain EDF file, so the origin is not
+        applied and the samples are timed from zero. The annotation channel is found by label
+        rather than by the marker, though, so its events are still read and exported — with
+        the onsets the file gives them.
+
+        On a file whose timekeeping says the records start at 1000s, that put signals.csv at
+        0.000 and the event at 1000.5 in annotations.csv: two files from one conversion, a
+        thousand seconds apart, and nothing said so. output-files promises the opposite —
+        "`onset_s` is on the same clock as `time_s` in the signal files".
+
+        Reported rather than repaired. Which clock is right is not knowable from here: the
+        marker says plain EDF and the annotation channel says otherwise, and picking one would
+        move either the samples or the events by the origin on a guess.
+      */
+      const stated = annotationData.recordStarts.find((start) => start !== null) ?? null;
+      if (stated !== null && Math.abs(stated) > 0) {
+        diagnostics.push({
+          code: 'MISSING_EDF_PLUS_MARKER',
+          severity: 'warning',
+          message:
+            `This file has an annotation channel stating that its records begin at ` +
+            `${stated}s, but its reserved field carries no EDF+C or EDF+D marker — so it is ` +
+            `read as plain EDF, time_s counts from zero, and the two disagree by ${stated}s.`,
+          hint:
+            'annotations.csv keeps the onsets the file gives, so its events and signals.csv ' +
+            'are on different clocks. Mark the file EDF+C, or subtract the offset from the ' +
+            'onsets, before joining them.',
+        });
+      }
+      return { starts: null, diagnostics };
+    }
 
     /*
       The origin comes from whichever record first states one, not from record 0 alone.

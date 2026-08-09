@@ -138,6 +138,65 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('says when the annotations and the samples are on different clocks', async () => {
+    /*
+      The reserved field decides whether the origin is applied; the annotation channel is
+      found by its label. So a file carrying an annotation channel whose timekeeping says the
+      records begin at 1000s, with no EDF+C or EDF+D marker, had its samples timed from zero
+      and its events exported at their stated onsets — signals.csv opening at 0.000 and
+      annotations.csv putting the event at 1000.5, from one conversion, with nothing said.
+
+      output-files promises the opposite: "`onset_s` is on the same clock as `time_s` in the
+      signal files."
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-nomarker-'));
+    temporaries.push(scratch);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const signals = [
+      { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+        samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+      { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+        digMax: 32767, samplesPerRecord: 60, annotations: true },
+    ];
+    const build = (name, reserved, origin) => {
+      const file = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: file, reserved, numRecords: 3, recordDuration: 1, signals,
+        talsForRecord: (r) =>
+          buildTal(origin + r, r === 1 ? [{ onset: origin + 1.5, duration: null, text: 'event' }] : []),
+      });
+      return file;
+    };
+
+    const dir = await outDir();
+    const unmarked = await convert(build('unmarked', '', 1000), { outputDir: dir });
+    const raised = unmarked.diagnostics.filter((d) => d.code === 'MISSING_EDF_PLUS_MARKER');
+    assert.equal(raised.length, 1, JSON.stringify(unmarked.diagnostics));
+    assert.match(raised[0].message, /begin at 1000s/u, raised[0].message);
+
+    // The disagreement the warning is about is really there.
+    const firstSample = (await readCsv(dir, 'signals.csv'))[1].split(',')[0];
+    const firstOnset = (await readCsv(dir, 'annotations.csv'))[1].split(',')[0];
+    assert.equal(firstSample, '0.000');
+    assert.equal(firstOnset, '1001.5');
+
+    // Marked EDF+C, the origin is applied and there is nothing to warn about.
+    const marked = await outDir();
+    const proper = await convert(build('marked', 'EDF+C', 1000), { outputDir: marked });
+    assert.ok(
+      !proper.diagnostics.some((d) => d.code === 'MISSING_EDF_PLUS_MARKER'),
+      JSON.stringify(proper.diagnostics),
+    );
+    assert.equal((await readCsv(marked, 'signals.csv'))[1].split(',')[0], '1000.000');
+
+    // And an unmarked file whose records begin at zero has no disagreement to report.
+    const zero = await convert(build('zero', '', 0), { outputDir: await outDir() });
+    assert.ok(
+      !zero.diagnostics.some((d) => d.code === 'MISSING_EDF_PLUS_MARKER'),
+      JSON.stringify(zero.diagnostics),
+    );
+  });
+
   it('calls a conversion whole when it wrote the whole recording', async () => {
     /*
       `whole_recording` is `clampedEnd >= latest`, and `latest` is

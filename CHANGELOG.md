@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.104
+
+### Fixed: signals.csv and annotations.csv came out a thousand seconds apart, in silence
+
+The reserved field decides whether a recording's origin is applied. The annotation channel is
+found by its label. A file carrying an annotation channel whose timekeeping says the records
+begin at 1000s, with neither `EDF+C` nor `EDF+D` in its reserved field, got both halves of that:
+
+```
+$ head -2 out/signals.csv        $ cat out/annotations.csv
+time_s,EEG                       onset_s,duration_s,description,record_index
+0.000,0.0244                     1001.5,,event,1
+```
+
+One conversion, two files, a thousand seconds apart, exit 0 and nothing said — against a
+documented promise that "`onset_s` is on the same clock as `time_s` in the signal files".
+
+New warning `MISSING_EDF_PLUS_MARKER`, naming the offset and both consequences. Reported rather
+than repaired: which field is wrong is not knowable from inside the file. The marker says plain
+EDF and the annotation channel says otherwise; applying the origin moves every sample and
+ignoring the onsets moves every event, each on a guess. A file whose records begin at zero has
+no disagreement and says nothing.
+
+### Fixed: the docs test was checking 24 of the 27 diagnostic codes
+
+It reads the `DiagnosticCode` union by scanning to the semicolon that ends the declaration, and
+the members carry doc comments — so a semicolon inside one of those ended the scan three codes
+early. The checks built on it went on passing: the missing three were never looked for, and the
+opposite check called them codes the source does not have.
+
+Found by writing a comment containing a semicolon. Comments are stripped before the scan now,
+and the member count is checked against the source, because a guard that quietly measures less
+than it claims is the failure this file exists to prevent.
+
 ## 0.5.103
 
 ### Fixed: the advice for reaching an awkward channel printed a command that exits 2

@@ -84,6 +84,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
+| `MISSING_EDF_PLUS_MARKER` | An annotation channel puts the records somewhere the missing EDF+ marker cannot honour |
 | `START_TIME_UNREADABLE` | The header's start date or time is not a date or a time |
 | `STDOUT_UNSUPPORTED` | `--info --stdout` on a recording `--stdout` would refuse |
 
@@ -546,6 +547,25 @@ warning: --stdout would refuse this recording: needs exactly one table, but this
 A warning rather than a refusal for the reason the destination guards are: `--info` writes nothing, so a rule about the output has no business stopping it from describing the recording — and being told the command will not work is exactly what was asked. Until 0.5.87 `--info` ignored `--stdout` entirely and predicted rows and named files for a command that writes neither.
 
 **What to do.** Take the advice in the hint, or drop `--stdout`. Nothing is wrong with the recording.
+
+### MISSING_EDF_PLUS_MARKER
+
+The file has an annotation channel whose timekeeping says the records begin at a non-zero instant, and a reserved field with neither `EDF+C` nor `EDF+D` in it.
+
+**Cause.** A writer that produced EDF+ content and left the marker off, or a file whose reserved field was overwritten. The marker is what makes a file EDF+; the annotation channel is found by its label.
+
+**What edf2csv does.** Reads it as plain EDF, which is what the marker says: `time_s` counts from zero. The annotation channel is still found and its events still exported, with the onsets the file gives them — so the two files come out on clocks that differ by the origin:
+
+```
+warning: This file has an annotation channel stating that its records begin at 1000s, but its reserved field carries no EDF+C or EDF+D marker — so it is read as plain EDF, time_s counts from zero, and the two disagree by 1000s.
+         annotations.csv keeps the onsets the file gives, so its events and signals.csv are on different clocks. Mark the file EDF+C, or subtract the offset from the onsets, before joining them.
+```
+
+Until 0.5.104 nothing was raised: `signals.csv` opened at `0.000`, `annotations.csv` put the event at `1000.5`, and the pages promise the opposite — "`onset_s` is on the same clock as `time_s` in the signal files".
+
+Reported rather than repaired, because which clock is right is not knowable from inside the file. The marker says plain EDF and the annotation channel says otherwise; applying the origin would move every sample, and ignoring the onsets would move every event, each on a guess about which field was written wrongly.
+
+**What to do.** Fix the reserved field if the recording really is EDF+, which is the likely case — the annotation channel is not something a plain EDF writer produces. Otherwise subtract the offset from the onsets before joining the two files.
 
 ### START_TIME_UNREADABLE
 
