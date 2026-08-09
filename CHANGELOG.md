@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.83
+
+### Fixed: a physical span too small to represent became a flat channel, silently
+
+```
+time_s,MAG
+0.000,0.000
+0.250,0.000
+0.500,0.000
+```
+
+Eight samples spanning digital -16,000 to +12,000, all written as the same number, no
+diagnostic anywhere, `--strict` exiting 0. The header declares -1e-320 to 1e-320 over the full
+16-bit range: 65,536 distinct physical values, none of them equal to another.
+
+The gain is the span over the digital range — 2e-320/65535, or 3e-325, which is smaller than
+the smallest subnormal double and underflows to +0. `makeScaler` tests `gain === 0` and takes
+its flat-range branch, whose comment is correct about the case it was written for: "A flat
+physical range makes every sample the same value ... That mapping is defined, so its constant
+is written." An underflowed gain is not a flat range, and from inside that test the two look
+identical.
+
+The answer was already in the function, eight lines below. Overflow gets it: "the physical span
+overflowed a double, so there is no mapping at all. Returning physicalMin filled the column with
+one enormous constant — every distinct sample rendered as the same 300-digit number — and raised
+nothing." Underflow is the same fact about the same header and now takes the same route: empty
+cells, and `UNUSABLE_PHYSICAL_RANGE` saying the span is too small rather than too large.
+
+A genuinely flat range still writes its constant. That mapping is defined, every sample really
+is that value, and it has `DEGENERATE_PHYSICAL_RANGE` of its own.
+
+One power of ten away, at 1e-319, the same file has always raised `VALUE_RESOLUTION` — this was
+the one gap in a row of neighbours that all report themselves.
+
 ## 0.5.82
 
 ### Fixed: `--stdout --gzip` onto a full destination announced every row and exited 0

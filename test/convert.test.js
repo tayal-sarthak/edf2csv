@@ -138,6 +138,68 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('does not turn a span it cannot scale into a flat channel', async () => {
+    /*
+      The gain is the physical span over the digital range. A span of 2e-320 across 65,536
+      codes is 3e-325 — below the smallest subnormal double, so it underflows to +0, and the
+      scaler's flat-range branch handed every code the same physical value. Eight samples
+      spanning digital -16,000 to +12,000 came out as one repeated number, with no diagnostic
+      anywhere and `--strict` exiting 0.
+
+      One power of ten away the same file raises VALUE_RESOLUTION, and a genuinely flat range
+      raises DEGENERATE_PHYSICAL_RANGE, so this was the one gap in a row of neighbours that
+      all report themselves. It is the same fact as the overflow case the scaler already
+      handled — the span cannot be turned into a mapping — and gets the same answer.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-underflow-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const build = (name, physMin, physMax) => {
+      const file = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: file, numRecords: 2, recordDuration: 1,
+        signals: [{
+          label: 'MAG', dimension: 'T', physMin, physMax, digMin: -32768, digMax: 32767,
+          samplesPerRecord: 4, gen: (r, s) => (r * 4 + s) * 4000 - 16000,
+        }],
+      });
+      return file;
+    };
+
+    // The span underflows: reported, and the cells left empty rather than filled with a
+    // constant the header does not justify.
+    const tiny = await convert(build('tiny', '-1e-320', '1e-320'), { outputDir: await outDir() });
+    const raised = tiny.diagnostics.filter((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE');
+    assert.equal(raised.length, 1, JSON.stringify(tiny.diagnostics));
+    assert.match(raised[0].message, /too small to represent/u, raised[0].message);
+
+    const dir = await outDir();
+    await convert(build('tiny2', '-1e-320', '1e-320'), { outputDir: dir });
+    const cells = (await readCsv(dir, 'signals.csv')).slice(1).map((row) => row.split(',')[1]);
+    assert.deepEqual([...new Set(cells)], [''], `expected empty cells, got ${[...new Set(cells)]}`);
+
+    /*
+      A genuinely flat range keeps its constant. That mapping is defined — every sample really
+      is that value — and it has its own diagnostic, so folding it in here would replace a
+      true column with empty cells.
+    */
+    const flatDir = await outDir();
+    const flat = await convert(build('flat', '5', '5'), { outputDir: flatDir });
+    assert.ok(
+      flat.diagnostics.some((d) => d.code === 'DEGENERATE_PHYSICAL_RANGE'),
+      JSON.stringify(flat.diagnostics),
+    );
+    const flatCells = (await readCsv(flatDir, 'signals.csv')).slice(1).map((row) => row.split(',')[1]);
+    assert.deepEqual([...new Set(flatCells)], ['5.000'], 'a flat range still writes its value');
+
+    // And an ordinary calibration is untouched.
+    const ordinary = await convert(fixture('tiny.edf'), { outputDir: await outDir() });
+    assert.ok(
+      !ordinary.diagnostics.some((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE'),
+      JSON.stringify(ordinary.diagnostics),
+    );
+  });
+
   it('names the column an unlabelled channel really gets', async () => {
     /*
       EMPTY_LABEL promised `signal_<index>`, which is right only while nothing else claims that

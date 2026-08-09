@@ -210,6 +210,21 @@ warning: Signal 0 ("huge") declares a physical range from -1e+308 to 1e+308, who
          Its cells are left empty rather than filled with a value the header cannot justify.
 ```
 
+A span can also be too *small*. The gain is the span divided by the digital range, so 2e-320
+across 65,536 codes is 3e-325 — below the smallest number a double can hold, so it underflows to
+zero and there is no mapping, exactly as when it overflows. Until 0.5.83 that case took the
+flat-range path instead: every one of the channel's 65,536 distinct readings was written as the
+same number, with no diagnostic and `--strict` exiting 0.
+
+```
+warning: Signal 0 ("MAG") declares a physical range from -1e-320 to 1e-320, whose span is too small to represent, so its values cannot be scaled.
+         Its cells are left empty rather than filled with a value the header cannot justify.
+```
+
+A range that is genuinely flat — minimum equal to maximum — is a different thing and keeps its
+constant, because that mapping is defined and every sample really is that value. It has
+[`DEGENERATE_PHYSICAL_RANGE`](#degenerate_physical_range) of its own.
+
 **What to do.** Treat the channel as unreadable and check where the header came from. Channels
 either side of it are unaffected.
 

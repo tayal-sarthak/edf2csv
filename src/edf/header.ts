@@ -450,13 +450,29 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         });
       }
 
-      if (!Number.isFinite(physicalMax - physicalMin)) {
+      /*
+        Too large to represent, and too small — the second was silent.
+
+        The gain is the span divided by the digital range, and a span of 2e-320 over 65,535
+        codes is 3e-325: below the smallest subnormal double, so it underflows to +0. The
+        scaler's flat-range branch then handed every code the same physical value, and a
+        channel of 65,536 distinct readings became one repeated number with nothing raised at
+        all. One power of ten away, at 1e-319, the same file raises VALUE_RESOLUTION.
+
+        Both are the same fact about the header — the span cannot be turned into a mapping —
+        so both get this code, and both leave the cells empty rather than filling them with a
+        value the header cannot justify.
+      */
+      const span = physicalMax - physicalMin;
+      const underflowed = span !== 0 && span / (digitalMax - digitalMin) === 0;
+      if (!Number.isFinite(span) || underflowed) {
         diagnostics.push({
           code: 'UNUSABLE_PHYSICAL_RANGE',
           severity: 'warning',
           message:
             `Signal ${i} ("${label}") declares a physical range from ${physicalMin} to ` +
-            `${physicalMax}, whose span is too large to represent, so its values cannot be scaled.`,
+            `${physicalMax}, whose span is too ${underflowed ? 'small' : 'large'} to ` +
+            `represent, so its values cannot be scaled.`,
           hint: 'Its cells are left empty rather than filled with a value the header cannot justify.',
         });
       } else if (digitalMax === digitalMin) {

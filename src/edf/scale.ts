@@ -44,9 +44,23 @@ export function makeScaler(signal: EdfSignal): Scaler {
 
   const gain = (physicalMax - physicalMin) / (digitalMax - digitalMin);
 
-  // A flat physical range makes every sample the same value, and would divide by
-  // zero in the offset below. That mapping is defined, so its constant is written.
-  if (gain === 0) return () => physicalMin;
+  /*
+    A flat physical range makes every sample the same value, and would divide by zero in the
+    offset below. That mapping is defined, so its constant is written.
+
+    A gain of zero does not always mean flat, and this could not tell the difference. A range
+    of -1e-320 to 1e-320 is not flat — it is 65,536 distinct physical values — but the gain
+    is 2e-320/65535, which is smaller than the smallest subnormal double and underflows to
+    +0. Every distinct sample then took `physicalMin`, so eight codes spanning -16,000 to
+    +12,000 came out as one repeated number, with no diagnostic anywhere and `--strict`
+    exiting 0. At 1e-319, one power of ten away, the same file raises VALUE_RESOLUTION.
+
+    That is the same situation as the overflow below it, which this codebase already reasoned
+    about and answered: the span cannot be represented, so there is no mapping, so the cells
+    are left empty rather than filled with a value the header cannot justify. Underflow only
+    got the flat-range treatment because `gain === 0` is what both look like from here.
+  */
+  if (gain === 0) return physicalMax === physicalMin ? (): number => physicalMin : (): number => NaN;
 
   // A non-finite gain is a different thing: the physical span overflowed a double, so
   // there is no mapping at all. Returning physicalMin filled the column with one enormous
