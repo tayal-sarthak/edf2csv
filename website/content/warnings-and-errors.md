@@ -428,6 +428,8 @@ warning: This is a discontinuous (EDF+D) recording: its data records are not con
          Each row carries its true recording time, so gaps stay visible instead of being closed.
 ```
 
+That hint is withdrawn on a file that cannot keep it. A recording marked `EDF+D` whose record times are not recorded anywhere — no annotation channel, or none that can be read — is written as if contiguous, and the warning says so and points at the one below it. Until 0.5.106 both printed as they are, and the second denied the first.
+
 edf2csv reads each record's true start time from its timekeeping annotation and writes that time into the `time_s` column. A gap in the recording becomes a jump in `time_s`, exactly as it should. This is the behaviour that distinguishes edf2csv from the common alternatives: `mne.io.read_raw_edf` closes these gaps silently, and pyEDFlib refuses `EDF+D` files outright.
 
 **Marked discontinuous, but there's no annotation channel.** The record start times are stored in the annotation channel, so a file with no annotation channel has no record of where its records sit.

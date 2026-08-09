@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.106
+
+### Fixed: two warnings printed together, and the second denied the first
+
+```
+warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+         Each row carries its true recording time, so gaps stay visible instead of being closed.
+warning: This file is marked discontinuous but has no annotation channel, so where its records
+         sit in time is not recorded anywhere.
+         Times are written as if the records were contiguous. Any gaps are lost.
+```
+
+The column runs contiguously from zero. No row carries a true recording time, because none is
+recorded — which the second warning says plainly, four lines under the first one promising the
+opposite.
+
+The header parser raises the first, and it cannot know: whether the record starts can be derived
+is settled after the annotation channel has been read. So the promise is withdrawn where the
+answer is, the way `withoutFileRateWarning` already drops a header diagnostic the plan has
+superseded. A file that can keep it keeps it — `discontinuous.edf` still says gaps stay visible,
+and its rows still carry the nine-second gap.
+
 ## 0.5.105
 
 ### Fixed: a BDF+ recording was told it is "marked continuous (EDF+C)"

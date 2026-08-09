@@ -10,6 +10,36 @@ export interface AnnotationTimingData {
 }
 
 /**
+ * The EDF+D warning's promise, withdrawn when the file cannot keep it.
+ *
+ * The header parser raises DISCONTINUOUS with the hint "Each row carries its true recording
+ * time, so gaps stay visible instead of being closed" — which is what an EDF+D conversion
+ * does, when the record times can be read. When they cannot, the very next warning in the
+ * same run says the opposite: "Times are written as if the records were contiguous. Any gaps
+ * are lost." Two warnings, printed together, and the second denies the first.
+ *
+ * The parser cannot know: whether the starts can be derived is settled here, after the
+ * annotation channel has been read. So the hint is amended where the answer is, the same way
+ * `withoutFileRateWarning` drops a header diagnostic the plan has superseded.
+ */
+export function withTimingPromiseKept(
+  diagnostics: readonly Diagnostic[],
+  derived: boolean,
+): Diagnostic[] {
+  if (derived) return [...diagnostics];
+  return diagnostics.map((d) =>
+    d.code === 'DISCONTINUOUS' && d.hint?.includes('gaps stay visible')
+      ? {
+          ...d,
+          hint:
+            'Where its records sit in time is not recorded in this file, so they are written ' +
+            'as if contiguous — see the warning below.',
+        }
+      : d,
+  );
+}
+
+/**
  * Resolve the true start time of every data record.
  *
  * Continuous recordings need no table because their record positions are

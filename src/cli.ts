@@ -34,7 +34,7 @@ import { ChannelSelectionError } from './convert/channels.js';
 // Shared with the library so a bad option is the same error whichever way it arrived.
 import { OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
-import { deriveRecordStarts } from './convert/timing.js';
+import { deriveRecordStarts, withTimingPromiseKept } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson } from './cli/report.js';
 import { counted, listed } from './format/list.js';
 import { VERSION } from './version.js';
@@ -827,7 +827,7 @@ async function showInfo(
 
     // Under --json the warnings travel inside the document, exactly as they do for a
     // conversion, so stderr stays empty and the whole result is one parseable thing.
-    const diagnostics = [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics];
+    const diagnostics = [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics];
     if (!asJson && diagnostics.length > 0) {
       /*
         Named when there is more than one recording to confuse it with.

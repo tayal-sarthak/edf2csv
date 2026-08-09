@@ -39,7 +39,7 @@ import {
 import type { SampleFormatter } from '../format/number.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
-import { deriveRecordStarts } from './timing.js';
+import { deriveRecordStarts, withTimingPromiseKept } from './timing.js';
 import { sampleTimeIsInRange, toleranceFor } from './time-range.js';
 import { VERSION as TOOL_VERSION } from '../version.js';
 
@@ -195,7 +195,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         files: written,
         readerHungUp,
         annotationCount: 0,
-        diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics],
+        diagnostics: [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics],
         plan,
         file,
         elapsedMs: Date.now() - startedAt,
@@ -299,6 +299,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       written,
       annotationsWritten,
       changed ? null : checksumAtOpen,
+      timing.starts !== null,
     );
 
     const stale = await findStaleOutput(outputDir, written);
@@ -308,7 +309,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       files: written,
       readerHungUp: false,
       annotationCount: annotationsWritten,
-      diagnostics: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics, ...stale],
+      diagnostics: [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics, ...stale],
       plan,
       file,
       elapsedMs: Date.now() - startedAt,
@@ -1505,6 +1506,8 @@ async function writeMetadata(
   annotationCount: number,
   /** Hash of the bytes that were converted, or null when it could not be vouched for. */
   checksum: string | null,
+  /** Whether the record start times could be read; see withTimingPromiseKept. */
+  timedFromRecords: boolean,
 ): Promise<void> {
   const { header } = file;
 
@@ -1574,7 +1577,10 @@ async function writeMetadata(
         decimals: g.channels.map((c) => c.decimals),
       })),
     },
-    notes: [...withoutFileRateWarning(file.diagnostics), ...plan.diagnostics].map((d) => ({
+    notes: [
+      ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
+      ...plan.diagnostics,
+    ].map((d) => ({
       code: d.code,
       severity: d.severity,
       message: d.message,

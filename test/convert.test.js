@@ -138,6 +138,55 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('withdraws the timing promise on a file that cannot keep it', async () => {
+    /*
+      The header parser raises DISCONTINUOUS with "Each row carries its true recording time,
+      so gaps stay visible instead of being closed" — true of an EDF+D conversion when the
+      record times can be read. On a file marked EDF+D with no annotation channel they cannot,
+      and the very next warning in the same run said the opposite: "Times are written as if
+      the records were contiguous. Any gaps are lost." Two warnings printed together, the
+      second denying the first, over a time column that runs contiguously from zero.
+
+      The parser cannot know — whether the starts can be derived is settled after the
+      annotation channel has been read.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-promise-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const untimed = path.join(scratch, 'untimed.edf');
+    writeEdf({
+      path: untimed, reserved: 'EDF+D', numRecords: 3, recordDuration: 1,
+      signals: [{ label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+        digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s }],
+    });
+
+    const dir = await outDir();
+    const result = await convert(untimed, { outputDir: dir });
+    const marked = result.diagnostics.find((d) => d.code === 'DISCONTINUOUS' && /not contiguous in time/u.test(d.message));
+    assert.ok(marked, JSON.stringify(result.diagnostics));
+    assert.doesNotMatch(marked.hint, /gaps stay visible/u, marked.hint);
+
+    // The claim it withdrew really is false here: the column runs straight from zero.
+    const rows = (await readCsv(dir, 'signals.csv')).slice(1, 3).map((r) => r.split(',')[0]);
+    assert.deepEqual(rows, ['0.000', '0.250']);
+
+    // And the two warnings no longer contradict each other.
+    const lost = result.diagnostics.find((d) => /no annotation channel/u.test(d.message));
+    assert.ok(lost, JSON.stringify(result.diagnostics));
+
+    /*
+      A file that can keep the promise keeps it. `discontinuous.edf` has the timekeeping, and
+      its rows really do carry the gap.
+    */
+    const good = await outDir();
+    const proper = await convert(fixture('discontinuous.edf'), { outputDir: good });
+    const kept = proper.diagnostics.find((d) => d.code === 'DISCONTINUOUS');
+    assert.ok(kept, JSON.stringify(proper.diagnostics));
+    assert.match(kept.hint, /gaps stay visible/u, kept.hint);
+    const times = (await readCsv(good, 'signals.csv')).slice(1).map((r) => Number(r.split(',')[0]));
+    assert.ok(Math.max(...times) > 9, `the gap is not in the column: ${times.slice(-3)}`);
+  });
+
   it('spells the continuity markers the way the file spells them', async () => {
     /*
       `continuity` normalises `BDF+C` to the internal `EDF+C` tag, and that tag reached the
