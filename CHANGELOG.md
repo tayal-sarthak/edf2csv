@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.92
+
+### Fixed: `--info` redirected into a full filesystem wrote nothing and exited 0
+
+```
+$ edf2csv wide.edf --info > desc.txt
+$ echo $?
+0
+$ wc -c desc.txt
+0 desc.txt
+```
+
+A conversion audits what actually reached stdout — that is what 0.5.82 and the disk-image tests
+are about. `--info` wrote its description with `process.stdout.write` and looked at nothing, so
+a run that produced no description at all reported success. `edf2csv rec.edf --info > desc.txt`
+in a script is exactly how someone captures one.
+
+A description is usually a few hundred bytes, which is why this went unnoticed; a 900-channel
+recording's is 58 KB, and no destination is guaranteed to have that.
+
+It uses the same audit now, so it exits 1 and names the cause. That audit declines anything
+that is not a regular file, so a pipe and a terminal are untouched and `--info | head` still
+exits 0.
+
+The test took two attempts: filling the volume completely means the shell cannot create the
+redirect target and the tool never runs, which is what the first one measured. It leaves twenty
+kilobytes and writes 58 into it.
+
 ## 0.5.91
 
 ### Fixed: `--start` at the recording's exact length was accepted when the length was a product

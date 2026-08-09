@@ -112,6 +112,8 @@ error: --out was given "-nightly", which begins with a dash and so reads as anot
 
 So `--out=-nightly` and `-o-nightly` both work; `-o=-nightly` does not — it makes the destination `=-nightly`.
 
+What `--info` prints is checked the same way a conversion's `--stdout` is: redirected into a filesystem with no room, it exits 1 and says so rather than leaving a short file behind and reporting success. A description is usually small, but a 900-channel recording's is 58 KB. Piping into `head` is unaffected — the check declines anything that is not a regular file.
+
 ## Input, output directory and overwriting
 
 An input can be a recording or a folder of them, and several can be given at once. A recording that cannot be read is a file error (exit 1); a folder holding none is a usage error (exit 2), since the command as written asked for nothing:

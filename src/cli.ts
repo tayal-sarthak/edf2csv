@@ -24,6 +24,7 @@ import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
 import {
   ConversionError,
   USAGE_ERROR_CODES,
+  auditStdout,
   convert,
   defaultOutputDir,
   durationDiagnostics,
@@ -784,9 +785,21 @@ async function showInfo(
         });
       }
     }
-    process.stdout.write(
-      asJson ? `${infoJson(file, plan, jsonIndent)}\n` : `${formatInfo(file, plan)}\n`,
-    );
+    /*
+      Checked, like a conversion's stdout is.
+
+      This wrote and looked at nothing, so `--info > desc.txt` into a filesystem with no room
+      produced a zero-byte file and exited 0. The same audit the `--stdout` path uses: it
+      declines anything that is not a regular file, so a pipe or a terminal is unaffected, and
+      `--info | head` keeps exiting 0.
+    */
+    const audit = auditStdout();
+    const description = asJson
+      ? `${infoJson(file, plan, jsonIndent)}\n`
+      : `${formatInfo(file, plan)}\n`;
+    process.stdout.write(description);
+    audit?.count(Buffer.byteLength(description));
+    audit?.verify();
 
     // Under --json the warnings travel inside the document, exactly as they do for a
     // conversion, so stderr stays empty and the whole result is one parseable thing.

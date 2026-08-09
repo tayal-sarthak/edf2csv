@@ -1364,7 +1364,15 @@ function writeHint(cause: unknown, toStdout = false): string {
  * those a short write cannot go unreported this way. Appending (`>>`) is fine, since the
  * starting size is taken before anything is written.
  */
-function auditStdout(): { count: (bytes: number) => void; verify: () => void } | null {
+/**
+ * Exported so `--info` can use the same audit a `--stdout` conversion does.
+ *
+ * `--info` wrote its description with `process.stdout.write` and looked at nothing: redirected
+ * into a full filesystem it produced a zero-byte file and exited 0, so `edf2csv rec.edf --info
+ * > desc.txt` reported success over nothing at all. A 900-channel recording's description is
+ * 58 KB, which is not a size a destination is guaranteed to have.
+ */
+export function auditStdout(): { count: (bytes: number) => void; verify: () => void } | null {
   let startSize: number;
   try {
     const info = fstatSync(1);

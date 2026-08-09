@@ -287,6 +287,48 @@ describe('--stdout onto a destination that fills up', () => {
     });
   });
 
+  it('checks its own stdout under --info, which wrote and looked at nothing', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    /*
+      A conversion audits what reached stdout. `--info` wrote its description with
+      `process.stdout.write` and looked at nothing, so `edf2csv rec.edf --info > desc.txt`
+      into a filesystem with no room produced a zero-byte file and exited 0 — success
+      reported over nothing at all. A description is small, but not always: a 900-channel
+      recording's is 58 KB, and no destination is guaranteed to have it.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    await withSmallVolume(async (VOLUME) => {
+      const recording = path.join(VOLUME, 'wide.edf');
+      // Distinct rates so the channel table is long: the description has to exceed the room
+      // left, or the write would simply fit.
+      writeEdf({
+        path: recording, numRecords: 1, recordDuration: 1,
+        signals: Array.from({ length: 900 }, (unused, i) => ({
+          label: `C${i}`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -32768,
+          digMax: 32767, samplesPerRecord: i + 1, gen: () => 0,
+        })),
+      });
+      /*
+        Twenty kilobytes left, not zero. Filling the volume completely means the shell cannot
+        create the redirect target at all, and the tool never runs — the first attempt at this
+        test failed that way. What is wanted is a write that starts and cannot finish, so the
+        description has to be larger than the room: 900 channels is about 58 KB of table.
+      */
+      const { stdout: free } = await run('/bin/sh', ['-c', `df -k "${VOLUME}" | tail -1 | awk '{print $4}'`]);
+      const leave = Math.max(1, Number(free.trim()) - 20);
+      await run('/bin/sh', ['-c', `dd if=/dev/zero of="${path.join(VOLUME, 'filler')}" bs=1024 count=${leave} 2>/dev/null || true`]);
+
+      const destination = path.join(VOLUME, 'desc.txt');
+      const result = await toFile([recording, '--info'], destination);
+      assert.notEqual(result.code, 0, `a description that never arrived reported success:\n${result.stderr}`);
+      assert.match(result.stderr, /no space left on device|did not reach the destination/u, result.stderr);
+    }, '4m');
+  });
+
   it('still treats a reader that hangs up as the ordinary thing it is', async (t) => {
     if (!(await volumeAvailable())) {
       t.skip('needs hdiutil, which only macOS has');
