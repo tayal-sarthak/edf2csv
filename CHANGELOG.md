@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.103
+
+### Fixed: the advice for reaching an awkward channel printed a command that exits 2
+
+`NONPRINTABLE_LABEL` exists to say how to reach a channel whose header text you cannot type, so
+a hint whose command fails is worse than no hint. One branch of it quoted the label back:
+
+```
+warning: Signal 0's unit contains 1 control character (\x07), ...
+         The column name is unaffected, so --channels "" still selects it.
+```
+
+`--channels ""` exits 2 with "--channels was given but lists no channel names". The channel has
+no label — 0.5.73's `EMPTY_LABEL` message already says the position is the only way in for one
+of those, and this hint, added in 0.5.71 and widened in 0.5.102, did not.
+
+It gives `--channels "#0"` for an unlabelled channel now, and keeps quoting the label when there
+is one to quote.
+
+The test runs what the hint says rather than matching it, across all three branches — no label,
+a typeable label, an untypeable one — and requires the command to exit 0 and select a channel.
+Checking a hint any other way is checking the sentence rather than the advice.
+
 ## 0.5.102
 
 ### Fixed: NONPRINTABLE_LABEL checked two of the four free-text fields

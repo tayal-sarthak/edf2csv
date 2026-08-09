@@ -448,9 +448,19 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
             `${control.length} control character${plural} (${shown}), ${lands} exactly as the ` +
             `header has them.`,
           hint:
-            (inLabel
+            /*
+              Every branch has to print a command that works.
+
+              The middle one quoted the label back, which is right until the label is empty:
+              an unlabelled channel got `--channels ""`, and that exits 2 with "--channels was
+              given but lists no channel names". A hint whose command fails is worse than no
+              hint, and this warning's whole job is to say how to reach a channel whose header
+              text you cannot type. `EMPTY_LABEL` already says the position is the only way in
+              for such a channel; so does this now.
+            */
+            (inLabel || label === ''
               ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
-                'since the name cannot be typed. '
+                `since ${inLabel ? 'the name cannot be typed' : 'it has no label'}. `
               : `The column name is unaffected, so --channels "${label}" still selects it. `) +
             'Printing the CSV to a terminal may do more than print it.',
         });

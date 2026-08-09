@@ -701,7 +701,7 @@ warning: Signal 0's label and unit contain 2 control characters (\x1b), which wi
          the name cannot be typed. Printing the CSV to a terminal may do more than print it.
 ```
 
-When only a cell field carries them, the column name is untouched and the channel can still be selected by name, and the warning says so instead — naming the cell, since `channels.csv` has fourteen columns:
+When only a cell field carries them, the column name is untouched and the channel can still be selected by name — unless it has no label, in which case the position is the only way in and the hint says that instead. Either way the command it prints is one that runs. The cell is named too, since `channels.csv` has fourteen columns:
 
 ```
 warning: Signal 0's unit contains 1 control character (\x07), which will appear in

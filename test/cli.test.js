@@ -574,6 +574,49 @@ describe('--info', () => {
     assert.equal(rows.length - 1, 10, 'the last record is one tenth of a second of samples');
   });
 
+  it('prints channel advice that works, on every branch of it', async () => {
+    /*
+      NONPRINTABLE_LABEL's hint tells you how to reach a channel whose header text you cannot
+      type — so a hint whose command fails is worse than no hint. The middle branch quoted the
+      label back, which is right until the label is empty: an unlabelled channel with a
+      control byte in its unit got `--channels ""`, and that exits 2 with "--channels was given
+      but lists no channel names".
+
+      Checked by running what the hint says rather than by matching it, which is the only way
+      this kind of claim stays true.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-hintrun-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const BEL = String.fromCharCode(7);
+    const base = { physMin: -1, physMax: 1, digMin: -1, digMax: 1, samplesPerRecord: 2, gen: () => 0 };
+
+    const cases = [
+      // No label at all: only the position can reach it.
+      ['blank', [{ label: '', dimension: `u${BEL}V`, ...base }]],
+      // A label that can be typed: the hint may quote it.
+      ['named', [{ label: 'EEG', dimension: `u${BEL}V`, ...base }]],
+      // A label that cannot: the position again.
+      ['noisy', [{ label: `EEG${BEL}`, dimension: 'uV', ...base }]],
+    ];
+    for (const [name, signals] of cases) {
+      const recording = path.join(dir, `${name}.edf`);
+      writeEdf({ path: recording, numRecords: 1, recordDuration: 1, signals });
+
+      const info = await cli([recording, '--info']);
+      const hint = info.stderr.split('\n').find((line) => line.includes('--channels'));
+      assert.ok(hint, `${name}: no --channels advice was given:\n${info.stderr}`);
+
+      const quoted = /--channels "([^"]*)"/u.exec(hint);
+      assert.ok(quoted, `${name}: the advice names no argument: ${hint}`);
+
+      const ran = await cli([recording, '--channels', quoted[1], '--out', path.join(dir, `o-${name}`), '--quiet']);
+      assert.equal(ran.code, 0, `${name}: the advice "${quoted[1]}" exits ${ran.code}:\n${ran.stderr}`);
+      const header = await readFile(path.join(dir, `o-${name}`, 'signals.csv'), 'utf8');
+      assert.equal(header.split('\n')[0].split(',').length, 2, `${name}: it selected nothing`);
+    }
+  });
+
   it('agrees with itself about number when the count is one', async () => {
     /*
       Every one of these was written `${n} records`, which is right until the file has one of
