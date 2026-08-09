@@ -438,6 +438,55 @@ describe('EDF+ annotations', () => {
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
   });
 
+  it('does not tell a file holding data that none was written', async () => {
+    /*
+      "The recording was probably interrupted before any data was written" is right about an
+      empty file and wrong about the other way to reach this error: a header declaring records
+      larger than the data present. A 606 KB file holding 589 KB of samples — more than half a
+      million readings — was told no data was written, and the message carried no figures at
+      all, so nothing in it could be checked against the file.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-partial-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { truncateSync } = await import('node:fs');
+    const channels = 8;
+    const perRecord = 4096;
+    const partial = path.join(dir, 'partial.edf');
+    writeEdf({
+      path: partial, numRecords: 2, recordDuration: 30,
+      signals: Array.from({ length: channels }, (unused, i) => ({
+        label: `C${i}`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -32768,
+        digMax: 32767, samplesPerRecord: perRecord, gen: (n) => n % 1000,
+      })),
+    });
+    const recordBytes = channels * perRecord * 2;
+    const kept = Math.floor(recordBytes * 0.6);
+    truncateSync(partial, 256 + channels * 256 + kept);
+
+    await assert.rejects(() => EdfFile.open(partial), (error) => {
+      assert.equal(error.code, 'NO_DATA_RECORDS');
+      // Both numbers, because the interesting comparison is between them.
+      assert.ok(error.message.includes(String(kept)), error.message);
+      assert.ok(error.message.includes(String(recordBytes)), error.message);
+      assert.doesNotMatch(error.hint, /before any data was written/u, error.hint);
+      return true;
+    });
+
+    // A file that really does hold nothing keeps the sentence that is true of it.
+    const empty = path.join(dir, 'empty.edf');
+    writeEdf({
+      path: empty, numRecords: 1, recordDuration: 1, truncateRecords: 0,
+      signals: [{ label: 'a', dimension: 'uV', physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+        samplesPerRecord: 4, gen: () => 0 }],
+    });
+    await assert.rejects(() => EdfFile.open(empty), (error) => {
+      assert.equal(error.code, 'NO_DATA_RECORDS');
+      assert.match(error.hint, /before any data was written/u, error.hint);
+      return true;
+    });
+  });
+
   it('counts a duration below zero without rewriting it', async () => {
     /*
       A length of time below zero is not one, and every use of it goes quietly wrong: the

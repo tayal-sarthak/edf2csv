@@ -587,10 +587,31 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   const trailingBytes = dataBytes - recordCount * recordBytes;
 
   if (recordCount === 0) {
+    /*
+      Which of the two, and with the numbers.
+
+      "The recording was probably interrupted before any data was written" is right about an
+      empty file and wrong about the other way to get here: a header declaring records larger
+      than the data present. A 606 KB file holding 589 KB of samples — 60% of one record, more
+      than half a million readings — was told no data was written, and the message carried no
+      figures at all, so nothing in it could be checked against the file. The declared record
+      size is the thing to look at, and it was the one thing not said.
+
+      Still an error either way. A record is the unit the format is addressed in, and there is
+      nothing smaller to convert.
+    */
+    const empty = dataBytes === 0;
     throw new EdfError(
       'NO_DATA_RECORDS',
-      'The file contains a header but no complete data record.',
-      'The recording was probably interrupted before any data was written.',
+      empty
+        ? 'The file contains a header and no data at all.'
+        : `The file contains ${counted(dataBytes, 'byte')} of data, which is less than the ` +
+          `${recordBytes} its header says one data record takes.`,
+      empty
+        ? 'The recording was probably interrupted before any data was written.'
+        : 'Either the recording was cut short part way through its first record, or the ' +
+          'header describes records larger than the ones actually written. Check the ' +
+          'samples-per-record fields against the file size.',
     );
   }
 

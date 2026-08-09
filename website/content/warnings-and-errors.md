@@ -731,14 +731,25 @@ The same code appears as a warning when a single channel is empty. As an error i
 
 ### NO_DATA_RECORDS
 
-The file contains a complete header but not one complete data record.
+The file contains a complete header but not one complete data record. There are two ways to get there and the message says which.
+
+Nothing after the header at all:
 
 ```
-error: The file contains a header but no complete data record.
+error: The file contains a header and no data at all.
        The recording was probably interrupted before any data was written.
 ```
 
 An acquisition that was started and stopped immediately produces exactly this. So does a transfer that copied the header and then failed.
+
+Or data is there, but less than one record of it — which up to 0.5.86 got the message above, so a 606 KB file holding 589 KB of samples was told no data was written:
+
+```
+error: The file contains 589824 bytes of data, which is less than the 983040 its header says one data record takes.
+       Either the recording was cut short part way through its first record, or the header describes records larger than the ones actually written. Check the samples-per-record fields against the file size.
+```
+
+Both numbers are there because the interesting comparison is between them: a header declaring records far larger than what was written is the other way to land here, and it is a header problem rather than a truncation.
 
 ### UNREADABLE
 

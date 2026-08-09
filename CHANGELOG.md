@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.86
+
+### Fixed: a file holding half a million samples was told no data was written
+
+```
+$ edf2csv partial.edf --out out
+error: The file contains a header but no complete data record.
+       The recording was probably interrupted before any data was written.
+```
+
+The file was 606 KB, of which 589 KB is sample data — more than half a million readings, 60% of
+one record. Data plainly was written.
+
+That hint is right about one way to reach this error and wrong about the other. A record is the
+unit the format is addressed in, so a file holding less than one has nothing convertible and the
+error stands — but "less than one record" happens both when a recording is cut short and when a
+header describes records larger than the ones actually written, and only the first is an
+interrupted acquisition. The message carried no figures at all, so nothing in it could be
+checked against the file, and the one number worth looking at — the declared record size — was
+the one not said.
+
+Both are there now, because the comparison between them is the whole diagnosis: "The file
+contains 589824 bytes of data, which is less than the 983040 its header says one data record
+takes", pointing at the samples-per-record fields. A file that really does hold nothing after
+its header keeps the sentence that is true of it.
+
 ## 0.5.85
 
 ### Fixed: the byte estimate read low on a recording timed from before zero
