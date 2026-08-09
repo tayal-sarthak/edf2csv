@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.99
+
+### Fixed: "Anything the tool noticed is printed after the table" — followed by one of the two
+
+`edf2csv sleep-study.edf --info` prints two warnings: the mixed sampling rates, and that at
+least one output file will exceed what Excel and Numbers can open. getting-started introduced
+the block with that sentence and showed the first.
+
+The omission is an odd one to leave: the row limit is a section of this project's own FAQ, and
+a reader is sent there later having been shown a run of the same recording that apparently did
+not raise it.
+
+Both are there now, with a link to the answer. The test runs the command the page is describing
+and requires every `warning:` line it prints to appear on the page — which is the only way a
+block quoting output stays honest as the tool gains things to say.
+
 ## 0.5.98
 
 ### Fixed: "what --info can and can't tell you" was wrong in both directions

@@ -764,6 +764,36 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('shows every warning the example command prints, not the first one', async () => {
+    /*
+      getting-started introduces the block with "Anything the tool noticed is printed after
+      the table, on stderr" and then showed one of the two warnings that command prints. The
+      missing one is the Excel row limit — which the same page's own FAQ builds a section on,
+      so a reader is told about it later and shown a run that apparently did not raise it.
+
+      Checked by running the command the page is describing.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-warnblock-'));
+    let printed;
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stderr } = await run(process.execPath, [CLI, recording, '--info']);
+      printed = stderr.split('\n').filter((line) => line.startsWith('warning: '));
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.ok(printed.length >= 2, `expected several warnings, got ${printed.length}`);
+
+    const page = (await read('website/content/getting-started.md')).replace(/\s+/gu, ' ');
+    for (const line of printed) {
+      assert.ok(
+        page.includes(line.replace(/\s+/gu, ' ').trim()),
+        `getting-started does not show: ${line}`,
+      );
+    }
+  });
+
   it('lists exactly the warnings --info cannot raise', async () => {
     /*
       The page said `--info` "also raises ANNOTATION_DECODE_FAILED", unqualified, and listed
