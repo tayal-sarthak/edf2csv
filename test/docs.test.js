@@ -764,6 +764,42 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('agrees across pages about how much of a file --info reads', async () => {
+    /*
+      Three pages said `--info` "reads only the header for plain EDF and continuous EDF+".
+      Since 0.5.46 it reads up to sixteen records' annotation slots of a continuous EDF+ to
+      find where the recording begins — which is why it raises ANNOTATION_DECODE_FAILED on
+      `lost-timekeeping.edf`, a continuous file, and prints a `Timed from` line for
+      `fractional-start.edf`, another one. warnings-and-errors describes it correctly, and
+      cli-reference points readers there for the answer, so three pages contradicted the
+      fourth.
+
+      The behaviour is asserted first, so this is measured rather than matched: if `--info`
+      ever really did stop reading records, the pages would be right and this test should be
+      the thing that fails.
+    */
+    const { stderr } = await run(process.execPath, [
+      CLI, path.join(ROOT, 'test/fixtures/generated/lost-timekeeping.edf'), '--info',
+    ]).catch((e) => e);
+    assert.match(
+      stderr,
+      /timekeeping annotation that could not be read/u,
+      '--info no longer reads records of a continuous EDF+, so the pages may be right',
+    );
+
+    for (const page of ['getting-started.md', 'recipes.md']) {
+      const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
+      for (const [claim] of text.matchAll(/[^.]*\bcontinuous EDF\+[^.]*\./gu)) {
+        if (!/only the header|past the header|Nothing is read/u.test(claim)) continue;
+        assert.match(
+          claim,
+          /sixteen/u,
+          `${page} says --info reads no further than the header: ${claim.trim()}`,
+        );
+      }
+    }
+  });
+
   it('scopes the cheap timing recipe to the recordings it is right for', async () => {
     /*
       api.md said to read `recordStarts` for any EDF+ file, then offered `readOrigin()` as

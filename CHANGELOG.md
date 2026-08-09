@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.97
+
+### Fixed: three pages said `--info` reads only the header, on files where it reads records
+
+"`--info` reads only the header for plain EDF and continuous EDF+, so it returns in
+milliseconds whatever the file's size." Getting-started said it, recipes said it twice.
+
+Since 0.5.46 it reads up to sixteen records' annotation slots of a *continuous* EDF+ as well,
+to find where the recording begins — which is why it raises `ANNOTATION_DECODE_FAILED` on
+`lost-timekeeping.edf`, a continuous file, and prints `Timed from 0.500s` for
+`fractional-start.edf`, another one. Both are behaviours the pages elsewhere describe and
+recommend.
+
+warnings-and-errors has had this right since 0.5.37 — "the first few records of a continuous
+one to find where the recording begins" — and cli-reference points readers there for the
+answer, so three pages contradicted the fourth about how much of a file a command touches.
+
+All three say what it does now, and link to the page that sets out which warnings follow. The
+test asserts the behaviour first and the prose second: if `--info` ever really did stop reading
+records, the pages would be right and this test is what should fail.
+
 ## 0.5.96
 
 ### Fixed: api.md said `readAnnotations` returns three counts, then named four

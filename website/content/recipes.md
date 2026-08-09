@@ -155,7 +155,7 @@ Sampling rates differ, so channels are written to 3 files, one per rate. No chan
 Would write 3,196,800 rows, roughly 108 MB.
 ```
 
-`--info` reads only the header for plain EDF and continuous EDF+, so it returns in milliseconds whatever the file's size. A discontinuous (EDF+D) recording is the exception: where each record sits in time is stored in the annotation channel, so that channel is scanned to get the span and the row estimate right. It writes nothing either way. CSV runs several times the size of the EDF — about six times here, and higher for a recording with few channels, since every row carries a `time_s` cell however many channels share it — so the estimate is worth reading before you start.
+`--info` reads the header, and on an EDF+ recording a little of the annotation channel: the first sixteen records of a continuous file to find where it begins, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic. It returns in milliseconds whatever the file's size either way, and writes nothing. [What it can and cannot tell you](/docs/warnings-and-errors#how-edf2csv-reports-problems) sets out which warnings follow from that. CSV runs several times the size of the EDF — about six times here, and higher for a recording with few channels, since every row carries a `time_s` cell however many channels share it — so the estimate is worth reading before you start.
 
 The estimate line goes to stdout and the warnings go to stderr, which makes each of them easy to pick out on its own:
 
@@ -195,8 +195,8 @@ night-01.edf	EDF+ (continuous)	28800	5	1/10/100	3196800	MIXED_SAMPLING_RATES;LAR
 night-02.edf	EDF	2	2	10	20
 ```
 
-Nothing is read past the header for plain EDF and continuous EDF+, so this stays fast over a
-directory of multi-gigabyte recordings. Find the ones that need attention before converting:
+Nothing is read past the header for plain EDF, and at most sixteen records' annotation slots for
+a continuous EDF+, so this stays fast over a directory of multi-gigabyte recordings. Find the ones that need attention before converting:
 
 ```bash
 for f in /data/recordings/*.edf; do
