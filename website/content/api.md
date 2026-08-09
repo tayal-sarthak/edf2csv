@@ -358,10 +358,11 @@ Note also that a small `chunkBytes` doesn't change the results, only how often t
 
 ```ts
 interface Annotation {
-  onset: number;           // seconds from the start of the recording
-  duration: number | null; // null when the TAL stated no duration that could be read
+  onset: number;             // seconds from the start of the recording
+  duration: number | null;   // null when the TAL stated no duration that could be read
   text: string;
-  recordIndex: number;     // the data record this annotation was stored in
+  recordIndex: number;       // the data record this annotation was stored in
+  durationUnreadable?: true; // the file stated a duration and it is not a number
 }
 ```
 

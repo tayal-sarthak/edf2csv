@@ -260,10 +260,14 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
 
     let annotationsWritten = 0;
     if (file.annotationSignals.length > 0) {
+      const window = requestedAnnotationWindow(options, plan.range.recordingStartSeconds);
+      // Reported against the rows that will be written, not against the file; see
+      // durationDiagnostics.
+      plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, window));
       const result = await writeAnnotationsCsv(
         outputDir,
         annotationData.annotations,
-        requestedAnnotationWindow(options, plan.range.recordingStartSeconds),
+        window,
         options.gzip === true,
         options.bom === true,
       );
@@ -1190,6 +1194,61 @@ async function writeChannelsCsv(
   back empty. `resolveRange` has always defaulted the same missing start to the earliest
   record, which is where this now takes it from.
 */
+/**
+ * What the durations in the events that will actually be written look like.
+ *
+ * These two warnings were raised from the file-wide counts the decoder accumulates, while
+ * `annotations.csv` is filtered to the requested window. A conversion of one second of a
+ * recording therefore warned that "1 annotation states a duration that is not a number, so
+ * its duration_s cell is empty" about an event two seconds outside it — naming a cell that is
+ * not in the output — and `--strict` failed the run for it. There is no such value, no such
+ * cell, and no such row.
+ *
+ * Taken from the events themselves, after the same filter the writer applies, so the count
+ * and the sentence describe the same rows. An unreadable duration is carried on the event
+ * because `duration: null` cannot say whether the file gave one; a negative duration needs no
+ * flag, since the value is right there.
+ */
+export function durationDiagnostics(
+  annotations: readonly Annotation[],
+  window: { from: number; to: number },
+): Diagnostic[] {
+  const written = annotations.filter((a) => a.onset >= window.from && a.onset < window.to);
+  const diagnostics: Diagnostic[] = [];
+
+  const negative = written.filter((a) => a.duration !== null && a.duration < 0).length;
+  if (negative > 0) {
+    const one = negative === 1;
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${negative} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration below zero, ` +
+        `which is not a length of time.`,
+      hint:
+        'The value is written to annotations.csv as the file gave it. Adding it to onset_s ' +
+        'ends the event before it starts, so check these rows before using the durations.',
+    });
+  }
+
+  const unreadable = written.filter((a) => a.durationUnreadable === true).length;
+  if (unreadable > 0) {
+    const one = unreadable === 1;
+    diagnostics.push({
+      code: 'ANNOTATION_DECODE_FAILED',
+      severity: 'warning',
+      message:
+        `${unreadable} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration that is ` +
+        `not a number, so ${one ? 'its' : 'their'} duration_s cell is empty.`,
+      hint:
+        'The onset and the description were read normally. An empty duration_s otherwise ' +
+        'means the file stated no duration, so these rows cannot be told apart from those.',
+    });
+  }
+
+  return diagnostics;
+}
+
 function requestedAnnotationWindow(
   options: ConvertOptions,
   recordingStart: number,

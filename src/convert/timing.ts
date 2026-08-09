@@ -6,10 +6,6 @@ export interface AnnotationTimingData {
   malformed: number;
   /** Unreadable TALs in first position, which carry timing rather than an event. */
   malformedTimekeeping?: number;
-  /** Events kept whose stated duration could not be read. */
-  unreadableDurations?: number;
-  /** Events kept whose stated duration read as a number below zero. */
-  negativeDurations?: number;
 }
 
 /**
@@ -36,57 +32,6 @@ export function deriveRecordStarts(
     });
   }
 
-  /*
-    An event that was exported, minus a field.
-
-    `duration_s` is empty in annotations.csv when the file stated no duration, which is what
-    the documentation says an empty cell means. A duration the file did state and this could
-    not read produced exactly the same empty cell, so an event written with a duration of
-    `abc` was exported as an event that never had one — the same row as its neighbour, and
-    nothing said a field had been dropped.
-
-    Not counted among the entries that "could not be exported": this one was, and everything
-    else about it is intact. The count is of rows in annotations.csv, since a TAL may carry
-    several texts and each becomes a row with the same empty cell.
-  */
-  /*
-    A length of time below zero.
-
-    Exported as the file wrote it, because a zero this tool invented would be a number no
-    writer wrote. But every use of it goes quietly wrong: the recipe the documentation gives
-    for the samples an event covers is `onset_s + duration_s`, and a duration of -3 ends the
-    window three seconds before the event begins and selects nothing, with nothing raised
-    anywhere to say why.
-  */
-  const negativeDurations = annotationData.negativeDurations ?? 0;
-  if (negativeDurations > 0) {
-    const one = negativeDurations === 1;
-    diagnostics.push({
-      code: 'ANNOTATION_DECODE_FAILED',
-      severity: 'warning',
-      message:
-        `${negativeDurations} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration ` +
-        `below zero, which is not a length of time.`,
-      hint:
-        'The value is written to annotations.csv as the file gave it. Adding it to onset_s ' +
-        'ends the event before it starts, so check these rows before using the durations.',
-    });
-  }
-
-  const unreadableDurations = annotationData.unreadableDurations ?? 0;
-  if (unreadableDurations > 0) {
-    const one = unreadableDurations === 1;
-    diagnostics.push({
-      code: 'ANNOTATION_DECODE_FAILED',
-      severity: 'warning',
-      message:
-        `${unreadableDurations} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration ` +
-        `that is not a number, so ${one ? 'its' : 'their'} duration_s cell is empty.`,
-      hint:
-        'The onset and the description were read normally. An empty duration_s otherwise ' +
-        'means the file stated no duration, so these rows cannot be told apart from those.',
-    });
-  }
 
   /*
     A timekeeping TAL is not an event, and saying it "could not be exported" describes the

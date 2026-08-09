@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.90
+
+### Fixed: the duration warnings described rows a window had excluded
+
+```
+$ edf2csv rec.edf --start 2 --end 3 --out out --strict
+warning: 1 annotation states a duration below zero ... The value is written to annotations.csv as the file gave it ... check these rows before using the durations.
+warning: 1 annotation states a duration that is not a number, so its duration_s cell is empty.
+--strict: 2 warnings raised, so this run is reported as a failure.
+
+$ cat out/annotations.csv
+onset_s,duration_s,description,record_index
+2.5,0.25,clean event,2
+```
+
+One row, with a populated, positive duration. There is no such value, no such cell and no such
+rows — and `--strict` failed the run over two events it never wrote.
+
+Both warnings are mine, from 0.5.55 and 0.5.58, and both were raised from the counts the
+decoder accumulates over the whole file while `annotations.csv` is filtered to the requested
+window. `--info` had the other half of it: on an EDF+D recording it printed "The value is
+written to annotations.csv as the file gave it" while writing no files at all.
+
+Counted from the events themselves now, after the same filter the writer applies, so the count
+and the sentence describe the same rows. An unreadable duration is carried on the event as
+`durationUnreadable`, because `duration: null` cannot say whether the file gave one — which is
+the ambiguity those warnings exist to flag, and a library caller now has it too. A negative
+duration needs no flag; the value is right there.
+
+`--info` raises them against the window it was given, so it predicts what the conversion will
+say rather than a different set. On a continuous EDF+ it still says nothing, because it does not
+read the whole annotation channel — that is the documented limit of a header read, not a
+regression.
+
 ## 0.5.89
 
 ### Fixed: the getting-started example asked for a channel the recording does not have

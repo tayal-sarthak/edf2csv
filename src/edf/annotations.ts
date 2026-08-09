@@ -37,6 +37,17 @@ export interface Annotation {
   text: string;
   /** Index of the data record this annotation was stored in. */
   recordIndex: number;
+  /**
+   * True when the file stated a duration that could not be read.
+   *
+   * `duration` is null either way, which is the ambiguity the counts beside it exist to
+   * flag — and those counts were of the whole file while `annotations.csv` is filtered to
+   * the requested window. A conversion of one second of a recording warned that "1
+   * annotation states a duration that is not a number, so its duration_s cell is empty"
+   * about an event two seconds outside it, and failed `--strict` for it. Carrying the fact
+   * on the event lets the count be taken where the window has already been applied.
+   */
+  durationUnreadable?: boolean;
 }
 
 export interface DecodedRecordAnnotations {
@@ -208,7 +219,13 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   for (const raw of parts.slice(1)) {
     // A trailing separator yields an empty segment; a timekeeping TAL is all empty.
     if (raw === '') continue;
-    annotations.push({ onset, duration, text: raw, recordIndex });
+    annotations.push({
+      onset,
+      duration,
+      text: raw,
+      recordIndex,
+      ...(durationUnreadable ? { durationUnreadable: true } : {}),
+    });
   }
 
   // Per event rather than per TAL: one TAL may carry several texts, and each becomes a row

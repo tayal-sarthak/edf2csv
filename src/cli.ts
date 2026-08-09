@@ -26,6 +26,7 @@ import {
   USAGE_ERROR_CODES,
   convert,
   defaultOutputDir,
+  durationDiagnostics,
   stdoutRefusal,
 } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
@@ -758,6 +759,20 @@ async function showInfo(
       from describing the recording — and being told the command will not work is exactly
       what was asked. The conversion's own guard supplies the words, so there is one wording.
     */
+    /*
+      What the conversion would say about the durations it would write.
+
+      Same window the conversion applies, so --info predicts the warnings rather than a
+      different set. Raised here rather than in the parser because the counts have to be of
+      the rows that reach annotations.csv — see durationDiagnostics.
+    */
+    plan.diagnostics.push(
+      ...durationDiagnostics(annotationData.annotations, {
+        from: plan.range.startSeconds,
+        to: plan.range.endSeconds,
+      }),
+    );
+
     if (toStdout) {
       const refusal = stdoutRefusal(file, plan);
       if (refusal) {

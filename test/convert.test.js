@@ -1558,6 +1558,60 @@ describe('converting', () => {
     );
   });
 
+  it('counts the durations in the rows it writes, not in the whole file', async () => {
+    /*
+      Both duration warnings came from the file-wide counts the decoder accumulates, while
+      annotations.csv is filtered to the requested window. Converting one second of a
+      recording therefore warned that "1 annotation states a duration that is not a number,
+      so its duration_s cell is empty" about an event two seconds outside the window — naming
+      a cell not in the output — and `--strict` failed the run for it. The one row written had
+      a populated, positive duration.
+
+      The unreadable case is carried on the event now, because `duration: null` cannot say
+      whether the file gave one; a negative duration needs no flag, since the value is there.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-windur-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const recording = path.join(scratch, 'durations.edf');
+    writeEdf({
+      path: recording, reserved: 'EDF+C', numRecords: 3, recordDuration: 1,
+      talsForRecord: (r) => {
+        const head = `+${r}${T}${T}${Z}`;
+        if (r === 0) return `${head}+0.5${D}-3${T}negative${T}${Z}`;
+        if (r === 1) return `${head}+1.5${D}abc${T}unreadable${T}${Z}`;
+        return `${head}+2.5${D}0.25${T}clean${T}${Z}`;
+      },
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 4, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    // A window holding only the clean event: nothing to warn about, and the row proves it.
+    const dir = await outDir();
+    const windowed = await convert(recording, { outputDir: dir, start: 2, end: 3 });
+    const rows = (await readCsv(dir, 'annotations.csv')).slice(1);
+    assert.deepEqual(rows.map((r) => r.split(',').slice(0, 3)), [['2.5', '0.25', 'clean']]);
+    assert.deepEqual(
+      windowed.diagnostics.filter((d) => /duration/u.test(d.message)).map((d) => d.message),
+      [],
+      'warned about rows that are not in the file it wrote',
+    );
+
+    // The whole recording still reports both, because both rows are then in the output.
+    const whole = await convert(recording, { outputDir: await outDir() });
+    const said = whole.diagnostics.filter((d) => /duration/u.test(d.message)).map((d) => d.message);
+    assert.equal(said.length, 2, JSON.stringify(said));
+    assert.ok(said.some((m) => /below zero/u.test(m)), said.join(' | '));
+    assert.ok(said.some((m) => /not a number/u.test(m)), said.join(' | '));
+  });
+
   it('says when a duration is a number but not a length of time', async () => {
     /*
       A duration below zero parses perfectly and is written to annotations.csv as the file
