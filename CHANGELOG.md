@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.101
+
+### Fixed: a header with no readable timestamp raised nothing
+
+EDF gives the start date and time eight characters each and enforces nothing about them. A
+recording carrying `32.13.99` and `25.61.61` converted, exited 0, passed `--strict`, and left
+`"start_datetime_local": null` in metadata.json with no note against it. `--info` echoed the
+raw fields with "(unparseable)" beside them, so an interactive reader saw something; a script
+reading the archive got a bare null and no reason for it.
+
+Every other unusable header field reports itself — a degenerate digital range, a physical span
+that cannot be represented, a comma decimal separator, a header whose declared size disagrees
+with its signal count. The start instant was the one that did not, and it is the field
+output-files points at for turning `time_s` into a wall-clock instant.
+
+New warning `START_TIME_UNREADABLE`, quoting the fields as the header has them so the message
+can be checked against the file, and saying what is and is not affected: `time_s`, the values
+and the annotation onsets all count from the recording's own start, which does not depend on
+the header saying when that was. Documented on all three pages.
+
 ## 0.5.100
 
 ### Fixed: `--stdout --force` was accepted and did nothing

@@ -438,6 +438,44 @@ describe('EDF+ annotations', () => {
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
   });
 
+  it('says when the header has no readable start instant', async () => {
+    /*
+      EDF gives the start date and time eight characters each and nothing enforces what goes
+      in them. `--info` has always echoed the raw fields with "(unparseable)" beside them, but
+      nothing was raised: the conversion exited 0, `--strict` passed, and metadata.json
+      recorded `start_datetime_local: null` with no note against it — on the field
+      output-files points at for turning `time_s` into a wall-clock instant.
+
+      Every other unusable header field reports itself. This was the one that did not.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-startdate-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const channel = {
+      label: 'ch', dimension: 'uV', physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+      samplesPerRecord: 2, gen: () => 0,
+    };
+    const bad = path.join(dir, 'bad.edf');
+    writeEdf({
+      path: bad, startDate: '32.13.99', startTime: '25.61.61', numRecords: 1,
+      recordDuration: 1, signals: [channel],
+    });
+
+    const file = await EdfFile.open(bad);
+    open.push(file);
+    const raised = file.diagnostics.filter((d) => d.code === 'START_TIME_UNREADABLE');
+    assert.equal(raised.length, 1, JSON.stringify(codes(file)));
+    // The fields come back as the header has them, so the warning can be checked against it.
+    assert.match(raised[0].message, /"32\.13\.99"/u, raised[0].message);
+    assert.match(raised[0].message, /"25\.61\.61"/u, raised[0].message);
+    assert.equal(file.header.startDateTime, null, 'and there really is no instant');
+
+    // A readable header says nothing, or every recording would carry this.
+    const fine = await load('tiny.edf');
+    assert.ok(!codes(fine).includes('START_TIME_UNREADABLE'), codes(fine).join(', '));
+    assert.ok(fine.header.startDateTime instanceof Date);
+  });
+
   it('does not tell a file holding data that none was written', async () => {
     /*
       "The recording was probably interrupted before any data was written" is right about an

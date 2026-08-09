@@ -84,6 +84,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
+| `START_TIME_UNREADABLE` | The header's start date or time is not a date or a time |
 | `STDOUT_UNSUPPORTED` | `--info --stdout` on a recording `--stdout` would refuse |
 
 ## File structure and integrity
@@ -545,6 +546,23 @@ warning: --stdout would refuse this recording: needs exactly one table, but this
 A warning rather than a refusal for the reason the destination guards are: `--info` writes nothing, so a rule about the output has no business stopping it from describing the recording — and being told the command will not work is exactly what was asked. Until 0.5.87 `--info` ignored `--stdout` entirely and predicted rows and named files for a command that writes neither.
 
 **What to do.** Take the advice in the hint, or drop `--stdout`. Nothing is wrong with the recording.
+
+### START_TIME_UNREADABLE
+
+The header's start date and time fields do not parse as a date and a time.
+
+**Cause.** EDF gives each of them eight characters and nothing enforces what goes in. A writer that leaves them blank, fills them with placeholders, or writes them in another order produces this.
+
+**What edf2csv does.** Says so, and carries on — the fields are echoed raw, and `metadata.json` records `start_datetime_local` as `null`:
+
+```
+warning: The header's start date and time ("32.13.99" and "25.61.61") are not a date and a time, so the recording has no start instant.
+         time_s is unaffected — it counts from the start of the recording either way. What cannot be done is turning it into a wall-clock instant, and metadata.json records start_datetime_local as null.
+```
+
+Until 0.5.101 nothing was raised: `--info` echoed the fields with "(unparseable)" beside them and a conversion said nothing at all, so a recording with no usable timestamp passed `--strict` and left a bare `null` in the archive. Every other unusable header field reports itself.
+
+**What to do.** Nothing, unless you need wall-clock times. `time_s`, the sample values and the annotation onsets are all unaffected — they are relative to the recording's own start, which does not depend on the header's saying when that was. If you do need the instant, it has to come from outside the file.
 
 ### NO_ANNOTATIONS
 

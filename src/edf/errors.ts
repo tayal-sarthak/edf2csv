@@ -33,6 +33,15 @@ export type DiagnosticCode =
   | 'HEADER_BYTES_MISMATCH'
   | 'NONPRINTABLE_LABEL'
   /**
+   * The header's start date or time is not a date or a time.
+   *
+   * Every other unusable header field reports itself. This one did not, so a recording whose
+   * timestamp cannot be read converted in silence, passed `--strict`, and left
+   * `start_datetime_local` null in metadata.json with nothing saying why — on the field the
+   * documented recipe for an absolute instant depends on.
+   */
+  | 'START_TIME_UNREADABLE'
+  /**
    * `--info --stdout` on a recording `--stdout` would refuse.
    *
    * Only `--info` raises it. A conversion refuses outright instead, with the same words —

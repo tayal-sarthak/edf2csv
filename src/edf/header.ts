@@ -552,6 +552,34 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     });
   }
 
+  /*
+    A timestamp that is not one.
+
+    EDF gives the start date and time eight characters each, and nothing stops a writer
+    putting `32.13.99` and `25.61.61` there. `--info` has always echoed the raw fields with
+    "(unparseable)" beside them, but nothing was raised: the conversion exited 0, `--strict`
+    passed, and metadata.json recorded `start_datetime_local: null` with no note against it.
+
+    Every other unusable header field reports itself — a degenerate digital range, a physical
+    span that cannot be represented, a comma decimal separator, a header whose declared size
+    disagrees with its signal count. This was the one that did not, and it is the field
+    output-files points at for turning `time_s` into an absolute instant.
+  */
+  if (resolveStartDateTime(startDateRaw, startTimeRaw) === null) {
+    diagnostics.push({
+      code: 'START_TIME_UNREADABLE',
+      severity: 'warning',
+      message:
+        `The header's start date and time ("${startDateRaw}" and ` +
+        `"${startTimeRaw}") are not a date and a time, so the recording has ` +
+        `no start instant.`,
+      hint:
+        'time_s is unaffected — it counts from the start of the recording either way. What ' +
+        'cannot be done is turning it into a wall-clock instant, and metadata.json records ' +
+        'start_datetime_local as null.',
+    });
+  }
+
   for (const [label, indices] of seenLabels) {
     if (indices.length < 2) continue;
     diagnostics.push({
