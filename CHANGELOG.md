@@ -3,6 +3,41 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.95
+
+### Fixed: api.md's cheap timing recipe mistimes every record after a gap, and says the conversion uses it
+
+The page argues, correctly and at length, that `index * recordDuration` is not where a record
+sits — a discontinuous file puts its records where its timekeeping annotations say, and a
+continuous one need not start at zero. It then offers `readOrigin()` as "the cheap version",
+shows
+
+```js
+const origin = (await file.readOrigin()) ?? 0;
+const recordStart = origin + (batch.firstRecordIndex + r) * recordDuration;
+```
+
+and closes: "That is what the conversion itself does, which is why its `time_s` and its
+`annotations.csv` agree."
+
+The conversion does that for `EDF+C`. For `EDF+D` it reads every record's own start time. On
+`discontinuous.edf`, whose records sit at 0, 1 and 10 seconds, the recipe puts the third at 2 —
+nine seconds from where the file says it is and from where `convert()` writes it. A reader who
+took the shortcut because the page said it was the same thing lines every record after a gap up
+against the wrong samples, and the sentence promising agreement with `annotations.csv` is
+exactly the promise it breaks.
+
+Scoped to continuous recordings now, with the check to make first and the arithmetic's answer on
+that fixture spelled out. The test runs both and requires them to differ, so the example cannot
+quietly stop being a counterexample.
+
+### Fixed: the same page still described the gain-of-zero rule 0.5.83 replaced
+
+"A gain of zero is different: the mapping is defined but flat, so `physicalMin` is returned and
+written normally." That is now true of one of the two ways to get a gain of zero. The other —
+a span too small to represent, which underflows — returns `NaN` and leaves the cells empty, and
+raises `UNUSABLE_PHYSICAL_RANGE`, which the sentence beside it did not list either.
+
 ## 0.5.94
 
 ### Fixed: two conversions with identical output disagreed about whether they were whole

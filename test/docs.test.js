@@ -764,6 +764,43 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('scopes the cheap timing recipe to the recordings it is right for', async () => {
+    /*
+      api.md said to read `recordStarts` for any EDF+ file, then offered `readOrigin()` as
+      "the cheap version" with `origin + index * recordDuration`, and closed "That is what the
+      conversion itself does". The conversion does that for EDF+C only. On `discontinuous.edf`
+      — records at 0, 1 and 10 seconds — the recipe puts the third at 2, nine seconds from
+      where the file says it is and from where `convert()` writes it. An analysis built on it
+      lines every record after a gap up against the wrong samples.
+
+      Checked by running both, so the page's claim is measured rather than read.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const recording = path.join(ROOT, 'test/fixtures/generated/discontinuous.edf');
+    const file = await api.EdfFile.open(recording);
+    let recipe;
+    let declared;
+    try {
+      const origin = (await file.readOrigin()) ?? 0;
+      const duration = file.header.recordDuration;
+      recipe = Array.from({ length: file.recordCount }, (unused, i) => origin + i * duration);
+      declared = [...(await file.readAnnotations()).recordStarts];
+    } finally {
+      await file.close();
+    }
+    assert.notDeepEqual(recipe, declared, 'this fixture no longer has a gap, so nothing is proved');
+
+    const page = await read('website/content/api.md');
+    const block = /```js\n\/\/ EDF\+C only[\s\S]*?```/u.exec(page);
+    assert.ok(block, 'the recipe no longer says which recordings it is for');
+    assert.match(page, /Check `header\.continuity` before reaching for it/u, 'and why');
+    assert.doesNotMatch(
+      page,
+      /That is what the conversion itself does, which is why its `time_s`/u,
+      'the page still claims the cheap recipe is what the conversion does',
+    );
+  });
+
   it('names channels the example recording actually has', async () => {
     /*
       `edf2csv sleep-study.edf --channels "EEG Fpz-Cz,ECG"` appears on four pages, and that

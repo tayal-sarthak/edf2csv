@@ -301,16 +301,19 @@ It assumes the records are contiguous, which an EDF+D file is free not to be: on
 
 And it assumes the first record sits at zero, which a *continuous* file is also free not to. `fractional-start.edf` is EDF+C with records at 0.5, 1.5 and 2.5 seconds — perfectly contiguous, and half a second later than `index * recordDuration` says. The recipe above times its first sample at 0.000; `convert()` writes 0.500 for the same sample, and the annotation onsets in the same file keep their true values, so an analysis built on the recipe puts events half a second away from the samples they describe.
 
-So: read `recordStarts` from `readAnnotations()` and use that array, for any EDF+ file rather than only for a discontinuous one. `EdfFile.readOrigin()` is the cheap version when you only need the offset — it reads at most sixteen records rather than the whole annotation channel:
+So: read `recordStarts` from `readAnnotations()` and use that array, for any EDF+ file rather than only for a discontinuous one. That is what the conversion does, which is why its `time_s` and its `annotations.csv` agree.
+
+`EdfFile.readOrigin()` is the cheap version — it reads at most sixteen records rather than the whole annotation channel — and it is only enough for a **continuous** recording, where the records really are contiguous and one offset places all of them:
 
 ```js
+// EDF+C only. On an EDF+D file this is wrong for every record after a gap.
 const origin = (await file.readOrigin()) ?? 0;
 const recordStart = origin + (batch.firstRecordIndex + r) * recordDuration;
 ```
 
-That is what the conversion itself does, which is why its `time_s` and its `annotations.csv` agree.
+Check `header.continuity` before reaching for it. On `discontinuous.edf`, whose records sit at 0, 1 and 10 seconds, that arithmetic puts the third record at 2 — nine seconds from where the file says it is, and from where `convert()` writes it. The conversion takes this shortcut for `EDF+C` and reads every record's own start time for `EDF+D`, which is the distinction this recipe was missing.
 
-`makeScaler` evaluates `gain * (offset + digital)`, EDFlib's arrangement of the spec formula. The spec-literal ordering, `(digital - digitalMin) * gain + physicalMin`, loses low bits to cancellation on a channel spanning plus or minus 800 uV: digital 0 comes out as 0.19536019536019467 when the exact value is 0.19536019536019536. The arrangement used here keeps the intermediate small and returns the correctly rounded result, which is also bit-for-bit what pyEDFlib and EDFbrowser produce. When `digitalMax === digitalMin` there is no mapping at all, so the scaler returns `NaN` for every sample and the CSV writer leaves those cells empty. A gain of zero is different: the mapping is defined but flat, so `physicalMin` is returned and written normally. The header parser has already raised `DEGENERATE_DIGITAL_RANGE` or `DEGENERATE_PHYSICAL_RANGE` in either case. Check `Number.isNaN` if you consume `makeScaler` directly.
+`makeScaler` evaluates `gain * (offset + digital)`, EDFlib's arrangement of the spec formula. The spec-literal ordering, `(digital - digitalMin) * gain + physicalMin`, loses low bits to cancellation on a channel spanning plus or minus 800 uV: digital 0 comes out as 0.19536019536019467 when the exact value is 0.19536019536019536. The arrangement used here keeps the intermediate small and returns the correctly rounded result, which is also bit-for-bit what pyEDFlib and EDFbrowser produce. When `digitalMax === digitalMin` there is no mapping at all, so the scaler returns `NaN` for every sample and the CSV writer leaves those cells empty. A gain of zero has two causes and they are not the same. A genuinely flat physical range — minimum equal to maximum — is a defined mapping, so `physicalMin` is returned and written normally. A range that is not flat whose gain *underflows* to zero, such as -1e-320 to 1e-320 over the full 16-bit range, has no mapping at all: 3e-325 is smaller than the smallest double, so `NaN` is returned and those cells are left empty, exactly as for an overflowed span. The header parser has raised `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE` or `UNUSABLE_PHYSICAL_RANGE` in each case. Check `Number.isNaN` if you consume `makeScaler` directly.
 
 Two related helpers, used to pick CSV precision:
 
