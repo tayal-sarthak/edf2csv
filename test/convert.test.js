@@ -138,6 +138,49 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('calls a conversion whole when it wrote the whole recording', async () => {
+    /*
+      `whole_recording` is `clampedEnd >= latest`, and `latest` is
+      `recordCount * recordDuration` — which for 6003 records of 0.1s is 600.3000000000001,
+      not the 600.3 the file's length prints as. So `--end 600.3` wrote every sample the
+      recording has, byte-identical to a bare conversion, and metadata.json called it partial
+      while the bare run called it whole. One conversion, two answers, on the field a pipeline
+      reads to decide whether it has the lot.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-whole-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(scratch, 'tenmin.edf');
+    writeEdf({
+      path: recording, numRecords: 6003, recordDuration: 0.1,
+      signals: [{ label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+        digMax: 2047, samplesPerRecord: 10, gen: (r, s) => ((r * 10 + s) % 400) - 200 }],
+    });
+    assert.ok(6003 * 0.1 > 600.3, 'the product no longer overshoots, so this proves nothing');
+
+    const bare = await outDir();
+    const ended = await outDir();
+    await convert(recording, { outputDir: bare });
+    await convert(recording, { outputDir: ended, end: 600.3 });
+
+    // Same bytes out, so the two runs must describe themselves the same way.
+    assert.equal(
+      await readFile(path.join(bare, 'signals.csv'), 'utf8'),
+      await readFile(path.join(ended, 'signals.csv'), 'utf8'),
+      'the two runs did not write the same file, so this is testing the wrong thing',
+    );
+    for (const dir of [bare, ended]) {
+      const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
+      assert.equal(metadata.conversion.whole_recording, true, `${dir} called itself partial`);
+    }
+
+    // A window that really is partial still says so.
+    const half = await outDir();
+    await convert(recording, { outputDir: half, end: 300 });
+    const partial = JSON.parse(await readFile(path.join(half, 'metadata.json'), 'utf8'));
+    assert.equal(partial.conversion.whole_recording, false);
+  });
+
   it('never predicts fewer bytes than it writes, sign included', async () => {
     /*
       Both estimates measured the time column against the window's far end, unsigned, while

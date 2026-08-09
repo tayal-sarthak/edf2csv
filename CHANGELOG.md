@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.94
+
+### Fixed: two conversions with identical output disagreed about whether they were whole
+
+```
+$ edf2csv tenmin.edf --out a            # whole_recording: true
+$ edf2csv tenmin.edf --out b --end 600.3 # whole_recording: false
+$ diff a/signals.csv b/signals.csv       # no output
+```
+
+Byte-identical files, 60,030 rows each, described two ways. `whole_recording` is
+`clampedEnd >= latest`, and `latest` is `recordCount * recordDuration` — 6003 records of 0.1s
+is 600.3000000000001, not the 600.3 that `--info` prints as the recording's length. So naming
+the length exactly makes the conversion partial by a rounding error, on the field a pipeline
+reads to decide whether it has the lot.
+
+The same arithmetic 0.5.91 fixed one field over, and both now go through one `sameInstant`
+comparison so they cannot drift apart: a relative epsilon, well below any real sample interval
+and well above the gap between two routes to the same quantity. A window that really is partial
+still says so.
+
 ## 0.5.93
 
 ### Fixed: the padding after a TAL was counted as an annotation that could not be read

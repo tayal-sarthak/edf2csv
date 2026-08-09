@@ -190,6 +190,19 @@ export function countSamplesInRange(options: {
 }
 
 /**
+ * Whether two instants differ only by the arithmetic that produced them.
+ *
+ * A relative epsilon, because the gap between doubles grows with magnitude — the same shape
+ * the long layout uses to decide two sample times are one instant. Well below any real sample
+ * interval, and well above the rounding that two routes to one quantity produce: a recording's
+ * length is `recordCount * recordDuration`, which for 6003 records of 0.1s is not the 600.3 it
+ * prints as.
+ */
+function sameInstant(a: number, b: number): boolean {
+  return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-12;
+}
+
+/**
  * Turn a requested window into both an exact time span and the record range that
  * contains it. Records are the unit the file can be read in; the exact span is what
  * decides which samples inside those records are actually written.
@@ -242,10 +255,7 @@ export function resolveRange(options: {
     instant: well below any real interval, and well above the rounding that two different
     routes to the same quantity produce.
   */
-  const atTheEnd =
-    startSeconds >= latest ||
-    Math.abs(startSeconds - latest) <= Math.max(Math.abs(startSeconds), Math.abs(latest)) * 1e-12;
-  if (atTheEnd) {
+  if (startSeconds >= latest || sameInstant(startSeconds, latest)) {
     /*
       Quote what was typed. Reporting the parsed seconds meant `--start 4h` came back as
       "--start 14400s is at or past the end", which reads as a value the user never gave.
@@ -308,7 +318,18 @@ export function resolveRange(options: {
     endSeconds: clampedEnd,
     startRecord,
     endRecord,
-    isWholeRecording: startSeconds <= earliest && clampedEnd >= latest,
+    /*
+      The same rounding, one field over.
+
+      `latest` is `recordCount * recordDuration`, and 6003 records of 0.1s is
+      600.3000000000001. So `--end 600.3` on a recording of exactly that length wrote every
+      sample it has — byte-identical to a bare conversion — and metadata.json recorded
+      `whole_recording: false` for it, while the bare run recorded true. One conversion, two
+      answers, on the field a pipeline reads to decide whether it has the lot.
+    */
+    isWholeRecording:
+      (startSeconds <= earliest || sameInstant(startSeconds, earliest)) &&
+      (clampedEnd >= latest || sameInstant(clampedEnd, latest)),
     recordingStartSeconds: earliest,
     recordingEndSeconds: latest,
   };
