@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.96
+
+### Fixed: api.md said `readAnnotations` returns three counts, then named four
+
+0.5.58 added `negativeDurations` to the list and left the number in front of it. That is the
+mistake 0.5.62 fixed one page over — "This code covers three conditions" against a list of five
+— on a sentence a reader checks against the list in the same breath.
+
+The pronoun after it had slipped the same way: "That last one is why `duration` being `null` is
+not by itself the same as the file giving no duration" was written when `unreadableDurations`
+was last in the sentence, and by then it named `negativeDurations`, which is not what the
+paragraph goes on to describe. It names the count now rather than pointing at a position.
+
+The number is counted from `readAnnotations`'s own return type, so the page has to agree with
+the function rather than with itself, and every count it returns has to be named — a number is
+only useful with the list.
+
 ## 0.5.95
 
 ### Fixed: api.md's cheap timing recipe mistimes every record after a gap, and says the conversion uses it

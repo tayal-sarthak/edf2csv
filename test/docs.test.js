@@ -967,6 +967,37 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('counts the fields it says a function returns', async () => {
+    /*
+      api.md: "returns every event in the file, the start time each record declares, and three
+      counts of what could not be decoded" — and then names four. 0.5.58 added the fourth to
+      the list and left the number, which is the mistake 0.5.62 fixed one page over, on a
+      sentence a reader checks against the list in the same breath.
+
+      Counted from the source's own return type, so the page has to agree with the function
+      rather than with itself.
+    */
+    const source = await read('src/edf/reader.ts');
+    const block = /readAnnotations\(\): Promise<\{([\s\S]*?)\n  \}> \{/u.exec(source);
+    assert.ok(block, 'readAnnotations no longer declares its return type inline');
+    const counts = [...block[1].matchAll(/^\s*(\w+): number;/gmu)].map((m) => m[1]);
+    assert.ok(counts.length >= 3, `expected the counts, found ${counts.join(', ')}`);
+
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+    const page = (await read('website/content/api.md')).replace(/\s+/gu, ' ');
+    const claim = /and (\w+) counts of what could not be decoded/u.exec(page);
+    assert.ok(claim, 'api.md no longer says how many counts readAnnotations returns');
+    assert.equal(
+      claim[1],
+      words[counts.length],
+      `readAnnotations returns ${counts.length} counts (${counts.join(', ')}), the page says ${claim[1]}`,
+    );
+    // And every one of them is named, since the number is only useful with the list.
+    for (const name of counts) {
+      assert.ok(page.includes(name), `api.md does not name ${name}`);
+    }
+  });
+
   it('counts the conditions it says a diagnostic covers', async () => {
     /*
       The warnings page opens ANNOTATION_DECODE_FAILED with "This code covers three
