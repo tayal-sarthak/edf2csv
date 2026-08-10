@@ -174,7 +174,23 @@ export class EdfFile {
       throw new EdfError('UNREADABLE', `"${path}" is not a regular file.`);
     }
 
-    const handle = await open(path, 'r');
+    /*
+      Opening is a second chance to be refused, and it was the one that got through.
+
+      `stat` needs the parent directory searchable and says nothing about the file's own mode,
+      so a recording with no read permission passes it and fails here — the commonest
+      permission failure there is. Unwrapped, it escaped as Node's own error: the CLI printed
+      `error: EACCES: permission denied, open '...'` where every neighbouring failure prints
+      the tool's sentence, and the library threw a plain Error whose `code` was the errno.
+
+      api.md says `UNREADABLE` "covers a missing file, a directory passed where a file was
+      expected, a permission failure, and a file that changed size while being read. Branch on
+      `code`, never on the message text." A consumer doing exactly that fell through to its
+      generic handler.
+    */
+    const handle = await open(path, 'r').catch((cause: unknown) => {
+      throw new EdfError('UNREADABLE', `Cannot read "${path}": ${describe(cause)}`);
+    });
     try {
       const fixed = Buffer.alloc(Math.min(FIXED_HEADER_BYTES, info.size));
       if (fixed.length > 0) {

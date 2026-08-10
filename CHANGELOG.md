@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.116
+
+### Fixed: a recording it is not allowed to read came back as a raw Node error
+
+```
+error: EACCES: permission denied, open '/data/noread.edf'
+```
+
+Every neighbouring failure prints the tool's own sentence — `Cannot read "nope.edf": no such
+file` — and the library raises an `EdfError` whose `code` says which kind of failure it was.
+This one printed Node's errno text with no hint, and threw a plain `Error` whose `code` was
+`EACCES`.
+
+`stat` needs the parent directory searchable and says nothing about the file's own mode, so a
+recording with no read permission passes it and fails at the open two lines later, which was
+the one call not wrapped. Denying the *directory* was translated correctly, which is why this
+looked covered.
+
+api.md says `UNREADABLE` "covers a missing file, a directory passed where a file was expected,
+a permission failure, and a file that changed size while being read. Branch on `code`, never on
+the message text." A consumer doing exactly that fell through to its generic handler for the
+commonest permission failure there is.
+
+```
+error: Cannot read "/data/noread.edf": permission denied
+```
+
+The test skips itself where the file turns out to be readable anyway, since root reads a mode-000
+file regardless and there would be nothing to assert.
+
 ## 0.5.115
 
 ### Fixed: the padding at the end of an annotation slot was exported as an event

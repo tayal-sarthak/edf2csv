@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdtemp, rm, truncate } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, rm, truncate } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,6 +131,42 @@ describe('errors', () => {
       () => EdfFile.open(fileURLToPath(import.meta.url)),
       (error) => error instanceof EdfError,
     );
+  });
+
+  it('reports a recording it is not allowed to read as one it cannot read', async () => {
+    /*
+      `stat` needs the parent directory searchable and says nothing about the file's own mode,
+      so a recording with no read permission passed it and failed at the open two lines later,
+      which was not wrapped. It escaped as Node's own error: the CLI printed
+      `error: EACCES: permission denied, open '...'` where a missing file prints `Cannot read
+      "...": no such file`, and the library threw a plain Error whose `code` was `EACCES`.
+
+      api.md says `UNREADABLE` covers "a permission failure" and to branch on `code`, never on
+      the message — which for the commonest permission failure there is fell through to the
+      consumer's generic handler.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-noread-'));
+    temporaries.push(dir);
+    const denied = path.join(dir, 'denied.edf');
+    await copyFile(fixture('annotations.edf'), denied);
+    await chmod(denied, 0o000);
+
+    // Root reads a mode-000 file regardless, so there would be nothing to assert.
+    const readable = await EdfFile.open(denied).then(
+      (file) => file.close().then(() => true),
+      () => false,
+    );
+    if (readable) return;
+
+    await assert.rejects(() => EdfFile.open(denied), (error) => {
+      assert.ok(error instanceof EdfError, `${error.name}: not an EdfError`);
+      assert.equal(error.code, 'UNREADABLE');
+      assert.match(error.message, /Cannot read .*: permission denied/u);
+      return true;
+    });
+
+    // Restored so the temporary directory can be removed on the way out.
+    await chmod(denied, 0o644);
   });
 });
 
