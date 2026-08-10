@@ -284,8 +284,22 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
 
   const annotations: Annotation[] = [];
   for (const raw of parts.slice(1)) {
-    // A trailing separator yields an empty segment; a timekeeping TAL is all empty.
-    if (raw === '') continue;
+    /*
+      A trailing separator yields an empty segment; a timekeeping TAL is all empty.
+
+      Whitespace counts as empty here, which it did not, and the padding at the end of the
+      slot became an event. The chunk loop above already refuses to call a run of spaces a
+      lost annotation — but it only sees chunks between NULs, and a writer that leaves its
+      last TAL unterminated puts the fill *inside* the chunk, after the final 0x14. Split on
+      that separator it is a text segment like any other, and " " is not "".
+
+      A file holding two events exported four rows: `0.5,,Lights off,0` and `0.5,,   ,0`,
+      twice, sharing the real event's onset, with annotations_written and the run summary
+      agreeing with the inflated number and nothing warned. An event whose description is
+      genuinely nothing but spaces cannot be told from fill, and inventing rows out of fill
+      is the worse of the two answers.
+    */
+    if ([...raw].every((c) => isPaddingByte(c.charCodeAt(0)))) continue;
     annotations.push({
       onset,
       duration,

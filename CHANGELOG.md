@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.115
+
+### Fixed: the padding at the end of an annotation slot was exported as an event
+
+A file holding two events wrote four rows:
+
+```
+onset_s,duration_s,description,record_index
+0.5,,Lights off,0
+0.5,,          ,0
+1.5,,Lights off,1
+1.5,,          ,1
+```
+
+The invented rows carry the real event's onset, so anything keyed on `onset_s` saw each event
+twice, and `annotations_written` and the run summary agreed with the larger number. No warning.
+
+The decoder already refuses to call a run of spaces a lost annotation — but that check sees only
+the chunks between NULs, and a writer that leaves its last TAL unterminated puts the fill inside
+the chunk, after the final `0x14`. Split on that separator it is a text segment like any other,
+and `" "` is not `""`.
+
+A text segment that is nothing but slot fill — space, tab, CR, LF or NUL — is padding now, by the
+same rule the chunk-level check uses. An event whose description is genuinely nothing but spaces
+cannot be told from fill at this level; inventing rows out of fill is the worse of the two
+answers, and it is the one that was being given.
+
 ## 0.5.114
 
 ### Fixed: "No event was lost" printed over a conversion that lost four

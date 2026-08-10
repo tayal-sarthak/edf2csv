@@ -1720,6 +1720,56 @@ describe('converting', () => {
     assert.match(timekeeping[0].message, /carry no readable timekeeping annotation \(record 0\)/u);
   });
 
+  it('does not make an event out of the padding at the end of a slot', async () => {
+    /*
+      The chunk loop refuses to call a run of spaces a lost annotation, but it only sees the
+      chunks between NULs. A writer that leaves its last TAL unterminated puts the fill inside
+      the chunk, after the final 0x14 — and split on that separator it is a text segment like
+      any other, because " " is not "".
+
+      A file holding two events exported four rows:
+
+        0.5,,Lights off,0
+        0.5,,          ,0
+
+      The invented row carries the real event's onset, so anything keyed on `onset_s` saw each
+      event twice, and `annotations_written` and the run summary agreed with the larger number.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-pad-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const TEXT = String.fromCharCode(20);
+    const END = String.fromCharCode(0);
+    const input = path.join(scratch, 'space-padded.edf');
+    writeEdf({
+      path: input, reserved: 'EDF+C', numRecords: 2, recordDuration: 1,
+      // The last TAL of each record ends in fill rather than a NUL, which is what a
+      // non-conforming writer produces and what the chunk-level check cannot see.
+      talsForRecord: (r) =>
+        `+${r}${TEXT}${TEXT}${END}+${r}.5${TEXT}Lights off${TEXT}${' '.repeat(10)}`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 30, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(input, { outputDir: dir });
+    const rows = (await readCsv(dir, 'annotations.csv')).slice(1);
+    assert.deepEqual(rows, ['0.5,,Lights off,0', '1.5,,Lights off,1'], 'one row per event');
+
+    // The count the run reports and the file writes agree with the rows, and nothing was
+    // called unreadable: fill is neither an event nor a lost one.
+    const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
+    assert.equal(metadata.conversion.annotations_written, 2);
+    assert.ok(
+      !result.diagnostics.some((d) => /unreadable|could not be exported/u.test(d.message)),
+      `padding is not a loss: ${JSON.stringify(result.diagnostics)}`,
+    );
+  });
+
   it('does not say no event was lost over a conversion that lost four', async () => {
     /*
       A TAL in first position states the record's start time and may carry events after it —
