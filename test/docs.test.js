@@ -1002,6 +1002,63 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 4, `expected several channel examples to check, found ${checked}`);
   });
 
+  it('prints the example recording the same way on every page that shows --info', async () => {
+    /*
+      The annotations page ran `edf2csv sleep-study.edf --info` and showed the answer as
+      `Channels   1 signal + 1 annotation channel`. Three other pages run the same command on
+      the same recording and get `5 signals`, which is what it has — the line was invented to
+      illustrate the point the section is making, that the annotation channel is counted apart
+      from the signals, and it illustrates it just as well with the real number.
+
+      The test above checks that a channel named in a command exists. This checks the other
+      direction: that a header line shown as output is the line that comes out. Only the
+      fields a block chooses to show are compared, since most of these blocks are excerpts,
+      and `File` is skipped — it is the path as typed, which differs from page to page.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-info-'));
+    const field = /^([A-Z][a-z]+) {2,}(.+)$/u;
+    let real;
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const input = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stdout } = await run(process.execPath, [CLI, input, '--info']);
+      real = new Map(
+        stdout
+          .split('\n')
+          .map((line) => field.exec(line))
+          .filter(Boolean)
+          .map((match) => [match[1], match[2].trim()]),
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.ok(real.get('Channels'), 'the --info header no longer has a Channels line');
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let checked = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const text = await read(page);
+      const blocks = text.matchAll(
+        /^edf2csv sleep-study\.edf --info$\n```\n\s*```[a-z]*\n([\s\S]*?)```/gmu,
+      );
+      for (const [, block] of blocks) {
+        for (const line of block.split('\n')) {
+          const shown = field.exec(line);
+          if (!shown || shown[1] === 'File' || !real.has(shown[1])) continue;
+          checked++;
+          assert.equal(
+            shown[2].trim(),
+            real.get(shown[1]),
+            `${page}: the --info "${shown[1]}" line is not what that command prints`,
+          );
+        }
+      }
+    }
+    assert.ok(checked >= 12, `expected several --info lines to check, found ${checked}`);
+  });
+
   it('shows the line --info --annotations-only actually prints', async () => {
     /*
       The reference said, of the estimate, "With `--annotations-only` ... the estimate is 0

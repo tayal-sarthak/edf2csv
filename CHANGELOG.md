@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.108
+
+### Fixed: the annotations page said the example recording has one signal
+
+`edf2csv sleep-study.edf --info`, on the EDF+ annotations page, answered
+
+```
+Channels   1 signal + 1 annotation channel
+```
+
+Three other pages run that exact command on that exact recording and print `5 signals`, which
+is what it has: two EEG derivations, an EOG, a respiration trace and a rectal temperature, all
+of them listed in the channel table further down two of those pages.
+
+The line had been written to make the section's point — that the annotation channel is counted
+apart from the signals — and the real number makes it just as well.
+
+A test now runs `--info` on the fixture the site's example recording is built from and compares
+every header line the docs show against the line that comes out, on every page, skipping only
+`File` (the path as typed, which differs by page on purpose). It reads the fields a block chose
+to show, so an excerpt of two lines is checked as strictly as a full block.
+
 ## 0.5.107
 
 ### Fixed: recipes.md said the signal CSVs are already sorted, and one kind of file is not

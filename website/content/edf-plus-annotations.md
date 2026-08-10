@@ -27,7 +27,7 @@ edf2csv sleep-study.edf --info
 ```
 
 ```
-Channels   1 signal + 1 annotation channel
+Channels   5 signals + 1 annotation channel
 ```
 
 The text is stored as a run of Time-stamped Annotation Lists (TALs). Each TAL
