@@ -234,7 +234,7 @@ error: "T8-P8_ch1" is a column name, not a channel name: --channels matches the 
        Use "#1" to select just this one, or "T8-P8" for every channel sharing that label.
 ```
 
-A label that merely looks like a column name is still a label, and wins: if a third channel really is called `T8_ch0`, `--channels "T8_ch0"` selects that channel and not the one whose column happens to be spelled the same way. The suffix rule cannot make a channel unreachable by its own name. A channel with no label at all has nothing to match, so `#<index>` is the only way to ask for it, and the error says that too.
+A label that merely looks like a column name is still a label, and wins: if a third channel really is called `T8_ch0`, `--channels "T8_ch0"` selects that channel and not the one whose column happens to be spelled the same way. The suffix rule cannot make a channel unreachable by its own name. A channel with no label at all has nothing to match, so `#<index>` is the only way to ask for it, and the error says that too. So is a channel whose label contains a comma. The comma separates terms and is split on wherever it appears, so `--channels "EEG Fpz-Cz, ref"` asks for two channels rather than one and exits 2 on the first of them — a label that reads perfectly well and cannot be typed as a term. `channels.csv` and the CSV header both carry such a label in full, quoted; `#<index>` is how you select it.
 
 The EDF+ annotation channel can't be selected. It isn't a signal, it's never a column in `signals.csv`, and asking for `EDF Annotations` by name is an unknown-channel error. Annotations are exported through `annotations.csv` instead, automatically.
 

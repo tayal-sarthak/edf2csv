@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.112
+
+### Fixed: the advice for a channel with a comma in its label printed a command that exits 2
+
+`NONPRINTABLE_LABEL` exists to say how to reach a channel whose header text you cannot type, so
+a hint whose command fails is worse than no hint — which is why 0.5.103 fixed the empty-label
+branch. There was a third case, and it looks like the one branch that was right.
+
+A channel labelled `EEG Fpz-Cz, ref`, with a control byte in its unit, got:
+
+```
+warning: Signal 0's unit contains 1 control character (\x1b), which will appear in
+         channels.csv's unit cell exactly as the header has them.
+         The column name is unaffected, so --channels "EEG Fpz-Cz, ref" still selects it.
+```
+
+That command exits 2 with `No channel named "EEG Fpz-Cz"` — a channel the file does not have,
+named after half of one it does. `--channels` separates names with a comma and splits on every
+occurrence, so a label holding one cannot be selected by name at all. The label is perfectly
+typeable; it just isn't a term.
+
+The hint now sends those channels to `--channels "#0"`, like the other two cases, and says why.
+The reference's matching rules and the warning's own page say so too — both listed the
+no-label case as the one thing `#<index>` was needed for.
+
+The test that runs what the hint says, rather than matching it, gains a fourth case. Its column
+count now splits the CSV header on the commas that separate columns rather than on every comma,
+which the case it was added for would otherwise have passed for the wrong reason.
+
 ## 0.5.111
 
 ### Fixed: a directory called `undefined` has been in the repository since 0.5.30

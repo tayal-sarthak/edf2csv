@@ -457,10 +457,24 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
               hint, and this warning's whole job is to say how to reach a channel whose header
               text you cannot type. `EMPTY_LABEL` already says the position is the only way in
               for such a channel; so does this now.
+
+              A comma is the third way. `--channels` separates names with one, and splits on
+              every occurrence, so a channel labelled `EEG Fpz-Cz, ref` cannot be selected by
+              name at all: the quoted-back advice printed `--channels "EEG Fpz-Cz, ref"`, which
+              exits 2 with `No channel named "EEG Fpz-Cz"` — a channel the file does not have,
+              named after half of one it does. Commas in labels are ordinary, since EDF labels
+              are free text, and the CSV header quotes them; only this one hint claimed
+              something about them that isn't so.
             */
-            (inLabel || label === ''
+            (inLabel || label === '' || label.includes(',')
               ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
-                `since ${inLabel ? 'the name cannot be typed' : 'it has no label'}. `
+                `since ${
+                  inLabel
+                    ? 'the name cannot be typed'
+                    : label === ''
+                      ? 'it has no label'
+                      : 'a comma in the label would read as two names'
+                }. `
               : `The column name is unaffected, so --channels "${label}" still selects it. `) +
             'Printing the CSV to a terminal may do more than print it.',
         });

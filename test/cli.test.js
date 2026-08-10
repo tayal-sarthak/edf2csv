@@ -582,6 +582,12 @@ describe('--info', () => {
       control byte in its unit got `--channels ""`, and that exits 2 with "--channels was given
       but lists no channel names".
 
+      A comma in the label is the same failure with nothing to hint that it is one. `--channels`
+      splits its argument on every comma, so `--channels "EEG Fpz-Cz, ref"` asks for two
+      channels, neither of which exists, and exits 2 naming half of a label the file does have.
+      The three cases here were blank, typeable and untypeable; a label that is perfectly
+      typeable and still unusable as a term was the gap.
+
       Checked by running what the hint says rather than by matching it, which is the only way
       this kind of claim stays true.
     */
@@ -598,6 +604,8 @@ describe('--info', () => {
       ['named', [{ label: 'EEG', dimension: `u${BEL}V`, ...base }]],
       // A label that cannot: the position again.
       ['noisy', [{ label: `EEG${BEL}`, dimension: 'uV', ...base }]],
+      // Typeable, and still not usable as a term, because --channels splits on the comma.
+      ['comma', [{ label: 'EEG Fpz-Cz, ref', dimension: `u${BEL}V`, ...base }]],
     ];
     for (const [name, signals] of cases) {
       const recording = path.join(dir, `${name}.edf`);
@@ -613,7 +621,11 @@ describe('--info', () => {
       const ran = await cli([recording, '--channels', quoted[1], '--out', path.join(dir, `o-${name}`), '--quiet']);
       assert.equal(ran.code, 0, `${name}: the advice "${quoted[1]}" exits ${ran.code}:\n${ran.stderr}`);
       const header = await readFile(path.join(dir, `o-${name}`, 'signals.csv'), 'utf8');
-      assert.equal(header.split('\n')[0].split(',').length, 2, `${name}: it selected nothing`);
+      // Split on the commas that separate columns rather than on every comma: a label holding
+      // one is quoted in the header, and counting its comma as a column boundary would read
+      // the very case this was added for as two columns and pass on the wrong grounds.
+      const columns = header.split('\n')[0].match(/(?:"[^"]*"|[^,])+/gu) ?? [];
+      assert.equal(columns.length, 2, `${name}: it selected nothing`);
     }
   });
 
