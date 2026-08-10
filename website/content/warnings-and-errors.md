@@ -439,7 +439,7 @@ edf2csv falls back to timing the records as if they were contiguous and says so.
 **Records start earlier than the record before them.** The timekeeping annotations aren't monotonically increasing.
 
 ```
-warning: 1 data record start earlier than the record before it.
+warning: 1 data record starts earlier than the record before it.
          Rows are written in file order, so the time column will not increase monotonically.
 ```
 

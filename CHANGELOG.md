@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.110
+
+### Fixed: the reference said there was one way a long file comes out unsorted, and quoted it wrong
+
+`--layout long` writes one row per sample, sorted by `time_s` — because records are written in
+file order and each record's samples fall inside its own span. The reference named "one exception
+the format allows and the tool warns about". There are two, and the tool warns about both.
+
+The first is the obvious one: a discontinuous recording may store its records in a different order
+than it times them. The second is overlap. Records of one second at 0 s and 0.25 s have strictly
+increasing starts, so nothing fires for order, and the column comes out `0.000, 0.500, 0.250,
+0.750` anyway, because the first record's samples run past where the second begins. That case has
+had its own warning since 0.5.25 and its own entry in warnings-and-errors; the page that describes
+the layout's ordering didn't mention it.
+
+Both are now described where the guarantee is stated, with the arithmetic for the overlapping one.
+
+### Fixed: two quoted warnings that no version prints
+
+0.5.107 made these two sentences agree with the number they count. The documentation kept the
+sentences from before it:
+
+```
+warning: 2 data records start earlier than the record before it.      (the reference)
+warning: 1 data record start earlier than the record before it.       (warnings-and-errors)
+```
+
+One wrong pronoun and one wrong verb, and between them every count a reader might search their
+logs for.
+
+A test now generates all four of these sentences — both kinds, singular and plural — from files
+built for the purpose, and holds every quoted `warning:` line in the documentation that counts
+data records to the set.
+
 ## 0.5.109
 
 ### Fixed: three pages still described an inverted channel by the rule that was corrected

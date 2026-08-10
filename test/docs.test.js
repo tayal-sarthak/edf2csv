@@ -1059,6 +1059,82 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 12, `expected several --info lines to check, found ${checked}`);
   });
 
+  it('quotes the out-of-order and overlap warnings as they are actually printed', async () => {
+    /*
+      Both of these sentences count, and both agree with what they counted since 0.5.107. The
+      documentation quoted them from before that: the reference showed "2 data records start
+      earlier than the record before it" and warnings-and-errors "1 data record start earlier
+      than the record before it" — one wrong pronoun, one wrong verb, and between them every
+      number a reader might grep for.
+
+      The reference also introduced them as "one exception the format allows", and there are
+      two. Records stored out of order is the obvious one. The other is records that overlap:
+      starts of 0 s and 0.25 s on one-second records are strictly increasing, so nothing fires
+      for order, and the column still comes out 0.000, 0.500, 0.250, 0.750 because the first
+      record's samples run past where the second begins.
+
+      So the messages are generated here, both of them, singular and plural, and every quoted
+      warning in the documentation that counts data records has to be one of them.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-order-'));
+    const spoken = new Set();
+    try {
+      const { writeEdf, buildTal } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      // Backwards by one and by two, then overlapping by one and by two. A record lasts a
+      // second and holds two samples, so a start 0.25 s after the one before it overlaps it.
+      for (const [name, starts] of [
+        ['back-1', [0, 10, 5]],
+        ['back-2', [0, 10, 5, 20, 15]],
+        ['over-1', [0, 0.25, 10]],
+        ['over-2', [0, 0.25, 0.5]],
+      ]) {
+        const input = path.join(work, `${name}.edf`);
+        writeEdf({
+          path: input,
+          reserved: 'EDF+D',
+          numRecords: starts.length,
+          recordDuration: 1,
+          talsForRecord: (r) => buildTal(starts[r]),
+          signals: [
+            {
+              label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100,
+              digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: (r, s) => r * 2 + s,
+            },
+            {
+              label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1,
+              digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true,
+            },
+          ],
+        });
+        const { stderr } = await run(process.execPath, [
+          CLI, input, '--out', path.join(work, `${name}-out`), '--layout', 'long',
+        ]);
+        for (const [, line] of stderr.matchAll(/^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/gmu)) {
+          spoken.add(line);
+        }
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.equal(spoken.size, 4, `two sentences, singular and plural: ${[...spoken].join(' / ')}`);
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let checked = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const text = await read(page);
+      for (const [, quoted] of text.matchAll(/^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/gmu)) {
+        checked++;
+        assert.ok(
+          spoken.has(quoted),
+          `${page}: "${quoted}" is not a sentence the tool prints (${[...spoken].join(' / ')})`,
+        );
+      }
+    }
+    assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
+  });
+
   it('states the inversion rule the way the code decides it, on every page that states it', async () => {
     /*
       A negative gain is what inverts a channel, and the gain is
