@@ -14,15 +14,17 @@ ls ./sleep_csv
 ```
 
 ```text
+annotations.csv
 channels.csv
 metadata.json
+signals_100hz.csv
+signals_10hz.csv
 signals_1hz.csv
-signals_256hz.csv
 ```
 
 Four kinds of file can appear:
 
-- `signals.csv` holds the sample data. Its first column is `time_s`, seconds from the start of the recording, followed by one column per channel named after the channel's EDF label (`EEG Fpz-Cz`, `ECG`, `Temp rectal`). If the recording mixes sampling rates there's no `signals.csv`; instead you get `signals_256hz.csv`, `signals_1hz.csv` and so on, one file per rate, never resampled.
+- `signals.csv` holds the sample data. Its first column is `time_s`, seconds from the start of the recording, followed by one column per channel named after the channel's EDF label (`EEG Fpz-Cz`, `EOG horizontal`, `Temp rectal`). If the recording mixes sampling rates there's no `signals.csv`; instead you get `signals_100hz.csv`, `signals_1hz.csv` and so on, one file per rate, never resampled.
 - `annotations.csv` appears for EDF+ and BDF+ recordings. Columns: `onset_s`, `duration_s`, `description`, `record_index`. `duration_s` is empty for events that carry no duration.
 - `channels.csv` always appears. Columns: `column`, `signal_index`, `label`, `unit`, `sampling_rate_hz`, `samples_per_record`, `physical_min`, `physical_max`, `digital_min`, `digital_max`, `transducer`, `prefiltering`, `output_file`, `converted`.
 - `metadata.json` always appears, and records what was converted: the source path and size, the recording's start time and record layout, the exact time window converted, the rate groups, and every warning raised.
@@ -32,9 +34,9 @@ Four kinds of file can appear:
 ```python
 import pandas as pd
 
-signals = pd.read_csv("sleep_csv/signals_256hz.csv", index_col="time_s")
+signals = pd.read_csv("sleep_csv/signals_100hz.csv", index_col="time_s")
 
-signals.columns.tolist()   # ['EEG Fpz-Cz', 'EEG Pz-Oz', 'ECG']
+signals.columns.tolist()   # ['EEG Fpz-Cz', 'EEG Pz-Oz', 'EOG horizontal']
 signals.loc[3600:3630]     # the 30 seconds starting one hour in
 signals["EEG Fpz-Cz"].describe()
 ```
@@ -52,17 +54,17 @@ import pandas as pd
 meta = json.load(open("sleep_csv/metadata.json"))
 start = pd.Timestamp(meta["recording"]["start_datetime_local"])
 
-signals = pd.read_csv("sleep_csv/signals_256hz.csv")
+signals = pd.read_csv("sleep_csv/signals_100hz.csv")
 signals.index = start + pd.to_timedelta(signals.pop("time_s"), unit="s")
 signals.index.name = "clock"
 signals.head(2)
 ```
 
 ```text
-                               EEG Fpz-Cz  EEG Pz-Oz      ECG
+                        EEG Fpz-Cz  EEG Pz-Oz  EOG horizontal
 clock
-2002-03-02 22:15:00.000000000       0.061      0.061  0.00122
-2002-03-02 22:15:00.003906250      29.731     23.871  0.06227
+2002-03-02 23:10:00.000      0.061      0.061           0.061
+2002-03-02 23:10:00.010      1.648      1.404           0.916
 ```
 
 EDF stores no time zone, so `start_datetime_local` is written without one: it's the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`.
@@ -70,9 +72,9 @@ EDF stores no time zone, so `start_datetime_local` is written without one: it's 
 ## Load signals.csv into R
 
 ```r
-signals <- read.csv("sleep_csv/signals_256hz.csv", check.names = FALSE)
+signals <- read.csv("sleep_csv/signals_100hz.csv", check.names = FALSE)
 names(signals)
-#> [1] "time_s"     "EEG Fpz-Cz" "EEG Pz-Oz"  "ECG"
+#> [1] "time_s"        "EEG Fpz-Cz"    "EEG Pz-Oz"     "EOG horizontal"
 
 signals[["EEG Fpz-Cz"]][1:5]
 ```
@@ -94,7 +96,7 @@ plot(excerpt)
 ```r
 library(data.table)
 
-signals <- fread("sleep_csv/signals_256hz.csv")
+signals <- fread("sleep_csv/signals_100hz.csv")
 setkey(signals, time_s)
 signals[time_s %between% c(3600, 3630), .(time_s, `EEG Fpz-Cz`)]
 ```
@@ -102,7 +104,7 @@ signals[time_s %between% c(3600, 3630), .(time_s, `EEG Fpz-Cz`)]
 ## Load signals.csv into MATLAB
 
 ```matlab
-signals = readtable("sleep_csv/signals_256hz.csv", "VariableNamingRule", "preserve");
+signals = readtable("sleep_csv/signals_100hz.csv", "VariableNamingRule", "preserve");
 signals.time_s = seconds(signals.time_s);
 tt = table2timetable(signals, "RowTimes", "time_s");
 
@@ -116,7 +118,7 @@ stackedplot(excerpt)
 For a file too large to load at once, read it in blocks with a datastore. Note that `tabularTextDatastore` renames columns that aren't valid MATLAB identifiers, so check `ds.VariableNames` before referring to them:
 
 ```matlab
-ds = tabularTextDatastore("sleep_csv/signals_256hz.csv");
+ds = tabularTextDatastore("sleep_csv/signals_100hz.csv");
 ds.ReadSize = 500000;
 disp(ds.VariableNames)
 
@@ -414,7 +416,7 @@ signals.loc[onset - 2 : onset + 2]
 ```python
 import pandas as pd
 
-fast = pd.read_csv("sleep_csv/signals_256hz.csv")
+fast = pd.read_csv("sleep_csv/signals_100hz.csv")
 slow = pd.read_csv("sleep_csv/signals_1hz.csv")
 
 aligned = pd.merge_asof(fast, slow, on="time_s", direction="backward")
@@ -422,10 +424,10 @@ aligned.head(3)
 ```
 
 ```text
-     time_s  EEG Fpz-Cz  EEG Pz-Oz      ECG  Temp rectal
-0  0.000000       0.061      0.061  0.00122     37.00073
-1  0.003906      29.731     23.871  0.06227     37.00073
-2  0.007812      57.570     46.825  0.12088     37.00073
+   time_s  EEG Fpz-Cz  EEG Pz-Oz  EOG horizontal  Temp rectal
+0    0.00       0.061      0.061           0.061     37.00073
+1    0.01       1.648      1.404           0.916     37.00073
+2    0.02       3.236      2.747           1.770     37.00073
 ```
 
 Both frames must be sorted on the join key, which for an ordinary recording they already are. One kind of file breaks that: an EDF+D recording whose data records are stored out of chronological order writes its rows in file order, so `time_s` does not increase monotonically and `merge_asof` raises `ValueError: left keys must be sorted`. The conversion says so — "1 data record starts earlier than the record before it" — and `df.sort_values("time_s")` before the join is the fix. [The time_s column](/docs/output-files#the-time_s-column) sets out when that happens. `direction="backward"` carries the most recent slow reading forward, `"nearest"` picks the closer of the two neighbours, and `tolerance` leaves `NaN` where no reading is close enough:
@@ -435,7 +437,7 @@ aligned = pd.merge_asof(fast, slow, on="time_s", direction="nearest", tolerance=
 aligned["Temp rectal"].isna().sum()
 ```
 
-This is the step edf2csv leaves to you. Once the temperature column has 7,372,800 entries, only 28,800 of which came off a sensor, nothing in the file distinguishes the measurements from the fill. Doing it here keeps the choice of `direction` and `tolerance` in your analysis code, and leaves the files on disk holding only recorded values.
+This is the step edf2csv leaves to you. Once the temperature column has 2,880,000 entries, only 28,800 of which came off a sensor, nothing in the file distinguishes the measurements from the fill. Doing it here keeps the choice of `direction` and `tolerance` in your analysis code, and leaves the files on disk holding only recorded values.
 
 ## Read a very large signals.csv in chunks
 
@@ -446,7 +448,7 @@ peak = 0.0
 rows = 0
 
 for chunk in pd.read_csv(
-    "sleep_csv/signals_256hz.csv",
+    "sleep_csv/signals_100hz.csv",
     chunksize=500_000,
     usecols=["time_s", "EEG Fpz-Cz"],
 ):
@@ -462,28 +464,28 @@ For work that needs all the columns, `dtype` halves the memory a chunk occupies,
 
 ```python
 reader = pd.read_csv(
-    "sleep_csv/signals_256hz.csv",
+    "sleep_csv/signals_100hz.csv",
     chunksize=500_000,
-    dtype={"EEG Fpz-Cz": "float32", "EEG Pz-Oz": "float32", "ECG": "float32"},
+    dtype={"EEG Fpz-Cz": "float32", "EEG Pz-Oz": "float32", "EOG horizontal": "float32"},
 )
 ```
 
-Keep `time_s` as float64. A 256 Hz recording eight hours long reaches times near 28,800 s, and float32 can't hold that with 8 decimal places.
+Keep `time_s` as float64. A recording eight hours long reaches times near 28,800 s, and float32 can't hold that with 8 decimal places.
 
 ## Query the CSV directly with DuckDB
 
 ```bash
-duckdb -c "SELECT count(*) AS rows, min(time_s), max(time_s) FROM 'sleep_csv/signals_256hz.csv'"
+duckdb -c "SELECT count(*) AS rows, min(time_s), max(time_s) FROM 'sleep_csv/signals_100hz.csv'"
 ```
 
-DuckDB reads the CSV where it lies and streams it, so a 286 MB `signals_256hz.csv` can be aggregated without a 286 MB frame in memory and without an import step. Column names containing spaces are quoted with double quotes, exactly as SQL requires:
+DuckDB reads the CSV where it lies and streams it, so a 286 MB `signals_100hz.csv` can be aggregated without a 286 MB frame in memory and without an import step. Column names containing spaces are quoted with double quotes, exactly as SQL requires:
 
 ```bash
 duckdb -c "
   SELECT floor(time_s / 30) * 30 AS epoch_start,
          avg(\"EEG Fpz-Cz\")      AS mean_uv,
          max(abs(\"EEG Fpz-Cz\")) AS peak_uv
-  FROM 'sleep_csv/signals_256hz.csv'
+  FROM 'sleep_csv/signals_100hz.csv'
   GROUP BY 1
   ORDER BY 1
   LIMIT 5"
@@ -495,7 +497,7 @@ Cutting an excerpt back out to CSV is one statement:
 duckdb -c "
   COPY (
     SELECT time_s, \"EEG Fpz-Cz\"
-    FROM 'sleep_csv/signals_256hz.csv'
+    FROM 'sleep_csv/signals_100hz.csv'
     WHERE time_s BETWEEN 3600 AND 3630
   ) TO 'excerpt.csv' (HEADER, DELIMITER ',')"
 ```
@@ -504,7 +506,7 @@ Rate groups can be joined the same way pandas does it, with `ASOF JOIN` (DuckDB 
 
 ```sql
 SELECT f.time_s, f."EEG Fpz-Cz", s."Temp rectal"
-FROM 'sleep_csv/signals_256hz.csv' AS f
+FROM 'sleep_csv/signals_100hz.csv' AS f
 ASOF JOIN 'sleep_csv/signals_1hz.csv' AS s
   ON f.time_s >= s.time_s;
 ```
@@ -515,7 +517,7 @@ The same queries work from Python without the shell quoting:
 import duckdb
 
 duckdb.sql("""
-    SELECT avg("ECG") FROM 'sleep_csv/signals_256hz.csv'
+    SELECT avg("EOG horizontal") FROM 'sleep_csv/signals_100hz.csv'
     WHERE time_s BETWEEN 3600 AND 3630
 """).df()
 ```
@@ -530,12 +532,13 @@ channels[["label", "unit", "sampling_rate_hz", "output_file", "converted"]]
 ```
 
 ```text
-                   label  unit  sampling_rate_hz        output_file converted
+                         label  unit  sampling_rate_hz        output_file converted
 column
-EEG Fpz-Cz    EEG Fpz-Cz    uV               256  signals_256hz.csv       yes
-EEG Pz-Oz      EEG Pz-Oz    uV               256  signals_256hz.csv       yes
-ECG                  ECG    mV               256  signals_256hz.csv       yes
-Temp rectal  Temp rectal  degC                 1    signals_1hz.csv       yes
+EEG Fpz-Cz          EEG Fpz-Cz    uV               100  signals_100hz.csv       yes
+EEG Pz-Oz            EEG Pz-Oz    uV               100  signals_100hz.csv       yes
+EOG horizontal  EOG horizontal    uV               100  signals_100hz.csv       yes
+Resp oro-nasal  Resp oro-nasal     V                10   signals_10hz.csv       yes
+Temp rectal        Temp rectal  degC                 1    signals_1hz.csv       yes
 ```
 
 `channels.csv` lists every signal channel in the file, including ones you excluded with `--channels`; the `converted` column says which made it into a CSV, and `output_file` says which one. The `column` values are exactly the column headers used in the signal files, so this table is the lookup for labelling a plot axis or checking a unit:

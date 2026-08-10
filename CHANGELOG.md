@@ -3,6 +3,44 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.117
+
+### Fixed: the recipes page loaded a file the example recording never writes
+
+recipes runs `edf2csv sleep-study.edf --out ./sleep_csv`, shows an `ls` of the result, and then
+reads it fourteen times over — pandas, R, data.table, MATLAB, DuckDB, the chunked reader, the
+`merge_asof` recipe. Every one of them opened `sleep_csv/signals_256hz.csv`.
+
+That recording has no 256 Hz channel. It has three at 100 Hz, one at 10 Hz and one at 1 Hz, and
+converts into six files:
+
+```text
+annotations.csv
+channels.csv
+metadata.json
+signals_100hz.csv
+signals_10hz.csv
+signals_1hz.csv
+```
+
+The `ls` block listed four, one of them a file the run does not write and three of them missing.
+Every snippet on the page after it was a `FileNotFoundError` on its first line.
+
+The channel names went with it: the snippets print an `ECG` column, which belongs to a different
+recording — this one's third 100 Hz channel is `EOG horizontal`. The `--info` table a hundred
+lines above them has listed the real channels and the real file names all along.
+
+faq's answer to "why several signals files" laid the same recording out as `signals_256hz.csv`,
+`signals_128hz.csv` and `signals_1hz.csv`, and its two loader snippets and its digital-code
+recipe read the 256 Hz file.
+
+Corrected against a conversion: file names, channel names, the sample values and times in the
+outputs shown, the wall-clock example's timestamps, the `channels.csv` listing, and the count of
+interpolated rows in the `merge_asof` note (2,880,000 at 100 Hz, not 7,372,800 at 256 Hz).
+
+A test converts one second of the fixture the example recording is built from and holds every
+path under that output directory, and the `ls` block itself, to what the run writes.
+
 ## 0.5.116
 
 ### Fixed: a recording it is not allowed to read came back as a raw Node error

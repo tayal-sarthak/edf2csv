@@ -12,13 +12,13 @@ named after that rate:
 
 ```
 sleep-study_csv/
-  signals_256hz.csv    EEG Fpz-Cz, EEG Pz-Oz
-  signals_128hz.csv    ECG
+  signals_100hz.csv    EEG Fpz-Cz, EEG Pz-Oz, EOG horizontal
+  signals_10hz.csv     Resp oro-nasal
   signals_1hz.csv      Temp rectal
 ```
 
 A single wide table can't hold two rates without inventing rows. Putting a 1 Hz temperature
-channel next to a 256 Hz EEG channel in one table means filling 255 out of every 256 temperature
+channel next to a 100 Hz EEG channel in one table means filling 99 out of every 100 temperature
 cells with values that were never measured, so edf2csv splits the table instead. Nothing is
 resampled, interpolated or padded.
 
@@ -95,11 +95,11 @@ CSV with a single header row, so no dialect arguments are needed:
 
 ```python
 import pandas as pd
-signals = pd.read_csv("sleep-study_csv/signals_256hz.csv")
+signals = pd.read_csv("sleep-study_csv/signals_100hz.csv")
 ```
 
 ```r
-signals <- readr::read_csv("sleep-study_csv/signals_256hz.csv")
+signals <- readr::read_csv("sleep-study_csv/signals_100hz.csv")
 ```
 
 A spreadsheet may also reformat what it displays. A time column of `0.00390625` can be
@@ -315,8 +315,8 @@ row = channels.loc["EEG Fpz-Cz"]
 gain = (row.physical_max - row.physical_min) / (row.digital_max - row.digital_min)
 offset = row.physical_max / gain - row.digital_max
 
-# EEG Fpz-Cz is a 256 Hz channel, so it is in the 256 Hz table — see the layout above.
-signals = pd.read_csv("sleep-study_csv/signals_256hz.csv")
+# EEG Fpz-Cz is a 100 Hz channel, so it is in the 100 Hz table — see the layout above.
+signals = pd.read_csv("sleep-study_csv/signals_100hz.csv")
 digital = (signals["EEG Fpz-Cz"] / gain - offset).round().astype("int64")
 ```
 

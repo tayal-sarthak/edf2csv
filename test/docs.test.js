@@ -1059,6 +1059,63 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 12, `expected several --info lines to check, found ${checked}`);
   });
 
+  it('names files the example recording actually converts into', async () => {
+    /*
+      recipes ran `edf2csv sleep-study.edf --out ./sleep_csv`, printed an `ls` of four entries,
+      and then read `sleep_csv/signals_256hz.csv` in fourteen snippets — pandas, R, data.table,
+      MATLAB, DuckDB, the chunked reader, the merge_asof recipe. That recording has no 256 Hz
+      channel and no ECG. It converts into six files, three of them rate tables at 100, 10 and
+      1 Hz, and every one of those snippets was a `FileNotFoundError` on the first line.
+
+      The `--info` table on the same page has listed the real channels and the real output file
+      names all along, a hundred lines above the snippets that contradict it.
+
+      Checked against a conversion rather than against the other pages. A one-second window is
+      enough: which files a run writes is decided by the rates, not by how much was asked for.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-outputs-'));
+    let written;
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const input = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const out = path.join(work, 'out');
+      await run(process.execPath, [CLI, input, '--out', out, '--duration', '1', '--quiet']);
+      written = new Set(await readdir(out));
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.ok(written.size >= 4, `nothing to check against: ${[...written]}`);
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let checked = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const text = await read(page);
+      // Anything addressed inside this recording's output directory, whichever of the two
+      // names the page gave it.
+      for (const [, file] of text.matchAll(/(?:sleep_csv|sleep-study_csv)\/([\w.]+)/gu)) {
+        checked++;
+        assert.ok(
+          written.has(file),
+          `${page}: sleep-study.edf converts into ${[...written].sort().join(', ')}, not ${file}`,
+        );
+      }
+      // And the listing of that directory, which has to be all of them and nothing else.
+      const listing = /--out \.\/sleep_csv\nls \.\/sleep_csv\n```\n\s*```[a-z]*\n([\s\S]*?)```/u.exec(
+        text,
+      );
+      if (!listing) continue;
+      checked++;
+      assert.deepEqual(
+        listing[1].trim().split('\n').map((line) => line.trim()).sort(),
+        [...written].sort(),
+        `${page}: the ls does not list what the conversion writes`,
+      );
+    }
+    assert.ok(checked >= 10, `expected the pages to name these files, found ${checked}`);
+  });
+
   it('quotes the out-of-order and overlap warnings as they are actually printed', async () => {
     /*
       Both of these sentences count, and both agree with what they counted since 0.5.107. The
