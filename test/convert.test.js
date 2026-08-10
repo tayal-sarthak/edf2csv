@@ -697,6 +697,59 @@ describe('column naming', () => {
     assert.deepEqual(columns, header.slice(1), 'channels.csv describes the columns written');
     assert.equal(new Set(columns).size, columns.length);
   });
+
+  it('counts the time column as a name a channel cannot have', async () => {
+    /*
+      The check above holds the channel columns unique among themselves. `time_s` is not one of
+      them — no file supplies it, the writer puts it in front — so a channel labelled `time_s`
+      collided with it and nothing noticed: the header came out `time_s,time_s,ECG`, exit 0,
+      no warning, and channels.csv gave the channel's column as `time_s`.
+
+      Every read-back the documentation offers resolves that to one of the two columns without
+      saying which, and the two readers it names disagree: pandas `index_col="time_s"` takes
+      the time column and Python's own `csv.DictReader` keeps the last, which is the channel.
+      A label of `time_s` is legal — EDF labels are free text — and this is what a montage
+      exported from a tool that already had a time column looks like.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-timecol-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const input = path.join(scratch, 'time-s-label.edf');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000 };
+    writeEdf({
+      path: input,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        { label: 'time_s', ...base, samplesPerRecord: 2, gen: () => 500 },
+        { label: 'ECG', ...base, samplesPerRecord: 2, gen: (r, s) => s },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(input, { outputDir: dir });
+
+    const header = (await readCsv(dir, 'signals.csv'))[0].split(',');
+    assert.equal(header[0], 'time_s', 'the time column keeps the name');
+    assert.equal(new Set(header).size, header.length, `duplicate columns: ${header}`);
+
+    const notice = result.diagnostics.find((d) => /time column/u.test(d.message));
+    assert.ok(notice, `the renamed channel must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.message, /Signal 0 is labelled "time_s".*"time_s_ch0"/u);
+
+    // channels.csv describes the columns actually written, so the join it exists for resolves.
+    const columns = (await readCsv(dir, 'channels.csv')).slice(1).map((row) => row.split(',')[0]);
+    assert.deepEqual(columns, header.slice(1), 'channels.csv describes the columns written');
+
+    // And the label itself still selects the channel: what moved is the column, not the name
+    // the file gives it, which is what --channels matches on.
+    const picked = await outDir();
+    await convert(input, { outputDir: picked, channels: ['time_s'], quiet: true });
+    assert.deepEqual((await readCsv(picked, 'signals.csv'))[0].split(','), [
+      'time_s',
+      'time_s_ch0',
+    ]);
+  });
 });
 
 describe('an empty result', () => {

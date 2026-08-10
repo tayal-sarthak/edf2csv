@@ -16,7 +16,7 @@ import { decimalsAreClamped, decimalsForSignal } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { fixed, timeDecimals } from '../format/number.js';
-import { buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
+import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
 import type { ResolvedRange } from './time-range.js';
@@ -128,16 +128,22 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   const diagnostics: Diagnostic[] = [];
   const columnNames = buildColumnNames(input.signals);
 
-  // A channel whose own label was taken by another channel's disambiguating suffix. The
-  // duplicate-label warning is about the labels that collided; this is about the channel
-  // that lost its name to them, which is the one whose column no longer matches the file.
+  // A channel whose own label was taken by something else in the header. Usually that is
+  // another channel's disambiguating suffix — the duplicate-label warning is about the labels
+  // that collided, this is about the channel that lost its name to them. The other way is a
+  // channel labelled `time_s`, where what took the name is the time column itself, which every
+  // signals.csv begins with and no file supplies.
   for (const signal of renamedByCollision(input.signals, columnNames)) {
+    const taker =
+      signal.label === TIME_COLUMN
+        ? 'the name of the time column every signals.csv starts with'
+        : `also the column name another channel's "_ch" suffix produces`;
     diagnostics.push({
       code: 'DUPLICATE_LABEL',
       severity: 'warning',
       message:
-        `Signal ${signal.index} is labelled "${signal.label}", which is also the column name ` +
-        `another channel's "_ch" suffix produces, so its column is "${columnNames.get(signal.index)}".`,
+        `Signal ${signal.index} is labelled "${signal.label}", which is ${taker}, ` +
+        `so its column is "${columnNames.get(signal.index)}".`,
       hint: 'Column names are unique; look this channel up in channels.csv by its signal_index.',
     });
   }

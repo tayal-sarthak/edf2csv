@@ -184,6 +184,10 @@ Two exceptions:
   positions 0 and 1 become `T8-P8_ch0` and `T8-P8_ch1`. This happens in real clinical archives, and
   position is the only thing that reliably tells the channels apart. A `DUPLICATE_LABEL` warning is
   raised.
+- **A label of `time_s`.** The time column is not one of the channels — the writer puts it in front
+  of them — so a channel labelled `time_s` would give the file two columns of that name. It takes
+  `time_s_ch<index>` instead, and a `DUPLICATE_LABEL` warning names it. Legal, since EDF labels are
+  free text, and what a montage exported from a tool that already had a time column looks like.
 
 Names are derived from the whole file, not from your selection. A channel produces the same column
 name whether you convert everything or ask for it alone with `--channels`, so files from different

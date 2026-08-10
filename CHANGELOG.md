@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.113
+
+### Fixed: a channel labelled `time_s` gave signals.csv two columns of that name
+
+Column names are made unique among the channels. The time column is not one of them — no file
+supplies it, the writer puts it in front — so a channel whose label is `time_s` collided with it
+and nothing noticed:
+
+```
+time_s,time_s,ECG
+0.000,50.000,0.000
+```
+
+Exit 0, no warning, and `channels.csv` gave that channel's column as `time_s`, so the join it
+exists for pointed at the wrong one. `metadata.json` said the same.
+
+A repeated header name is resolved by whichever reader you happen to use, and the two this site
+names resolve it opposite ways round: pandas `read_csv(..., index_col="time_s")` takes the time
+column, and Python's own `csv.DictReader` keeps the last field of that name, which is the channel.
+So `signals.pop("time_s")` and `long.pivot(index="time_s", ...)` silently used one or the other.
+
+The label is legal — EDF labels are free text — and it is what a montage exported from a tool that
+already had a time column looks like.
+
+The time column is now reserved in the same pass that keeps the channel columns apart, so such a
+channel takes `time_s_ch0` and is named in a warning, as any channel that loses its own label
+already was. The writer takes the name from that pass rather than repeating the literal, so the
+reservation and the header cannot drift apart.
+
+`--channels "time_s"` still selects the channel: what moved is the column, not the label, and
+`--channels` matches the label.
+
 ## 0.5.112
 
 ### Fixed: the advice for a channel with a comma in its label printed a command that exits 2

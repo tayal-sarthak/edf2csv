@@ -11,6 +11,14 @@
 import type { EdfSignal } from '../edf/header.js';
 import { listed } from '../format/list.js';
 
+/**
+ * The name of the column the writer puts in front of the channels, which no channel may take.
+ *
+ * Exported and used by the writer rather than repeated there, because the whole point of
+ * reserving it here is that the two cannot drift apart.
+ */
+export const TIME_COLUMN = 'time_s';
+
 export class ChannelSelectionError extends Error {
   constructor(message: string) {
     super(message);
@@ -60,9 +68,16 @@ export function buildColumnNames(signals: readonly EdfSignal[]): Map<number, str
     Anything still shared after the first pass takes its own position as well. That is unique
     by construction, so the loop settles immediately in practice; the bound is there because
     a second round could in principle land on yet another literal label.
+
+    The time column counts as taken, for the same reason. It is a name this file does not
+    supply and the writer does, and a channel labelled `time_s` collided with it in silence:
+    the header came out `time_s,time_s,ECG`, channels.csv named the channel's column `time_s`,
+    and every read-back the documentation gives — `index_col="time_s"`, `pop("time_s")`,
+    `pivot(index="time_s")` — resolves that to one of the two columns without saying which.
+    pandas and Python's own `csv.DictReader` resolve it opposite ways round.
   */
   for (let round = 0; round < 8; round++) {
-    const taken = new Map<string, number>();
+    const taken = new Map<string, number>([[TIME_COLUMN, 1]]);
     for (const name of names.values()) taken.set(name, (taken.get(name) ?? 0) + 1);
 
     const clashing = [...names].filter(([, name]) => (taken.get(name) ?? 0) > 1);

@@ -37,6 +37,7 @@ import {
   newSampleCacheBudget,
 } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
+import { TIME_COLUMN } from './channels.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './timing.js';
@@ -620,8 +621,8 @@ async function writeSignalFiles(
       if (options.bom === true) writer.push(UTF8_BOM);
       writer.pushLine(
         plan.layout === 'long'
-          ? csvRow(['time_s', 'channel', 'value'])
-          : csvRow(['time_s', ...group.channels.map((c) => c.column)]),
+          ? csvRow([TIME_COLUMN, 'channel', 'value'])
+          : csvRow([TIME_COLUMN, ...group.channels.map((c) => c.column)]),
       );
     }
     return {

@@ -359,6 +359,16 @@ warning: Signal 2 is labelled "T8_ch0", which is also the column name another ch
          Column names are unique; look this channel up in channels.csv by its signal_index.
 ```
 
+`time_s` is checked the same way, and it is the one name on that list no file supplies — the writer puts it in front of the channels. A channel labelled `time_s` moves aside for it:
+
+```
+warning: Signal 0 is labelled "time_s", which is the name of the time column every
+         signals.csv starts with, so its column is "time_s_ch0".
+         Column names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+Until 0.5.113 it did not, and the header came out `time_s,time_s,ECG` with nothing said. Every read-back in these pages — `index_col="time_s"`, `pop("time_s")`, `pivot(index="time_s")` — resolves a repeated name to one of the two columns without saying which, and pandas and Python's own `csv.DictReader` resolve it opposite ways round.
+
 No two columns in `signals.csv` ever share a name, so the `channels.csv` join always resolves.
 
 ### TIME_RESOLUTION
