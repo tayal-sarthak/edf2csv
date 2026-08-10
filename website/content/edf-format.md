@@ -311,9 +311,12 @@ The pair can also be degenerate or inverted, and both happen in the wild:
   with a stand-in number that would read as ordinary data.
 - `physicalMin == physicalMax` makes every sample the same value. Warned as
   `DEGENERATE_PHYSICAL_RANGE`.
-- `physicalMin > physicalMax` inverts the polarity of the channel. This is a legal line, it's just
-  probably a mistake by the recording software. `edf2csv` converts exactly what the header says,
-  inversion included, and warns (`INVERTED_PHYSICAL_RANGE`) so you can decide whether to trust it.
+- A negative gain inverts the polarity of the channel. That is what `physicalMin > physicalMax`
+  usually means — but only usually: reversing `digitalMin` and `digitalMax` instead does the same
+  thing, and reversing both pairs cancels out and leaves an ordinary channel. It is the sign of
+  the fraction that decides. A negative gain is a legal line, it's just probably a mistake by the
+  recording software. `edf2csv` converts exactly what the header says, inversion included, and
+  warns (`INVERTED_PHYSICAL_RANGE`) so you can decide whether to trust it.
 
 ## BDF, the 24-bit variant
 

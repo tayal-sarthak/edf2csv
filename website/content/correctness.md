@@ -304,7 +304,7 @@ Real headers are sometimes self-contradictory. In each case the code does someth
 | Gain is zero | Every sample legitimately converts to the same value, so that value is written. |
 | Gain is not finite | The physical span overflowed a double, so there is no mapping at all: the cells are left empty and `UNUSABLE_PHYSICAL_RANGE` is raised. |
 | The derived offset overflows to non-finite | Only possible for an absurd calibration. The code falls back to the specification's literal ordering, which is less accurate but finite. |
-| `physicalMin` above `physicalMax` | Converted exactly as the header specifies, polarity inversion included, with an `INVERTED_PHYSICAL_RANGE` warning. Correcting the header would mean guessing about the recording. |
+| Gain is negative — exactly one of the two bounds pairs reversed | The channel's polarity is inverted. Converted exactly as the header specifies, inversion included, with an `INVERTED_PHYSICAL_RANGE` warning. Correcting the header would mean guessing about the recording. Reversing both pairs leaves the gain positive, which is an ordinary channel and draws nothing. |
 
 The first and last of these have fixtures and tests of their own, listed below.
 
@@ -333,6 +333,7 @@ Most fixtures use a generator where the digital value equals the sample's global
 | `fractional-recdur.edf` | 25 samples per 0.1 s record | A rate of 250 Hz derived from a fractional record duration, rather than assuming one-second records. |
 | `quirky-labels.edf` | Two channels sharing the label `T8-P8`, a channel labelled `-`, and a channel with physical minimum above maximum | Duplicate labels get suffixed with the signal number, an odd but unique label is left alone, and an inverted range is honoured rather than corrected. Its plus or minus 800 uV calibration is the one used in the rounding test above. |
 | `rate-slug-collision.edf` | Two channels whose sampling rates both round to `0hz` in a filename, over an eleven-day record duration | Distinct rates get distinct files. Sharing a name meant two write streams on one path, interleaving both channels' rows under a header naming one of them. |
+| `reversed-bounds.edf` | Three channels: one with only its physical pair reversed, one with only its digital pair, one with both | Which of them is inverted is decided by the sign of the gain, not by the physical pair alone. The first two are warned about, each message naming the pair that is actually the wrong way round; the third has a positive gain and draws nothing. |
 | `degenerate-range.edf` | Three channels: one with digital minimum equal to digital maximum, one with physical minimum equal to physical maximum, and one ordinary | The two degenerate cases must not be treated alike. The undefined mapping writes empty cells and a warning, never `NaN` as text or a stand-in number; the flat-but-defined mapping still writes its constant value; the ordinary channel is untouched by either. |
 | `biosemi.bdf` | 24-bit BDF, including sample values no 16-bit field could hold | Three-byte samples, record sizing at three bytes per sample, and correct sign extension of negative 24-bit values. |
 | `biosemi-plus.bdf` | BDF+D, whose markers are spelled `BDF+D` and `BDF Annotations` | BioSemi's spelling of the EDF+ markers is recognised and normalised, and gaps and events are recovered from a discontinuous BDF file. |
@@ -375,20 +376,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 336
+ℹ tests 337
 ℹ suites 53
-ℹ pass 336
+ℹ pass 337
 ℹ fail 0
 ```
 
-The 336 tests are split across six files by what they exercise:
+The 337 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 45 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 98 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 143 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
-| `test/docs.test.js` | 36 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 37 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 8 | A destination that fills up, for `--stdout` and for `--out`, which needs a filesystem of a known small size and so is kept apart |
 | `test/large.test.js` | 6 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 

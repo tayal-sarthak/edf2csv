@@ -1059,6 +1059,64 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 12, `expected several --info lines to check, found ${checked}`);
   });
 
+  it('states the inversion rule the way the code decides it, on every page that states it', async () => {
+    /*
+      A negative gain is what inverts a channel, and the gain is
+      (physicalMax - physicalMin) / (digitalMax - digitalMin) — so reversing exactly one of the
+      two pairs inverts the polarity and reversing both does not. The code was corrected to that
+      rule, and reversed-bounds.edf was written to hold it: three channels, two warned about and
+      one not.
+
+      One page was corrected with it. Three were not, and went on describing the trigger as the
+      physical pair alone: correctness listed `physicalMin` above `physicalMax` as a header
+      condition that raises the warning, edf-format said that comparison "inverts the polarity of
+      the channel", and output-files — the page a reader reaches from the channels.csv columns —
+      called such a channel "an inverted channel" outright. The fixture's third channel is that
+      exact shape and is not inverted.
+
+      So this checks the claim against the file rather than against the other pages: the channel
+      exists, its physical pair is reversed, and nothing warns about it. Then no page may equate
+      the two.
+    */
+    const api = await import(path.join(ROOT, 'dist/index.js'));
+    const file = await api.EdfFile.open(
+      path.join(ROOT, 'test/fixtures/generated/reversed-bounds.edf'),
+    );
+    const both = file.dataSignals.find((signal) => signal.label === 'both');
+    const inverted = file.diagnostics.filter((d) => d.code === 'INVERTED_PHYSICAL_RANGE');
+    await file.close();
+
+    assert.ok(both, 'the fixture no longer has a channel with both pairs reversed');
+    assert.ok(
+      both.physicalMin > both.physicalMax && both.digitalMin > both.digitalMax,
+      'and that channel no longer reverses both of them',
+    );
+    assert.ok(
+      !inverted.some((d) => d.message.includes('"both"')),
+      'a positive gain is not an inverted channel',
+    );
+
+    // The two spellings the pages use: the column names of channels.csv and the header field
+    // names of the format. The backtick is what distinguishes them from the warning's own text,
+    // which is a third spelling and deliberately not matched — "physical minimum 100 above
+    // physical maximum -100, which inverts its polarity" is true of the channel it names, whose
+    // digital pair is the right way round. The cell separator is not excluded: correctness put
+    // the condition in one column of a table and the consequence in the next, and that is still
+    // one claim.
+    const claim =
+      /`physical_?[Mm]?(?:in|inimum)`?\s+(?:above|greater than|>)\s+`?physical_?[Mm]?(?:ax|aximum)`?[^.\n]{0,60}inver/u;
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      assert.doesNotMatch(
+        await read(page),
+        claim,
+        `${page}: a reversed physical pair is not on its own what inverts a channel`,
+      );
+    }
+  });
+
   it('shows the line --info --annotations-only actually prints', async () => {
     /*
       The reference said, of the estimate, "With `--annotations-only` ... the estimate is 0

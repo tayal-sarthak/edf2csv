@@ -324,10 +324,17 @@ Temp rectal,2,Temp rectal,degC,1,1,34,40,-2048,2047,,,signals_1hz.csv,yes
 | `output_file` | Name of the CSV holding this channel's samples, or empty when the channel wasn't converted. |
 | `converted` | `yes` or `no`. |
 
-The four calibration columns are written as they appear in the header, so `physical_min` above
-`physical_max` — an inverted channel — survives into the file rather than being corrected. The
-values in `signals.csv` are converted exactly as the header specifies, inversion included, and an
-`INVERTED_PHYSICAL_RANGE` warning points at the channel.
+The four calibration columns are written as they appear in the header, so a channel whose
+`physical_min` sits above its `physical_max` survives into the file that way rather than being
+corrected. That by itself is not what makes a channel inverted. The gain is
+`(physical_max - physical_min) / (digital_max - digital_min)`, so it is the sign of the whole
+fraction that decides: reverse one pair and the polarity is inverted, reverse both and the gain
+comes out positive and the channel is perfectly ordinary — no warning, and none is warranted.
+
+When the gain really is negative, the values in `signals.csv` are converted exactly as the header
+specifies, inversion included, and an
+[`INVERTED_PHYSICAL_RANGE`](/docs/warnings-and-errors#inverted_physical_range) warning names the
+channel and whichever pair is the wrong way round.
 
 `converted` is `no` in three situations: you used `--channels` and didn't ask for this one, you
 used `--annotations-only` so nothing was converted, or the channel declares zero samples per record

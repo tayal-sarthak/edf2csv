@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.109
+
+### Fixed: three pages still described an inverted channel by the rule that was corrected
+
+What inverts a channel is a negative gain, and the gain is
+`(physical_max - physical_min) / (digital_max - digital_min)` — so reversing exactly one of the
+two bounds pairs inverts the polarity, and reversing both leaves it positive and ordinary. The
+code was corrected to that rule and `reversed-bounds.edf` was written to hold it: three channels,
+two warned about, one not.
+
+One page was corrected with it. Three were not:
+
+- **correctness** listed "`physicalMin` above `physicalMax`" as a header condition that raises
+  `INVERTED_PHYSICAL_RANGE`.
+- **edf-format** said "`physicalMin > physicalMax` inverts the polarity of the channel".
+- **output-files**, describing the `physical_min` and `physical_max` columns of `channels.csv`,
+  called such a channel "an inverted channel" outright — the page a reader lands on when they
+  are looking at those two columns and wondering.
+
+The fixture's third channel is exactly that shape and draws nothing.
+
+All three now state the rule by the sign of the gain and say what reversing both pairs does.
+`reversed-bounds.edf` is also added to correctness's fixture table, which claimed the inversion
+row had a fixture "listed below" and then didn't list it.
+
+A test opens that fixture, confirms the channel is still there and still unwarned, and then
+holds every page to it. It reads the backticked field and column names, so the warning's own
+sentence — true of the channel it names — is not caught by it.
+
 ## 0.5.108
 
 ### Fixed: the annotations page said the example recording has one signal
