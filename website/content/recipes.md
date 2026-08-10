@@ -428,7 +428,7 @@ aligned.head(3)
 2  0.007812      57.570     46.825  0.12088     37.00073
 ```
 
-Both frames must be sorted on the join key, which they already are. `direction="backward"` carries the most recent slow reading forward, `"nearest"` picks the closer of the two neighbours, and `tolerance` leaves `NaN` where no reading is close enough:
+Both frames must be sorted on the join key, which for an ordinary recording they already are. One kind of file breaks that: an EDF+D recording whose data records are stored out of chronological order writes its rows in file order, so `time_s` does not increase monotonically and `merge_asof` raises `ValueError: left keys must be sorted`. The conversion says so — "1 data record starts earlier than the record before it" — and `df.sort_values("time_s")` before the join is the fix. [The time_s column](/docs/output-files#the-time_s-column) sets out when that happens. `direction="backward"` carries the most recent slow reading forward, `"nearest"` picks the closer of the two neighbours, and `tolerance` leaves `NaN` where no reading is close enough:
 
 ```python
 aligned = pd.merge_asof(fast, slow, on="time_s", direction="nearest", tolerance=0.5)

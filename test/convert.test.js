@@ -138,6 +138,53 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('reports records stored out of chronological order, in the singular too', async () => {
+    /*
+      An EDF+D recording may store its records in any order, and the rows are written in file
+      order — so `time_s` comes out 0, 0.5, 10, 10.5, 5, 5.5 and does not increase. recipes.md
+      told readers `merge_asof` was safe because "Both frames must be sorted on the join key,
+      which they already are", which is true of an ordinary recording and false of this one;
+      pandas raises `ValueError: left keys must be sorted` on it.
+
+      The warning that says so counted with a hard-coded verb: "1 data record start earlier
+      than the record before it".
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-order-'));
+    temporaries.push(scratch);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const build = (name, starts) => {
+      const file = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: file, reserved: 'EDF+D', numRecords: starts.length, recordDuration: 1,
+        talsForRecord: (r) => buildTal(starts[r]),
+        signals: [
+          { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 2, gen: (r, s) => r * 2 + s },
+          { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+            digMax: 32767, samplesPerRecord: 60, annotations: true },
+        ],
+      });
+      return file;
+    };
+
+    const dir = await outDir();
+    const one = await convert(build('one', [0, 10, 5]), { outputDir: dir });
+    const said = one.diagnostics.find((d) => /earlier than the record before/u.test(d.message));
+    assert.ok(said, JSON.stringify(one.diagnostics));
+    assert.match(said.message, /1 data record starts earlier than the record before it\./u, said.message);
+
+    // The column really is out of order, which is what the warning is for.
+    const times = (await readCsv(dir, 'signals.csv')).slice(1).map((r) => Number(r.split(',')[0]));
+    assert.deepEqual(times, [0, 0.5, 10, 10.5, 5, 5.5]);
+    assert.ok(times.some((t, i) => i > 0 && t < times[i - 1]), 'the column is sorted after all');
+
+    // Two of them read as two.
+    const many = await convert(build('many', [0, 10, 5, 2]), { outputDir: await outDir() });
+    const plural = many.diagnostics.find((d) => /earlier than the record before/u.test(d.message));
+    assert.ok(plural, JSON.stringify(many.diagnostics));
+    assert.match(plural.message, /2 data records start earlier than the record before them\./u, plural.message);
+  });
+
   it('withdraws the timing promise on a file that cannot keep it', async () => {
     /*
       The header parser raises DISCONTINUOUS with "Each row carries its true recording time,

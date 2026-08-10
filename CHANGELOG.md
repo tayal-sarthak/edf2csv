@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.107
+
+### Fixed: recipes.md said the signal CSVs are already sorted, and one kind of file is not
+
+The `merge_asof` recipe for aligning two rate files closes with "Both frames must be sorted on
+the join key, which they already are." True of an ordinary recording. An EDF+D file whose data
+records are stored out of chronological order writes its rows in file order, so `time_s` comes
+out `0, 0.5, 10, 10.5, 5, 5.5` — and pandas raises `ValueError: left keys must be sorted` on it.
+
+output-files has always said this can happen, in the `time_s` section. The recipe that depends
+on it did not, and a recipe is where the claim actually gets used.
+
+Qualified, with the warning the conversion prints and the one-line fix (`sort_values` before the
+join), linked to the section that sets out when it happens.
+
+### Fixed: "1 data record start earlier than the record before it"
+
+The two warnings that report records out of order or overlapping counted with hard-coded verbs
+and pronouns. They read "starts ... before it" at one and "start ... before them" above it.
+
 ## 0.5.106
 
 ### Fixed: two warnings printed together, and the second denied the first

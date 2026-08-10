@@ -334,7 +334,10 @@ export function deriveRecordStarts(
     diagnostics.push({
       code: 'DISCONTINUOUS',
       severity: 'warning',
-      message: `${outOfOrder} data record${outOfOrder === 1 ? '' : 's'} start earlier than the record before it.`,
+      message:
+        `${counted(outOfOrder, 'data record')} ` +
+        `${outOfOrder === 1 ? 'starts' : 'start'} earlier than the record before ` +
+        `${outOfOrder === 1 ? 'it' : 'them'}.`,
       hint: 'Rows are written in file order, so the time column will not increase monotonically.',
     });
   }
@@ -343,8 +346,10 @@ export function deriveRecordStarts(
       code: 'DISCONTINUOUS',
       severity: 'warning',
       message:
-        `${overlapping} data record${overlapping === 1 ? '' : 's'} start before the record ` +
-        `before ${overlapping === 1 ? 'it' : 'them'} ends, so their samples overlap in time.`,
+        `${counted(overlapping, 'data record')} ` +
+        `${overlapping === 1 ? 'starts' : 'start'} before the record before ` +
+        `${overlapping === 1 ? 'it' : 'them'} ends, so ${overlapping === 1 ? 'its' : 'their'} ` +
+        `samples overlap in time.`,
       hint: 'Rows are written in file order, so the time column will not increase monotonically.',
     });
   }

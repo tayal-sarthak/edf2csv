@@ -2868,7 +2868,7 @@ describe('--layout long', () => {
       'long',
     ]);
     assert.equal(code, 0);
-    assert.match(stderr, /2 data records start earlier than the record before it/u);
+    assert.match(stderr, /2 data records start earlier than the record before them/u);
     assert.match(stderr, /will not increase monotonically/u);
 
     const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
