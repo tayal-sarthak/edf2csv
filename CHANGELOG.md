@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.111
+
+### Fixed: a directory called `undefined` has been in the repository since 0.5.30
+
+0.5.30 fixed `npm pack` shipping a tarball with no code in it. The same commit also added ten
+files under `undefined/` — the output of two conversions whose `--out` had been built from a
+shell variable that was never set, swept up by a `git add -A` along with the real change.
+
+It has been tracked ever since. `files` limits the tarball to `dist`, the README, the licence and
+this file, so nobody installing from npm was ever given it; anyone cloning the repository, or
+installing from a git URL, got 84 KB of somebody else's converted sleep study.
+
+Removed from the tree. A test now holds the list of top-level entries the repository tracks, so
+the next one has to be added to that list on purpose rather than arriving with a batch of edits.
+It skips itself outside a git checkout, since running the suite from an extracted tarball is a
+reasonable thing to do.
+
+`deleted/` is added to `.gitignore` alongside it.
+
 ## 0.5.110
 
 ### Fixed: the reference said there was one way a long file comes out unsorted, and quoted it wrong

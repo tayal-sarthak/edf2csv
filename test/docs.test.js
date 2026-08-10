@@ -1465,6 +1465,40 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('tracks nothing at the top level that nobody put there on purpose', async () => {
+    /*
+      0.5.30's own commit — the one that fixed `npm pack` shipping no code — also committed a
+      directory called `undefined`: ten files of conversion output from a command whose `--out`
+      had been built from a shell variable that wasn't set. It sat in the repository for eighty
+      versions. `files` keeps it out of the tarball, so nobody installing from npm ever saw it;
+      anyone cloning the repository or installing from a git URL got it.
+
+      `git add -A` is how a batch of edits gets committed here, and it is exactly what sweeps up
+      a directory like that. So the list of top-level things this repository tracks is written
+      down, and a new one has to be added here deliberately.
+
+      Skipped rather than failed where git isn't available or this isn't a checkout — an
+      extracted tarball is a legitimate place to run the suite from.
+    */
+    let tracked;
+    try {
+      const { stdout } = await run('git', ['ls-files', '-z'], { cwd: ROOT });
+      tracked = stdout.split('\0').filter(Boolean);
+    } catch {
+      return;
+    }
+    assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
+
+    const expected = new Set([
+      '.github', '.gitignore', 'CHANGELOG.md', 'CITATION.cff', 'LICENSE', 'README.md',
+      'package-lock.json', 'package.json', 'src', 'test', 'tsconfig.json', 'vercel.json',
+      'website',
+    ]);
+    const top = [...new Set(tracked.map((file) => file.split('/')[0]))].sort();
+    const strays = top.filter((entry) => !expected.has(entry));
+    assert.deepEqual(strays, [], `committed by accident, or new and not listed here: ${strays}`);
+  });
+
   it('ships source maps that resolve to something', async () => {
     /*
       Every .js.map names `../src/*.ts` as its source, and `src` is not in package.json's
