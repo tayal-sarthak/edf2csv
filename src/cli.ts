@@ -1858,7 +1858,19 @@ const invokedDirectly = isMainModule();
 if (invokedDirectly) {
   main(process.argv.slice(2))
     .then((code) => {
-      process.exitCode = code;
+      /*
+        A write failure already reported is not erased by a run that thought it finished.
+
+        The stdout listener above prints `Writing to stdout failed: ...` and sets EXIT_ERROR,
+        and assigning `code` over it put that back to 0 — so `--info > desc.txt` onto a full
+        filesystem printed the error, left a zero-byte file, and exited 0. It only looked
+        right because the stdout audit threw a second error on the way out, whose message was
+        about a short write that had not happened.
+
+        A closed pipe deliberately sets no code (see ignoreBrokenPipe), so `--info | head`
+        still exits 0 through here.
+      */
+      process.exitCode = code === EXIT_OK ? (process.exitCode ?? EXIT_OK) : code;
     })
     .catch((error: unknown) => {
       process.stderr.write(`error: ${message(error)}\n`);

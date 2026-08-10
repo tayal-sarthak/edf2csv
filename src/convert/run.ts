@@ -1398,6 +1398,36 @@ export function auditStdout(): { count: (bytes: number) => void; verify: () => v
         return;
       }
       if (landed >= expected) return;
+
+      /*
+        This audit exists for the failure nothing else reports: a write that is accepted, and
+        silently truncated. When the stream itself raised an error there is nothing left for
+        it to add, and what it added was a second `error:` line denying the first —
+
+          error: Writing to stdout failed: ENOSPC: no space left on device, write
+          error: Writing to stdout failed: 58900 of 58900 bytes did not reach the destination,
+                 which stopped accepting them part way through.
+                 ... nothing after it raised an error because there was nothing after it.
+
+        one failure, reported twice, the second of the two wrong about it.
+      */
+      if (process.stdout.errored) return;
+
+      /*
+        Nothing landing at all is not a short write, and was described as one.
+
+        `--info > desc.txt` onto a full filesystem left a zero-byte file, and this said the
+        destination "stopped accepting them part way through" and that "what is there ends
+        mid-row" — of a file with nothing in it and no rows in it.
+      */
+      if (landed === 0) {
+        throw new ConversionError(
+          'WRITE_FAILED',
+          `Writing to stdout failed: none of the ${expected} bytes reached the destination.`,
+          'The destination is almost certainly out of space. Nothing was written, so there ' +
+            'is nothing there to discard.',
+        );
+      }
       throw new ConversionError(
         'WRITE_FAILED',
         `Writing to stdout failed: ${expected - landed} of ${expected} bytes did not reach ` +

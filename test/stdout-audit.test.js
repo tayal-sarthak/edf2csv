@@ -329,6 +329,61 @@ describe('--stdout onto a destination that fills up', () => {
     }, '4m');
   });
 
+  it('reports that failure once, and not as a short write that did not happen', async (t) => {
+    if (!(await volumeAvailable())) {
+      t.skip('needs hdiutil, which only macOS has');
+      return;
+    }
+
+    /*
+      The check above made the failure fatal. It came out twice, and the second contradicted
+      the first:
+
+        error: Writing to stdout failed: ENOSPC: no space left on device, write
+        error: Writing to stdout failed: 58900 of 58900 bytes did not reach the destination,
+               which stopped accepting them part way through.
+               What is there ends mid-row and should not be used. ... and nothing after it
+               raised an error because there was nothing after it.
+
+      Nothing was accepted, so nothing stopped part way through; the file is empty, so nothing
+      "is there" and nothing ends mid-row; and something after it did raise an error, one line
+      up. The audit exists for a write that is accepted and silently truncated, which is not
+      what happened.
+
+      With the audit silent the exit code went to 0 — the stdout listener sets it and the
+      entry point was assigning main's 0 over the top — so the run printed an error and
+      reported success. That is fixed here as well, and the closed-pipe case below still
+      exits 0 through the same line.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    await withSmallVolume(async (VOLUME) => {
+      const recording = path.join(VOLUME, 'wide.edf');
+      writeEdf({
+        path: recording, numRecords: 1, recordDuration: 1,
+        signals: Array.from({ length: 900 }, (unused, i) => ({
+          label: `C${i}`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -32768,
+          digMax: 32767, samplesPerRecord: i + 1, gen: () => 0,
+        })),
+      });
+      const { stdout: free } = await run('/bin/sh', ['-c', `df -k "${VOLUME}" | tail -1 | awk '{print $4}'`]);
+      const leave = Math.max(1, Number(free.trim()) - 20);
+      await run('/bin/sh', ['-c', `dd if=/dev/zero of="${path.join(VOLUME, 'filler')}" bs=1024 count=${leave} 2>/dev/null || true`]);
+
+      const destination = path.join(VOLUME, 'desc.txt');
+      const result = await toFile([recording, '--info'], destination);
+      assert.notEqual(result.code, 0, `a description that never arrived reported success:\n${result.stderr}`);
+
+      const errors = result.stderr.split('\n').filter((line) => line.startsWith('error:'));
+      assert.equal(errors.length, 1, `one failure, ${errors.length} messages:\n${result.stderr}`);
+      assert.equal(await stat(destination).then((s) => s.size), 0, 'nothing reached the file');
+      assert.doesNotMatch(
+        result.stderr,
+        /part way through|ends mid-row/u,
+        `nothing was accepted, so nothing was truncated:\n${result.stderr}`,
+      );
+    }, '4m');
+  });
+
   it('still treats a reader that hangs up as the ordinary thing it is', async (t) => {
     if (!(await volumeAvailable())) {
       t.skip('needs hdiutil, which only macOS has');

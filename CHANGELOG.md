@@ -3,6 +3,40 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.118
+
+### Fixed: one failed write, two error lines, and the second one wrong about it
+
+`edf2csv wide.edf --info > desc.txt` onto a filesystem with no room:
+
+```
+error: Writing to stdout failed: ENOSPC: no space left on device, write
+error: Writing to stdout failed: 58900 of 58900 bytes did not reach the destination, which
+       stopped accepting them part way through.
+       What is there ends mid-row and should not be used. ... and nothing after it raised an
+       error because there was nothing after it.
+```
+
+Three of the second message's claims are false of what happened. Nothing was accepted, so the
+destination did not stop part way through. The file is empty, so nothing "is there" and nothing
+ends mid-row — and a description is a table, which has no rows to end mid-. And something after
+it did raise an error: the line printed directly above.
+
+The stdout audit exists for the one failure nothing else reports, a write that is accepted and
+silently truncated. When the stream itself has already errored there is nothing left for it to
+add, and it now says nothing. When it does speak and nothing landed at all, it says so rather
+than describing a short write.
+
+### Fixed: and then that failure exited 0
+
+With the audit silent the run exited 0 — the error printed, the file zero bytes, and success
+reported. The stdout listener sets the failing exit code, and the entry point assigned `main`'s
+0 straight over it; the audit's second error was the only thing that had been making the run
+fail. A code already set by a reported write failure now survives a run that returns 0.
+
+A closed pipe still exits 0: that path deliberately sets no code, which is what makes
+`--info | head` an ordinary thing to do rather than a failure.
+
 ## 0.5.117
 
 ### Fixed: the recipes page loaded a file the example recording never writes
