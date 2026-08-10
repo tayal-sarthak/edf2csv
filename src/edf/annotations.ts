@@ -59,6 +59,18 @@ export interface DecodedRecordAnnotations {
   /** Unreadable TALs in first position, which carry a record's start time, not an event. */
   malformedTimekeeping: number;
   /**
+   * How many of those also carried event text, and so lost events as well as a position.
+   *
+   * A TAL in first position holds the record's start time, and may hold events after it — the
+   * specification allows both in the one entry, and writers use it. When such a TAL cannot be
+   * parsed, both are gone, and counting it only as lost timekeeping let the warning beside it
+   * say "No event was lost" over a conversion that had just dropped four of them.
+   *
+   * Counted rather than inferred, because the sentence has to be right in the ordinary case
+   * too: a bare timekeeping TAL really does lose no event, and that is nearly all of them.
+   */
+  malformedTimekeepingWithText: number;
+  /**
    * Events kept whose stated duration could not be read.
    *
    * Counted apart again, for the same reason the two above are: the entry was exported and
@@ -92,6 +104,7 @@ export function decodeRecordAnnotations(
   let isFirstTal = true;
   let malformed = 0;
   let malformedTimekeeping = 0;
+  let malformedTimekeepingWithText = 0;
   let unreadableDurations = 0;
   let negativeDurations = 0;
 
@@ -154,9 +167,21 @@ export function decodeRecordAnnotations(
           actually went missing, which is a record's position in time. A file with one
           unreadable timekeeping TAL and three perfectly good events reported "1 annotation
           entry was unreadable and could not be exported" while exporting all three.
+
+          The other direction is just as wrong. A first-position TAL may carry events after
+          the start time, and when one of those cannot be parsed the events go with it — so
+          counting it only as lost timekeeping produced the opposite false sentence: "No event
+          was lost", printed over a run whose annotations.csv had gone from six rows to two.
+          It is one entry that could not be exported and one record with no position, and it
+          is counted as both.
         */
-        if (isTimekeeping) malformedTimekeeping++;
-        else malformed++;
+        if (isTimekeeping) {
+          malformedTimekeeping++;
+          if (carriesAnnotationText(chunk)) {
+            malformedTimekeepingWithText++;
+            malformed++;
+          }
+        } else malformed++;
       }
     }
     start = i + 1;
@@ -167,6 +192,7 @@ export function decodeRecordAnnotations(
     annotations,
     malformed,
     malformedTimekeeping,
+    malformedTimekeepingWithText,
     unreadableDurations,
     negativeDurations,
   };
@@ -179,6 +205,25 @@ interface ParsedTal {
   unreadableDurations: number;
   /** How many carry a duration that read as a number below zero. */
   negativeDurations: number;
+}
+
+/**
+ * Whether a TAL that could not be parsed still carried event text.
+ *
+ * A TAL is `onset[<0x15>duration]<0x14>text<0x14>...`, so anything other than padding after
+ * the first 0x14 is a description the file meant to export. Read from the raw chunk, since by
+ * the time this is asked the parse has already failed and there is no structure to consult.
+ */
+function carriesAnnotationText(chunk: Uint8Array): boolean {
+  let afterSeparator = false;
+  for (const byte of chunk) {
+    if (byte === 0x14) {
+      afterSeparator = true;
+      continue;
+    }
+    if (afterSeparator && !isPaddingByte(byte)) return true;
+  }
+  return false;
 }
 
 /** Space, tab, CR, LF or NUL — what a writer fills the rest of the slot with. */

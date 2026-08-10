@@ -1720,6 +1720,78 @@ describe('converting', () => {
     assert.match(timekeeping[0].message, /carry no readable timekeeping annotation \(record 0\)/u);
   });
 
+  it('does not say no event was lost over a conversion that lost four', async () => {
+    /*
+      A TAL in first position states the record's start time and may carry events after it —
+      the specification allows both in the one entry, and writers use it. An unreadable one
+      was counted only as lost timekeeping, whatever it held, so a file whose first TAL read
+      `+1,5` (a decimal comma) instead of `+1.5` lost four of its six events and said:
+
+        warning: 2 data records carry a timekeeping annotation that could not be read...
+                 No event was lost — a timekeeping annotation states a record's start time...
+
+      The two files here differ in that one character and nothing else, which is what makes
+      the four missing rows attributable.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-tk-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const TEXT = String.fromCharCode(20);
+    const END = String.fromCharCode(0);
+    const build = (name, tals) => {
+      const file = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: file, reserved: 'EDF+C', numRecords: 2, recordDuration: 1, talsForRecord: tals,
+        signals: [
+          { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+          { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+            digMax: 32767, samplesPerRecord: 30, annotations: true },
+        ],
+      });
+      return file;
+    };
+    const events = (onset) => (r) =>
+      `${onset}${TEXT}Seizure onset${TEXT}Arousal${TEXT}${END}+${r}.7${TEXT}Good${TEXT}${END}`;
+
+    const readable = await outDir();
+    await convert(build('readable', events('+1.5')), { outputDir: readable, quiet: true });
+    const kept = (await readCsv(readable, 'annotations.csv')).length - 1;
+    assert.equal(kept, 6, 'the readable twin exports every event');
+
+    const dir = await outDir();
+    const result = await convert(build('unreadable', events('+1,5')), { outputDir: dir });
+    const exported = (await readCsv(dir, 'annotations.csv')).length - 1;
+    assert.equal(exported, 2, 'four events go with the two entries that could not be read');
+
+    // The loss is reported as one, in the message that exists for it.
+    const lost = result.diagnostics.find((d) => /could not be exported/u.test(d.message));
+    assert.ok(lost, `the lost events must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(lost.message, /2 annotation entries were unreadable/u);
+
+    // And the sentence beside it no longer denies what just happened.
+    const notice = result.diagnostics.find((d) => /timekeeping annotation/u.test(d.message));
+    assert.ok(notice, 'the lost timing is still reported too');
+    assert.ok(!/No event was lost/u.test(notice.hint ?? ''), notice.hint);
+    assert.match(notice.hint, /2 of them also carried event text, which went with them/u);
+
+    // The ordinary case is untouched: a first-position TAL with no text loses no event, and
+    // that is nearly all of them.
+    const bare = await outDir();
+    const plain = await convert(
+      build('bare', () => `+1,5${TEXT}${END}+0.7${TEXT}Good${TEXT}${END}`),
+      { outputDir: bare },
+    );
+    // One per record, from the second TAL, which is the one the failure does not touch.
+    assert.equal((await readCsv(bare, 'annotations.csv')).length - 1, 2, 'the events survive');
+    const bareNotice = plain.diagnostics.find((d) => /timekeeping annotation/u.test(d.message));
+    assert.match(bareNotice.hint, /No event was lost/u);
+    assert.ok(
+      !plain.diagnostics.some((d) => /could not be exported/u.test(d.message)),
+      `nothing failed to export: ${JSON.stringify(plain.diagnostics)}`,
+    );
+  });
+
   it('says so when a recording claims an origin its own arithmetic cannot hold', async () => {
     // A double spaces its values further apart the larger they get: at 1e16 the gap is two
     // seconds, so `t + 1` is `t`. Honouring the first timekeeping TAL without checking that

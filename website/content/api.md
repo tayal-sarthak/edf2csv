@@ -59,6 +59,7 @@ class EdfFile {
     recordStarts: (number | null)[];
     malformed: number;             // TALs that could not be parsed at all
     malformedTimekeeping: number;  // of those, ones carrying a record's start time
+    malformedTimekeepingWithText: number;  // of those, ones that also carried events
     unreadableDurations: number;   // events kept whose stated duration is not a number
     negativeDurations: number;     // events kept whose stated duration is below zero
   }>;
@@ -370,7 +371,7 @@ interface Annotation {
 }
 ```
 
-`readAnnotations()` returns every event in the file, the start time each record declares, and four counts of what could not be decoded — kept apart because each is a different loss. `malformed` counts TALs that could not be parsed at all, so their events are gone; `malformedTimekeeping` counts the ones of those that sat in first position and carried a record's start time rather than an event, so no event was lost but a record's position in time was; `unreadableDurations` counts events that were kept whole except for a duration the file stated and this could not read; and `negativeDurations` counts events whose duration read as a number below zero, which is not a length of time — the value is written out as the file gave it, so nothing about the row looks wrong.
+`readAnnotations()` returns every event in the file, the start time each record declares, and five counts of what could not be decoded — kept apart because each is a different loss. `malformed` counts TALs that could not be parsed at all, so their events are gone; `malformedTimekeeping` counts the ones of those that sat in first position, where a record's start time is stored; `malformedTimekeepingWithText` counts the ones of *those* that carried events after the start time as well, which the format allows and writers do — so the first two of these can be read as "a position was lost" only when the third is zero, and an entry counted in it is counted in `malformed` too, because both losses happened; `unreadableDurations` counts events that were kept whole except for a duration the file stated and this could not read; and `negativeDurations` counts events whose duration read as a number below zero, which is not a length of time — the value is written out as the file gave it, so nothing about the row looks wrong.
 
 `unreadableDurations` is why `duration` being `null` is not by itself the same as the file giving no duration. An event written with a duration of `abc` comes back with `duration: null`, indistinguishable from one that never had a duration — the count is what tells you it happened, and the conversion raises `ANNOTATION_DECODE_FAILED` for it.
 

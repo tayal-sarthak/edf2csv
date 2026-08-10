@@ -3,6 +3,38 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.114
+
+### Fixed: "No event was lost" printed over a conversion that lost four
+
+A TAL in first position states the record's start time, and may carry events after it — the
+format allows both in the one entry, and writers use it. When one of those cannot be parsed,
+both are gone. It was counted only as lost timekeeping, whatever it held, and the warning for
+that says in so many words that nothing was lost.
+
+Two files differing in one character, a decimal comma for a decimal point in the first entry:
+
+```
++1.5   6 rows in annotations.csv
++1,5   2 rows
+       warning: 2 data records carry a timekeeping annotation that could not be read...
+                No event was lost — a timekeeping annotation states a record's start time
+                and is never exported.
+```
+
+Four events gone, and the only warning about them denies it. `ANNOTATION_DECODE_FAILED`'s other
+half — "N annotation entries were unreadable and could not be exported" — never fired, because
+the entry was routed by position alone.
+
+These counts were split apart in 0.4.41 so each message would describe the loss it names, after
+the same sentence had been wrong in the other direction. This is the case that split missed.
+
+An unreadable first-position entry that carries text is now counted as both: one entry that
+could not be exported, and one record with no position. The hint keeps to what is true of the
+entries it is about — "2 of them also carried event text, which went with them and is counted
+above" — and still reads "No event was lost" for a bare timekeeping entry, which is nearly all
+of them.
+
 ## 0.5.113
 
 ### Fixed: a channel labelled `time_s` gave signals.csv two columns of that name

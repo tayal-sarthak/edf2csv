@@ -514,6 +514,20 @@ warning: 1 data record carries a timekeeping annotation that could not be read, 
 
 In a continuous recording the records sit end to end, so any record that *can* be read fixes the origin for all of them: a record stating 1.5 s in a file of one-second records puts the recording's start at 0.5 s. Only if no record at all states a time does the file fall back to being timed from zero.
 
+A first entry may also carry events after the start time — the format allows both in the one entry, and writers use it. When one of those cannot be decoded, the events go with it, so it is counted in the entries above as well and the hint says so rather than denying it:
+
+```
+warning: 2 annotation entries were unreadable and could not be exported.
+         The rest were exported normally. The file may have been written by a non-conforming tool.
+warning: 2 data records carry a timekeeping annotation that could not be read, so they do
+         not say where in time they sit.
+         2 of them also carried event text, which went with them and is counted above. A
+         timekeeping annotation itself states a record's start time and is never exported.
+         Times are derived from the records that could be read.
+```
+
+Until 0.5.114 such an entry was counted only as lost timekeeping, so a file whose first entry read `+1,5` rather than `+1.5` exported two of its six events under a warning saying that none had been lost.
+
 **Records carry no readable timekeeping annotation.** In a discontinuous file, the first annotation entry of each record must carry that record's start time. When it's missing or unreadable, that record's true position in time is unknown.
 
 ```

@@ -449,6 +449,8 @@ export class EdfFile {
     malformed: number;
     /** Unreadable TALs in first position, which carry timing rather than an event. */
     malformedTimekeeping: number;
+    /** How many of those also carried event text, so events were lost with the position. */
+    malformedTimekeepingWithText: number;
     /** Events kept whose stated duration could not be read; see Annotation.duration. */
     unreadableDurations: number;
     /** Events kept whose stated duration read as a number below zero. */
@@ -460,6 +462,7 @@ export class EdfFile {
     const recordStarts: (number | null)[] = new Array<number | null>(this.recordCount).fill(null);
     let malformed = 0;
     let malformedTimekeeping = 0;
+    let malformedTimekeepingWithText = 0;
     let unreadableDurations = 0;
     let negativeDurations = 0;
 
@@ -470,6 +473,7 @@ export class EdfFile {
         recordStarts,
         malformed,
         malformedTimekeeping,
+        malformedTimekeepingWithText,
         unreadableDurations,
         negativeDurations,
       };
@@ -496,6 +500,7 @@ export class EdfFile {
         for (const annotation of decoded.annotations) annotations.push(annotation);
         malformed += decoded.malformed;
         malformedTimekeeping += decoded.malformedTimekeeping;
+        malformedTimekeepingWithText += decoded.malformedTimekeepingWithText;
         unreadableDurations += decoded.unreadableDurations;
         negativeDurations += decoded.negativeDurations;
       }
@@ -507,6 +512,7 @@ export class EdfFile {
       recordStarts,
       malformed,
       malformedTimekeeping,
+      malformedTimekeepingWithText,
       unreadableDurations,
       negativeDurations,
     };

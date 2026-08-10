@@ -7,6 +7,7 @@ export interface AnnotationTimingData {
   malformed: number;
   /** Unreadable TALs in first position, which carry timing rather than an event. */
   malformedTimekeeping?: number;
+  malformedTimekeepingWithText?: number;
 }
 
 /**
@@ -74,6 +75,7 @@ export function deriveRecordStarts(
     went missing was a record's position in time, which the message never mentioned.
   */
   const lostTimekeeping = annotationData.malformedTimekeeping ?? 0;
+  const withText = annotationData.malformedTimekeepingWithText ?? 0;
   // The EDF+D branch below raises its own, which names the records and is more specific.
   // Saying both would report one problem twice.
   if (lostTimekeeping > 0 && file.header.continuity !== 'EDF+D') {
@@ -86,8 +88,22 @@ export function deriveRecordStarts(
         `annotation that could not be read, so ${one ? 'it does' : 'they do'} not say where in ` +
         `time ${one ? 'it sits' : 'they sit'}.`,
       hint:
-        'No event was lost — a timekeeping annotation states a record\'s start time and is ' +
-        'never exported. Times are derived from the records that could be read.',
+        /*
+          "No event was lost" was said whatever the entry held.
+
+          A first-position TAL states the record's start time and may carry events after it,
+          which the specification allows and writers do. When one of those cannot be parsed
+          the events go with it: a six-event file came out with two, and the only warning
+          about it said in so many words that nothing had gone. Those entries are counted
+          among the unreadable ones now, which is the warning printed above this one; this
+          sentence keeps to what is true of the entries it is actually about.
+        */
+        (withText > 0
+          ? `${withText === 1 ? 'One of them' : `${withText} of them`} also carried event text, ` +
+            `which went with ${withText === 1 ? 'it' : 'them'} and is counted above. A ` +
+            `timekeeping annotation itself states a record's start time and is never exported. `
+          : 'No event was lost — a timekeeping annotation states a record\'s start time and ' +
+            'is never exported. ') + 'Times are derived from the records that could be read.',
     });
   }
 
