@@ -236,7 +236,7 @@ that events were looked for and not found.
 Run `--info`. If the channel count line doesn't mention an annotation channel, the file has none:
 
 ```text
-Channels   4 signals + 1 annotation channel
+Channels   5 signals + 1 annotation channel
 ```
 
 When the channel exists but holds no events beyond the per-record timekeeping entries, the file is

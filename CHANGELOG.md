@@ -3,6 +3,14 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.134
+
+### Fixed: the FAQ counted four channels in a recording with five
+
+"There is no annotations.csv in my output directory" tells you to run `--info` and read the
+channel-count line, and showed `Channels   4 signals + 1 annotation channel`. The recording the
+rest of that page converts has five, as the four other pages showing this line all say.
+
 ## 0.5.133
 
 ### Fixed: "1 of 3 data records carry ... their true position"
