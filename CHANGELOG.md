@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.121
+
+### Fixed: the first conversion on the page printed a line the tool does not print
+
+getting-started's first conversion — the first output anyone reading the documentation sees:
+
+```text
+Wrote recording_csv
+  signals.csv      300  rows
+  annotations.csv    3  rows
+  channels.csv       1  rows
+```
+
+The last line is `1  row`. The summary has agreed its count with its noun since 0.5.98, and one
+channel is the ordinary case for the small EDF+ file that block describes — so the page showed
+the one run where the rule applies and printed it as though it did not. The seizure-window
+recipe did it twice more, for its `annotations.csv` and its `channels.csv`.
+
+Held now by a test that reads every quoted summary line on every page and checks the noun
+against the number, since the recordings these blocks describe are examples rather than
+fixtures: they need not match a run, but they cannot disagree with the rule the writer applies.
+
 ## 0.5.120
 
 ### Fixed: a recording timed from before zero had no window you were allowed to ask for

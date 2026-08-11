@@ -48,7 +48,7 @@ For a small EDF+ file holding one 100 Hz EEG channel and three events, the outpu
 Wrote recording_csv
   signals.csv      300  rows
   annotations.csv    3  rows
-  channels.csv       1  rows
+  channels.csv       1  row
 Done in 0.0s.
 ```
 

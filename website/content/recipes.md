@@ -390,8 +390,8 @@ edf2csv overnight-eeg.edf --start "$start" --duration 30 --out ./seizure-window
 ```text
 Wrote ./seizure-window
   signals.csv      7,680  rows
-  annotations.csv      1  rows
-  channels.csv         1  rows
+  annotations.csv      1  row
+  channels.csv         1  row
 Done in 0.0s.
 ```
 

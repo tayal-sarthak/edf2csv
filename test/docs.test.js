@@ -1192,6 +1192,40 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('counts rows in a quoted summary the way the summary counts them', async () => {
+    /*
+      `formatSummary` writes "row" at one and "rows" otherwise — the same agreement 0.5.74 put
+      through the estimate line and 0.5.98 through the summary. The pages had not followed:
+      getting-started's first conversion, which is the first output a reader ever sees, ended
+
+          channels.csv       1  rows
+
+      and the seizure-window recipe did it twice. A file with one channel is the ordinary case
+      for the recordings both of those show.
+
+      Checked as arithmetic rather than against a run, because the recordings these summaries
+      describe are examples that no fixture has to match. What the pages cannot do is disagree
+      with the rule the writer applies.
+    */
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    const wrong = [];
+    let lines = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const text = await read(page);
+      for (const [, count, unit] of text.matchAll(
+        /^ {2}[\w.-]+\.csv(?:\.gz)? +([\d,]+) {2}(rows?)$/gmu,
+      )) {
+        lines++;
+        const want = Number(count.replaceAll(',', '')) === 1 ? 'row' : 'rows';
+        if (unit !== want) wrong.push(`${page}: "${count}  ${unit}" should be "${count}  ${want}"`);
+      }
+    }
+    assert.deepEqual(wrong, [], wrong.join('\n'));
+    assert.ok(lines >= 15, `expected the pages to show conversion summaries, found ${lines}`);
+  });
+
   it('keeps every quoted hint attached to the diagnostic it belongs to', async () => {
     /*
       A hint is printed indented under the message it explains, and that indent is the only
