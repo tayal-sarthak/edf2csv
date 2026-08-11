@@ -1192,6 +1192,69 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('keeps every quoted hint attached to the diagnostic it belongs to', async () => {
+    /*
+      A hint is printed indented under the message it explains, and that indent is the only
+      thing joining the two — there is no blank line, no prefix, nothing else to read them as
+      one. So an indented line inside a fenced block is a continuation of whatever is directly
+      above it, and if that is not a diagnostic, the block is showing something no run produces.
+
+      Which is what warnings-and-errors.md was showing for CONTINUOUS_LIAR: a paragraph about
+      the BDF+ spelling of the marker had been written into the middle of the block, between
+      the message and its hint. The page rendered a warning cut in half around an English
+      sentence with its backticks intact, and the two lines of advice hung off the paragraph
+      instead of off the warning.
+
+      A blank line inside a block is fine and common — the mixed-rate example shows a warning,
+      a blank line and then the closing summary, exactly as the run prints it. What cannot
+      happen is an indented continuation with prose above it.
+    */
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    // What the tool puts in front of a message that can carry a hint under it.
+    const SPOKEN = /^(?:warning|error|note): \S|^interrupted \(/u;
+    // Seven spaces is what `error: ` occupies, so a hint lines up under the first word of the
+    // message. formatDiagnostics writes nine; both read as attached.
+    const CONTINUATION = /^ {7,}\S/u;
+
+    const broken = [];
+    let blocks = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const lines = (await read(page)).split('\n');
+      let body = null;
+      let opened = 0;
+      lines.forEach((line, index) => {
+        if (/^```/u.test(line)) {
+          if (body === null) {
+            body = [];
+            opened = index;
+            return;
+          }
+          // Only blocks that are a transcript of diagnostics. A Python snippet is indented
+          // for its own reasons, and a JSON document more so.
+          if (SPOKEN.test(body[0] ?? '')) {
+            blocks++;
+            body.forEach((text, offset) => {
+              if (!CONTINUATION.test(text)) return;
+              const previous = body[offset - 1] ?? '';
+              if (SPOKEN.test(previous) || CONTINUATION.test(previous)) return;
+              broken.push(
+                `${page}:${opened + offset + 2}: "${text.trim().slice(0, 60)}" continues ` +
+                  `"${previous.trim().slice(0, 60)}"`,
+              );
+            });
+          }
+          body = null;
+          return;
+        }
+        if (body !== null) body.push(line);
+      });
+    }
+    assert.deepEqual(broken, [], broken.join('\n'));
+    assert.ok(blocks > 30, `expected the pages to quote diagnostics, found ${blocks}`);
+  });
+
   it('states the inversion rule the way the code decides it, on every page that states it', async () => {
     /*
       A negative gain is what inverts a channel, and the gain is

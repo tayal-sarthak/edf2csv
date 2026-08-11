@@ -460,11 +460,11 @@ Rows are written in file order, not sorted by time, so `time_s` will step backwa
 ```
 warning: This file is marked continuous (EDF+C), but 2 of its 3 data records say they start
          somewhere other than where continuity puts them.
-
-A BDF+ file gets its own spelling — `BDF+C` and `BDF+D` — the same as the discontinuous entry above. Until 0.5.105 this half of the code printed the EDF markers whatever the format, so a BDF+ recording was told about a string it does not contain and pointed at a marker BDF+ does not define.
          Times are written as if the records were contiguous, which is what EDF+C means.
          If the recording really has gaps, the file should have been marked EDF+D.
 ```
+
+A BDF+ file gets its own spelling — `BDF+C` and `BDF+D` — the same as the discontinuous entry above. Until 0.5.105 this half of the code printed the EDF markers whatever the format, so a BDF+ recording was told about a string it does not contain and pointed at a marker BDF+ does not define.
 
 Compared against what the file can express rather than for equality, since a recording of 0.1 s records sitting at 0.1, 0.2, 0.3 is contiguous by construction and `0.1 + 2 * 0.1` is `0.30000000000000004`. Anything below half of one sample of the fastest channel is arithmetic, not a gap.
 
