@@ -290,7 +290,7 @@ edf2csv recording.edf --channels ECQ
 
 ```
 error: No channel named "ECQ". Did you mean "ECG"?
-Run with --info to list the channels in this file.
+       Run with --info to list the channels in this file.
 ```
 
 Suggestions appear only when a label is close enough: within an edit distance of 2, or one third of the term's length for longer terms. A term with nothing similar in the file gets the bare error and the pointer to `--info`.

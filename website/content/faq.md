@@ -156,7 +156,7 @@ term that matches nothing is an error rather than a quiet omission:
 
 ```text
 error: No channel named "EKG". Did you mean "ECG"?
-Run with --info to list the channels in this file.
+       Run with --info to list the channels in this file.
 ```
 
 The usual causes are a label with different spacing or punctuation than you expected (`EEG Fpz-Cz`

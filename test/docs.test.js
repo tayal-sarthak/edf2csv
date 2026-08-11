@@ -1192,6 +1192,40 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('quotes the no-such-channel refusal with the advice where the tool puts it', async () => {
+    /*
+      "Every refusal takes that shape — `error:` on the first line, the advice indented under
+      it — so stderr can be grepped for `^error:` and find all of them", says the reference,
+      four hundred lines below its own copy of this one:
+
+          error: No channel named "ECQ". Did you mean "ECG"?
+          Run with --info to list the channels in this file.
+
+      Flush left, where the tool indents by seven. The FAQ had it the same way. That indent is
+      not decoration: it is what says the second line belongs to the first rather than being a
+      second error, and a reader building a `grep '^error:'` from these blocks would count two.
+
+      Run rather than matched, since the message these pages quote is one the tool composes.
+    */
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+    let checked = 0;
+    for (const page of names) {
+      const text = await read(`website/content/${page}`);
+      for (const [, block, term] of text.matchAll(
+        /```(?:text)?\n(error: No channel named "([^"]+)"[\s\S]*?)```/gu,
+      )) {
+        checked++;
+        const spoken = await run(process.execPath, [CLI, recording, '--info', '--channels', term])
+          .then(() => '', (error) => String(error.stderr));
+        assert.equal(block.trimEnd(), spoken.trimEnd(), page);
+      }
+    }
+    assert.ok(checked >= 2, `expected the pages to quote this refusal, found ${checked}`);
+  });
+
   it('gives a step formula that survives a calibration written the wrong way round', async () => {
     /*
       Three pages state the smallest step a channel can express, because it is what decides the

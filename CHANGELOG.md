@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.129
+
+### Fixed: the commonest refusal on the site was quoted with its advice flush left
+
+```
+error: No channel named "ECQ". Did you mean "ECG"?
+Run with --info to list the channels in this file.
+```
+
+The tool indents that second line by seven, under the first word of the message. Four hundred
+lines below its own copy of this block, the reference explains why: "Every refusal takes that
+shape — `error:` on the first line, the advice indented under it — so stderr can be grepped for
+`^error:` and find all of them." Written flush left it reads as a second error, and a reader
+building that grep out of these blocks would expect two lines back from a run that emits one.
+
+The FAQ had it the same way, in the answer titled "I asked for a channel and it says there is
+no channel with that name" — which is the page a reader arrives at holding the real message,
+looking for the one on screen.
+
+Both now match, and a test runs the refusal rather than matching its text: any block on the
+site that opens `error: No channel named "…"` is compared against what that term really
+produces.
+
 ## 0.5.128
 
 ### Fixed: the step formula the pages print is negative for a calibration real files carry
