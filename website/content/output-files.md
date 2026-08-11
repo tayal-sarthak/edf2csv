@@ -257,7 +257,7 @@ temperature at 1 Hz. These can't share one *wide* table — a column per channel
 values for the slow channels, so each distinct rate gets its own file:
 
 ```bash
-edf2csv sleep-study.edf --out ./converted
+edf2csv recording.edf --out ./converted
 ```
 
 ```
@@ -397,23 +397,23 @@ a conversion reproducible six months later.
   },
   "source": {
     "path": "/data/recordings/sleep-study.edf",
-    "bytes": 41236992,
+    "bytes": 19643392,
     "modified": "2026-03-14T09:12:44.000Z",
-    "sha256": "9f2c7a1d4b6e8035c1af92be7d40e5a13c8f66b0d29e47ab5c1e0f83d76a2b41"
+    "sha256": "aa8b902eb999a58b20122396a39b8db7a12d4e9c93b8447e6b3f374d43e7dc2c"
   },
   "recording": {
     "format": "EDF+ (continuous)",
     "version": "0",
     "patient_id": "X X X X",
-    "recording_id": "Startdate X X X X",
-    "start_datetime_local": "2026-03-13T22:04:00",
-    "start_date_raw": "13.03.26",
-    "start_time_raw": "22.04.00",
+    "recording_id": "Startdate 02-MAR-2002 X X X",
+    "start_datetime_local": "2002-03-02T23:10:00",
+    "start_date_raw": "02.03.02",
+    "start_time_raw": "23.10.00",
     "data_records": 28800,
     "data_records_declared": 28800,
     "record_duration_seconds": 1,
     "duration_seconds": 28800,
-    "signal_count": 4,
+    "signal_count": 6,
     "annotation_channels": 1
   },
   "conversion": {
@@ -422,27 +422,27 @@ a conversion reproducible six months later.
     "end_seconds": 28800,
     "whole_recording": true,
     "records_converted": [0, 28800],
-    "annotations_written": 412,
+    "annotations_written": 7,
     "layout": "wide",
     "files": [
-      { "name": "signals_256hz.csv", "rows": 7372800 },
-      { "name": "signals_128hz.csv", "rows": 3686400 },
+      { "name": "signals_100hz.csv", "rows": 2880000 },
+      { "name": "signals_10hz.csv", "rows": 288000 },
       { "name": "signals_1hz.csv", "rows": 28800 },
-      { "name": "annotations.csv", "rows": 412 },
-      { "name": "channels.csv", "rows": 3 }
+      { "name": "annotations.csv", "rows": 7 },
+      { "name": "channels.csv", "rows": 5 }
     ],
     "rate_groups": [
       {
-        "file": "signals_256hz.csv",
-        "sampling_rate_hz": 256,
-        "channels": ["EEG Fpz-Cz"],
-        "decimals": [3]
+        "file": "signals_100hz.csv",
+        "sampling_rate_hz": 100,
+        "channels": ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"],
+        "decimals": [3, 3, 3]
       },
       {
-        "file": "signals_128hz.csv",
-        "sampling_rate_hz": 128,
-        "channels": ["ECG"],
-        "decimals": [5]
+        "file": "signals_10hz.csv",
+        "sampling_rate_hz": 10,
+        "channels": ["Resp oro-nasal"],
+        "decimals": [6]
       },
       {
         "file": "signals_1hz.csv",
@@ -456,7 +456,12 @@ a conversion reproducible six months later.
     {
       "code": "MIXED_SAMPLING_RATES",
       "severity": "warning",
-      "message": "Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz)."
+      "message": "Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz)."
+    },
+    {
+      "code": "LARGE_OUTPUT",
+      "severity": "warning",
+      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open."
     }
   ]
 }

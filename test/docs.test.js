@@ -1812,9 +1812,11 @@ describe('documentation and source agree on their lists', () => {
       key they can rely on. api.md had exactly that happen to its `window` object, which lost
       two fields for several versions before anyone noticed.
 
-      The shape is checked, not the values: the sample describes an 8-hour sleep study that
-      is not in this repository, and rewriting it to match a two-record fixture would make it
-      a worse explanation.
+      The shape is checked here, against a discontinuous fixture chosen because it fills every
+      part of the record. The values are checked by the test below, against the recording the
+      sample actually names — which this comment said was "not in this repository" for as long
+      as it has been, and while it said so the sample drifted into a description of a different
+      file altogether.
     */
     const { mkdtemp, rm } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');
@@ -1847,6 +1849,61 @@ describe('documentation and source agree on their lists', () => {
       shapeOf(real),
       'the metadata.json in output-files.md no longer has the keys a conversion writes',
     );
+  });
+
+  it('shows the metadata.json of the recording that sample names', async () => {
+    /*
+      The sample's `source.path` ends in `sleep-study.edf`, which on this site is one specific
+      recording: eight hours of five channels at 100, 10 and 1 Hz with an annotation channel,
+      built by test/fixtures/sleep-study.mjs and shown by every --info block on the site.
+
+      What the sample described was three channels at 256, 128 and 1 Hz, 39 MB of them, 412
+      events, five channel rows short, started in March 2026 — and one warning where that
+      conversion raises two. Someone reading the page to learn what a field holds was reading
+      a field's value from a file that does not exist.
+
+      Everything that is a property of the recording or of the conversion is compared. `tool`,
+      the parts of `source` that describe where the file happened to sit, and `converted_at`
+      belong to the run and stay illustrative.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-metavalues-'));
+    let real;
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const out = path.join(work, 'out');
+      await run(process.execPath, [CLI, recording, '--out', out, '--checksum', '--quiet']);
+      real = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let checked = 0;
+    for (const page of names) {
+      const text = await read(`website/content/${page}`);
+      for (const [, body] of text.matchAll(/```json\n(\{[\s\S]*?\n\})\n```/gu)) {
+        let shown;
+        try {
+          shown = JSON.parse(body);
+        } catch {
+          continue;
+        }
+        if (typeof shown.source?.path !== 'string') continue;
+        if (!shown.source.path.endsWith('sleep-study.edf')) continue;
+        checked++;
+        assert.equal(shown.source.bytes, real.source.bytes, `${page}: source.bytes`);
+        assert.deepEqual(shown.recording, real.recording, `${page}: recording`);
+        const { converted_at: shownAt, ...conversion } = shown.conversion;
+        const { converted_at: realAt, ...realConversion } = real.conversion;
+        assert.ok(shownAt && realAt, 'converted_at is gone from one of them');
+        assert.deepEqual(conversion, realConversion, `${page}: conversion`);
+        assert.deepEqual(shown.notes, real.notes, `${page}: notes`);
+      }
+    }
+    assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
   it('agrees with the CLI about what the exit codes are', async () => {

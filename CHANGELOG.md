@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.126
+
+### Fixed: the metadata.json the page explains was a different recording's
+
+output-files prints a whole `metadata.json` as its explanation of the format — the transcript
+someone reads before writing code against those fields. Its `source.path` ends in
+`sleep-study.edf`, which on this site is one specific recording: eight hours of five channels
+at 100, 10 and 1 Hz with an annotation channel.
+
+The sample described three channels at 256, 128 and 1 Hz. 39 MB against 18.7. 412 events
+against 7. Three channel rows against 5. `signal_count` 4 against 6. Started in March 2026
+rather than March 2002. One warning where that conversion raises two — and the field named
+`notes` is the one a reader consults to find out what a warning looks like in the record.
+
+The guard that existed declined to check any of it, on the stated grounds that "the sample
+describes an 8-hour sleep study that is not in this repository". It has been in this repository
+since 0.4.68, as `test/fixtures/sleep-study.mjs`, and is what every `--info` block on the site
+is generated from. The values are now compared against a real conversion of it; the run's own
+fields — the tool version, where the file sat, when it was converted — stay illustrative.
+
+The same page ran `edf2csv sleep-study.edf` over a directory listing of `signals_256hz.csv`,
+`signals_128hz.csv` and `signals_1hz.csv`. That is `recording.edf`, the three-rate example
+sampling-rates uses, and it is now called that.
+
 ## 0.5.125
 
 ### Fixed: the FAQ's --json example was another recording's summary, warnings included
