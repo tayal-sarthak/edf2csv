@@ -364,8 +364,7 @@ buffer is reused between iterations, so copy anything you need to keep past the 
 ## Why does one channel have three decimals and another five?
 
 Because the number of decimals is derived from each channel's own calibration, not fixed globally.
-The smallest physical step a channel can express is its physical range divided by its digital
-range, and edf2csv writes two places past that step. An EEG channel spanning plus or minus 250 uV
+The smallest physical step a channel can express is `|physical_max - physical_min| / |digital_max - digital_min|`, and edf2csv writes two places past that step. An EEG channel spanning plus or minus 250 uV
 across a 12-bit converter has a step of about 0.12 uV, so three decimals are enough for every
 distinct sample to have distinct text. A temperature channel spanning 34 to 40 degC over the same
 converter has a step near 0.0015, so it gets five.

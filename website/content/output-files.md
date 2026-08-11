@@ -206,8 +206,14 @@ range that integer range spans. The smallest physical difference the channel can
 digital step:
 
 ```
-step = |physical_max - physical_min| / (digital_max - digital_min)
+step = |physical_max - physical_min| / |digital_max - digital_min|
 ```
+
+Both differences are magnitudes. Either pair may be written the wrong way round — the header is
+free to say `physical_min 100, physical_max -100`, or to reverse the digital pair, and both
+happen — and a step is a size, so the sign is dropped. That is what makes an inverted channel
+get the same precision as the upright one it inverts, which is the only answer that keeps every
+one of its distinct codes distinguishable.
 
 `edf2csv` writes `ceil(-log10(step)) + 2` decimals, clamped to the range 0 to 100. The two extra
 places put rounding error well below the resolution the hardware recorded, so no two distinct

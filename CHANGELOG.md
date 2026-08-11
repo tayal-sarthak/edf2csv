@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.128
+
+### Fixed: the step formula the pages print is negative for a calibration real files carry
+
+Three pages state the smallest physical step a channel can express, because it is what decides
+how many decimals its values get. Two printed it with the magnitude on one difference only:
+
+```
+step = |physical_max - physical_min| / (digital_max - digital_min)
+```
+
+`reversed-bounds.edf` has a channel whose digital pair is written the wrong way round — legal,
+warned about with `INVERTED_PHYSICAL_RANGE`, and converted as the header says. For that channel
+the printed formula is -0.1, and the next thing the page tells you to do with it is take
+`ceil(-log10(step))`, which of a negative number is not a number at all. The code takes the
+magnitude of the whole quotient and gives that channel 3 decimals, the same as the upright
+channel beside it — the only answer that keeps its distinct codes distinguishable.
+
+Both differences are magnitudes now, on all three pages, with a sentence saying why. Held by a
+test that evaluates the formula the page prints against the function the conversion uses, on
+each of that fixture's three shapes: physical pair reversed, digital pair reversed, and both.
+
 ## 0.5.127
 
 ### Fixed: the chunked-reader recipe printed a row count and a peak from nowhere

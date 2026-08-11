@@ -297,9 +297,11 @@ They are the ends of the calibration, **not** the extremes of the recorded data.
 doesn't promise that the file contains a sample at -800 uV, and it doesn't promise that no sample
 goes below it either. It states only which physical value corresponds to `digitalMin`.
 
-Two things follow. First, `physicalMax - physicalMin` divided by `digitalMax - digitalMin` is the
+Two things follow. First, `|physicalMax - physicalMin| / |digitalMax - digitalMin|` is the
 smallest physical step the channel can express, and `edf2csv` uses exactly that to choose how many
-decimal places to write, so two adjacent ADC codes never collapse to the same text. Second, a
+decimal places to write, so two adjacent ADC codes never collapse to the same text. Both
+differences are magnitudes, because either pair may be written the wrong way round and a step is a
+size: an inverted channel needs the same precision as the upright one it inverts. Second, a
 digital value outside the declared digital range converts to a physical value outside the declared
 physical range. `edf2csv` applies the line and doesn't clamp, because clamping would fabricate
 data that isn't in the file.

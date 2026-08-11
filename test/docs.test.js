@@ -1192,6 +1192,72 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('gives a step formula that survives a calibration written the wrong way round', async () => {
+    /*
+      Three pages state the smallest step a channel can express, because it is what decides the
+      decimals. Two of them stated it signed:
+
+          step = |physical_max - physical_min| / (digital_max - digital_min)
+
+      with the magnitude on one difference and not the other. `reversed-bounds.edf` has a
+      channel with the digital pair the wrong way round — legal, warned about, and converted —
+      and for that one the documented formula is -0.1. A reader following it takes the log of a
+      negative number and gets nothing; the code takes the magnitude and gives that channel 3
+      decimals, the same as the upright channel beside it, which is the only answer that keeps
+      its codes distinguishable.
+
+      Checked by evaluating the formula the page prints, against the function the conversion
+      uses, on the fixture built for exactly these three shapes.
+    */
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+    const { quantizationStep, decimalsForSignal } = await import(
+      path.join(ROOT, 'dist/edf/scale.js')
+    );
+
+    const printed = /```\nstep = ([^\n]+)\n```/u.exec(await read('website/content/output-files.md'));
+    assert.ok(printed, 'output-files no longer prints the step formula');
+    // `|x|` is the page's notation for a magnitude, which is the whole point of the formula.
+    const asCode = printed[1].replaceAll(/\|([^|]+)\|/gu, 'Math.abs($1)');
+    const evaluate = new Function(
+      'physical_max', 'physical_min', 'digital_max', 'digital_min',
+      `return ${asCode};`,
+    );
+
+    const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/reversed-bounds.edf'));
+    try {
+      assert.equal(file.dataSignals.length, 3, 'the reversed-bounds fixture changed shape');
+      for (const signal of file.dataSignals) {
+        const documented = evaluate(
+          signal.physicalMax, signal.physicalMin, signal.digitalMax, signal.digitalMin,
+        );
+        assert.equal(
+          documented,
+          quantizationStep(signal),
+          `the formula gives ${documented} for "${signal.label}", the code ${quantizationStep(signal)}`,
+        );
+        assert.ok(documented > 0, `"${signal.label}" has a step of ${documented}`);
+        // Every channel in this fixture spans 200 uV over 2000 codes, however it is written.
+        assert.equal(decimalsForSignal(signal), 3, `"${signal.label}" decimals`);
+      }
+    } finally {
+      await file.close();
+    }
+
+    // And every page that states the step states it the same way.
+    const FORM = /\|\s*physical(?:_max|Max) - physical(?:_min|Min)\s*\|\s*\/\s*\|\s*digital(?:_max|Max) - digital(?:_min|Min)\s*\|/u;
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let stated = 0;
+    for (const page of names) {
+      const text = await read(`website/content/${page}`);
+      if (!/smallest physical (?:step|difference)/u.test(text)) continue;
+      stated++;
+      assert.match(text, FORM, `${page} states the step without taking both magnitudes`);
+    }
+    assert.ok(stated >= 3, `expected the pages to state the step, found ${stated}`);
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:
