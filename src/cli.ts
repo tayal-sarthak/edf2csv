@@ -90,8 +90,8 @@ Output
   directory can still be read at a glance. With --bom each CSV starts with a
   UTF-8 byte order mark and metadata.json does not, since JSON.parse rejects one.
   With --layout long every channel goes into one signals.csv as time_s, channel
-  and value, in time order, whatever rates the recording mixes — which is also
-  the one arrangement --stdout can stream for a mixed-rate file.
+  and value, one row per sample, whatever rates the recording mixes — which is
+  also the one arrangement --stdout can stream for a mixed-rate file.
 
 Examples
   edf2csv recording.edf

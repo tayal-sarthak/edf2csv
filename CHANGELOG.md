@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.146
+
+### Fixed: --help promised the long layout comes out in time order
+
+It said `--layout long` writes "time_s, channel and value, in time order". The tool warns about
+two ways that is untrue — records stored out of chronological order, and records that overlap —
+and cli-reference sets both out. `--help` stated the happy case as the rule, which is where a
+reader decides whether they need to sort. It now says "one row per sample", which is the part
+that is always true.
+
 ## 0.5.145
 
 ### Fixed: a third copy of the slug rule, in the file that stamps the ids
