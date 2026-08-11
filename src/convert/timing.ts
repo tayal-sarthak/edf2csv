@@ -290,14 +290,19 @@ export function deriveRecordStarts(
 
   if (missing.length > 0) {
     const shown = missing.slice(0, 5).join(', ');
+    // "1 of 3 data records carry ... their true position" — the subject is the one, not the three.
+    const one = missing.length === 1;
     diagnostics.push({
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
       message:
-        `${missing.length} of ${file.recordCount} data records carry no readable timekeeping ` +
-        `annotation (record${missing.length === 1 ? '' : 's'} ${shown}` +
-        `${missing.length > 5 ? ', …' : ''}), so their true position in time is unknown.`,
-      hint: 'Those records are timed as if they were contiguous; treat their timestamps as unreliable.',
+        `${missing.length} of ${file.recordCount} data records ${one ? 'carries' : 'carry'} no ` +
+        `readable timekeeping annotation (record${one ? '' : 's'} ${shown}` +
+        `${missing.length > 5 ? ', …' : ''}), so ${one ? 'its' : 'their'} true position in time ` +
+        `is unknown.`,
+      hint: one
+        ? 'That record is timed as if it were contiguous; treat its timestamp as unreliable.'
+        : 'Those records are timed as if they were contiguous; treat their timestamps as unreliable.',
     });
   }
 

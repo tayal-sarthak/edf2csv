@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.133
+
+### Fixed: "1 of 3 data records carry ... their true position"
+
+The subject of that sentence is the one, not the three:
+
+```
+warning: 1 of 3 data records carries no readable timekeeping annotation (record 2), so its
+         true position in time is unknown.
+         That record is timed as if it were contiguous; treat its timestamp as unreliable.
+```
+
+The record list beside it already agreed — "record 2" rather than "records 2" — so the singular
+case was half handled and read as though the count had been pasted into a plural sentence. Both
+pages that quote it are updated.
+
 ## 0.5.132
 
 ### Fixed: "Two exceptions" followed by three of them

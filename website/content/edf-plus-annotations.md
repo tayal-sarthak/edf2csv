@@ -257,8 +257,8 @@ record_duration` would put the record at the wrong instant on every file whose
 first record says anything but `+0`. The substitution is reported by name:
 
 ```
-warning: 1 of 3 data records carry no readable timekeeping annotation (record 1), so their true position in time is unknown.
-         Those records are timed as if they were contiguous; treat their timestamps as unreliable.
+warning: 1 of 3 data records carries no readable timekeeping annotation (record 1), so its true position in time is unknown.
+         That record is timed as if it were contiguous; treat its timestamp as unreliable.
 ```
 
 Up to five record indices are listed, with an ellipsis when there are more. The

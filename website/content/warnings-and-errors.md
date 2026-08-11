@@ -531,8 +531,8 @@ Until 0.5.114 such an entry was counted only as lost timekeeping, so a file whos
 **Records carry no readable timekeeping annotation.** In a discontinuous file, the first annotation entry of each record must carry that record's start time. When it's missing or unreadable, that record's true position in time is unknown.
 
 ```
-warning: 1 of 3 data records carry no readable timekeeping annotation (record 2), so their true position in time is unknown.
-         Those records are timed as if they were contiguous; treat their timestamps as unreliable.
+warning: 1 of 3 data records carries no readable timekeeping annotation (record 2), so its true position in time is unknown.
+         That record is timed as if it were contiguous; treat its timestamp as unreliable.
 ```
 
 Up to five record indices are listed by number, with the rest elided. The affected records are timed arithmetically as a fallback, and this warning exists precisely because that fallback produces a timestamp indistinguishable from a real one.

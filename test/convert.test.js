@@ -1756,7 +1756,7 @@ describe('converting', () => {
     const other = await convert(fixture('lost-timekeeping-d.edf'), { outputDir: await outDir() });
     const timekeeping = other.diagnostics.filter((d) => /timekeeping/u.test(d.message));
     assert.equal(timekeeping.length, 1, `one message, got ${timekeeping.length}`);
-    assert.match(timekeeping[0].message, /carry no readable timekeeping annotation \(record 0\)/u);
+    assert.match(timekeeping[0].message, /carries no readable timekeeping annotation \(record 0\)/u);
   });
 
   it('does not make an event out of the padding at the end of a slot', async () => {
