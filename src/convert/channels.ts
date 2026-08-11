@@ -216,6 +216,28 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
               `channel sharing that label.`,
         );
       }
+      /*
+        The annotation channel is a channel, and this said the file had none by that name.
+
+        `EDF Annotations` is a label the file really carries — the spec reserves it, --info
+        counts it on the "Channels" line, and it is the name anyone reading about EDF+ meets
+        first. Asking for it got "No channel named "EDF Annotations". Run with --info to list
+        the channels in this file", which is false about the file and points at a table that
+        does not list it either, so following the advice returns the reader to the same
+        message. What they were after is already being written: every conversion of a file
+        with this channel writes annotations.csv from it.
+      */
+      const asAnnotations = signals.find(
+        (signal) => signal.isAnnotations && signal.label.toLowerCase() === term.toLowerCase(),
+      );
+      if (asAnnotations) {
+        throw new ChannelSelectionError(
+          `"${term}" is this recording's annotation channel, not a signal: it holds event ` +
+            `text rather than samples, so it has no column to select.\n` +
+            `Its events are already written to annotations.csv by any conversion of this ` +
+            `file — pass --annotations-only for those and no signal data.`,
+        );
+      }
       throw new ChannelSelectionError(
         `No channel named "${term}".${suggest(term, candidates)}\n` +
           `Run with --info to list the channels in this file.`,

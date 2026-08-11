@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.122
+
+### Fixed: asking for the annotation channel was answered by denying it exists
+
+```
+$ edf2csv sleep-study.edf --channels "EDF Annotations"
+error: No channel named "EDF Annotations".
+       Run with --info to list the channels in this file.
+```
+
+Both halves are wrong for the same reason. `EDF Annotations` is the label the specification
+reserves, the file really carries it, and `--info` counts it two lines above on the "Channels"
+line — but the table `--info` prints lists signal channels only, so a reader who follows the
+advice arrives back at the same message with nothing new to try. And what they were after is
+already on disk: any conversion of a file with this channel writes `annotations.csv` out of it.
+
+```
+error: "EDF Annotations" is this recording's annotation channel, not a signal: it holds event
+       text rather than samples, so it has no column to select.
+       Its events are already written to annotations.csv by any conversion of this file — pass
+       --annotations-only for those and no signal data.
+```
+
+`BDF Annotations` gets the same answer on a BDF+ file, and matching is case-insensitive like
+every other term. A recording that genuinely has no annotation channel keeps the old message,
+because for that file the old message is true.
+
 ## 0.5.121
 
 ### Fixed: the first conversion on the page printed a line the tool does not print

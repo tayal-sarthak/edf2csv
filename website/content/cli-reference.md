@@ -295,6 +295,17 @@ Run with --info to list the channels in this file.
 
 Suggestions appear only when a label is close enough: within an edit distance of 2, or one third of the term's length for longer terms. A term with nothing similar in the file gets the bare error and the pointer to `--info`.
 
+### The annotation channel
+
+`EDF Annotations` — `BDF Annotations` in BDF+ — is a label the file really carries, and the one channel name a reader of the EDF+ specification meets first. It holds event text rather than samples, so it has no column to select, and asking for it is refused. The refusal says which channel it is rather than denying the file has one:
+
+```
+error: "EDF Annotations" is this recording's annotation channel, not a signal: it holds event text rather than samples, so it has no column to select.
+       Its events are already written to annotations.csv by any conversion of this file — pass --annotations-only for those and no signal data.
+```
+
+Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.
+
 ### Labels that literally start with #
 
 A channel whose label really is `#5` is reachable. When a term begins with `#`, edf2csv first checks whether any channel carries that exact label; if one does, the label wins and the positional interpretation isn't attempted. The positional form is a fallback, so no channel can be made unreachable by an unusual label.

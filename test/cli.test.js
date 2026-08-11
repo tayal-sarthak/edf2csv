@@ -629,6 +629,52 @@ describe('--info', () => {
     }
   });
 
+  it('answers for the annotation channel by name rather than denying it exists', async () => {
+    /*
+      `EDF Annotations` is the label the specification reserves, --info counts it on the
+      "Channels" line, and it is the first channel name anyone reading about EDF+ meets. Asking
+      for it got:
+
+          error: No channel named "EDF Annotations".
+                 Run with --info to list the channels in this file.
+
+      Both halves wrong for the same reason. The file does have a channel with that name, and
+      the table --info prints does not list it either — so a reader who follows the advice comes
+      back to the same message with nothing new. The thing they were after is already on disk:
+      any conversion of a file with this channel writes annotations.csv out of it.
+
+      A recording with no annotation channel keeps the old message, because for that file the
+      old message is true.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-annotch-'));
+    temporaries.push(dir);
+
+    for (const [recording, label] of [
+      [fixture('annotations.edf'), 'EDF Annotations'],
+      [fixture('biosemi-plus.bdf'), 'BDF Annotations'],
+      // Case-insensitively, like every other term.
+      [fixture('annotations.edf'), 'edf annotations'],
+    ]) {
+      const asked = await cli([recording, '--info', '--channels', label]);
+      assert.equal(asked.code, 2, asked.stderr);
+      assert.match(asked.stderr, /is this recording's annotation channel, not a signal/u, asked.stderr);
+      assert.doesNotMatch(asked.stderr, /No channel named/u, asked.stderr);
+      assert.match(asked.stderr, /--annotations-only/u, asked.stderr);
+    }
+
+    // And the advice works: that flag on that file writes the events it was after.
+    const out = path.join(dir, 'events');
+    const ran = await cli([fixture('annotations.edf'), '--annotations-only', '--out', out, '--quiet']);
+    assert.equal(ran.code, 0, ran.stderr);
+    const events = await readFile(path.join(out, 'annotations.csv'), 'utf8');
+    assert.equal(events.trimEnd().split('\n').length, 4, events);
+
+    // A file with no annotation channel is a file with no channel by that name.
+    const plain = await cli([fixture('tiny.edf'), '--info', '--channels', 'EDF Annotations']);
+    assert.equal(plain.code, 2, plain.stderr);
+    assert.match(plain.stderr, /No channel named "EDF Annotations"/u, plain.stderr);
+  });
+
   it('agrees with itself about number when the count is one', async () => {
     /*
       Every one of these was written `${n} records`, which is right until the file has one of
