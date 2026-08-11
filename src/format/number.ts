@@ -193,7 +193,14 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     unit++;
   }
-  const rounded = value >= 100 || unit === 0 ? Math.round(value) : Number(value.toFixed(1));
+  let rounded = value >= 100 || unit === 0 ? Math.round(value) : Number(value.toFixed(1));
+  // Rounding can carry into the next unit, and the unit was chosen before it: 1,048,575 bytes
+  // is 1023.999 KB, which printed as "1024 KB". The same slip formatDuration below fixed by
+  // rounding before splitting, one function up.
+  if (rounded === 1024 && unit < units.length - 1) {
+    unit++;
+    rounded = 1;
+  }
   return `${rounded} ${units[unit]}`;
 }
 

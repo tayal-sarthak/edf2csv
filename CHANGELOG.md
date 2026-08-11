@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.131
+
+### Fixed: a size of 1024 KB, which is a megabyte
+
+`formatBytes` picked the unit and then rounded, so anything within half a percent below a
+boundary printed as 1024 of the smaller one: a 1,048,575-byte recording reported `Size 1024 KB`,
+and the estimate line did the same at every boundary above it. Rounding is now carried into the
+unit, which is the fix `formatDuration` already has one function down — it rounds before
+splitting, so 3599.9996 s is `1h 00m 0s` rather than `59m 60s`.
+
 ## 0.5.130
 
 ### Fixed: the exit-2 list left out half of what exits 2
