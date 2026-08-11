@@ -787,6 +787,13 @@ describe('--info', () => {
     const piped = await cli([fixture('tiny.edf'), '--stdout', ...narrow]);
     assert.match(piped.stderr, /Wrote 1 row to stdout\./u, piped.stderr);
 
+    // A folder holding one recording, whose closing line said "Converted 1 of 1 recordings".
+    const { mkdir, copyFile } = await import('node:fs/promises');
+    await mkdir(path.join(dir, 'batch'));
+    await copyFile(fixture('tiny.edf'), path.join(dir, 'batch', 'a.edf'));
+    const batch = await cli([path.join(dir, 'batch'), '--out', await outDir()]);
+    assert.match(batch.stderr, /Converted 1 of 1 recording\./u, batch.stderr);
+
     // Above one the plural is still there, or the fix would have gone the other way.
     const many = await cli([fixture('tiny.edf'), '--info']);
     assert.match(many.stdout, /\(2 records of 1s\)/u, many.stdout);
@@ -2701,7 +2708,7 @@ describe('a folder the process cannot read', () => {
     try {
       const { code, stderr } = await cli([inside, '--out', path.join(dir, 'out')]);
       assert.equal(code, 1, stderr);
-      assert.match(stderr, /Converted 1 of 1 recordings; 1 path could not be read\./u);
+      assert.match(stderr, /Converted 1 of 1 recording; 1 path could not be read\./u);
 
       /*
         And once however many ways the folder was named. Each named directory is walked
@@ -2720,7 +2727,7 @@ describe('a folder the process cannot read', () => {
         const twice = await cli([...args, '--out', path.join(dir, `out-${label.split(' ')[0]}`)]);
         assert.match(
           twice.stderr,
-          /Converted 1 of 1 recordings; 1 path could not be read\./u,
+          /Converted 1 of 1 recording; 1 path could not be read\./u,
           `${label}: ${twice.stderr}`,
         );
         const errors = twice.stderr.split('\n').filter((line) => line.startsWith('error: '));

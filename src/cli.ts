@@ -673,7 +673,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           : '';
       const failed = converted < inputs.length ? `; ${inputs.length - converted} failed` : '';
       process.stderr.write(
-        `\nConverted ${converted} of ${inputs.length} recordings${failed}${unread}.\n`,
+        `\nConverted ${converted} of ${counted(inputs.length, 'recording')}${failed}${unread}.\n`,
       );
     }
 

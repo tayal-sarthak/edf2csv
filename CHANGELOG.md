@@ -3,6 +3,14 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.137
+
+### Fixed: "Converted 1 of 1 recordings."
+
+The closing line of a batch, on the ordinary case of a folder holding one recording. Every
+other count this prints has agreed with its noun since 0.5.74; this one was still building the
+sentence by hand.
+
 ## 0.5.136
 
 ### Fixed: the far-origin warning was quoted without the half that says what to do
