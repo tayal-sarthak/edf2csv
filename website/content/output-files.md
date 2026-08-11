@@ -175,7 +175,7 @@ hyphens, case and all. Nothing is slugified, lowercased or stripped, since the l
 recognise the channel and rewriting it would break the correspondence with the recording's own
 documentation.
 
-Two exceptions:
+Three exceptions:
 
 - **Empty label.** A channel with a blank label becomes `signal_<index>`, for example `signal_4`.
   An `EMPTY_LABEL` warning is raised.

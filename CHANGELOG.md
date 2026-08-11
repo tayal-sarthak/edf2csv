@@ -3,6 +3,14 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.132
+
+### Fixed: "Two exceptions" followed by three of them
+
+The column-naming section lists the cases where a column is not the channel's label verbatim.
+0.5.113 added the third — a channel labelled `time_s`, which would otherwise give the file two
+columns of that name — and left the sentence introducing them saying two.
+
 ## 0.5.131
 
 ### Fixed: a size of 1024 KB, which is a megabyte
