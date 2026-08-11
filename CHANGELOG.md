@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.139
+
+### Fixed: "1 signals require 512 bytes"
+
+Two header messages counted signals into a fixed plural, and one signal is an ordinary
+recording — a single-channel ECG strip is the smallest real file this reads:
+
+```
+warning: Header says it is 99 bytes, but 1 signal requires 512 bytes. Using the value computed
+         from the signal count.
+error: File declares 1 signal, which needs a 512-byte header, but the file is only 300 bytes.
+```
+
+Both are the reader's account of a header it distrusts, which is a bad place to be visibly
+sloppy about the file's own numbers.
+
 ## 0.5.138
 
 ### Fixed: a batch arithmetic example that does not divide

@@ -283,7 +283,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         refuted itself: "needs a 768-byte header, but the file is only 848 bytes". A reader
         following that looks for a truncation that is not there.
       */
-      `File declares ${signalCount} signals, which needs a ${expectedHeaderBytes}-byte header, ` +
+      `File declares ${counted(signalCount, 'signal')}, which needs a ${expectedHeaderBytes}-byte header, ` +
         (fileSize < expectedHeaderBytes
           ? `but the file is only ${fileSize} bytes.`
           : `but only ${buf.length} bytes of it were handed to the parser.`),
@@ -294,8 +294,9 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       code: 'HEADER_BYTES_MISMATCH',
       severity: 'warning',
       message:
-        `Header says it is ${headerBytes} bytes, but ${signalCount} signals require ` +
-        `${expectedHeaderBytes} bytes. Using the value computed from the signal count.`,
+        `Header says it is ${headerBytes} bytes, but ${counted(signalCount, 'signal')} ` +
+        `${signalCount === 1 ? 'requires' : 'require'} ${expectedHeaderBytes} bytes. ` +
+        `Using the value computed from the signal count.`,
     });
   }
 
