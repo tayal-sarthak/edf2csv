@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.149
+
+### Fixed: "No dependencies at all, runtime or otherwise"
+
+The published package has no `dependencies` and no `peerDependencies`, so nothing is installed
+alongside it — which is the claim worth making and the one the rest of the documentation makes.
+"Or otherwise" went further than that: building this repository needs TypeScript and
+`@types/node`, both sitting in `devDependencies` a screen away in the same tree. The README now
+says what is true and just as strong.
+
 ## 0.5.148
 
 ### Fixed: records_converted described as the records that were read

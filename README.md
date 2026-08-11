@@ -132,7 +132,7 @@ look at part of a recording, or a pipeline that speaks CSV.
 
 ## Notes
 
-Requires Node 20 or newer. No dependencies at all, runtime or otherwise. MIT licensed.
+Requires Node 20 or newer. No runtime dependencies, and none installed when you install it. MIT licensed.
 
 Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal, no
 AI, no network calls.
