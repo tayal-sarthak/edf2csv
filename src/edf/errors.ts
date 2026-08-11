@@ -40,6 +40,7 @@ export type DiagnosticCode =
    * `start_datetime_local` null in metadata.json with nothing saying why — on the field the
    * documented recipe for an absolute instant depends on.
    */
+  | 'START_TIME_UNREADABLE'
   /**
    * An annotation channel with a non-zero origin, in a file marked neither EDF+C nor EDF+D.
    *
@@ -48,7 +49,6 @@ export type DiagnosticCode =
    * timed from the origin, and the two CSVs came out on clocks seconds apart.
    */
   | 'MISSING_EDF_PLUS_MARKER'
-  | 'START_TIME_UNREADABLE'
   /**
    * `--info --stdout` on a recording `--stdout` would refuse.
    *

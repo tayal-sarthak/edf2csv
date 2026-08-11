@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.140
+
+### Fixed: two diagnostic codes documented above the wrong one
+
+`DiagnosticCode` is an exported type, so its per-member comments are what an editor shows on
+hover and what ships in the `.d.ts`. Both of these sat above `MISSING_EDF_PLUS_MARKER`:
+
+```ts
+  /** The header's start date or time is not a date or a time. ... */
+  /** An annotation channel with a non-zero origin, in a file marked neither EDF+C nor EDF+D. ... */
+  | 'MISSING_EDF_PLUS_MARKER'
+  | 'START_TIME_UNREADABLE'
+```
+
+So hovering `MISSING_EDF_PLUS_MARKER` described a bad start date, and `START_TIME_UNREADABLE`
+had nothing at all. Each comment now sits above the code it is about.
+
 ## 0.5.139
 
 ### Fixed: "1 signals require 512 bytes"
