@@ -299,12 +299,25 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
         prefiltering: signal.prefiltering,
         output_file: fileFor.get(signal.index) ?? null,
       })),
-      estimate: {
-        rows: plan.estimate.rows,
-        // Character count of the CSV. With --gzip the file on disk is smaller than this.
-        bytes: plan.estimate.bytes,
-        exceeds_spreadsheet_limit: plan.estimate.exceedsSpreadsheetLimit,
-      },
+      /*
+        Null rather than zero when the run writes no signal table.
+
+        The text form has refused to say "Would write 0 rows, roughly 0 B." since 0.4.51,
+        because a run that goes on to write an annotations.csv with events in it has not
+        written nothing — and it is `--annotations-only`, or a recording holding only
+        annotations, that reaches this. The JSON went on saying it to the surface a script
+        reads. There is no estimate for a table that does not exist, and null is how this
+        document already says that.
+      */
+      estimate:
+        plan.writeSignals && plan.groups.length > 0
+          ? {
+              rows: plan.estimate.rows,
+              // Character count of the CSV. With --gzip the file on disk is smaller than this.
+              bytes: plan.estimate.bytes,
+              exceeds_spreadsheet_limit: plan.estimate.exceedsSpreadsheetLimit,
+            }
+          : { rows: null, bytes: null, exceeds_spreadsheet_limit: false },
       // The plan's mixed-rate warning replaces the header parser's, as it does everywhere
       // else. This was the one consumer left out of that when 0.3.2 made the warning follow
       // --channels, so `--info --json` carried it twice: once counting the rates being

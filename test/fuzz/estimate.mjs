@@ -105,6 +105,9 @@ export function sweepEstimates(filter = '') {
         continue;
       }
 
+      // No signal table to predict: since 0.6.0 the estimate is null there rather than zero.
+      if (estimate.rows === null) continue;
+
       const base = mkdtempSync(path.join(tmpdir(), 'edf2csv-estimate-'));
       try {
         const out = path.join(base, 'out');

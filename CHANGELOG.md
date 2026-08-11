@@ -3,6 +3,31 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.0
+
+### Changed: `--info --json` reports no estimate rather than an estimate of nothing
+
+```
+$ edf2csv sleep-study.edf --info --json --annotations-only
+  "estimate": { "rows": 0, "bytes": 0, "exceeds_spreadsheet_limit": false }
+```
+
+For a run that goes on to write an `annotations.csv` with every event in the recording. The text
+form has refused to say this since 0.4.51 — it prints "Would write annotations.csv and
+channels.csv, and no signal data. How many events there are cannot be told from the header."
+because, as the code comment there puts it, `--info` exists to say what a conversion will do and
+asserting it will write nothing when it will write a file is the one thing it must not do. The
+JSON went on asserting it, to the surface a script reads.
+
+`estimate.rows` and `estimate.bytes` are now `null` when the run writes no signal table: under
+`--annotations-only`, and for a recording that holds only annotations. `exceeds_spreadsheet_limit`
+stays `false`, which is true of a set of no files. Everything else is unchanged, and a run that
+writes a signal table reports exactly what it did before.
+
+A minor version because it is a change to a machine-readable contract: code doing arithmetic on
+`estimate.rows` gets `null` where it used to get `0`, and that is worth a version number that
+says so rather than a patch that does not.
+
 ## 0.5.151
 
 ### Fixed: the landing page pointed at the wrong file for rebuilding its recording
