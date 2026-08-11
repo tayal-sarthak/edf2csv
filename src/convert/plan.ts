@@ -634,8 +634,8 @@ function estimateOutput(
     /*
       The header row, measured as it will be written rather than as the labels are stored.
 
-      A column name is quoted when it contains a comma, a quote, a newline or a leading or
-      trailing space, and every quote inside it is doubled. Counting the raw label under-counted
+      A column name is quoted when it contains a comma, a quote, a carriage return or a line
+      feed, and every quote inside it is doubled. Counting the raw label under-counted
       that row: three channels labelled `a,b,c,d,e`, `x"y` and `plain` write a 32-byte header
       and were budgeted 27. EDF labels are free text, so commas in them are ordinary — a montage
       written as `EEG Fpz-Cz, ref` is exactly the kind of thing this is for.

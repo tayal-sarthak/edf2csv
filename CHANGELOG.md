@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.142
+
+### Fixed: an estimate comment describing a quoting rule the writer does not have
+
+The comment above the line that measures the header row said a column name is quoted when it
+contains "a comma, a quote, a newline or a leading or trailing space". `escapeCsvField` quotes
+on a comma, a quote, a carriage return or a line feed and nothing else — which is also what
+output-files documents as the dialect — and a surrounding space cannot occur anyway, since
+header fields are trimmed as they are read. The comment is the justification for measuring the
+row with `csvRow` rather than by hand, so it is the wrong place to state a rule that is not the
+one being measured.
+
 ## 0.5.141
 
 ### Fixed: the usage-error table was missing three of them
