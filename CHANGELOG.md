@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.130
+
+### Fixed: the exit-2 list left out half of what exits 2
+
+"**Exit 2** covers anything decided before touching data", says the reference, and then lists
+what that is. The list named `--decimals` and neither `--jobs` nor `--layout`, which are checked
+the same way, in the same function, a dozen lines apart — `--jobs 0` has been a usage error
+since 0.4.2 and `--layout tall` since 0.5.0. It named one of the `--stdout` refusals, the one
+about tables, and not `--json`, `--out`, `--checksum`, `--force`, a folder or a second
+recording, every one of which the tool refuses before it opens the file. And the empty folder
+appeared only as a parenthesis under exit 1, which is where it is not.
+
+A list that claims to be complete and is half a list is worse than no list: a script written
+from it treats an exit 2 it did not expect as a crash.
+
+The missing conditions are named now, and a test derives them rather than trusting a copy. It
+reads `--help` for every long option that takes a value, hands each one a value nothing could
+mean, and requires the exit-2 section to name every flag that answers with exit 2 — so a flag
+added tomorrow with a value it checks fails this until the reference mentions it. The `--stdout`
+combinations are run the same way.
+
 ## 0.5.129
 
 ### Fixed: the commonest refusal on the site was quoted with its advice flush left

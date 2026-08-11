@@ -823,9 +823,11 @@ fi
 - No input file at all. (Several are fine: that is a batch.)
 - An unparseable `--start`, `--duration` or `--end`, and passing `--duration` together with `--end`.
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
-- A `--channels` term that matches no channel, a `#N` position that doesn't exist, or `--channels` given with an empty list.
-- A `--decimals` value that's empty, not an integer, or outside 0 to 20.
+- A `--channels` term that matches no channel, a `#N` position that doesn't exist, `--channels` given with an empty list, or a term naming the annotation channel, which holds text rather than samples.
+- A value the flag cannot act on: a `--decimals` that's empty, not an integer, or outside 0 to 20; a `--jobs` that is not a plain decimal integer of 1 or more nor `auto`; a `--layout` that is not `wide` or `long`.
+- A folder holding no recordings. "None here" is something the run can state; a folder it could not open is exit 1 instead, because "could not look" is not.
 - `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate in the default wide layout, which would produce more than one table. `--layout long` produces one table whatever the rates are, so it is accepted.
+- `--stdout` combined with something it contradicts: `--json`, which writes to stdout too; `--out`, `--checksum` or `--force`, which act on files it does not write; a folder, or more than one recording, since a stream is one table out of one file. `--jobs` is not refused — a job count is a property of the run rather than a request about this file's output.
 
 The last three categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
 

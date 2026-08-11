@@ -1192,6 +1192,69 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('lists every flag whose value the command line refuses on its own', async () => {
+    /*
+      "**Exit 2** covers anything decided before touching data", says the reference, and then
+      lists what that is. The list named `--decimals` and not `--jobs` or `--layout`, which are
+      validated the same way and in the same place — `--jobs 0` and `--layout tall` have both
+      been usage errors for longer than the paragraph naming only the third of them. The
+      `--stdout` combinations were half there too: the one about tables, and not `--json`,
+      `--out`, `--checksum`, `--force`, a folder or a second recording, all of which the tool
+      refuses before it reads a byte.
+
+      Derived from the usage text rather than from a list kept here, so a flag added tomorrow
+      with a value it checks fails this until the reference mentions it: every long option that
+      takes a value is given one nothing could mean, and the ones that answer with exit 2 are
+      the ones that have to be named.
+    */
+    const reference = await read('website/content/cli-reference.md');
+    const section = /\*\*Exit 2\*\* covers([\s\S]*?)\n\*\*Exit 1\*\*/u.exec(reference);
+    assert.ok(section, 'the exit 2 list is gone from the reference');
+
+    const usage = (await run(process.execPath, [CLI, '--help'])).stdout;
+    // `      --start <time>     Begin at...` — long options that take a value.
+    const flags = [...usage.matchAll(/(--[a-z-]+) </gu)].map((m) => m[1]);
+    assert.ok(flags.length >= 6, `expected the usage to list options with values: ${flags}`);
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-exit2-'));
+    const refused = [];
+    try {
+      for (const flag of flags) {
+        const code = await run(
+          process.execPath,
+          [CLI, path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf'), '--info', flag, '!!not-a-value!!'],
+          { cwd: work },
+        ).then(() => 0, (error) => error.code);
+        if (code === 2) refused.push(flag);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    assert.ok(refused.length >= 6, `expected several flags to check their value: ${refused}`);
+    for (const flag of refused) {
+      assert.ok(
+        section[1].includes(`\`${flag}\``),
+        `${flag} refuses a value it cannot act on, and the exit 2 list does not mention it`,
+      );
+    }
+
+    // And the combinations --stdout refuses, which are decided from the command line alone.
+    for (const [flag, extra] of [
+      ['--json', []], ['--out', ['x']], ['--checksum', []], ['--force', []],
+    ]) {
+      const code = await run(
+        process.execPath,
+        [CLI, path.join(ROOT, 'test/fixtures/generated/tiny.edf'), '--stdout', flag, ...extra],
+      ).then(() => 0, (error) => error.code);
+      assert.equal(code, 2, `--stdout ${flag} is no longer a usage error`);
+      assert.ok(
+        section[1].includes(`\`${flag}\``),
+        `--stdout ${flag} is a usage error the exit 2 list does not mention`,
+      );
+    }
+  });
+
   it('quotes the no-such-channel refusal with the advice where the tool puts it', async () => {
     /*
       "Every refusal takes that shape — `error:` on the first line, the advice indented under
