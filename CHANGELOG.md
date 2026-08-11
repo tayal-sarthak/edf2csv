@@ -3,6 +3,37 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.125
+
+### Fixed: the FAQ's --json example was another recording's summary, warnings included
+
+"How do I check whether a conversion had problems from a script?" runs `--json` on
+`sleep-study.edf` and showed:
+
+```json
+{
+  "files": [
+    { "name": "signals.csv", "rows": 921600 },
+    { "name": "annotations.csv", "rows": 3 },
+    { "name": "channels.csv", "rows": 1 }
+  ],
+  "annotations": 3,
+  "duration_seconds": 3600,
+  "records": 3600,
+  "warnings": []
+}
+```
+
+Every figure belongs to some other file. That recording is eight hours of five channels at
+three rates: three signals files, seven events, five channel rows, 28,800 records. And it
+raises two warnings — the paragraph directly below promises they will be in that array, and
+the same page prints one of them, five answers earlier, about this same file. Someone comparing
+their own output against this block would conclude their conversion had gone wrong.
+
+The block is now what that command writes, `warnings` included, and a test converts the
+recording and holds every `--json` block on the site to it. `elapsed_ms` and `output_dir`
+belong to the run rather than to the recording and stay illustrative.
+
 ## 0.5.124
 
 ### Fixed: a stray space meant four things depending on which option carried it

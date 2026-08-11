@@ -1192,6 +1192,65 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('shows the --json summary that recording really produces', async () => {
+    /*
+      The FAQ's scripting answer runs `--json` on sleep-study.edf and showed one signals.csv of
+      921,600 rows, three annotations, one channel, an hour of recording and `"warnings": []`.
+
+      Every one of those is another recording's. That file is eight hours of five channels at
+      three rates, so it writes three signals files, seven events and five channel rows — and
+      it raises two warnings, which the next paragraph promises will be in that array and which
+      the same page shows one of, five answers earlier, for this same file. A reader comparing
+      their own output against it would conclude their conversion had gone wrong.
+
+      `elapsed_ms` and `output_dir` are of the run rather than of the recording, so they stay
+      illustrative and are not compared.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-json-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stdout } = await run(
+        process.execPath,
+        [CLI, recording, '--out', path.join(work, 'out'), '--json'],
+        { maxBuffer: 1 << 20 },
+      );
+      const actual = JSON.parse(stdout);
+
+      const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+        n.endsWith('.md'),
+      );
+      let checked = 0;
+      for (const page of names) {
+        // Fences in order, so a json block can be read against the command last shown above
+        // it. Matching the two together in one pattern cannot work: the prose between them
+        // holds backticks of its own.
+        const blocks = [...(await read(`website/content/${page}`)).matchAll(
+          /```(\w*)\n([\s\S]*?)```/gu,
+        )];
+        let command = '';
+        for (const [, language, body] of blocks) {
+          if (language === 'bash') {
+            command = body;
+            continue;
+          }
+          if (language !== 'json') continue;
+          if (!/sleep-study\.edf/u.test(command) || !command.includes('--json')) continue;
+          const shown = JSON.parse(body);
+          // `--info --json` describes the recording rather than a run, and has its own shape.
+          if (shown.path !== undefined) continue;
+          checked++;
+          for (const key of ['files', 'annotations', 'duration_seconds', 'records', 'warnings']) {
+            assert.deepEqual(shown[key], actual[key], `${page}: ${key} is not what that run writes`);
+          }
+        }
+      }
+      assert.ok(checked >= 1, `expected the pages to show this summary, found ${checked}`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('shows the long layout of the recording the command beside it names', async () => {
     /*
       cli-reference and faq both run `--layout long` on sleep-study.edf and both show what came

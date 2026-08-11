@@ -561,15 +561,28 @@ edf2csv sleep-study.edf --out ./converted --json > result.json
 {
   "output_dir": "./converted",
   "files": [
-    { "name": "signals.csv", "rows": 921600 },
-    { "name": "annotations.csv", "rows": 3 },
-    { "name": "channels.csv", "rows": 1 }
+    { "name": "signals_100hz.csv", "rows": 2880000 },
+    { "name": "signals_10hz.csv", "rows": 288000 },
+    { "name": "signals_1hz.csv", "rows": 28800 },
+    { "name": "annotations.csv", "rows": 7 },
+    { "name": "channels.csv", "rows": 5 }
   ],
-  "annotations": 3,
-  "duration_seconds": 3600,
-  "records": 3600,
-  "elapsed_ms": 1412,
-  "warnings": []
+  "annotations": 7,
+  "duration_seconds": 28800,
+  "records": 28800,
+  "elapsed_ms": 1141,
+  "warnings": [
+    {
+      "code": "MIXED_SAMPLING_RATES",
+      "severity": "warning",
+      "message": "Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz)."
+    },
+    {
+      "code": "LARGE_OUTPUT",
+      "severity": "warning",
+      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open."
+    }
+  ]
 }
 ```
 
