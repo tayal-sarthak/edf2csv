@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.143
+
+### Fixed: --help is not handled before every other check
+
+cli-reference said `--help` and `--version` are "handled before any other argument checking".
+They are handled before the *inputs* are looked at, which is what the two examples beside the
+claim show — but an unrecognised flag is caught first, so `edf2csv --help --bogus` exits 2 and
+prints no usage. Someone reaching for `--help` to find out what they got wrong was told it
+would work.
+
 ## 0.5.142
 
 ### Fixed: an estimate comment describing a quoting rule the writer does not have

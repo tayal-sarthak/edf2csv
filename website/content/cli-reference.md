@@ -807,7 +807,7 @@ fi
 
 ## -h, --help and -V, --version
 
-`-h, --help` prints the usage text to stdout and exits 0. `-V, --version` prints the version on its own line and exits 0. Both are handled before any other argument checking, so `edf2csv --help` works with no input file and `edf2csv --version` works even alongside an invalid one.
+`-h, --help` prints the usage text to stdout and exits 0. `-V, --version` prints the version on its own line and exits 0. Both are handled before the inputs are looked at, so `edf2csv --help` works with no input file and `edf2csv --version` works even alongside an invalid one. Not before the flags are parsed, though: `edf2csv --help --bogus` is still exit 2 for the unknown flag.
 
 ## Exit codes
 
