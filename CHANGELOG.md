@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.136
+
+### Fixed: the far-origin warning was quoted without the half that says what to do
+
+The block for an origin too large for the file's own sample interval stopped at "Sample times
+are written from zero instead, so every row is present and the column increases" — and dropped
+the sentence after it, which is the one a reader needs: "Add the onsets in annotations.csv to
+recover absolute times if you need them." Times written from zero are not the times in the
+header, and where to get them back was the part left out.
+
 ## 0.5.135
 
 ### Fixed: "1 control character ... exactly as the header has them"

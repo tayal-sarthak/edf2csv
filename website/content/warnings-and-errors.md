@@ -483,7 +483,8 @@ Until 0.5.25 only the strictly-backwards case above was looked for, so this went
 warning: This recording's timekeeping annotations place it -10000000000000002s from its own
          start date, which is too far out for its 1s records to be told apart: at that
          magnitude adding a sample interval leaves the number unchanged.
-         Sample times are written from zero instead, so every row is present and the column increases.
+         Sample times are written from zero instead, so every row is present and the column
+         increases. Add the onsets in annotations.csv to recover absolute times if you need them.
 ```
 
 The magnitude is what matters, not the sign — a negative origin the same distance out fails identically. Until 0.5.17 the check looked only in the positive direction, seeded from zero, so an all-negative recording never reached it: twelve rows became four, exit 0, and nothing was said, while the byte-for-byte positive mirror of the same file wrote all twelve and explained itself.
