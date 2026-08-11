@@ -3,6 +3,14 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.144
+
+### Fixed: two more things write to stdout than the page allows for
+
+getting-started's tour of the output says "Only `--info` and `--json` write to stdout". `--help`
+and `--version` do too, and are the two commands most likely to be run first. The sentence is
+there so a reader knows what a pipe will carry.
+
 ## 0.5.143
 
 ### Fixed: --help is not handled before every other check

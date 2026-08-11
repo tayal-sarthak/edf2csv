@@ -56,7 +56,7 @@ Some notes on that:
 
 - The output directory defaults to the input filename with `_csv` appended, created next to the input file. Use `-o` or `--out` to put it somewhere else.
 - If that directory already exists, edf2csv leaves it alone and exits with status 1. Pass `--force` to overwrite it, or `--out` to write elsewhere, so a new conversion never mixes into an old one.
-- The summary, any warnings, and the live `converting… 42%` progress line all go to stderr. Only `--info` and `--json` write to stdout, so you can pipe results straight into another program.
+- The summary, any warnings, and the live `converting… 42%` progress line all go to stderr. Only `--info` and `--json` write to stdout — along with `--help` and `--version`, which print and exit — so you can pipe results straight into another program.
 - Exit status is 0 on success, 1 when a file couldn't be read or written, and 2 when the command itself was wrong — an unknown flag, or a channel name that doesn't exist.
 - `--quiet` suppresses the summary. Warnings and errors still print.
 
