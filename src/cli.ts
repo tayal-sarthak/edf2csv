@@ -1698,19 +1698,24 @@ function parseJobs(raw: unknown, inputs: number): number {
   /*
     A whole number as written, not as `Number()` chooses to read it.
 
-    `Number.isInteger(Number(text))` accepted `0x10`, `1e3`, ` 4 ` and
-    `999999999999999999999` — the last of which is not an integer any more, only the nearest
-    double to one — while refusing `4.7`. The message says "a whole number of 1 or more" and
-    the refusal of 4.7 is what makes a reader believe it, so the others read as the tool
-    silently reinterpreting what they typed. `--jobs` is the flag 0.4.2 hardened because
-    accepting `--jobs 0` in silence "is the kind of quiet this tool avoids".
+    `Number.isInteger(Number(text))` accepted `0x10`, `1e3` and `999999999999999999999` — the
+    last of which is not an integer any more, only the nearest double to one — while refusing
+    `4.7`. The message says "a whole number of 1 or more" and the refusal of 4.7 is what makes
+    a reader believe it, so the others read as the tool silently reinterpreting what they
+    typed. `--jobs` is the flag 0.4.2 hardened because accepting `--jobs 0` in silence "is the
+    kind of quiet this tool avoids".
+
+    Surrounding space is trimmed above and is not one of those: ` 4 ` is four to anyone who
+    reads it, and a value assembled by a shell out of a file or a `$(...)` routinely carries
+    some. What matters is that the refusal quote what was typed rather than what survived the
+    trim — see below.
   */
   if (!/^\d+$/u.test(text)) {
-    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${text}".`);
+    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${quotedValue(raw)}".`);
   }
   const value = Number(text);
   if (!Number.isSafeInteger(value) || value < 1) {
-    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${text}".`);
+    throw new OptionError(`--jobs must be a whole number of 1 or more, or "auto", got "${quotedValue(raw)}".`);
   }
   return Math.min(value, Math.max(1, inputs));
 }
@@ -1741,8 +1746,26 @@ function optionalTime(raw: unknown, option: string): number | undefined {
 /** `--layout`, which is one of two words and not a guess at what was meant. */
 function optionalLayout(raw: unknown): 'wide' | 'long' | undefined {
   if (raw === undefined) return undefined;
-  if (raw === 'wide' || raw === 'long') return raw;
-  throw new OptionError(`--layout must be "wide" or "long", got "${String(raw)}".`);
+  // Trimmed, like every other option's value. This one alone refused ` long`, so a value that
+  // came out of a file or a `$(...)` with a newline on it was rejected for a character nobody
+  // typed and which the message could not show.
+  const text = String(raw).trim();
+  if (text === 'wide' || text === 'long') return text;
+  throw new OptionError(`--layout must be "wide" or "long", got "${quotedValue(raw)}".`);
+}
+
+/**
+ * An option's value as the user typed it, for a message that quotes it back.
+ *
+ * The point of the quotation marks is to show where the value begins and ends, which matters
+ * most for the values that went wrong because of what surrounds them. `--jobs` trimmed first
+ * and then quoted the remains, so `--jobs " x"` came back as `got "x"` and `--jobs " "` as
+ * `got ""` — the second reading as though nothing had been given at all, when what was given
+ * is the whole reason it failed. `--start` has quoted the typed value since 0.5.60 and
+ * `--decimals` since 0.5.86; this is the same rule, spelled once.
+ */
+function quotedValue(raw: unknown): string {
+  return String(raw);
 }
 
 function optionalDecimals(raw: unknown): number | undefined {
@@ -1755,7 +1778,7 @@ function optionalDecimals(raw: unknown): number | undefined {
   /*
     A whole number as written, not as `Number()` chooses to read it.
 
-    `Number.isInteger(Number(text))` accepted `0x3`, `0b11`, `0o5`, `3e0`, `+3` and ` 3 `,
+    `Number.isInteger(Number(text))` accepted `0x3`, `0b11`, `0o5`, `3e0` and `+3`,
     while refusing `3.5` — and the refusal of `3.5` is what makes a reader believe the message
     that says "a whole number between 0 and 20". So `--decimals 0o5` wrote five decimals for
     an argument that reads as five to nobody, and `--decimals 0b11` wrote three, in silence,

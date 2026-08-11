@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.124
+
+### Fixed: a stray space meant four things depending on which option carried it
+
+A value reaching the tool with space around it is ordinary — `--jobs "$(cat n)"`, a copied
+argument, a shell variable holding a trailing newline. Four options took four views of one.
+
+`--start` and `--decimals` trimmed it, and when the value was wrong anyway they quoted back
+what was typed. `--layout` did not trim at all, so ` long` was refused for a character nobody
+wrote and the message could not show. And `--jobs` trimmed and then quoted the remains:
+
+```
+$ edf2csv rec.edf --jobs " "
+error: --jobs must be a whole number of 1 or more, or "auto", got "".
+```
+
+Which reads as though no value had been given, when the value is the entire reason it failed —
+and `--jobs " x"` came back as `got "x"`, with the space that a shell had put there invisible.
+The quotation marks exist to show where a value begins and ends; trimming before printing them
+takes that away exactly where it is needed.
+
+All four now trim, and all four quote the value as given. The comments in `--jobs` and
+`--decimals` claimed ` 4 ` and ` 3 ` were among the forms they refused, which they never were.
+
 ## 0.5.123
 
 ### Fixed: the FAQ showed one recording's long layout under another recording's command

@@ -629,6 +629,47 @@ describe('--info', () => {
     }
   });
 
+  it('treats a stray space the same way whichever option carries it', async () => {
+    /*
+      A value that reaches the tool with space around it is ordinary — `--jobs "$(cat n)"`,
+      a copied argument, a shell variable holding a trailing newline. Four options took four
+      views of one.
+
+      `--start` and `--decimals` trimmed it and, when the value was wrong anyway, quoted back
+      what was typed. `--layout` did not trim at all, so ` long` was refused for a character
+      nobody wrote. And `--jobs` trimmed and then quoted the remains, which is the worst of the
+      three: `--jobs " x"` reported `got "x"` and `--jobs " "` reported `got ""` — the second
+      reading as though no value had been given, when the value is the whole reason it failed.
+
+      The quotation marks are there to show where a value begins and ends. Trimming before
+      printing them takes that away exactly where it is needed.
+    */
+    const recording = fixture('tiny.edf');
+
+    // Accepted, once trimmed: the same answer as the value with no space on it.
+    for (const [flag, padded] of [
+      ['--jobs', ' 2 '], ['--layout', ' long'], ['--decimals', ' 3 '], ['--start', ' 1 '],
+    ]) {
+      const spaced = await cli([recording, '--info', flag, padded]);
+      const plain = await cli([recording, '--info', flag, padded.trim()]);
+      assert.equal(spaced.code, 0, `${flag} "${padded}": ${spaced.stderr}`);
+      assert.equal(spaced.stdout, plain.stdout, `${flag} "${padded}" differs from the trimmed form`);
+    }
+
+    // Refused, quoting the value as given — spaces included, since they are the reason.
+    for (const [flag, given] of [
+      ['--jobs', ' x'], ['--jobs', ' '], ['--layout', ' tall'], ['--decimals', ' x '],
+      ['--start', ' x '],
+    ]) {
+      const refused = await cli([recording, '--info', flag, given]);
+      assert.equal(refused.code, 2, `${flag} "${given}" was accepted: ${refused.stderr}`);
+      assert.ok(
+        refused.stderr.includes(`"${given}"`),
+        `${flag} "${given}" is quoted back without its spaces: ${refused.stderr.split('\n')[0]}`,
+      );
+    }
+  });
+
   it('answers for the annotation channel by name rather than denying it exists', async () => {
     /*
       `EDF Annotations` is the label the specification reserves, --info counts it on the

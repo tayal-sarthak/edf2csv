@@ -442,7 +442,7 @@ error: --decimals needs a number, for example --decimals 3.
 
 ## --jobs
 
-Converts several recordings at once. It only means anything for a batch — one recording is one conversion however many jobs are asked for. The value is a plain decimal integer of 1 or more, or `auto`: `0x10`, `1e3` and `+4` are refused rather than read as 16, 1000 and 4, the way `Number()` would have them.
+Converts several recordings at once. It only means anything for a batch — one recording is one conversion however many jobs are asked for. The value is a plain decimal integer of 1 or more, or `auto`: `0x10`, `1e3` and `+4` are refused rather than read as 16, 1000 and 4, the way `Number()` would have them. Space around the value is trimmed, as it is for `--start`, `--decimals` and `--layout`, and a refusal quotes the value as typed rather than as trimmed — up to 0.5.124 `--jobs " "` came back as `got ""`, which reads as no value at all when the value is the reason it failed.
 
 ```bash
 edf2csv /data/recordings/*.edf --out /data/csv --jobs 4
@@ -499,7 +499,7 @@ And with `--force` over a directory that was already there, what is in it may be
 
 ## --layout
 
-How the samples are arranged in the CSV. `wide`, the default, or `long`.
+How the samples are arranged in the CSV. `wide`, the default, or `long`. Anything else is a usage error, and space around the word is trimmed first — up to 0.5.124 it was not, so a value assembled with a trailing newline was refused for a character nobody typed.
 
 `wide` is a column per channel and a file per sampling rate, which is what every earlier version wrote and what most analysis expects.
 
