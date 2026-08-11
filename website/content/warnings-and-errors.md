@@ -753,7 +753,7 @@ When only a cell field carries them, the column name is untouched and the channe
 
 ```
 warning: Signal 0's unit contains 1 control character (\x07), which will appear in
-         channels.csv's unit cell exactly as the header has them.
+         channels.csv's unit cell exactly as the header has it.
          The column name is unaffected, so --channels "ECG" still selects it. Printing the
          CSV to a terminal may do more than print it.
 ```

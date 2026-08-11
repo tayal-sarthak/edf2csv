@@ -446,7 +446,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           message:
             `Signal ${i}'s ${named} ${affected.length === 1 ? 'contains' : 'contain'} ` +
             `${control.length} control character${plural} (${shown}), ${lands} exactly as the ` +
-            `header has them.`,
+            `header has ${control.length === 1 ? 'it' : 'them'}.`,
           hint:
             /*
               Every branch has to print a command that works.

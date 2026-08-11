@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.135
+
+### Fixed: "1 control character ... exactly as the header has them"
+
+`NONPRINTABLE_LABEL` counts the control bytes it found and already says "character" or
+"characters" accordingly. The pronoun closing the same sentence was fixed at "them", so a
+channel with one of them read `contains 1 control character (\x07), which will appear in the
+CSV column name exactly as the header has them`. It now says "has it" at one.
+
 ## 0.5.134
 
 ### Fixed: the FAQ counted four channels in a recording with five
