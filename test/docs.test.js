@@ -1192,6 +1192,53 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('shows the long layout of the recording the command beside it names', async () => {
+    /*
+      cli-reference and faq both run `--layout long` on sleep-study.edf and both show what came
+      out. They showed two different recordings. The reference had the real one — five channels
+      at the first instant, `time_s` at the three places 100 Hz needs. faq had three channels
+      called EEG Fpz-Cz, ECG and Temp rectal, at eight decimal places, which is `mixed-rates.edf`
+      converted and captioned with someone else's command.
+
+      Eight lines above it that same answer lists the file's rates as 100, 10 and 1 Hz and names
+      all five channels, so the page contradicted itself inside one section — and the block a
+      reader would check their own output against was the wrong one.
+
+      A prefix is enough, and one second of the recording produces it, so this stays cheap.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-long-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stdout } = await run(process.execPath, [
+        CLI, recording, '--stdout', '--layout', 'long', '--duration', '1',
+      ]);
+
+      const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+        n.endsWith('.md'),
+      );
+      let checked = 0;
+      for (const page of names) {
+        const text = await read(`website/content/${page}`);
+        // A command naming this recording and that layout, then the block under it.
+        for (const [, block] of text.matchAll(
+          /```bash\n[^`]*sleep-study\.edf[^`]*--layout long[^`]*```\s*\n+```(?:text)?\n(time_s,channel,value\n[\s\S]*?)```/gu,
+        )) {
+          checked++;
+          assert.ok(
+            stdout.startsWith(block),
+            `${page}: the long layout of this recording does not start that way:\n` +
+              `  page: ${JSON.stringify(block.slice(0, 160))}\n` +
+              `  file: ${JSON.stringify(stdout.slice(0, 160))}`,
+          );
+        }
+      }
+      assert.ok(checked >= 2, `expected the pages to show this conversion, found ${checked}`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('counts rows in a quoted summary the way the summary counts them', async () => {
     /*
       `formatSummary` writes "row" at one and "rows" otherwise — the same agreement 0.5.74 put

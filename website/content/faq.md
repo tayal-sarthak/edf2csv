@@ -35,13 +35,17 @@ edf2csv sleep-study.edf --out ./converted --layout long
 
 ```
 time_s,channel,value
-0.00000000,EEG Fpz-Cz,0.061
-0.00000000,ECG,0.00122
-0.00000000,Temp rectal,37.00073
-0.00390625,EEG Fpz-Cz,9.096
+0.000,EEG Fpz-Cz,0.061
+0.000,EEG Pz-Oz,0.061
+0.000,EOG horizontal,0.061
+0.000,Resp oro-nasal,0.000244
+0.000,Temp rectal,37.00073
+0.010,EEG Fpz-Cz,1.648
 ```
 
-Still nothing resampled, interpolated or padded. `long.pivot(index='time_s', columns='channel',
+All five channels at the first instant, then the 100 Hz ones again a hundredth of a second
+later while the 10 Hz and 1 Hz channels wait their turn. Still nothing resampled, interpolated
+or padded. `long.pivot(index='time_s', columns='channel',
 values='value')` in pandas gets you back to the wide form for whichever rates you want it for.
 
 ## Why is my CSV so much larger than the EDF file?

@@ -3,6 +3,36 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.123
+
+### Fixed: the FAQ showed one recording's long layout under another recording's command
+
+"Why did I get several signals files instead of one?" answers with `sleep-study.edf`: it lists
+that recording's three rates, names all five of its channels, and then offers `--layout long`
+as the one-file alternative:
+
+```bash
+edf2csv sleep-study.edf --out ./converted --layout long
+```
+
+```
+time_s,channel,value
+0.00000000,EEG Fpz-Cz,0.061
+0.00000000,ECG,0.00122
+0.00000000,Temp rectal,37.00073
+0.00390625,EEG Fpz-Cz,9.096
+```
+
+Three channels, one of them an ECG that recording does not have, at the eight decimal places a
+256 Hz channel needs and none of its channels ask for. It is `mixed-rates.edf` converted, and
+captioned with somebody else's command — eight lines under the same answer's own list of what
+the file holds.
+
+What that command writes is five channels at the first instant and `time_s` at three places,
+which is what the block shows now. cli-reference has had it right all along; the two pages now
+agree because a test converts the recording and holds every `--layout long` block on the site
+to what came out.
+
 ## 0.5.122
 
 ### Fixed: asking for the annotation channel was answered by denying it exists
