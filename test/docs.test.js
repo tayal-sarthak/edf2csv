@@ -253,7 +253,7 @@ describe('documentation and source agree on their lists', () => {
       ahead — the release being prepared writes its entry before the version is published —
       and no further behind than that.
     */
-    const changelog = await read('CHANGELOG.md');
+    const changelog = await read('docs/CHANGELOG.md');
     const newest = /^## (\d+\.\d+\.\d+)$/mu.exec(changelog);
     assert.ok(newest, 'the changelog has no version headings');
 
@@ -1966,7 +1966,7 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
 
     const expected = new Set([
-      '.github', '.gitignore', 'CHANGELOG.md', 'CITATION.cff', 'LICENSE', 'README.md',
+      '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md', 'docs',
       'package-lock.json', 'package.json', 'src', 'test', 'tsconfig.json', 'vercel.json',
       'website',
     ]);

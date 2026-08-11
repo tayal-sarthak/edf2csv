@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.1
+
+### Changed: the changelog lives at `docs/CHANGELOG.md`
+
+Twelve of the repository's thirteen top-level entries are pinned there by something that reads
+nowhere else: GitHub for `README.md`, `LICENSE` and `.github/`, its citation widget for
+`CITATION.cff`, npm for the manifest and its lock, Vercel for `vercel.json`. `CHANGELOG.md` was
+the one free to sit anywhere, so it sits under `docs/` now, moved with `git mv` so its history
+follows it.
+
+`files` ships it from the new path and the tarball is the same 61 files, so the only visible
+change is where a consumer finds it: `node_modules/edf2csv/docs/CHANGELOG.md`. Both tests that
+read the file — the one pinning the top-level layout, and the one checking the newest entry
+against `package.json` — follow it there.
+
 ## 0.6.0
 
 ### Changed: `--info --json` reports no estimate rather than an estimate of nothing
