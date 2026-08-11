@@ -534,7 +534,7 @@ warning: The input changed while it was being converted, so this output covers t
   recording, half-open. `whole_recording` is `true` when the window covers everything, which saves
   a script from comparing floats.
 - `whole_recording` is true when the conversion covered the recording from its first sample to its last. A window that happens to name exactly those bounds counts as whole — the length of a recording is `records × record_duration`, which for 6003 records of 0.1s is 600.3000000000001 rather than the 600.3 it prints as, and up to 0.5.94 `--end 600.3` on such a file was recorded as partial while writing every sample.
-- `records_converted` is the half-open range of data record indexes that were read, `[first, last)`.
+- `records_converted` is the half-open range of data record indexes the converted window covers, `[first, last)`. Under `--annotations-only` no signal records are read at all and this still describes the window; the annotation channel is read in full whatever it says.
 - `annotations_written` is the number of rows in `annotations.csv`, excluding its header.
 - `files` lists every CSV written with its data row count, again excluding the header row. Add one
   per file if you're checking line counts on disk. `metadata.json` describes the run and isn't

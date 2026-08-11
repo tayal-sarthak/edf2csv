@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.148
+
+### Fixed: records_converted described as the records that were read
+
+output-files defines it as "the half-open range of data record indexes that were read". Under
+`--annotations-only` that is wrong twice over: no signal records are read, and the annotation
+channel is read from end to end regardless of the window — so a run reporting
+`records_converted: [1, 2]` read every record's annotation slot and none of its samples. What
+the field actually describes, in every mode, is the window.
+
 ## 0.5.147
 
 ### Fixed: --force does not overwrite the output directory
