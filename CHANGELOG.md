@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.127
+
+### Fixed: the chunked-reader recipe printed a row count and a peak from nowhere
+
+```python
+print(rows, peak)   # 7372800 122.161
+```
+
+The file it reads is `sleep_csv/signals_100hz.csv`, and neither number is that file's.
+7,372,800 rows is eight hours at 256 Hz; eight hours at 100 Hz is 2,880,000, which the same
+page states eighteen lines further down while explaining what `merge_asof` would do to it. And
+122.161 is not the peak of anything — that column reaches 250, its declared physical maximum.
+
+A recipe that prints a result is a claim about a file. This one is now converted and read down
+by a test, the way the snippet reads it, and both numbers are checked against what comes out.
+
 ## 0.5.126
 
 ### Fixed: the metadata.json the page explains was a different recording's

@@ -1192,6 +1192,59 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('claims the row count and peak that column really has', async () => {
+    /*
+      The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:
+
+          print(rows, peak)   # 7372800 122.161
+
+      Neither number is that file's. 7,372,800 rows is eight hours at 256 Hz, and this
+      recording's 100 Hz table has 2,880,000 — a figure the same page states eighteen lines
+      further down, while explaining what `merge_asof` would do to it. The peak is a number
+      from nowhere at all: the column reaches 250, its declared physical maximum.
+
+      The recipe is a claim about a file, so it is checked against the file: the column is
+      converted on its own and read down, which is what the snippet does.
+    */
+    const page = await read('website/content/recipes.md');
+    const claim = /print\(rows, peak\)\s*# ([\d,]+) ([\d.]+)/u.exec(page);
+    assert.ok(claim, 'the chunked-reader recipe no longer prints what it found');
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-chunked-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const out = path.join(work, 'sleep_csv');
+      await run(process.execPath, [
+        CLI, recording, '--out', out, '--channels', 'EEG Fpz-Cz', '--quiet',
+      ]);
+
+      const { createReadStream } = await import('node:fs');
+      const { createInterface } = await import('node:readline');
+      let rows = 0;
+      let peak = 0;
+      let header = true;
+      for await (const line of createInterface({
+        input: createReadStream(path.join(out, 'signals.csv')),
+        crlfDelay: Infinity,
+      })) {
+        if (header) {
+          header = false;
+          continue;
+        }
+        if (line === '') continue;
+        rows++;
+        const value = Math.abs(Number(line.slice(line.indexOf(',') + 1)));
+        if (value > peak) peak = value;
+      }
+
+      assert.equal(Number(claim[1].replaceAll(',', '')), rows, 'the row count the recipe prints');
+      assert.equal(Number(claim[2]), peak, 'the peak the recipe prints');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('shows the --json summary that recording really produces', async () => {
     /*
       The FAQ's scripting answer runs `--json` on sleep-study.edf and showed one signals.csv of

@@ -455,7 +455,7 @@ for chunk in pd.read_csv(
     peak = max(peak, chunk["EEG Fpz-Cz"].abs().max())
     rows += len(chunk)
 
-print(rows, peak)   # 7372800 122.161
+print(rows, peak)   # 2880000 250.0
 ```
 
 `chunksize` makes `read_csv` return an iterator of frames instead of one frame, so memory stays flat regardless of file size. `usecols` is the bigger win on a wide montage: naming the two columns you need means the other twenty are never parsed.
