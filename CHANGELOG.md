@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.141
+
+### Fixed: the usage-error table was missing three of them
+
+warnings-and-errors keeps a table of the ways a command exits 2. It listed `--decimals` and not
+`--jobs` or `--layout`, which are refused the same way, and it never gained the `--channels`
+term naming the annotation channel that 0.5.122 added. cli-reference's own exit-2 list picked
+these up in 0.5.130; this is the second place that enumerates them.
+
 ## 0.5.140
 
 ### Fixed: two diagnostic codes documented above the wrong one
