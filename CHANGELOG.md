@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.147
+
+### Fixed: --force does not overwrite the output directory
+
+`--help` and the README both described it as "Overwrite the output directory". It overwrites the
+files the run produces and leaves everything else where it is — which is why `STALE_OUTPUT`
+exists, and why converting a single-rate recording over a mixed-rate one leaves
+`signals_256hz.csv` sitting next to the new `signals.csv`, both looking current. The FAQ has a
+whole answer about that surprise; the one-line description was the sentence that set it up.
+
+Both now read "Write into the output directory if it already exists".
+
 ## 0.5.146
 
 ### Fixed: --help promised the long layout comes out in time order

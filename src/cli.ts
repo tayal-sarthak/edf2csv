@@ -64,7 +64,7 @@ Options
       --bom              Start each CSV with a UTF-8 byte order mark, so Excel
                          reads accented text and units like µV correctly
   -j, --jobs <n>         Convert this many recordings at once, or "auto" (default: 1)
-  -f, --force            Overwrite the output directory if it exists
+  -f, --force            Write into the output directory if it already exists
   -q, --quiet            Suppress the summary; warnings and errors still print
       --json             Print machine-readable JSON to stdout (works with --info too)
       --strict           Exit 1 if the recording raised any warning

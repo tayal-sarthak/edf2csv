@@ -66,7 +66,7 @@ npx edf2csv recording.edf --start 30m --duration 5m
       --bom              Start each CSV with a UTF-8 byte order mark, so Excel
                          reads accented text and units like µV correctly
   -j, --jobs <n>         Convert this many recordings at once, or "auto"
-  -f, --force            Overwrite the output folder
+  -f, --force            Write into the output folder if it already exists
   -q, --quiet            Less output
       --json             Machine-readable JSON on stdout (works with --info too)
       --strict           Exit 1 if the recording raised any warning
