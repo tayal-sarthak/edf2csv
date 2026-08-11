@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.150
+
+### Fixed: the landing page's metadata sample had the wrong byte count
+
+`"bytes": 19670016` for a recording that is 19,643,392 bytes — 26 KB out, on the page whose
+opening comment says every block on it is real output captured from that file. The `--info`
+block six lines up gets it right, because a test regenerates it; this sample was never checked,
+since the one that reads the page's samples skips any containing an ellipsis and this one
+elides three fields.
+
 ## 0.5.149
 
 ### Fixed: "No dependencies at all, runtime or otherwise"

@@ -102,7 +102,7 @@ Resp oro-nasal,3,Resp oro-nasal,V,10,10,-1,1,...`,
     body: 'Tool version, source file and size, the recording header, the exact window converted, and every warning raised. Enough to reproduce the run later.',
     sample: `{
   "tool": { "name": "edf2csv", "version": "..." },
-  "source": { "path": "...", "bytes": 19670016, "sha256": null },
+  "source": { "path": "...", "bytes": 19643392, "sha256": null },
   "recording": {
     "format": "EDF+ (continuous)",
     "start_datetime_local": "2002-03-02T23:10:00",
