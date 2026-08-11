@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.145
+
+### Fixed: a third copy of the slug rule, in the file that stamps the ids
+
+`slug.js` exists because two copies of "how a heading becomes a fragment id" had already
+disagreed about hyphens — `## --layout` was `#--layout` in one and `#layout` in the other — and
+its header comment says so. `addHeadingAnchors`, which is the function that actually puts the id
+on the heading in the browser, still carried its own inline copy and did not import the module
+at all.
+
+The two agree today: all 217 headings on the site produce the same id either way, so no link
+moves. It now calls `slugify` rather than reimplementing it.
+
 ## 0.5.144
 
 ### Fixed: two more things write to stdout than the page allows for

@@ -9,6 +9,8 @@
   writing back escaped HTML, so there is no double-escaping to get wrong.
 */
 
+import { slugify } from './slug.js';
+
 const RULES = {
   bash: /(?<comment>#[^\n]*)|(?<string>'[^'\n]*'|"[^"\n]*")|(?<flag>(?:^|(?<=\s))--?[a-zA-Z][\w-]*)|(?<number>\b\d+(?:\.\d+)?\b)/g,
   javascript:
@@ -86,13 +88,10 @@ export function addHeadingAnchors(container) {
   const headings = [];
   for (const node of container.querySelectorAll('h2, h3')) {
     const text = node.textContent ?? '';
-    const id =
-      node.id ||
-      text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-');
+    // slugify, not a copy of it: the module exists because a second copy of this rule already
+    // disagreed with the first about hyphens, and the ids it makes have to be the ones the
+    // prerendered pages and every /docs/...#fragment link were built with.
+    const id = node.id || slugify(text);
     node.id = id;
     headings.push({ id, text, level: Number(node.tagName.slice(1)) });
   }
