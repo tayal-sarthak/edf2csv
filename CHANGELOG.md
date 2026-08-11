@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.151
+
+### Fixed: the landing page pointed at the wrong file for rebuilding its recording
+
+The comment above the `--info` block is the instruction for regenerating it, and it named
+`test/fixtures/edf-writer.mjs` — the generic EDF writer, which builds every fixture and this
+recording no more than any other. The recipe lives in `test/fixtures/sleep-study.mjs`, which
+0.4.68 added for exactly this reason: the page had drifted twice while the recipe was prose in
+a comment, so it was moved into code where a test could run it.
+
 ## 0.5.150
 
 ### Fixed: the landing page's metadata sample had the wrong byte count

@@ -15,7 +15,7 @@ import { highlight } from '../lib/highlight.js';
   The recording is 28800 records of 1s: EEG Fpz-Cz, EEG Pz-Oz and EOG horizontal at
   100 Hz over -250..250 uV, Resp oro-nasal at 10 Hz over -1..1 V, Temp rectal at 1 Hz
   over 34..40 degC, plus an EDF Annotations channel, started 02.03.02 at 23.10.00.
-  test/fixtures/edf-writer.mjs builds it; run `--info` on the result to regenerate the
+  test/fixtures/sleep-study.mjs builds it; run `--info` on the result to regenerate the
   block below.
 
   It said `Recorded 2002-03-02 23:10:00 UTC` until 0.4.68. The tool prints no timezone,
