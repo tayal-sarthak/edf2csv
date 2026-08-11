@@ -343,7 +343,7 @@ for await (const batch of file.readRecords()) {
 
 The views are distinct objects over shared memory, which is worth stating precisely because the obvious test for it gives the wrong answer. `kept[0] === kept[1]` is **false** — each iteration hands you a new `Uint8Array`. What they have in common is `kept[0].buffer === kept[1].buffer`, all at offset 0, so what you are holding is three windows onto the same bytes.
 
-Nor do they all end up equal. The final batch is usually short — a 24 MB recording read in 8 MB chunks gives two full batches and a 2.9 MB one — so after the loop `kept[0]` shows the last batch's bytes for as far as they go and the *previous* batch's bytes beyond that. It is neither the first batch nor the last but a seam between two, which is the kind of wrong that produces plausible-looking numbers rather than an error.
+Nor do they all end up equal. The final batch is usually short — the 18.7 MB recording this page reads gives two 8 MB batches and a 2.7 MB one — so after the loop `kept[0]` shows the last batch's bytes for as far as they go and the *previous* batch's bytes beyond that. It is neither the first batch nor the last but a seam between two, which is the kind of wrong that produces plausible-looking numbers rather than an error.
 
 ```js
 // CORRECT. Copy what you intend to keep.

@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.138
+
+### Fixed: a batch arithmetic example that does not divide
+
+api.md explains why the last `readRecords` batch is short, with: "a 24 MB recording read in 8 MB
+chunks gives two full batches and a 2.9 MB one". Twenty-four divided by eight is three, and no
+remainder at all — the sentence contradicts itself in its own numbers. Measured on the recording
+the page actually reads, it is 18.7 MB and comes out as two 8 MB batches and a 2.7 MB one, which
+is what it says now.
+
 ## 0.5.137
 
 ### Fixed: "Converted 1 of 1 recordings."
