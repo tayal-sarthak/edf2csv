@@ -428,7 +428,7 @@ This is exactly what the CLI calls. It opens the file, reads the annotation chan
 interface ConvertOptions {
   // channel and window selection
   channels?: readonly string[];   // labels, case-insensitive, or '#N' by position
-  start?: number;                 // seconds from the start of the recording
+  start?: number;                 // seconds on the recording's clock; may be negative
   duration?: number;              // seconds; mutually exclusive with `end`
   end?: number;                   // seconds; mutually exclusive with `duration`
   annotationsOnly?: boolean;      // skip the signal files entirely
@@ -460,7 +460,7 @@ interface ConversionProgress {
 }
 ```
 
-`start`, `duration` and `end` are plain numbers of seconds here, not the `5m` or `00:30:00` strings the CLI accepts. Use `parseTimeSpec` if you want to accept those forms from your own users. Passing both `duration` and `end` throws a `TimeRangeError`, as does a window that starts at or past the end of the recording.
+`start`, `duration` and `end` are plain numbers of seconds here, not the `5m` or `00:30:00` strings the CLI accepts. `start` and `end` may be negative, because they name a position on the recording's own clock and that clock can begin before zero; `duration` is a length and may not. Use `parseTimeSpec` if you want to accept those forms from your own users. Passing both `duration` and `end` throws a `TimeRangeError`, as does a window that starts at or past the end of the recording.
 
 `onProgress` fires once per batch of records read, not once per record, so on a small file it may fire only once. `bytesWritten` counts characters pushed to the signal writers, so it's zero until the first flush.
 
@@ -544,7 +544,7 @@ The warning names two rates rather than the file's three, because it describes t
 | --- | --- |
 | `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
 | `ConversionError` | The output can't be written, the request can't be carried out, or your own callback threw. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST`, `CALLBACK_FAILED` or `WRITE_FAILED`. |
-| `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, or a `start`, `duration` or `end` that is not a non-negative finite number of seconds. |
+| `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, a `start` or `end` that is not a finite number of seconds, or a `duration` that is not a non-negative one. |
 | `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
 
@@ -721,7 +721,7 @@ Column names come from the whole file, not from the current selection, so a chan
 Time parsing, if you want to accept the CLI's time forms:
 
 ```ts
-function parseTimeSpec(input: string, optionName: string): number;  // returns seconds
+function parseTimeSpec(input: string, optionName: string, allowNegative?: boolean): number;  // seconds
 function resolveRange(options: {
   start?: number;
   duration?: number;
@@ -732,7 +732,7 @@ function resolveRange(options: {
 }): ResolvedRange;
 ```
 
-`optionName` is only used in the error message, so pass whatever your own interface calls the option.
+`optionName` is only used in the error message, so pass whatever your own interface calls the option. `allowNegative` defaults to false; pass true for a value that names a position rather than a length, since a recording timed from its first record's timekeeping annotation can begin before zero. The CLI passes it for `--start` and `--end` and withholds it for `--duration`.
 
 ```js
 import { parseTimeSpec } from 'edf2csv';
@@ -741,6 +741,7 @@ parseTimeSpec('1h30m', '--start');    // 5400
 parseTimeSpec('00:30:00', '--start'); // 1800
 parseTimeSpec('250ms', '--start');    // 0.25
 parseTimeSpec('90', '--start');       // 90, a bare number is seconds
+parseTimeSpec('-1h30m', '--start', true); // -5400, the sign applies to the whole value
 ```
 
 Header parsing, for bytes you already have in memory:

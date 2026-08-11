@@ -3,6 +3,41 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.5.120
+
+### Fixed: a recording timed from before zero had no window you were allowed to ask for
+
+`--info` on `negative-origin.edf`, whose records run from -100 s to -97 s:
+
+```
+Duration   3s  (3 records of 1s)
+Timed from -100.000s  (first sample; --start and --end use this clock)
+```
+
+That line is an instruction — the number is printed in seconds precisely so it can be typed
+straight back in. Every way of typing it was refused:
+
+```
+error: --start "-100" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain
+       number of seconds.
+```
+
+`parseTimeSpec` took no sign, and every offset that file has is below zero, so the whole of
+`--start` and `--end` was unreachable on it: not a wrong window, no window at all. A bare
+conversion worked, which is why it went unnoticed. The library said the same thing one layer
+down, where `checkOptions` refused a negative `start` while `plan.range` handed the caller back
+`recordingStartSeconds: -100`.
+
+`--start` and `--end` now take a leading `-`, in every form the parser already accepted:
+`-100`, `-100s`, `-1h30m`, `-00:01:40`, `-250ms`. The sign applies to the whole value, so
+`-1h30m` is ninety minutes before the origin rather than sixty before and thirty after.
+Nothing may sit between the sign and the number, and `+5` is still refused — the rule
+`--decimals` and `--jobs` already hold. `--duration` is a length rather than a position and
+still refuses one: `--duration=-5` is `not a valid non-negative time`.
+
+Written as one argument, since a value beginning with a dash otherwise reads as another flag —
+`--start=-100`. The tool has said so in as many words since 0.4.34.
+
 ## 0.5.119
 
 ### Fixed: a paragraph written into the middle of a quoted warning

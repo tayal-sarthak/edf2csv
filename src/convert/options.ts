@@ -42,13 +42,23 @@ export function assertOptions(options: {
     }
   }
 
-  // Seconds from the start of the recording, so a negative one names a moment before the
-  // recording began. The command line cannot express these — parseTimeSpec rejects them —
-  // and the library could, all the way through to a half-written directory.
+  /*
+    `start` and `end` are positions on the recording's own clock, `duration` is a length.
+
+    All three were held above zero, which is right for a length and wrong for a position: a
+    recording timed from its first record's timekeeping annotation may sit before zero, and
+    -100 is then where its first sample is. So a caller could read `plan.range` back as
+    `recordingStartSeconds: -100` and not be allowed to ask for it — the same wall
+    `parseTimeSpec` put in front of the command line until 0.5.120.
+
+    Non-finite is still refused for all three, since NaN reaches a comparison as false and
+    would take the whole recording without saying so.
+  */
   for (const name of ['start', 'duration', 'end'] as const) {
     const value = options[name];
     if (value === undefined) continue;
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    const positive = name === 'duration';
+    if (typeof value !== 'number' || !Number.isFinite(value) || (positive && value < 0)) {
       throw new OptionError(`${name} must be a number of seconds, got ${describe(value)}.`);
     }
   }

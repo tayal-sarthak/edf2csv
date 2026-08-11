@@ -70,6 +70,39 @@ describe('time specifications', () => {
       assert.throws(() => parseTimeSpec(bad, '--start'), TimeRangeError, `should reject ${bad}`);
     }
   });
+
+  it('takes an offset below zero, in every form, for the options that name a position', () => {
+    /*
+      A recording is timed from its first record's timekeeping annotation, which the format
+      lets sit before zero — negative-origin.edf runs from -100 s to -97 s, and --info says
+      "Timed from -100.000s (first sample; --start and --end use this clock)".
+
+      Every offset on that clock was refused as "not a time I understand", so the line told
+      the reader to type a number the parser would not take, and no window of such a file
+      could be converted at all.
+
+      The sign applies to the whole value rather than to its first term, which is the only
+      reading that makes a compound form mean anything: -1h30m is ninety minutes before the
+      origin, not sixty before and thirty after.
+    */
+    assert.equal(parseTimeSpec('-100', '--start', true), -100);
+    assert.equal(parseTimeSpec('-100s', '--start', true), -100);
+    assert.equal(parseTimeSpec('-1h30m', '--start', true), -5400);
+    assert.equal(parseTimeSpec('-00:01:40', '--end', true), -100);
+    assert.equal(parseTimeSpec('-250ms', '--end', true), -0.25);
+    // The default is still the old rule, so nothing that does not ask for it changes.
+    assert.throws(() => parseTimeSpec('-100', '--duration'), TimeRangeError);
+    assert.throws(() => parseTimeSpec('-100', '--duration', false), TimeRangeError);
+
+    // A sign on its own, a space after it, and the `+` no other numeric option here takes.
+    for (const bad of ['-', '- 5', '+5', '-abc']) {
+      assert.throws(
+        () => parseTimeSpec(bad, '--start', true),
+        TimeRangeError,
+        `should reject ${bad}`,
+      );
+    }
+  });
 });
 
 describe('column naming', () => {
@@ -884,7 +917,13 @@ describe('option checking', () => {
       [{ decimals: 1.5 }, /got 1.5/u],
       [{ decimals: 21 }, /got 21/u],
       [{ start: NaN }, /start must be a number of seconds, got NaN/u],
-      [{ start: -5 }, /got -5/u],
+      /*
+        A length below zero is not a length. A *position* below zero is an ordinary thing —
+        a recording timed from its first record's timekeeping annotation may sit before zero,
+        and negative-origin.edf's first sample is at -100 — so `start` and `end` take one,
+        as of 0.5.120, and only `duration` still refuses.
+      */
+      [{ duration: -5 }, /duration must be a number of seconds, got -5/u],
       [{ duration: Infinity }, /duration must be a number of seconds/u],
       [{ end: NaN }, /end must be a number of seconds/u],
       /*

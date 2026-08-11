@@ -1727,9 +1727,15 @@ function splitChannels(raw: unknown): string[] | undefined {
   return terms;
 }
 
+/**
+ * `--start`, `--duration` and `--end`, in seconds.
+ *
+ * The first two name a position on the recording's own clock, which a file timed from before
+ * zero puts below it, so those take a sign. `--duration` is a length and does not.
+ */
 function optionalTime(raw: unknown, option: string): number | undefined {
   if (raw === undefined) return undefined;
-  return parseTimeSpec(String(raw), option);
+  return parseTimeSpec(String(raw), option, option !== '--duration');
 }
 
 /** `--layout`, which is one of two words and not a guess at what was meant. */

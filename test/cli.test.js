@@ -809,6 +809,60 @@ describe('--info', () => {
     t.diagnostic(`origin reported as ${asJson.first_sample_seconds}s`);
   });
 
+  it('takes a window on a clock that begins before zero, which is where that file sits', async (t) => {
+    /*
+      "Timed from -100.000s  (first sample; --start and --end use this clock)" is what --info
+      prints for negative-origin.edf, and the parenthesis is an instruction: type this back in.
+      Every form of it was refused —
+
+          error: --start "-100" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, ...
+
+      so the only recordings whose clock the tool could not express were the ones it had just
+      finished explaining, and no window of one could be converted at all. A bare conversion
+      worked, which is why this went unnoticed: the failure is the whole of --start and --end
+      on one file shape, not a wrong number anywhere.
+
+      A negative `--duration` is a different thing — a length below zero is not one — and is
+      still refused.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-negative-'));
+    temporaries.push(dir);
+    const recording = fixture('negative-origin.edf');
+
+    const info = await cli([recording, '--info']);
+    assert.match(info.stdout, /Timed from -100\.000s/u, info.stdout);
+
+    // The whole recording, named on its own clock, and then one second out of it.
+    const whole = await cli([recording, '--out', path.join(dir, 'whole'), '--quiet',
+      '--start=-100', '--end=-97']);
+    assert.equal(whole.code, 0, whole.stderr);
+    const bare = await cli([recording, '--out', path.join(dir, 'bare'), '--quiet']);
+    assert.equal(bare.code, 0, bare.stderr);
+    assert.equal(
+      await readFile(path.join(dir, 'whole', 'signals.csv'), 'utf8'),
+      await readFile(path.join(dir, 'bare', 'signals.csv'), 'utf8'),
+      'naming the recording\'s own bounds is the same conversion as naming none',
+    );
+
+    const second = await cli([recording, '--out', path.join(dir, 'one'), '--quiet',
+      '--start=-100', '--duration', '1']);
+    assert.equal(second.code, 0, second.stderr);
+    const rows = (await readFile(path.join(dir, 'one', 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length, 5, rows.join(' | '));
+    assert.match(rows[1], /^-100\.000,/u, rows[1]);
+    assert.match(rows[4], /^-99\.250,/u, rows[4]);
+
+    // The bounds still hold, read on that clock rather than against zero.
+    const past = await cli([recording, '--info', '--start=-97']);
+    assert.equal(past.code, 2, past.stderr);
+    assert.match(past.stderr, /at or past the end of this 3s recording/u, past.stderr);
+
+    const backwards = await cli([recording, '--info', '--duration=-5']);
+    assert.equal(backwards.code, 2, backwards.stderr);
+    assert.match(backwards.stderr, /--duration "-5" is not a valid non-negative time/u, backwards.stderr);
+    t.diagnostic(`converted ${rows.length - 1} rows from -100s`);
+  });
+
   // The estimate exists so someone can decide whether a conversion is worth starting. Reading
   // low is the one direction that makes it useless, so it is checked against every fixture
   // rather than against the one calibration that happened to expose the last shortfall.

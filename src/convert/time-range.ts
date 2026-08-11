@@ -42,15 +42,43 @@ const UNIT_TOKEN = /(\d+(?:\.\d+)?)\s*([a-z]+)/giu;
  * Parse a duration or offset into seconds.
  *
  * Accepted: `90`, `90s`, `5m`, `1h30m`, `1h 30m 15s`, `00:30:00`, `30:00`, `250ms`.
+ *
+ * `allowNegative` is for the two options that name a position rather than a length.
+ *
+ * A recording is timed from its first record's timekeeping annotation, and nothing obliges that
+ * to sit at or after zero: a file whose records run from -100 s to -97 s is one this tool reads,
+ * times from -100, and describes with
+ *
+ *     Timed from -100.000s  (first sample; --start and --end use this clock)
+ *
+ * That line says the number can be typed straight back in, and it could not be. Every offset
+ * such a recording has came back as "not a time I understand", so its whole clock was
+ * unreachable and no window of it could be converted at all — the one file shape where a
+ * window is refused for naming a moment the recording actually contains.
+ *
+ * A length below zero is still a different thing, and `--duration` still refuses one.
  */
-export function parseTimeSpec(input: string, optionName: string): number {
-  const text = input.trim().toLowerCase();
-  if (text === '') {
+export function parseTimeSpec(input: string, optionName: string, allowNegative = false): number {
+  const trimmed = input.trim().toLowerCase();
+  if (trimmed === '') {
     throw new TimeRangeError(`${optionName} is empty. Try a value like 30s, 5m, or 00:30:00.`);
   }
 
+  /*
+    The sign is read off the front and applied to the whole value, so `-1h30m` is an hour and a
+    half before the origin rather than an hour before it and half an hour after.
+
+    Nothing may sit between the sign and the number, and a leading `+` is still refused: every
+    other number this tool takes is refused when written in a form nobody types, and `+5` is
+    exactly what `--decimals` and `--jobs` reject one flag over.
+  */
+  const negative = trimmed.startsWith('-');
+  const text = negative ? trimmed.slice(1) : trimmed;
+  const signed = (seconds: number): number =>
+    assertFinite(negative ? -seconds : seconds, optionName, input, allowNegative);
+
   // Bare number means seconds.
-  if (/^\d+(?:\.\d+)?$/u.test(text)) return assertFinite(Number(text), optionName, input);
+  if (/^\d+(?:\.\d+)?$/u.test(text)) return signed(Number(text));
 
   // Clock form: hh:mm:ss or mm:ss.
   const clock = CLOCK.exec(text);
@@ -63,7 +91,7 @@ export function parseTimeSpec(input: string, optionName: string): number {
         `${optionName} "${input}" has a minutes or seconds field of 60 or more.`,
       );
     }
-    return assertFinite(hours * 3600 + minutes * 60 + seconds, optionName, input);
+    return signed(hours * 3600 + minutes * 60 + seconds);
   }
 
   // Unit form: 1h30m, 5 min, 250ms.
@@ -108,11 +136,16 @@ export function parseTimeSpec(input: string, optionName: string): number {
     );
   }
 
-  return assertFinite(total, optionName, input);
+  return signed(total);
 }
 
-function assertFinite(value: number, optionName: string, input: string): number {
-  if (!Number.isFinite(value) || value < 0) {
+function assertFinite(
+  value: number,
+  optionName: string,
+  input: string,
+  allowNegative: boolean,
+): number {
+  if (!Number.isFinite(value) || (!allowNegative && value < 0)) {
     throw new TimeRangeError(`${optionName} "${input}" is not a valid non-negative time.`);
   }
   return value;
