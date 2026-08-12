@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.25
+
+### Fixed: `INPUT_CHANGED` was one row of a summary table and nothing else
+
+Every other diagnostic on the warnings page gets a section: what causes it, what edf2csv does,
+what to do. `INPUT_CHANGED` had a single line in the table at the top and no section anywhere —
+the only code of the thirty-three in that table without one. The docs test that keeps codes and
+pages in step asks whether a code is *named* on the page, which one table row satisfies.
+
+It is not a minor one to leave unexplained: it is the warning that says the output describes the
+file as it was rather than as it is, and the one that turns `--checksum` into a `null`.
+
 ## 0.6.24
 
 ### Fixed: the timekeeping TAL described as one "which carries an onset and no text"

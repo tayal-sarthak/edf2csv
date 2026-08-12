@@ -163,6 +163,23 @@ warning: Some header numbers use a comma decimal separator, which the EDF spec d
 
 **What to do.** Look at the channel table in `--info` or at `channels.csv` and confirm the physical ranges are what you expect for those channels. A range of `-250 to 250` for an EEG channel in microvolts is plausible; `-250000 to 250000` would suggest the separator was interpreted differently than the writer intended.
 
+### INPUT_CHANGED
+
+The recording's size or modification time moved between the moment it was opened and the moment the conversion finished.
+
+**Cause.** Almost always a file still being written — acquisition software appending records, or a copy still in flight. Replacing the file at that path while the conversion runs does it too.
+
+**What edf2csv does.** Finishes, and says so. The CSVs are correct for the records that were read, and `metadata.json` describes the file as it was opened, so the record and the output agree with each other. What stops being true is that they describe the file as it now stands.
+
+```
+warning: The input changed while it was being converted, so this output covers the file as it was when the conversion started, not as it is now.
+         Convert again once the recording is finished to pick up the rest.
+```
+
+Under `--checksum` the hash is dropped rather than guessed at, and the hint says so instead: the bytes that were converted are no longer there to hash, so `source.sha256` in `metadata.json` is `null`. A checksum that is present therefore means the file demonstrably held still while it was read.
+
+**What to do.** Wait for the recording to finish and convert again. If you need the checksum, that second run is the one that can produce it.
+
 ## Channel calibration and labelling
 
 These describe individual channels. They are raised per signal, and never for the EDF+ annotations channel, which carries text rather than samples and has no meaningful calibration.
