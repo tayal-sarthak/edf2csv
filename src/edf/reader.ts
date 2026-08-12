@@ -549,7 +549,12 @@ function describe(cause: unknown): string {
   if (cause instanceof Error) {
     const code = (cause as NodeJS.ErrnoException).code;
     if (code === 'ENOENT') return 'no such file';
-    if (code === 'EACCES') return 'permission denied';
+    // EPERM beside EACCES, because everywhere else in this codebase that reads an errno pairs
+    // the two, and ENOTDIR because a path that runs through a regular file — `rec.edf/inner`,
+    // which a shell completes and a script builds by joining — is otherwise the one input
+    // failure that answers in errno text while its output-side twin answers in a sentence.
+    if (code === 'EACCES' || code === 'EPERM') return 'permission denied';
+    if (code === 'ENOTDIR') return 'part of the path is a file, not a directory';
     return cause.message;
   }
   return String(cause);

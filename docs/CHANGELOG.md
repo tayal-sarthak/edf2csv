@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.12
+
+### Fixed: an input path running through a file answered in errno text
+
+```
+$ edf2csv recording.edf/inner.edf
+error: Cannot read "recording.edf/inner.edf": ENOTDIR: not a directory, stat 'recording.edf/inner.edf'
+```
+
+The path twice, the syscall, and the errno — where the same errno on the output side reads
+`part of the path is a file, not a directory`. The reader's own describer knew `ENOENT` and
+`EACCES` and passed everything else through as Node wrote it. `EPERM` joins `EACCES` at the
+same time, since the two other places in this codebase that read an errno both treat them as
+one answer and this one had only half the pair.
+
 ## 0.6.11
 
 ### Fixed: a quota failure creating the output directory came back as a raw errno
