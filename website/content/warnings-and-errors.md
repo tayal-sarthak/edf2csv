@@ -82,7 +82,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NONPRINTABLE_LABEL` | A channel's label, unit, transducer or prefiltering contains control characters; the warning says which |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
-| `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` |
+| `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` — or the rate overflowed to `Infinity` and no rows are written at all |
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
 | `MISSING_EDF_PLUS_MARKER` | An annotation channel puts the records somewhere the missing EDF+ marker cannot honour |
 | `START_TIME_UNREADABLE` | The header's start date or time is not a date or a time |

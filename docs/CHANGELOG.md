@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.28
+
+### Fixed: the warnings table gave `TIME_RESOLUTION` only its duplicate-timestamps half
+
+Third row of the same table with the same shape as 0.6.26 and 0.6.27. The code has two branches
+and they have opposite outcomes: samples too close together share a `time_s`, or the rate worked
+out to `Infinity` — samples per record over a record duration too small to divide into — and no
+rows are written for those channels at all. The section explains both, including why 0.5.84 was
+needed. The summary line named the branch that still produces data.
+
+Three rows of one table, each summarising a two-branch warning with one branch. The table is now
+consistent with the sections under it.
+
 ## 0.6.27
 
 ### Fixed: the warnings table gave `UNUSABLE_PHYSICAL_RANGE` only its overflow half
