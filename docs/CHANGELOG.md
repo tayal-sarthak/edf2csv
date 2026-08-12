@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.16
+
+### Fixed: getting-started's exit statuses had the same gap the README did
+
+0.6.10 fixed this on the README and this page says it too, in its own words, with the same two
+omissions: a `--strict` run that converts a recording perfectly and warns about it exits 1
+without anything having failed to read or write, and Ctrl-C exits 130. Both pages are read
+before anyone reaches the CLI reference, which has had the full table all along.
+
 ## 0.6.15
 
 ### Fixed: two more pages said `--info` reads "the first sixteen records"
