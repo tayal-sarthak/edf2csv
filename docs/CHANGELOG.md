@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.38
+
+### Fixed: `INPUT_UNREADABLE` had no section, and is the one that leaves output behind
+
+Second of the four undocumented `ConversionErrorCode` values. It is not a duplicate of
+`UNREADABLE`: that one fails before anything is written, this one fails during the streaming
+pass, so the difference between them is whether there is a half-finished directory on disk. The
+code separates them for exactly that reason — a read failure used to be reported as
+`Writing to "<dir>" failed` with advice about disk space, pointing at the part of the system
+that was working.
+
+The page had the distinction nowhere, so a reader hitting the second met a message whose code
+they could not look up.
+
 ## 0.6.37
 
 ### Fixed: `INPUT_OUTPUT_COLLISION` had no section on the errors page

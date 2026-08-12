@@ -890,6 +890,23 @@ That last sentence is the part to act on. The rows written before the read faile
 
 Wait for the recording to finish, or copy it somewhere stable first, then convert.
 
+### INPUT_UNREADABLE
+
+The reader failed *after* the conversion had started writing, so the run stopped part way through with output already on disk.
+
+**Cause.** The same conditions as [`UNREADABLE`](#unreadable) — a recording that shrinks, a descriptor that stops returning bytes — but reached during the streaming pass rather than while opening the file.
+
+**What edf2csv does.** Keeps the reader's own message and its advice, which name the record and the byte counts, and adds what is true of a failure at this point: some of the output exists and is incomplete. The distinction matters because the two used to be reported identically — a read failure was filed under `Writing to "<dir>" failed` with a hint about freeing disk space, which sends you to inspect the one part of the system that was working.
+
+```
+error: Expected 524288 bytes of data at record 1024 but only 131072 bytes were available; the file
+       appears to have changed size while it was being read.
+       Make sure the recording is not still being written to, then try again. What was written to
+       "converted" before it failed is incomplete and should not be used.
+```
+
+**What to do.** Treat the directory as unusable and convert again once the recording has stopped moving. Through `--stdout` the same failure names stdout rather than a directory, since that path writes no files.
+
 ## Fatal errors: the output can't be written
 
 These also exit **1**.
