@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.14
+
+### Fixed: "`--info` sees an unreadable timekeeping entry in those first sixteen records"
+
+The same overstatement 0.6.13 fixed, one page over and stated as a capability rather than as a
+bound — and this one is checkable in a sentence. Give record 1 of a three-record continuous
+EDF+ a corrupt TAL: the conversion raises `ANNOTATION_DECODE_FAILED` and `--info` prints
+nothing, because `scanOrigin` stopped at record 0 the moment it had the origin it came for.
+
+The sentence beside it, about an unreadable *event* later in the file, was right and is kept.
+
 ## 0.6.13
 
 ### Fixed: "which on a continuous file is those first sixteen records"
