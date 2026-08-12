@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.3
+
+### Changed: the short-read message is built in one place, not two
+
+`readRecords` threw a sentence it composed itself, character-for-character identical to the one
+`changedWhileReading` builds for the annotation reader a few lines down — right down to the
+hint. Two copies of one message is one copy too many to keep in step, and the next version
+changes that wording, which would otherwise have meant changing it in one of the two.
+
 ## 0.6.2
 
 ### Fixed: "File is 1 bytes"

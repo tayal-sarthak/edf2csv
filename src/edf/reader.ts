@@ -339,12 +339,11 @@ export class EdfFile {
       if (bytesRead < bytes) {
         // The file is shorter than its own size said. Quietly stopping here would
         // hand back a conversion missing its tail with nothing to show for it.
-        throw new EdfError(
-          'UNREADABLE',
-          `Expected ${bytes} bytes of data at record ${record} but only ${bytesRead} were ` +
-            `available; the file appears to have changed size while it was being read.`,
-          'Make sure the recording is not still being written to, then try again.',
-        );
+        //
+        // Through the shared builder rather than a second copy of its sentence: the two were
+        // character-for-character identical, which is how a wording fixed in one of them
+        // would have been fixed in only one of them.
+        throw changedWhileReading(record, bytes, bytesRead);
       }
 
       yield { firstRecordIndex: record, recordCount: count, data: buffer.subarray(0, bytes) };
