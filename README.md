@@ -76,8 +76,9 @@ npx edf2csv recording.edf --start 30m --duration 5m
   -V, --version          Version
 ```
 
-Exit codes: `0` success, `1` the file couldn't be read or written, `2` the command
-was wrong.
+Exit codes: `0` success, `1` the file couldn't be read or written — or `--strict` was given and
+the recording raised a warning, in which case the output was still written — `2` the command
+was wrong. An interrupted run exits 130.
 
 ## What it doesn't change
 

@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.10
+
+### Fixed: the README's exit codes contradicted its own options list
+
+`1` was given as "the file couldn't be read or written", twenty lines under an options list
+that says `--strict` "Exit 1 if the recording raised any warning". A `--strict` run over a
+discontinuous recording writes all four files and exits 1, so the one page a reader meets first
+described that outcome as a failure to read or write a file that was read and written. It also
+skipped 130, which is what Ctrl-C gives and what a wrapper script has to know about.
+
 ## 0.6.9
 
 ### Fixed: package-lock.json had been claiming 0.5.51 for fifty-eight releases
