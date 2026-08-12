@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.2
+
+### Fixed: "File is 1 bytes"
+
+The first message a file too small to hold a header gets, and the count was not agreeing with
+its noun. A one-byte file — the shortest thing that is not empty, and what a truncated copy or
+a failed download leaves behind — was told `File is 1 bytes; an EDF header alone needs at least
+256.` Through `counted`, like every other count in this parser.
+
 ## 0.6.1
 
 ### Changed: the changelog lives at `docs/CHANGELOG.md`

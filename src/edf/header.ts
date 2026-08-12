@@ -228,7 +228,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   if (buf.length < FIXED_HEADER_BYTES) {
     throw new EdfError(
       'FILE_TOO_SMALL',
-      `File is ${fileSize} bytes; an EDF header alone needs at least ${FIXED_HEADER_BYTES}.`,
+      `File is ${counted(fileSize, 'byte')}; an EDF header alone needs at least ${FIXED_HEADER_BYTES}.`,
     );
   }
 
