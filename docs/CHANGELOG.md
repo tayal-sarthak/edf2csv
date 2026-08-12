@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.26
+
+### Fixed: the warnings table still said a mixed-rate file means "several output files"
+
+`--layout long` writes one, and the warning's own hint says so — it has two forms, and the one
+it prints under `long` reads "They share one table, each row carrying its own time". The summary
+line at the top of the page kept the pre-0.5.0 answer.
+
+There is a test for exactly this class, added when 0.5.0 landed the flag: it requires every page
+claiming a mixed-rate recording becomes several files to mention the layout that does not. It
+missed this row because its phrase list looks for "several signals files" and the row says
+"several output files" — one word apart from the thing it was written to catch.
+
 ## 0.6.25
 
 ### Fixed: `INPUT_CHANGED` was one row of a summary table and nothing else

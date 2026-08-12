@@ -75,7 +75,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
 | `ANNOTATION_DECODE_FAILED` | An annotation entry, a record's timestamp, or an event's duration couldn't be read |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
-| `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so several output files are written |
+| `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so one output file is written per rate — or one file for all of them under `--layout long` |
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
