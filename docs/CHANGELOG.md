@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.34
+
+### Fixed: the `NO_SAMPLES` summary repeated a conflation the warning itself stopped making
+
+"No signal file was written because nothing carries any" is the wording for one of two cases.
+The other is a recording holding nothing but EDF+ annotations, which has no channel that could
+have carried anything — and the conversion prints a different sentence for it precisely because
+the first one was, as the source comment puts it, three false statements in one warning when
+applied to that file.
+
+The summary line kept the wording that was split in two.
+
 ## 0.6.33
 
 ### Fixed: the CLI reference's exit codes, the fifth and last page with this gap
