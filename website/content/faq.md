@@ -600,8 +600,8 @@ edf2csv sleep-study.edf --json \
 
 Under `--json` the warnings go into the JSON on stdout instead of being printed to
 stderr, so you won't see them twice. Without `--json`, warnings and the summary go to stderr and
-only `--info` output goes to stdout, so a conversion can run inside a pipeline without mixing
-messages into the data.
+the only things on stdout are `--info`'s description and, under `--stdout`, the signal CSV
+itself — so a conversion can run inside a pipeline without mixing messages into the data.
 
 ## How do I cite edf2csv, or pin a version?
 

@@ -3,6 +3,15 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.19
+
+### Fixed: "only `--info` output goes to stdout", in the paragraph about piping
+
+The sentence exists to say a conversion is safe to pipe, and the flag it leaves out is the one
+that puts a CSV on the pipe. `--stdout` is the whole reason someone reads this paragraph before
+writing `edf2csv rec.edf --stdout | head`. Same omission 0.6.17 fixed in getting-started's
+version of the claim, which at least named `--help` and `--version`.
+
 ## 0.6.18
 
 ### Fixed: the FAQ's exit codes, in the answer written for scripts
