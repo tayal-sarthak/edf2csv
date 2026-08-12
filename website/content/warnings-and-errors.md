@@ -72,7 +72,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NO_SAMPLES` | A channel declares zero samples per data record, or no signal file was written because nothing carries any |
 | `EMPTY_LABEL` | A channel has a blank label |
 | `DUPLICATE_LABEL` | Two or more channels share a label, a channel's own label was taken by another's `_ch` suffix or by `time_s`, or a `--channels` term matched several |
-| `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
+| `DISCONTINUOUS` | The recording is marked EDF+D, or its records are out of order, overlap in time, contradict an EDF+C marking, sit too far from zero to tell apart, or have nowhere to record where they are |
 | `ANNOTATION_DECODE_FAILED` | An annotation entry, a record's timestamp, or an event's duration couldn't be read |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
 | `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so one output file is written per rate — or one file for all of them under `--layout long` |

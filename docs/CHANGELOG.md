@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.30
+
+### Fixed: `DISCONTINUOUS` has six raise sites and the table summarised two
+
+"Gaps in time, or its records are out of order" leaves out four, and they are not variations on
+those two. Records that *overlap* are counted and reported separately from records that are out
+of order, because a record starting before the previous one ends is strictly increasing and the
+reversed-order check never fired on it. A file marked EDF+C whose records contradict the marking
+gets its own message. So does an origin too far from zero for a sample interval to survive being
+added to it, and so does an EDF+D file with no annotation channel to record positions in.
+
+Each has a section further down the page. Only the summary line was standing in for all six.
+
 ## 0.6.29
 
 ### Fixed: the warnings table listed two of `DUPLICATE_LABEL`'s three causes
