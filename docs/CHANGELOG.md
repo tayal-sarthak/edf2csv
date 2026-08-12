@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.27
+
+### Fixed: the warnings table gave `UNUSABLE_PHYSICAL_RANGE` only its overflow half
+
+The code picks the word from which way the span failed — `too ${underflowed ? 'small' : 'large'}
+to represent` — and the section on the same page explains both at length, including the
+underflow case 0.5.83 was released for. The one-line summary said "too wide to represent",
+which is the half a reader scanning the table would take for the whole rule and the half that
+does *not* apply to a magnetometer, the channel type the section names.
+
 ## 0.6.26
 
 ### Fixed: the warnings table still said a mixed-rate file means "several output files"

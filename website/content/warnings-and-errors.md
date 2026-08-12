@@ -67,7 +67,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `COMMA_DECIMAL` | A header number used a comma as its decimal separator |
 | `DEGENERATE_DIGITAL_RANGE` | A channel's digital minimum equals its digital maximum |
 | `DEGENERATE_PHYSICAL_RANGE` | A channel's physical minimum equals its physical maximum |
-| `UNUSABLE_PHYSICAL_RANGE` | A channel's physical range is too wide to represent |
+| `UNUSABLE_PHYSICAL_RANGE` | A channel's physical span is too wide to represent, or too small — both leave it with no mapping |
 | `INVERTED_PHYSICAL_RANGE` | A channel's calibration inverts its polarity: exactly one of its two bounds pairs is reversed |
 | `NO_SAMPLES` | A channel declares zero samples per data record, or no signal file was written because nothing carries any |
 | `EMPTY_LABEL` | A channel has a blank label |
