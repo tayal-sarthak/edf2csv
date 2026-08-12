@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.8
+
+### Fixed: the `--info` table's `OUTPUT` column has three values and the reference listed two
+
+`(no samples)` has been printed since 0.4.53, for a channel that declares zero samples per data
+record, and the page enumerating the column said only "the file the channel would land in, or
+`(not selected)` when `--channels` excludes it". A reader meeting the third value had nowhere
+to look it up, and the obvious guess — that it means the same as `(not selected)` — is the one
+0.4.53 exists to contradict: a channel asked for by name and carrying nothing is not a channel
+that went unasked for.
+
 ## 0.6.7
 
 ### Fixed: `--info` and `--info --json` listed the same warnings in different orders
