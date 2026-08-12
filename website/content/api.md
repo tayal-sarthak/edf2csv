@@ -498,6 +498,12 @@ const digest = await file.sha256();          // hex, over file.fileSize bytes
 await file.close();
 ```
 
+`modifiedAtOpenMs` is the other half of that: the file's modification time when it was opened, in
+milliseconds, and the value `changedSinceOpen()` compares against. It is kept as a raw number
+rather than a `Date` on purpose — `new Date(ms).getTime()` truncates to whole milliseconds, and
+comparing that against a later `fstat` carrying the filesystem's sub-millisecond precision
+reported every undisturbed conversion as one whose input had changed underneath it.
+
 ### A conversion with options
 
 ```js

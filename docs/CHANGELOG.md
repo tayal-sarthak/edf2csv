@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.36
+
+### Fixed: `EdfFile.modifiedAtOpenMs` was the last unmentioned member of the class
+
+The second of the two 0.6.35 found. It is what `changedSinceOpen()` compares against, so a
+caller reasoning about whether their input moved has the predicate documented and not the value
+under it — and it carries a decision worth stating: it is a raw number rather than a `Date`
+because `new Date(ms).getTime()` truncates to whole milliseconds, which against a filesystem
+that keeps finer precision reported every quiet conversion as one whose input had changed.
+
+Every public member of `EdfFile` is now named somewhere on the page.
+
 ## 0.6.35
 
 ### Fixed: `EdfFile.sha256()` is public API and the reference never mentioned it
