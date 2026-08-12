@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.22
+
+### Fixed: an empty `duration_s` has meant two things since 0.5.x, and this page said one
+
+"An empty cell records that the file gave no duration" is the sentence the annotations decoder
+quotes in its own comment as the definition it was breaking: a TAL whose duration reads `abc` is
+exported with an empty cell too, indistinguishable from one that genuinely had none. That is why
+`ANNOTATION_DECODE_FAILED` counts them and says so. `output-files.md` has described both cases
+since the warning was added; the page devoted to annotations never got the second one.
+
 ## 0.6.21
 
 ### Fixed: getting-started said the output directory is the filename "with `_csv` appended"

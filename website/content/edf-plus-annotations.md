@@ -65,8 +65,14 @@ onset_s,duration_s,description,record_index
 
 An omitted duration is written as an empty cell, not as `0`. The two mean different
 things: a duration of zero states that the event was instantaneous, while an empty
-cell records that the file gave no duration. In pandas the empty cell reads back as
+cell records that no duration could be read. In pandas the empty cell reads back as
 `NaN`, which is the right value for something that was never recorded.
+
+The empty cell covers two cases the file distinguishes and the column cannot: a TAL
+that stated no duration, and one that stated something which is not a number. The
+event is kept either way, and the second raises an `ANNOTATION_DECODE_FAILED`
+warning saying how many rows it happened to — the cell itself cannot tell them
+apart, so the warning is the only place the difference survives.
 
 Descriptions are escaped by normal CSV rules, so an annotation containing a comma,
 a quote, or a newline is quoted rather than allowed to break the column count.
