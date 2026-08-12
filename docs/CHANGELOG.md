@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.37
+
+### Fixed: `INPUT_OUTPUT_COLLISION` had no section on the errors page
+
+All twenty-seven diagnostic codes and all seven fatal reader errors have a section explaining
+cause, behaviour and remedy. Four of the seven `ConversionErrorCode` values do not, and this is
+the first of them — the one that stops a conversion writing a CSV over the recording it is
+reading, which is the least recoverable thing this tool could do and the one place `--force` is
+deliberately powerless.
+
 ## 0.6.36
 
 ### Fixed: `EdfFile.modifiedAtOpenMs` was the last unmentioned member of the class

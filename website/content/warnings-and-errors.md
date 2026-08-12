@@ -954,6 +954,21 @@ error: Writing to stdout failed: ENOSPC: no space left on device, write
        destination is out of space; free some up or redirect it somewhere else.
 ```
 
+### INPUT_OUTPUT_COLLISION
+
+One of the files this run would write is the recording it is reading.
+
+**Cause.** An `--out` that resolves onto the input — most easily by pointing it at the directory the recording sits in, where `channels.csv` or a `signals_<rate>hz.csv` can land on a file of that name. A hard link or a second path to the same inode reaches it too, which is why the check compares device and inode numbers rather than just the resolved paths.
+
+**What edf2csv does.** Refuses before creating anything, and says so. `--force` does not override it: overwriting your own input is not what `--force` means, and the recording is unrecoverable once a CSV is written over it.
+
+```
+error: Output file "recordings/channels.csv" is the same file as the input recording.
+       Choose a separate directory with --out. The input was not modified.
+```
+
+**What to do.** Convert into a directory of its own. The check covers every name the run would write, compressed forms included, so a `--gzip` run is refused on the same grounds.
+
 ## Usage errors
 
 These mean the command was invoked in a way that can't be carried out. They exit **2** rather than 1, so a script can tell "you asked for something impossible" apart from "this recording is broken".
