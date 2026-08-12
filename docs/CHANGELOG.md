@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.4
+
+### Fixed: "but only 1 were available"
+
+A recording that shrinks while it is being read — still being written by the acquisition
+software, usually — is caught by comparing what came back against what was asked for, and one
+byte is a perfectly ordinary amount to come back with. The count read `only 1 were available`,
+with the verb agreeing with nothing in the sentence. The bytes asked for cannot be one, since a
+data record holds at least one sample; the bytes that arrived can be.
+
 ## 0.6.3
 
 ### Changed: the short-read message is built in one place, not two
