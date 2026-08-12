@@ -988,7 +988,8 @@ async function convertOne(
             ? `Wrote ${written} to stdout.\n`
             : rows < expected
               ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} of ` +
-                `${expected.toLocaleString('en-US')} rows had been written. The recording was ` +
+                `${expected.toLocaleString('en-US')} ${expected === 1 ? 'row' : 'rows'} had been ` +
+                `written. The recording was ` +
                 `not converted in full.\n`
               : `Wrote ${written} to stdout, but the reader closed ` +
                 `the pipe before the end, so not all of them reached it.\n`,

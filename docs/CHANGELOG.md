@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.5
+
+### Fixed: "after 0 of 1 rows had been written"
+
+The `--stdout` hang-up summary has two branches and 0.5.82 singularised one of them. The other
+counts the rows the conversion *would* have written, which is the estimate, and a window narrow
+enough to select a single sample makes that one — so a reader that closed the pipe before
+anything reached it was told `after 0 of 1 rows had been written`. The comment four lines above
+it names this family and lists 0.5.74 and 0.5.78; this is the branch it did not reach.
+
 ## 0.6.4
 
 ### Fixed: "but only 1 were available"
