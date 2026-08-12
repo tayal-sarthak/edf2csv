@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.13
+
+### Fixed: "which on a continuous file is those first sixteen records"
+
+`scanOrigin` reads records until one states a start time and then returns, which on any
+well-formed continuous recording is one record — sixteen is the point it gives up, not the
+amount it reads. The page describing what `--info` can and cannot warn about took the bound for
+the behaviour, and the difference is visible on a three-record file: corrupt the timekeeping
+TAL of record 1 and a conversion raises `ANNOTATION_DECODE_FAILED` while `--info` says nothing,
+though record 1 is well inside the sixteen the sentence promised.
+
+The paragraph's other two claims were already right, including the reason the EDF+C
+contradiction is missed. This is the extent of the read, which nothing else states.
+
 ## 0.6.12
 
 ### Fixed: an input path running through a file answered in errno text

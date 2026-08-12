@@ -38,7 +38,7 @@ There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has alre
 
 It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first sixteen records of a continuous one to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
 
-It raises them for what it read, which on a continuous file is those first sixteen records. An unreadable *event* further into a continuous recording is not seen, so `two-annotation-channels.edf` raises `ANNOTATION_DECODE_FAILED` when converted and nothing under `--info`. Its byte-identical discontinuous twin raises it either way, because there the whole channel is read.
+It raises them for what it read, which on a continuous file is however many records it took to find one stating a start time — the search stops there, so usually that is the first record and only ever at most sixteen. A timekeeping entry that cannot be read *after* that point is not seen: give the second record of a three-record continuous file a corrupt TAL and the conversion raises `ANNOTATION_DECODE_FAILED` while `--info` says nothing, even though record 1 is well inside the sixteen. An unreadable *event* further into a continuous recording is not seen either, so `two-annotation-channels.edf` raises `ANNOTATION_DECODE_FAILED` when converted and nothing under `--info`. Its byte-identical discontinuous twin raises it either way, because there the whole channel is read.
 
 What it cannot raise is the handful that need a conversion to exist:
 
