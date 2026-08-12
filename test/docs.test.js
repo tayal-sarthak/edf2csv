@@ -241,6 +241,18 @@ describe('documentation and source agree on their lists', () => {
     const declared = /^version:\s*(.+)$/mu.exec(citation);
     assert.ok(declared, 'CITATION.cff declares no version');
     assert.equal(declared[1].trim(), manifest.version);
+
+    /*
+      The lockfile records it in two places, and had drifted further than CITATION.cff ever
+      did: 0.5.51 against a package at 0.6.8, fifty-eight releases. Nothing breaks — `npm ci`
+      does not read the field and `npm install` rewrites it — but it is the same version
+      claimed by the same tree, and a reader checking out a tag finds it disagreeing with the
+      tag. The guard above exists because that file drifted 107 releases; this one costs two
+      more lines.
+    */
+    const lock = JSON.parse(await read('package-lock.json'));
+    assert.equal(lock.version, manifest.version, 'package-lock.json is at a different version');
+    assert.equal(lock.packages['']?.version, manifest.version, 'the lockfile root entry differs');
   });
 
   it('has a changelog entry for the version being released', async () => {

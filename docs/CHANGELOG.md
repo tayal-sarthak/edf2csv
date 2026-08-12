@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.9
+
+### Fixed: package-lock.json had been claiming 0.5.51 for fifty-eight releases
+
+The lockfile carries the package's version in two places and both had stopped moving. Nothing
+breaks on it — `npm ci` does not read the field, and `npm install` rewrites it — but anyone
+checking out a tag and opening the file is told a version other than the one they checked out.
+
+CITATION.cff had exactly this happen, 107 releases of it, and the answer was a test asserting
+it against `package.json`. That test now checks the lockfile in the same breath.
+
 ## 0.6.8
 
 ### Fixed: the `--info` table's `OUTPUT` column has three values and the reference listed two
