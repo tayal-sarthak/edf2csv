@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.17
+
+### Fixed: the list of what writes to stdout left out `--stdout`
+
+"Only `--info` and `--json` write to stdout — along with `--help` and `--version`" is an
+enumeration that says "only", on the page that teaches the stream split, and it omits the flag
+named after the stream. 0.5.144 found `--help` and `--version` missing from this same sentence
+and added them; the third was there the whole time and is the one whose entire purpose is to
+put a CSV on stdout.
+
 ## 0.6.16
 
 ### Fixed: getting-started's exit statuses had the same gap the README did
