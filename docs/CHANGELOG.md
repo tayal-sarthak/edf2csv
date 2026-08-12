@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.23
+
+### Fixed: "Record `n` starts at `n * record_duration` seconds, and always will"
+
+Said of EDF+C, and false since 0.4.9 made the first record's timekeeping TAL the point a
+recording is timed from. `fractional-start.edf` is a continuous fixture in this repository whose
+first row is `0.500`; `output-files.md` states the correct rule two pages over — "a plain EDF+C
+file can begin anywhere" — and `--info` prints a `Timed from` line for exactly this case.
+
+"And always will" is the part that makes it worse than a stale sentence: it tells a reader the
+arithmetic is guaranteed, which is what would send them to compute sample times themselves
+rather than read the column.
+
 ## 0.6.22
 
 ### Fixed: an empty `duration_s` has meant two things since 0.5.x, and this page said one

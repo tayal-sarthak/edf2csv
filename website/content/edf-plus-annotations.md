@@ -86,7 +86,11 @@ Bytes 192 to 235 of the header hold a reserved field. EDF+ files write one of tw
 markers there:
 
 - **EDF+C**, continuous. Every data record follows the one before it with no gap.
-  Record `n` starts at `n * record_duration` seconds, and always will.
+  Record `n` starts at `origin + n * record_duration` seconds, where the origin is
+  what the first record's timekeeping TAL says — usually `+0`, and not always. A
+  continuous recording whose first TAL reads `+0.5` writes its first row as `0.500`
+  and its records still sit end to end. What continuity fixes is the spacing, not
+  the starting point.
 - **EDF+D**, discontinuous. The records are still in file order, but they aren't
   adjacent in time. There are holes between them.
 
