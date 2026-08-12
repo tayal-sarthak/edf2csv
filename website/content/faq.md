@@ -448,7 +448,7 @@ shorter while it's being read, which happens when a writer rewrites it in place,
 fails rather than handing you a silently short result:
 
 ```text
-error: Expected 524288 bytes of data at record 1024 but only 131072 were available; the file
+error: Expected 524288 bytes of data at record 1024 but only 131072 bytes were available; the file
        appears to have changed size while it was being read.
        Make sure the recording is not still being written to, then try again.
 ```

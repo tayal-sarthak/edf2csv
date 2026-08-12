@@ -865,7 +865,7 @@ error: "/data/recordings" is a directory, not an EDF file.
 The mid-conversion case works differently, and is the one place in this section where the conversion has already written something. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
 
 ```
-error: Expected 2864400 bytes of data at record 24600 but only 0 were available; the file appears to have changed size while it was being read.
+error: Expected 2864400 bytes of data at record 24600 but only 0 bytes were available; the file appears to have changed size while it was being read.
        Make sure the recording is not still being written to, then try again. What was written to "out" before it failed is incomplete and should not be used.
 ```
 

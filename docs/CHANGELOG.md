@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.20
+
+### Fixed: two pages quoted the short-read error as 0.6.4 stopped printing it
+
+0.6.4 put the count through `counted` so it could not say "1 were available", which added the
+noun: the message now reads `but only 131072 bytes were available`. Two pages quote that error
+verbatim and neither was updated, so this repository spent four versions showing output its own
+tool does not produce — the exact defect most of the 0.5 line was spent removing, introduced by
+a fix for a different one.
+
+Nothing caught it. The suite pins the quoted *hints* and the warnings of one example command;
+these two are error transcripts in prose, which nothing reads.
+
 ## 0.6.19
 
 ### Fixed: "only `--info` output goes to stdout", in the paragraph about piping
