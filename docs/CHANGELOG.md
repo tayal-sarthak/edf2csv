@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.35
+
+### Fixed: `EdfFile.sha256()` is public API and the reference never mentioned it
+
+Twenty-two members on that class and this was one of two the page did not name once. It is the
+method `--checksum` runs, and the one with a rule attached that a caller cannot guess: it hashes
+the bytes that were there when the file was opened, through the descriptor already on them, so
+it has to be called before `close()` and it deliberately does not re-read the path.
+
+The test that keeps the reference honest checks the package's top-level exports. `EdfFile` is
+one name; its members are not checked, which is how two of them stayed unwritten.
+
 ## 0.6.34
 
 ### Fixed: the `NO_SAMPLES` summary repeated a conflation the warning itself stopped making

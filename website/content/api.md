@@ -487,6 +487,17 @@ interface ConvertResult {
 
 `changedSinceOpen()` is the exception: it keeps working on a closed file, because `convert` asks it on the way out and caches the answer. So `await result.file.changedSinceOpen()` agrees with whether the result carries an `INPUT_CHANGED` diagnostic. (It returned `false` on a closed file until 0.4.38, which had the result contradicting itself.) Calling it on a file you closed yourself without ever asking throws `UNREADABLE`, since a closed descriptor cannot answer it.
 
+`sha256()` is what `--checksum` uses: it hashes exactly the `fileSize` bytes that were there when the file was opened,
+through the descriptor already on them, and returns the digest as hex. Reading the path again afterwards would describe
+whatever answers to that name by then, which for a recording still being written is a different file. It needs the file
+open, so call it before `close()`.
+
+```js
+const file = await EdfFile.open('sleep-study.edf');
+const digest = await file.sha256();          // hex, over file.fileSize bytes
+await file.close();
+```
+
 ### A conversion with options
 
 ```js
