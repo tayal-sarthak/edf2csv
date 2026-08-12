@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.31
+
+### Fixed: `ANNOTATION_DECODE_FAILED` also covers a duration that decoded fine
+
+A duration of `-3` parses without trouble; what is wrong with it is arithmetic, not decoding. It
+is kept and written to `annotations.csv` exactly as the file gave it — inventing a zero would put
+a number there no writer wrote — and it is warned about, because the recipe this documentation
+gives for the samples an event covers is `onset_s + duration_s`, which for a negative duration
+ends the window before the event starts and selects nothing at all.
+
+The summary line said "couldn't be read", which is true of the other four causes and not of this
+one. Fifth raise site, and the only one where the value survives.
+
 ## 0.6.30
 
 ### Fixed: `DISCONTINUOUS` has six raise sites and the table summarised two
