@@ -114,7 +114,7 @@ Machine-readable provenance: the tool version, the source path, size and modific
 
 ## Check a file before you convert it
 
-`--info` reads the header, and on an EDF+ recording a little of the annotation channel: the first sixteen records of a continuous file to find where it begins, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic. It returns in milliseconds whatever the file's size either way, and writes nothing. [What it can and cannot tell you](/docs/warnings-and-errors#how-edf2csv-reports-problems) sets out which warnings follow from that.
+`--info` reads the header, and on an EDF+ recording a little of the annotation channel: at most sixteen records of a continuous file to find where it begins, stopping at the first that says, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic. It returns in milliseconds whatever the file's size either way, and writes nothing. [What it can and cannot tell you](/docs/warnings-and-errors#how-edf2csv-reports-problems) sets out which warnings follow from that.
 
 ```bash
 edf2csv sleep-study.edf --info

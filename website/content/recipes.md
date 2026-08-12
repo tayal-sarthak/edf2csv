@@ -157,7 +157,7 @@ Sampling rates differ, so channels are written to 3 files, one per rate. No chan
 Would write 3,196,800 rows, roughly 108 MB.
 ```
 
-`--info` reads the header, and on an EDF+ recording a little of the annotation channel: the first sixteen records of a continuous file to find where it begins, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic. It returns in milliseconds whatever the file's size either way, and writes nothing. [What it can and cannot tell you](/docs/warnings-and-errors#how-edf2csv-reports-problems) sets out which warnings follow from that. CSV runs several times the size of the EDF — about six times here, and higher for a recording with few channels, since every row carries a `time_s` cell however many channels share it — so the estimate is worth reading before you start.
+`--info` reads the header, and on an EDF+ recording a little of the annotation channel: at most sixteen records of a continuous file to find where it begins, stopping at the first that says, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic. It returns in milliseconds whatever the file's size either way, and writes nothing. [What it can and cannot tell you](/docs/warnings-and-errors#how-edf2csv-reports-problems) sets out which warnings follow from that. CSV runs several times the size of the EDF — about six times here, and higher for a recording with few channels, since every row carries a `time_s` cell however many channels share it — so the estimate is worth reading before you start.
 
 The estimate line goes to stdout and the warnings go to stderr, which makes each of them easy to pick out on its own:
 

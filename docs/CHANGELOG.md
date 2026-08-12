@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.15
+
+### Fixed: two more pages said `--info` reads "the first sixteen records"
+
+getting-started and recipes carry the same sentence, word for word, and both stated the bound
+as the amount. The two pages that describe the same read — `cli-reference` and the second
+mention in `recipes` itself — have said "at most" all along, so the site disagreed with itself
+about its own tool while a test checked only that the pages agreed with *each other*, which
+identical copies always do.
+
+Now they say what the other two say, and what `scanOrigin` does: at most sixteen, stopping at
+the first record that states a start time.
+
 ## 0.6.14
 
 ### Fixed: "`--info` sees an unreadable timekeeping entry in those first sixteen records"
