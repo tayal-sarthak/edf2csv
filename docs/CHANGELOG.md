@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.7
+
+### Fixed: `--info` and `--info --json` listed the same warnings in different orders
+
+The text form prints the file's own diagnostics and then the plan's; the JSON form concatenated
+them the other way round. On `records-backwards.edf` that put the `DISCONTINUOUS` warning first
+on screen and last in the document, with `MIXED_SAMPLING_RATES` moving the opposite way — the
+same three warnings about the same recording, in two sequences, depending only on which form
+was asked for. Anyone reading a script's output against a terminal's is comparing two orders of
+one list.
+
 ## 0.6.6
 
 ### Fixed: "1 of 1 data records carries no readable timekeeping annotation"

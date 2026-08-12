@@ -322,8 +322,11 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
       // else. This was the one consumer left out of that when 0.3.2 made the warning follow
       // --channels, so `--info --json` carried it twice: once counting the rates being
       // converted and once counting every rate in the file, with the same code and severity.
-      warnings: plan.diagnostics
-        .concat(withoutFileRateWarning(file.diagnostics))
+      // The file's own first, then the plan's, which is the order the text form prints them
+      // in. Concatenating the other way round listed the same warnings about the same
+      // recording in two different sequences depending on which form you asked for.
+      warnings: withoutFileRateWarning(file.diagnostics)
+        .concat(plan.diagnostics)
         .map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
     },
     null,
