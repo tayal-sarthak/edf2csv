@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.29
+
+### Fixed: the warnings table listed two of `DUPLICATE_LABEL`'s three causes
+
+The third is the one a reader is least able to work out for themselves: a channel that loses its
+own column name to something else in the header — another channel's `_ch<index>` suffix landing
+on it, or the `time_s` the writer puts in front of every signals.csv. `label-suffix-collision.edf`
+in this repository raises it beside the ordinary shared-label warning, and the two read very
+differently:
+
+```
+warning: 2 signals share the label "T8" (positions 0, 1).
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's "_ch"
+         suffix produces, so its column is "T8_ch0_ch2".
+```
+
+The second is the one that renames a channel that did nothing wrong, and the table had no room
+for it.
+
 ## 0.6.28
 
 ### Fixed: the warnings table gave `TIME_RESOLUTION` only its duplicate-timestamps half

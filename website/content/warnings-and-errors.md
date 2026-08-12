@@ -71,7 +71,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `INVERTED_PHYSICAL_RANGE` | A channel's calibration inverts its polarity: exactly one of its two bounds pairs is reversed |
 | `NO_SAMPLES` | A channel declares zero samples per data record, or no signal file was written because nothing carries any |
 | `EMPTY_LABEL` | A channel has a blank label |
-| `DUPLICATE_LABEL` | Two or more channels share a label, or a `--channels` term matched several |
+| `DUPLICATE_LABEL` | Two or more channels share a label, a channel's own label was taken by another's `_ch` suffix or by `time_s`, or a `--channels` term matched several |
 | `DISCONTINUOUS` | The recording has gaps in time, or its records are out of order |
 | `ANNOTATION_DECODE_FAILED` | An annotation entry, a record's timestamp, or an event's duration couldn't be read |
 | `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
