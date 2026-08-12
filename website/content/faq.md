@@ -548,7 +548,9 @@ produces exactly the same text.
 
 Use the exit code for pass or fail, and `--json` for the detail. The exit codes are 0 for success,
 1 for a problem with the file or the output directory, and 2 for a problem with how the command was
-invoked.
+invoked. Two more matter to a script: `--strict` also exits 1, for a conversion that wrote its
+output and merely raised a warning, so a pipeline using it cannot read 1 as "nothing was
+written"; and an interrupted run exits 130.
 
 ```bash
 edf2csv sleep-study.edf --out ./converted --json > result.json

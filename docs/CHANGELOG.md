@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.18
+
+### Fixed: the FAQ's exit codes, in the answer written for scripts
+
+Third page with this gap, after the README in 0.6.10 and getting-started in 0.6.16, and the one
+where it costs most: the question is "how do I check whether a conversion had problems from a
+script", and the answer gave three codes as the whole set. A pipeline built on it reads 1 as "a
+problem with the file or the output directory" — but the same page recommends `--strict` two
+sections later, and `--strict` returns 1 over a conversion that wrote every file it meant to.
+130 was missing as well.
+
 ## 0.6.17
 
 ### Fixed: the list of what writes to stdout left out `--stdout`
