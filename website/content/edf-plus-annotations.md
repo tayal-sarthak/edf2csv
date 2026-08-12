@@ -106,8 +106,14 @@ tool exports only the annotated epochs of a much longer study.
 The important consequence: in an EDF+D file, the arithmetic `record_index *
 record_duration` is no longer the record's position in time. It's only a count of
 how much data came before. The real position is stored in the first TAL of every
-data record, the mandatory timekeeping annotation, which carries an onset and no
-text. That TAL is the only place a discontinuous file records where its data sits.
+data record, the mandatory timekeeping annotation. That TAL is the only place a
+discontinuous file records where its data sits.
+
+It usually carries an onset and nothing else, and it is allowed to carry event text
+after the onset as well — writers do. Those events are exported like any other, which
+is why an unreadable first TAL costs both the record's position and whatever events
+came with it, and why the warning for one counts them separately from the warning for
+the other.
 
 `--info` names the format directly:
 

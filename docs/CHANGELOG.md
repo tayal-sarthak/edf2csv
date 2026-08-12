@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.24
+
+### Fixed: the timekeeping TAL described as one "which carries an onset and no text"
+
+It is allowed to carry text, writers use that, and edf2csv exports those events like any other —
+which is the whole reason `malformedTimekeepingWithText` is counted apart from
+`malformedTimekeeping`. A 0.5 release exists because the warning beside them said "No event was
+lost" over a conversion whose annotations.csv had gone from six rows to two, and the code comment
+recording that says in as many words that the specification allows both in one entry.
+
+The page describing annotations was the one still asserting they cannot coexist.
+
 ## 0.6.23
 
 ### Fixed: "Record `n` starts at `n * record_duration` seconds, and always will"
