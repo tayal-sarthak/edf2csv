@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.21
+
+### Fixed: getting-started said the output directory is the filename "with `_csv` appended"
+
+That is `recording.edf_csv`. `defaultOutputDir` strips the extension first, so it is
+`recording_csv` — which the same page prints in its own transcript nine lines above, and which
+the other three pages describing this all state correctly as the extension being removed or
+replaced. One page, contradicting itself and the other three, on the first fact anyone learns
+about where their output goes.
+
 ## 0.6.20
 
 ### Fixed: two pages quoted the short-read error as 0.6.4 stopped printing it

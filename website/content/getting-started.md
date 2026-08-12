@@ -54,7 +54,7 @@ Done in 0.0s.
 
 Some notes on that:
 
-- The output directory defaults to the input filename with `_csv` appended, created next to the input file. Use `-o` or `--out` to put it somewhere else.
+- The output directory defaults to the input filename with its extension replaced by `_csv` — `recording.edf` becomes `recording_csv` — created next to the input file. Use `-o` or `--out` to put it somewhere else.
 - If that directory already exists, edf2csv leaves it alone and exits with status 1. Pass `--force` to overwrite it, or `--out` to write elsewhere, so a new conversion never mixes into an old one.
 - The summary, any warnings, and the live `converting… 42%` progress line all go to stderr. Only `--info` and `--json` write to stdout — along with `--stdout`, which puts the signal CSV itself there, and `--help` and `--version`, which print and exit — so you can pipe results straight into another program.
 - Exit status is 0 on success, 1 when a file couldn't be read or written — or when `--strict` was given and the recording raised a warning, where the output is written anyway — and 2 when the command itself was wrong: an unknown flag, or a channel name that doesn't exist. An interrupted run exits 130.
