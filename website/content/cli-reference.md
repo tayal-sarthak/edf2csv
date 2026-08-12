@@ -814,8 +814,9 @@ fi
 | Code | Meaning |
 | --- | --- |
 | `0` | Success. The requested output was written, or `--info` or `--help` or `--version` printed |
-| `1` | The file or the destination is the problem |
+| `1` | The file or the destination is the problem — or `--strict` was given and the recording raised a warning, where neither is |
 | `2` | The command line is the problem |
+| `130` / `143` | Interrupted by SIGINT or SIGTERM part way through |
 
 **Exit 2** covers anything decided before touching data:
 

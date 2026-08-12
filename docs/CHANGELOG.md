@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.33
+
+### Fixed: the CLI reference's exit codes, the fifth and last page with this gap
+
+"`1` — The file or the destination is the problem" is the sentence the source quotes back at
+itself: `USAGE_ERROR_CODES` in `run.ts` carries it verbatim as the distinction the exit codes
+draw. It is exactly right for every code path except `--strict`, where neither the file nor the
+destination is the problem and the output is written in full.
+
+That completes the sweep — README, getting-started, the FAQ, the warnings page and this one all
+now say the same thing about exit 1, and all five list 130.
+
 ## 0.6.32
 
 ### Fixed: the canonical exit-code table had the gap the other three pages had
