@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.6
+
+### Fixed: "1 of 1 data records carries no readable timekeeping annotation"
+
+0.5.133 made the verb of this warning agree with the count of unreadable records — the subject
+is the one, not the three — and left the noun agreeing with nothing. A discontinuous recording
+of a single data record whose timekeeping annotation cannot be read says so in a sentence with
+both numbers in it, and the second one is also 1:
+
+```
+warning: 1 of 1 data records carries no readable timekeeping annotation (record 0), so its
+         true position in time is unknown.
+```
+
 ## 0.6.5
 
 ### Fixed: "after 0 of 1 rows had been written"

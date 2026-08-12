@@ -296,7 +296,7 @@ export function deriveRecordStarts(
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
       message:
-        `${missing.length} of ${file.recordCount} data records ${one ? 'carries' : 'carry'} no ` +
+        `${missing.length} of ${counted(file.recordCount, 'data record')} ${one ? 'carries' : 'carry'} no ` +
         `readable timekeeping annotation (record${one ? '' : 's'} ${shown}` +
         `${missing.length > 5 ? ', …' : ''}), so ${one ? 'its' : 'their'} true position in time ` +
         `is unknown.`,
