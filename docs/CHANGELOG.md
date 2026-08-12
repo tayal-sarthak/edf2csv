@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.11
+
+### Fixed: a quota failure creating the output directory came back as a raw errno
+
+`describeFsError` turns the errno from a failed `mkdir` into a sentence, and covers a full
+disk, a permission denial, a read-only filesystem, a path component that is a file and a path
+too long. It did not cover `EDQUOT`, so being over quota produced `Cannot create "out": EDQUOT:
+disk quota exceeded, mkdir '...'` where every neighbouring failure produces plain words. The
+write path a few hundred lines down has had a sentence for `EDQUOT` since 0.4.36 — and a shared
+or cluster filesystem, which is where a night of polysomnography usually gets converted, hits
+quota far more often than it hits a genuinely full disk.
+
 ## 0.6.10
 
 ### Fixed: the README's exit codes contradicted its own options list

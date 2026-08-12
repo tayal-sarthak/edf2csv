@@ -512,6 +512,8 @@ function describeFsError(cause: unknown): string {
   const code = (cause as NodeJS.ErrnoException | undefined)?.code;
   if (code === 'EACCES' || code === 'EPERM') return 'permission denied';
   if (code === 'ENOSPC') return 'the disk is full';
+  // The one that actually happens on a shared filesystem, and the one this list left out.
+  if (code === 'EDQUOT') return 'you are over your disk quota on this filesystem';
   if (code === 'ENOTDIR') return 'part of the path is a file, not a directory';
   if (code === 'EROFS') return 'the filesystem is read-only';
   if (code === 'ENAMETOOLONG') return 'the path is too long';
