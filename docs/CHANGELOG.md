@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.32
+
+### Fixed: the canonical exit-code table had the gap the other three pages had
+
+0.6.10, 0.6.16 and 0.6.18 fixed this on the README, getting-started and the FAQ. This is the
+table those pages defer to, and it had the same two omissions: `--strict` returns 1 over a
+conversion that wrote every file it meant to, and Ctrl-C returns 130.
+
+130 is the sharper miss, because the prose directly under the table already discusses it — "a
+signalled child exits 130 or 143" — while explaining how a batch combines codes. The number was
+on the page, in a paragraph about workers, and absent from the list of what the tool returns.
+
 ## 0.6.31
 
 ### Fixed: `ANNOTATION_DECODE_FAILED` also covers a duration that decoded fine

@@ -986,8 +986,15 @@ The reverse mistake was on this page until 0.5.65: "the recording changed size w
 | Code | Meaning |
 | --- | --- |
 | `0` | The command succeeded. Warnings may still have been printed |
-| `1` | The recording couldn't be read, or the output couldn't be written |
+| `1` | The recording couldn't be read, or the output couldn't be written — or `--strict` was given and the recording raised a warning, in which case the output was written in full |
 | `2` | The command was invoked incorrectly, or asked for something the recording can't provide |
+| `130` | Interrupted with Ctrl-C (SIGINT). Whatever had been written is incomplete |
+| `143` | Terminated by SIGTERM. Same as above |
+
+`1` is therefore not a synonym for "nothing was written". Under `--strict` it means the opposite: every file the run
+intended to write is there, and a warning is being reported as a failure because you asked for that. A pipeline that
+branches on the exit code alone cannot tell the two apart — read `warnings` from `--json`, or drop `--strict`, if the
+difference matters.
 
 Piping into a consumer that exits early, such as `head`, closes stdout and would normally raise a broken pipe error. That case is treated as success, so `edf2csv recording.edf --info | head -5` exits 0.
 
