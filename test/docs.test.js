@@ -1917,6 +1917,26 @@ describe('documentation and source agree on their lists', () => {
     const page = await read('website/content/api.md');
     const missing = Object.keys(api).filter((name) => !page.includes(name));
     assert.deepEqual(missing, [], `api.md does not mention: ${missing.join(', ')}`);
+
+    /*
+      And the members of the classes, not only the class names.
+
+      `EdfFile` is one entry in that list, so satisfying the check above says nothing about its
+      twenty-two members — which is how `sha256()` and `modifiedAtOpenMs` stayed undocumented
+      until 0.6.35 and 0.6.36. Both are public, both carry a rule a caller cannot guess, and
+      neither appeared on the page in any form.
+
+      Read off the prototype rather than the `.d.ts`, so it follows the shipped object.
+    */
+    for (const [name, value] of Object.entries(api)) {
+      if (typeof value !== 'function' || !/^[A-Z]/u.test(name)) continue;
+      const members = [
+        ...Object.getOwnPropertyNames(value.prototype),
+        ...Object.getOwnPropertyNames(value),
+      ].filter((m) => !['constructor', 'prototype', 'length', 'name'].includes(m) && !m.startsWith('#'));
+      const undocumented = members.filter((m) => !page.includes(m));
+      assert.deepEqual(undocumented, [], `api.md never mentions ${name}.${undocumented.join(`, ${name}.`)}`);
+    }
   });
 
   it('packs a tarball that holds the code it says it does', async () => {

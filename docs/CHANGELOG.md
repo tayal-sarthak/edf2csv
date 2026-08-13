@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.53
+
+### Changed: the API guard checks class members, not just class names
+
+`EdfFile` is one name in the package's exports, so the test asserting api.md documents every
+export was satisfied by the word "EdfFile" appearing once — while two of its twenty-two public
+members went unwritten until 0.6.35 and 0.6.36 found them by hand.
+
+The check now walks the prototype of every exported class and requires each member to appear on
+the page. Read off the shipped object rather than the declarations, so it follows what consumers
+actually get. Extended in place rather than added as a new test, since the suite's size is pinned
+on the correctness page and this is the same claim the existing one was making.
+
 ## 0.6.52
 
 ### Changed: the long-layout guard learns the wordings that got past it
