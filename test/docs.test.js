@@ -382,7 +382,14 @@ describe('documentation and source agree on their lists', () => {
       The rule this holds is narrow on purpose: a page that tells the reader a mixed-rate
       recording becomes several files has to also tell them about the layout that does not.
     */
-    const claims = /one file per rate|several signals files|no single `signals\.csv`|more than one table/iu;
+    /*
+      The phrase list is the weak part, and it has now let three of these through: 0.6.26 (the
+      warnings table said "several output files", one word off "several signals files"), 0.6.51
+      (the --stdout recipe said "produce exactly one") and 0.6.45's neighbours. A guard that
+      matches wording rather than meaning only catches the wordings someone thought of, so the
+      ones that got past it are added here as they are found rather than left for the next sweep.
+    */
+    const claims = /one file per rate|per sampling rate|several signals files|several output files|no single `signals\.csv`|more than one table|produce exactly one|needs exactly one table/iu;
     for (const page of [
       'sampling-rates.md',
       'output-files.md',
@@ -390,6 +397,7 @@ describe('documentation and source agree on their lists', () => {
       'getting-started.md',
       'cli-reference.md',
       'warnings-and-errors.md',
+      'recipes.md',
     ]) {
       const text = await read(`website/content/${page}`);
       if (!claims.test(text)) continue;

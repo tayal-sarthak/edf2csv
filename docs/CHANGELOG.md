@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.52
+
+### Changed: the long-layout guard learns the wordings that got past it
+
+Three findings in this line — 0.6.26, 0.6.51 and one beside 0.6.45 — were passages telling a
+reader a mixed-rate recording becomes several files without mentioning the layout that does not.
+There is a test for exactly that, and all three walked past it, because it matches four fixed
+phrases and each passage used a fifth: "several output files" against its "several signals
+files", "produce exactly one" against its "more than one table".
+
+The four wordings it missed are added, along with `recipes.md`, which was not in the page list at
+all despite carrying two of the passages. A phrase list cannot be complete; it can at least
+accumulate the misses instead of forgetting them.
+
 ## 0.6.51
 
 ### Fixed: the `--stdout` recipe offered one of the three fixes the refusal names
