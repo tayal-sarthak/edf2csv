@@ -224,7 +224,7 @@ type EdfErrorCode =
   | 'UNREADABLE';
 ```
 
-`UNREADABLE` covers a missing file, a directory passed where a file was expected, a permission failure, and a file that changed size while being read. Branch on `code`, never on the message text.
+`UNREADABLE` covers a missing file, a directory passed where a file was expected, a path that runs through a regular file (`rec.edf/inner`), something that is not a regular file at all such as a socket or a fifo, a permission failure, and a file that changed size while being read. It is also what a method throws on a file that has already been closed. Branch on `code`, never on the message text.
 
 ## Streaming samples
 

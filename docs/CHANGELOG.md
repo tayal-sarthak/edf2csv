@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.56
+
+### Fixed: the `UNREADABLE` case list, four of the six things it covers
+
+The reference gave a missing file, a directory where a file was expected, a permission failure
+and a file that changed size mid-read. Missing: a path running through a regular file, which
+0.6.12 taught the reader to word as "part of the path is a file, not a directory"; anything that
+is not a regular file, such as a socket or a fifo; and calling a method on a closed `EdfFile`,
+which is where a library caller meets this code most often.
+
+Third time a message change in this line has left prose behind it, after 0.6.20 and 0.6.42 — and
+the same remedy each time: diff the list against the function, don't read it.
+
 ## 0.6.55
 
 ### Fixed: the API reference's first example serialised `startDateTime` the one way it must not
