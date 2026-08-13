@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.48
+
+### Fixed: nothing said the JSON drops the hint every terminal warning carries
+
+A warning on screen is two lines: the message, and an indented hint saying what to do. The
+`warnings` array and `metadata.json`'s `notes` carry `code`, `severity` and `message` — and every
+transcript on the site shows both lines, so a reader moving from the terminal to a script has no
+reason to expect the second one to be gone.
+
+Nothing on any page was false about this; it was absent, which for a machine-readable contract
+is the same problem. Said outright now, with the reason — a hint varies with the run while a
+code does not — and a pointer to where the remedy lives.
+
 ## 0.6.47
 
 ### Fixed: `INPUT_CHANGED` missing from the list of warnings `--info` cannot raise
