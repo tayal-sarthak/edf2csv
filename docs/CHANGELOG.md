@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.44
+
+### Fixed: the CLI reference's exit-2 list omitted the destination collisions
+
+Nine categories listed, and the one missing is the only one that can stop a batch of five
+hundred recordings before a byte is written. `assertDistinct` refuses two recordings whose output
+would land in one directory, and refuses one destination sitting inside another; both throw
+`OptionError` and exit 2.
+
+The warnings page tabulates the first of the two and the CLI reference tabulated neither, so
+between them the site described half of it. The next version gives the warnings page the rest.
+
 ## 0.6.43
 
 ### Fixed: `exceeds_spreadsheet_limit` was emitted by `--info --json` and documented nowhere
