@@ -936,7 +936,7 @@ error: "notes.txt" is a file, but the converted data needs a directory.
        Choose a directory with --out.
 ```
 
-Filesystem failures are translated into plain language rather than passed through as system codes: permission denied, the disk is full, part of the path is a file rather than a directory, the filesystem is read-only, or the path is too long.
+Filesystem failures are translated into plain language rather than passed through as system codes: permission denied, the disk is full, you are over your disk quota on this filesystem, part of the path is a file rather than a directory, the filesystem is read-only, or the path is too long.
 
 ### WRITE_FAILED
 

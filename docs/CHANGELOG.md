@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.42
+
+### Fixed: the `OUTPUT_UNWRITABLE` list of translated failures, stale since 0.6.11
+
+0.6.11 taught `describeFsError` to say "you are over your disk quota on this filesystem" instead
+of leaking `EDQUOT`, and did not add it to the page enumerating what that function translates.
+The list gave five of its six.
+
+Second time in this line that a message fix has left prose behind it — 0.6.20 was the same shape
+— and both were found by diffing a list against the function it describes rather than by reading
+it. Worth doing after any change to a user-facing string.
+
 ## 0.6.41
 
 ### Fixed: the errno table left out `EPIPE`, the one a shell pipeline produces
