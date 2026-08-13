@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.50
+
+### Fixed: the third page defining an empty `duration_s` as "no duration"
+
+0.6.22 fixed this on the annotations page. `output-files.md` has had it right all along. This is
+the third copy, in the file-summary at the top of recipes, and it is the same half-definition:
+an empty cell also means the file stated a duration that could not be read, which is why
+`ANNOTATION_DECODE_FAILED` counts those rows and says so.
+
+Three pages, one sentence, written three times — and the two that were wrong were wrong in the
+same direction, because they were describing the behaviour from before the warning existed.
+
 ## 0.6.49
 
 ### Fixed: recipes showed a 100 Hz row as `286.50000000`
