@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.45
+
+### Fixed: the warnings page's usage table omitted every `--stdout` refusal
+
+Fourteen rows, and the whole `--stdout` family was one of them — "Several recordings with
+`--stdout`" — while the CLI reference lists five distinct ways that flag is refused: a folder,
+`--annotations-only`, a mixed-rate recording in the wide layout, and the four flags it
+contradicts. The empty-folder case and the nested-destination case were missing too.
+
+The two pages enumerate the same set and each was missing what the other had, which is the
+failure mode of keeping one list in two places. Both now carry all of it.
+
 ## 0.6.44
 
 ### Fixed: the CLI reference's exit-2 list omitted the destination collisions

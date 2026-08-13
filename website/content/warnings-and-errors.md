@@ -1040,6 +1040,12 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | `--duration` and `--end` together | `Use either --duration or --end, not both.` |
 | `--start` at or past the end of the recording | `--start "600s" is at or past the end of this 2s recording.` |
 | A window that ends before it starts | `The requested window ends at "1s", which is not after its start at "5s".` |
+| One recording's output inside another's | `"study/rec/inner.edf" would be converted into "out/rec/inner", which is inside "out/rec"` |
+| `--stdout` given a folder | `--stdout writes a single CSV, and a folder is converted as a batch even when it holds one recording.` |
+| `--stdout` with nothing to stream | `--stdout has no signal data to write because --annotations-only was given.` |
+| `--stdout` on a mixed-rate recording | `--stdout needs exactly one table, but this recording produces 3` — see [`UNSUPPORTED_REQUEST`](#unsupported_request) |
+| `--stdout` with `--json`, `--out`, `--checksum` or `--force` | `--stdout and --json both write to stdout, so they cannot be combined.` |
+| A folder holding no recordings | `No EDF or BDF recordings found in "study".` A folder that could not be *read* is exit 1 instead |
 
 A term that matches no channel is an error rather than a silent omission, and the message suggests the closest labels in the file. Quietly dropping a channel you explicitly asked for would hand you a CSV missing data you believe is in it.
 
