@@ -216,8 +216,9 @@ edf2csv sleep-study.edf --stdout --channels "EEG Fpz-Cz" |
 ```
 
 A stream holds one table, so this needs the recording to produce exactly one. A mixed-rate file is
-refused rather than merged; `--channels` narrowed to channels that share a rate is the usual fix. The
-row count goes to stderr, so stdout carries nothing but CSV.
+refused rather than merged, and the refusal names three ways out: narrow to a single rate with
+`--channels`, add `--layout long` to put every rate in one table of `time_s,channel,value`, or
+convert to a directory instead. The row count goes to stderr, so stdout carries nothing but CSV.
 
 ## Convert a whole folder of recordings
 

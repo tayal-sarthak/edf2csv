@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.51
+
+### Fixed: the `--stdout` recipe offered one of the three fixes the refusal names
+
+"`--channels` narrowed to channels that share a rate is the usual fix" — and `--layout long`
+is the one that needs no narrowing at all, since it streams every rate in a single table. The
+tool's own error message has listed all three since 0.5.0.
+
+Third finding caught by the same guard gap. The test that requires every mixed-rate passage to
+mention the long layout matches on four fixed phrases, and this passage says "needs the
+recording to produce exactly one" — none of them. 0.6.26 was the second. The guard is checking
+wording rather than meaning, which is why widening it is worth doing before the next sweep.
+
 ## 0.6.50
 
 ### Fixed: the third page defining an empty `duration_s` as "no duration"
