@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.54
+
+### Fixed: the FAQ's truncation transcript punctuated the hint differently from the tool
+
+`The recording looks truncated - it may have been cut short or copied incompletely.` The tool
+writes `truncated. It may`. A hyphen and a lowercase letter where there is a full stop and a
+capital — small, and still a block presented as captured output that no run of edf2csv produces.
+
+The test that keeps quoted hints honest checks that each is attached to the diagnostic it belongs
+to, not that it is transcribed character for character, so this sat inside a fenced block being
+read as real.
+
 ## 0.6.53
 
 ### Changed: the API guard checks class members, not just class names

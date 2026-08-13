@@ -425,7 +425,7 @@ the discrepancy:
 
 ```text
 warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
-         The recording looks truncated - it may have been cut short or copied incompletely.
+         The recording looks truncated. It may have been cut short or copied incompletely.
 ```
 
 If bytes are left over after the last complete record, they're ignored and reported separately as
