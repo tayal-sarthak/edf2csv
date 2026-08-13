@@ -986,6 +986,23 @@ error: Output file "recordings/channels.csv" is the same file as the input recor
 
 **What to do.** Convert into a directory of its own. The check covers every name the run would write, compressed forms included, so a `--gzip` run is refused on the same grounds.
 
+### UNSUPPORTED_REQUEST
+
+The command cannot be carried out as written, decided after reading the header.
+
+**Cause.** Every one of these is a `--stdout` refusal: `--stdout` with `--annotations-only`, which leaves no signal data to stream; `--stdout` on a recording whose channels use more than one sampling rate in the default wide layout, which would be more than one table; and `--stdout` on a recording with no signal channels at all.
+
+**What edf2csv does.** Refuses and exits **2**, not 1. It is the one `ConversionErrorCode` in `USAGE_ERROR_CODES`, because the fix is to change the flags rather than the file — the hints say exactly that, and filing it under 1 sent scripts looking at the disk.
+
+```
+error: --stdout needs exactly one table, but this recording produces 3, one for each sampling
+       rate its channels use (256 Hz, 128 Hz, 1 Hz).
+       Narrow it to one rate with --channels, write --layout long to get them all in one table,
+       or convert to a directory instead.
+```
+
+**What to do.** Take one of the three routes the hint names. `--info --stdout` reports the same refusal ahead of time as a [`STDOUT_UNSUPPORTED`](#stdout_unsupported) warning rather than an error, since `--info` writes nothing.
+
 ## Usage errors
 
 These mean the command was invoked in a way that can't be carried out. They exit **2** rather than 1, so a script can tell "you asked for something impossible" apart from "this recording is broken".

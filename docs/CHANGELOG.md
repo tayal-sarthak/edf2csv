@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.39
+
+### Fixed: `UNSUPPORTED_REQUEST` had no section, and it is the one that exits 2
+
+Third of the four. It is the only `ConversionErrorCode` in `USAGE_ERROR_CODES`, so it is the
+only one where the code a script sees is 2 rather than 1 — a distinction the page's own exit-code
+table draws and this code's absence made unverifiable from the page.
+
+Placed at the head of the usage-error section rather than with the other conversion errors,
+since that is where its exit code puts it.
+
 ## 0.6.38
 
 ### Fixed: `INPUT_UNREADABLE` had no section, and is the one that leaves output behind
