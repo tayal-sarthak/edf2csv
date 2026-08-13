@@ -959,6 +959,7 @@ The hint is chosen from what actually failed. Until 0.4.36 every write failure c
 | `ENOENT` | Part of that path no longer exists — something is removing it while the conversion runs |
 | `ENAMETOOLONG` | That path is longer than the filesystem allows |
 | `EMFILE`, `ENFILE` | Too many files are open; a recording with many sampling rates opens one output file per rate, so `--channels` narrows it |
+| `EPIPE` | Whatever was reading the output closed it before the conversion finished |
 | anything else | Check the destination and run the conversion again |
 
 The partly written files are left on disk either way. They are truncated at an arbitrary point and must not be analysed: fix what the hint names and run the conversion again from the start.

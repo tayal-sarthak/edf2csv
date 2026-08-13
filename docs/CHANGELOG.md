@@ -3,6 +3,16 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.41
+
+### Fixed: the errno table left out `EPIPE`, the one a shell pipeline produces
+
+`writeHint` turns eleven errnos into sentences and the table on the page reproduces ten. The
+missing one is the only one an ordinary command reaches without anything being wrong with the
+destination: a reader closing the pipe. It has its own written sentence in the source —
+"Whatever was reading the output closed it before the conversion finished" — which nothing on
+the site showed.
+
 ## 0.6.40
 
 ### Fixed: `CALLBACK_FAILED` had no section — the last of the four
