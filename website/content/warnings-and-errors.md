@@ -43,6 +43,7 @@ It raises them for what it read, which on a continuous file is however many reco
 What it cannot raise is the handful that need a conversion to exist:
 
 - `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written.
+- `INPUT_CHANGED`, which asks whether the recording moved while it was being converted. `--info` opens the file, reads a header and closes it, so there is no window for it to have moved during — and no output whose description of the file could have stopped being true.
 - The `NO_SAMPLES` that reports a signal file *not written* — the per-channel one, about a channel carrying no samples, comes from the header and is raised.
 - The EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
 

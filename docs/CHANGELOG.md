@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.47
+
+### Fixed: `INPUT_CHANGED` missing from the list of warnings `--info` cannot raise
+
+It is raised in exactly two places, both inside `convert()`, and `--info` reaches neither. The
+page lists four things a conversion can report that `--info` cannot and this was a fifth.
+
+The guard behind that list cannot catch it. It converts every fixture, compares the codes
+against `--info`'s, and requires any difference to be named on the page — and `INPUT_CHANGED`
+fires only when a file moves mid-conversion, which a static fixture never does. So the sweep sees
+the code on neither side and has nothing to compare. Same shape as 0.6.25, where the code was
+missing a section: guards that compare observed behaviour are blind to what never happens in the
+fixture set.
+
 ## 0.6.46
 
 ### Fixed: `--info --json` had no field reference, and was described as "the same fields"
