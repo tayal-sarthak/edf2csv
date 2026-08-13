@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.55
+
+### Fixed: the API reference's first example serialised `startDateTime` the one way it must not
+
+```js
+console.log(`start ${file.header.startDateTime?.toISOString() ?? 'unknown'}`);
+```
+
+That is the opening worked example on the page, and `toISOString()` is precisely what the same
+page warns against six hundred lines later, in the paragraph explaining why `formatWallClock`
+exists: the `Z` asserts UTC over digits the format never assigned a zone to, so a reader
+converting to local time moves the recording by their own offset — "13:43:04 in the file becomes
+08:43:04 in New York".
+
+The `EdfHeader` field list called it "a UTC `Date`" flatly, which is the belief that produces the
+mistake. Both now say what the source comment says, and the example uses `formatWallClock`.
+
 ## 0.6.54
 
 ### Fixed: the FAQ's truncation transcript punctuated the hint differently from the tool

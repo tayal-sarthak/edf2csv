@@ -74,14 +74,15 @@ Two properties need care. `recordCount` is derived from the actual file size, no
 ### Printing a channel table
 
 ```js
-import { EdfFile, describeFormat, formatRate } from 'edf2csv';
+import { EdfFile, describeFormat, formatRate, formatWallClock } from 'edf2csv';
 
 const file = await EdfFile.open('/data/recordings/sleep-study.edf');
 try {
   console.log(describeFormat(file.header));
   console.log(`${file.recordCount} records of ${file.header.recordDuration}s`);
   console.log(`duration ${file.durationSeconds}s`);
-  console.log(`start ${file.header.startDateTime?.toISOString() ?? 'unknown'}`);
+  // formatWallClock, not toISOString: see EdfHeader below for why the Z would be a lie.
+  console.log(`start ${formatWallClock(file.header.startDateTime) ?? 'unknown'}`);
 
   for (const signal of file.dataSignals) {
     console.log(
@@ -144,7 +145,7 @@ interface EdfHeader {
 }
 ```
 
-`startDateTime` is a UTC `Date`. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
+`startDateTime` is a `Date` built with `Date.UTC`, which makes it a carrier for the file's wall-clock digits rather than a real instant — EDF records no timezone at all. Do not serialise it with `toISOString()`: the `Z` asserts UTC, and a reader converting to local time then shifts the recording by their own offset. Use [`formatWallClock`](#smaller-exports), which writes the digits without a zone. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
 
 `continuity` normalises the BDF+ spelling: a file reserving `BDF+D` reports `'EDF+D'`, because the two mean the same thing.
 
