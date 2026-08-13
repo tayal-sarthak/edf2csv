@@ -986,6 +986,22 @@ error: Output file "recordings/channels.csv" is the same file as the input recor
 
 **What to do.** Convert into a directory of its own. The check covers every name the run would write, compressed forms included, so a `--gzip` run is refused on the same grounds.
 
+### CALLBACK_FAILED
+
+The `onProgress` callback a library caller passed to `convert` threw.
+
+**Cause.** A bug in the caller's own code. The command line never raises this — its progress meter is internal — so it appears only through the [programmatic API](/docs/api).
+
+**What edf2csv does.** Stops the conversion and reports the callback as the cause, keeping the original error as `cause` so the stack that matters survives. It is deliberately not filed as a write failure: running inside the same guard that turns a stream error into `WRITE_FAILED` meant a caller's bug came back as `Writing to "out" failed: <their message>`, advising them to check a destination that was working.
+
+```
+error: The onProgress callback threw: Cannot read properties of undefined (reading 'total')
+       This is the caller's callback, not the recording or the destination. Whatever was written
+       before it threw is incomplete and should not be used.
+```
+
+**What to do.** Fix the callback. The conversion still stops, and whatever it had written is incomplete — carrying on writing into a directory whose owner has just failed is not an improvement.
+
 ### UNSUPPORTED_REQUEST
 
 The command cannot be carried out as written, decided after reading the header.

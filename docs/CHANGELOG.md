@@ -3,6 +3,17 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.40
+
+### Fixed: `CALLBACK_FAILED` had no section — the last of the four
+
+Fourth and last undocumented `ConversionErrorCode`. It is the only one the command line cannot
+produce, which is presumably how it stayed unwritten: it reaches a library caller and nobody
+else. That also makes it the one whose reader has no terminal transcript to compare against, so
+the page was the only place it could have been explained.
+
+Every code in `DiagnosticCode`, `EdfErrorCode` and `ConversionErrorCode` now has a section.
+
 ## 0.6.39
 
 ### Fixed: `UNSUPPORTED_REQUEST` had no section, and it is the one that exits 2
