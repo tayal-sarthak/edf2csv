@@ -788,7 +788,27 @@ Field by field:
 
 The `code` values are stable identifiers meant for programmatic checks: `MIXED_SAMPLING_RATES`, `DISCONTINUOUS`, `RECORD_COUNT_MISMATCH`, `RECORD_COUNT_UNKNOWN`, `TRAILING_BYTES`, `DUPLICATE_LABEL`, `EMPTY_LABEL`, `LARGE_OUTPUT`, `STALE_OUTPUT`, `ANNOTATION_DECODE_FAILED`, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE`, `UNUSABLE_PHYSICAL_RANGE`, `INVERTED_PHYSICAL_RANGE`, `COMMA_DECIMAL`, `NO_ANNOTATIONS`, `NO_SIGNAL_CHANNELS`, `NO_SAMPLES`, `INPUT_CHANGED`, `EMPTY_WINDOW`, `NONPRINTABLE_LABEL`, `TIME_RESOLUTION`, `VALUE_RESOLUTION`, `STDOUT_UNSUPPORTED`, `START_TIME_UNREADABLE`, `MISSING_EDF_PLUS_MARKER` and `HEADER_BYTES_MISMATCH`. Match on `code`, not on `message`.
 
-`--json` applies to both. On a conversion it prints the summary object below; with `--info` it prints the recording's description as JSON instead of the table — the same fields, shaped for surveying a directory of recordings from a script. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
+`--json` applies to both. On a conversion it prints the summary object above; with `--info` it prints the recording's description as JSON instead of the table. That is a different document with different fields — it describes a recording rather than a run — and it carries:
+
+| Field | Meaning |
+| --- | --- |
+| `path`, `bytes` | The recording as given, and its size on disk |
+| `format` | `EDF`, `EDF+ (continuous)`, `BDF+ (discontinuous)` and so on |
+| `start_datetime_local` | Zone-less `YYYY-MM-DDTHH:MM:SS`, or `null` when the header's date and time cannot be read |
+| `start_date_raw`, `start_time_raw` | Those two header fields exactly as written, readable or not |
+| `patient_id`, `recording_id` | The two identification fields. Often carry patient identifiers — treat as sensitive |
+| `data_records` | Records the file actually holds |
+| `data_records_declared` | What the header claims, which can differ; `-1` means the writer didn't know |
+| `record_duration_seconds` | Seconds per data record, possibly fractional |
+| `duration_seconds` | `data_records * record_duration_seconds` — how much signal exists |
+| `time_span_seconds` | How long the recording covers, which exceeds the above by the length of any gaps |
+| `first_sample_seconds` | Where `time_s` begins, and the clock `--start` and `--end` are read against. Usually 0 |
+| `annotation_channels` | How many `EDF Annotations` channels the file declares |
+| `channels` | One object per signal channel, with `signal_index`, `column`, `label`, `unit`, the rates and bounds, and `output_file` (`null` when it wouldn't be converted) |
+| `estimate` | `rows`, `bytes` and `exceeds_spreadsheet_limit`, as above |
+| `warnings` | Same shape as the conversion summary's |
+
+Field names match `metadata.json` wherever the two describe the same thing, so a survey and a conversion can be read by the same code. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
 
 To fail a batch job on any warning, use `--strict`:
 

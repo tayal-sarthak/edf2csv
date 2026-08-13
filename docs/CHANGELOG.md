@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.46
+
+### Fixed: `--info --json` had no field reference, and was described as "the same fields"
+
+The conversion summary gets a sample document and a field-by-field table. Its sibling got one
+sentence — "the recording's description as JSON instead of the table — the same fields, shaped
+for surveying" — and the two documents in fact share two field names out of eighteen. Three of
+its fields are mentioned anywhere on the site; the other fifteen, including everything a survey
+script would actually read, appear in no page in any form.
+
+Larger than a release in this line usually is, because a missing field reference cannot be
+fixed in two lines. The sentence claiming the documents match is corrected in the same change,
+since it is what made the absence look deliberate.
+
 ## 0.6.45
 
 ### Fixed: the warnings page's usage table omitted every `--stdout` refusal
