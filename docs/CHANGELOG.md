@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.43
+
+### Fixed: `exceeds_spreadsheet_limit` was emitted by `--info --json` and documented nowhere
+
+Thirty-one snake_case keys are written into the JSON this tool produces — the conversion
+summary, the `--info` document and `metadata.json` — and thirty of them appear somewhere on the
+site. This was the one that did not, on any page, in any form.
+
+It is the machine-readable half of `LARGE_OUTPUT`: a boolean a script can branch on instead of
+matching a warning message, which is exactly what the surrounding paragraphs tell scripts to do.
+Its two siblings in the same object, `rows` and `bytes`, are documented a line away, including
+0.6.0's rule about them being `null` when no signal table is written.
+
 ## 0.6.42
 
 ### Fixed: the `OUTPUT_UNWRITABLE` list of translated failures, stale since 0.6.11
