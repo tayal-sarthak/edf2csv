@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.49
+
+### Fixed: recipes showed a 100 Hz row as `286.50000000`
+
+Eight decimal places is what 256 Hz gets. The paragraph is about `signals_100hz.csv`, three code
+blocks under a snippet that loads it, and 100 Hz gets three places — the file really writes
+`286.500`, which converting the page's own example recording confirms.
+
+The point being made is right and worth keeping: a window converted on its own keeps the whole
+recording's clock rather than restarting at zero. It was the illustration that came from a
+different file.
+
 ## 0.6.48
 
 ### Fixed: nothing said the JSON drops the hint every terminal warning carries

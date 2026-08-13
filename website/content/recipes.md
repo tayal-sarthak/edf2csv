@@ -43,7 +43,7 @@ signals["EEG Fpz-Cz"].describe()
 
 EDF labels routinely contain spaces and hyphens, so columns are addressed with brackets rather than attribute access: `signals["EEG Fpz-Cz"]`, not `signals.EEG`. `time_s` is an ordinary float index in seconds, which makes `.loc[start:stop]` a plain numeric slice.
 
-If you converted a window with `--start` and `--duration`, `time_s` still counts from the beginning of the whole recording, not from the beginning of the excerpt. A conversion started at 286.5 s begins its first row at `286.50000000`, so the numbers keep meaning the same thing whichever slice you converted.
+If you converted a window with `--start` and `--duration`, `time_s` still counts from the beginning of the whole recording, not from the beginning of the excerpt. A conversion started at 286.5 s begins its first row at `286.500`, so the numbers keep meaning the same thing whichever slice you converted. The decimal count comes from the rate — three places at 100 Hz, eight at 256 Hz — so the same window written from a faster channel reads `286.50000000`.
 
 ## Give the rows a wall-clock timestamp
 
