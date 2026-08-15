@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.58
+
+### Added: CI runs the six sweeps it has always claimed as its evidence
+
+The correctness page names seven checks as how this project knows what it claims — the estimate
+sweep, the layout sweep, the round trip, the corruption fuzzer, the batch trees, the narrowing
+sweep, and the pyEDFlib cross-check. CI ran none of them. `npm test` covers the suite; the
+harnesses are separate scripts, and nothing invoked them on a push, so a regression in an
+invariant that only a sweep can see would have shipped in silence.
+
+Six of the seven now run as their own job, each as a named step so a failure says which invariant
+broke rather than "sweeps". A separate job because they take minutes where the suite takes one,
+and GitHub runs jobs concurrently — a pull request waits for the slowest, not the sum. One Node
+version, since these assert what the tool computes and `core` is what covers computing it on
+both.
+
+The seventh, `crossvalidate`, stays manual: it needs pyEDFlib installed, and a check whose value
+is that it compares against an independent implementation should not be silently skipped when
+that implementation fails to install.
+
 ## 0.6.57
 
 ### Added: a sweep checking that narrowing a conversion returns the part it names

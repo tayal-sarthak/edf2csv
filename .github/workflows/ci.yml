@@ -24,6 +24,39 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # The correctness page names seven sweeps as how this project knows what it claims, and
+  # until now nothing ran any of them on a push: `npm test` covers the suite and not the
+  # harnesses, so a regression in an invariant only a sweep checks shipped in silence.
+  #
+  # Its own job rather than steps on `core`, because these take minutes where the suite takes
+  # one, and GitHub runs jobs concurrently — the pull request waits for the slowest, not the
+  # sum. One Node version is enough: these assert what the tool computes, and `core` is what
+  # covers computing it on both.
+  sweeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run fixtures
+      # Each on its own line so a failure names the invariant that broke rather than "sweeps".
+      - name: Estimates never read under what is written
+        run: node test/fuzz/estimate.mjs
+      - name: The two layouts hold the same samples
+        run: node test/fuzz/layouts.mjs
+      - name: Digital codes survive the round trip
+        run: node test/fuzz/roundtrip.mjs
+      - name: Narrowing returns the part it names
+        run: node test/fuzz/narrowing.mjs
+      - name: A damaged file is reported, never a crash
+        run: node test/fuzz/mutate.mjs
+      - name: A batch converts each recording as converting it alone would
+        run: node test/fuzz/trees.mjs
+
   website:
     runs-on: ubuntu-latest
     steps:
