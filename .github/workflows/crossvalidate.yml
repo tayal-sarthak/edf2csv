@@ -1,0 +1,37 @@
+name: Cross-validate against pyEDFlib
+
+# Claim 1 on the correctness page — that the physical values match a reference implementation to
+# the last bit — is the one this project leads with and the only one nothing ran automatically.
+# It stays out of CI because it needs pyEDFlib installed, and a check whose entire value is that
+# it compares against an independent implementation must not skip itself when that
+# implementation fails to install: a green tick meaning "pip was unhappy" is worse than no tick.
+#
+# So it runs on its own schedule instead, where a failure to install is a failure to report.
+# Weekly rather than per-push, because what it guards against is drift in the arithmetic or in
+# pyEDFlib itself, neither of which moves at the speed of a commit.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crossvalidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: pip install pyedflib
+      # `npm run crossvalidate` builds, generates the recordings, dumps this tool's doubles and
+      # compares all 64 bits of each against pyEDFlib's. It exits non-zero on any disagreement,
+      # and says so rather than pretending to have checked when pyEDFlib is absent.
+      - run: npm run crossvalidate

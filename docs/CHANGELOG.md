@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.61
+
+### Added: the pyEDFlib cross-check runs weekly instead of never
+
+0.6.58 put six of the seven sweeps into CI and left this one out on purpose: it needs pyEDFlib
+installed, and a check whose whole value is comparing against an independent implementation must
+not quietly pass when that implementation fails to install. A green tick meaning "pip was
+unhappy" is worse than no tick.
+
+Its own scheduled workflow answers that. On a schedule a failed install is a failed run — there
+is no pull request it would be blocking and no temptation to make it skippable — and weekly is
+the right cadence for what it actually guards: drift in the arithmetic, or in pyEDFlib. Neither
+moves at the speed of a commit. `workflow_dispatch` is there for running it against a change
+that touches the scaler.
+
+That is claim 1 on the correctness page — the one this project leads with — and it was the last
+one whose evidence had to be produced by hand.
+
 ## 0.6.60
 
 ### Changed: the publish step retries the two failures that are not the code's
