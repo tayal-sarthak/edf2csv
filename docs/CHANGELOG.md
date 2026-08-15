@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.60
+
+### Changed: the publish step retries the two failures that are not the code's
+
+Both failures seen while releasing were the registry's, not the tarball's. Publishing a batch
+together made one run die on `E409 Conflict - Failed to save packument`, which is npm refusing a
+write with another in flight. A later one died on `CA_CREATE_SIGNING_CERTIFICATE_ERROR - (403)
+Forbidden`, which is Sigstore declining to mint the provenance certificate after a clean build
+and a passing suite. Both published on a manual rerun, unchanged.
+
+Three attempts with a widening pause, and the registry is asked between them: if the version is
+already there, the write landed and whatever failed came after it, so the step succeeds rather
+than retrying. That is what makes a retry safe here — it cannot publish the same version twice,
+and it cannot mistake a genuine refusal for a transient one, because the check is what actually
+shipped rather than what the exit code said.
+
 ## 0.6.59
 
 ### Added: an npm downloads badge on the README
