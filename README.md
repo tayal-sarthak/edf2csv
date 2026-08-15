@@ -1,5 +1,7 @@
 # edf2csv
 
+[![downloads](https://img.shields.io/npm/dt/edf2csv?label=downloads)](https://www.npmjs.com/package/edf2csv)
+
 Convert an EDF, EDF+ or BDF recording to CSV with one command.
 
 ```bash

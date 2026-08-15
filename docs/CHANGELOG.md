@@ -3,6 +3,14 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.59
+
+### Added: an npm downloads badge on the README
+
+`img.shields.io/npm/dt/edf2csv`, linked to the package page. It reads the registry's own download
+total rather than a number written into the file, so it cannot drift the way the figures this
+project keeps correcting have.
+
 ## 0.6.58
 
 ### Added: CI runs the six sweeps it has always claimed as its evidence
