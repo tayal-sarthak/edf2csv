@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.57
+
+### Added: a sweep checking that narrowing a conversion returns the part it names
+
+`--channels` selects columns and `--start`/`--end` selects rows. Both are documented as
+selections rather than transformations — output-files puts it as "a section converted on its own
+lines up with the full conversion" — and nothing ran it. The layout sweep compares wide against
+long, the estimate sweep compares predicted row counts against written ones, and neither asks
+whether the rows a narrowed run writes are the rows the full run wrote.
+
+`npm run narrowing` takes each fixture's full conversion as the truth, converts every channel
+alone and three windows out of it, and requires the narrowed output to be the corresponding slice
+byte for byte: 106 single-channel selections and 253 windows over 50 recordings. Everything
+agrees, which is the result to want from a check written after the fact.
+
+Its first run did not agree, and the disagreement was the sweep's. Window bounds were read back
+off the CSV, where `time_s` is rounded — 8/17 is 0.47058823… and prints as `0.47059` — while a
+conversion filters the exact sample times, so a bound taken from the file sits just past the
+sample it came from and the conversion rightly keeps a row the check excluded. Bounds now sit
+halfway between two samples, where no rounding on either side can move a row across them.
+
 ## 0.6.56
 
 ### Fixed: the `UNREADABLE` case list, four of the six things it covers
