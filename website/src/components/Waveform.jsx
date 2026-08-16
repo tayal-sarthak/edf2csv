@@ -196,7 +196,16 @@ export default function Waveform() {
         ))}
       </div>
 
-      <div className="scope__readout">
+      {/*
+        Decorative to assistive technology, deliberately.
+
+        The row underneath rewrites five numbers sixty times a second. Nothing marks it
+        as a live region, so a screen reader does not announce the changes — but it does
+        read the row when a user lands on it, and what it reads is a snapshot of an
+        animation that has already moved on. The svg above already carries the
+        description of what this is; the numbers are the same idea drawn twice.
+      */}
+      <div className="scope__readout" aria-hidden="true">
         <div className="scope__readout-head">
           <span>time_s</span>
           {channels.map((channel) => (

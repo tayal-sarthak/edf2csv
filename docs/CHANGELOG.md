@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.72
+
+### the hero readout offered a screen reader a snapshot of a moving animation
+
+The hero's readout rewrites five numbers sixty times a second, straight into the DOM through
+refs. A screen reader reaching that row reads whatever the numbers happened to be at the moment
+it arrived: a snapshot of an animation that has already moved on, presented as though it were
+data on the page. The traces above it already carry a description of what the visual is showing,
+so the numbers are the same idea a second time, and the second time is the one that cannot be
+read accurately.
+
+Marked `aria-hidden`, which is what it always was in substance. Nothing about the sighted
+experience changes, and the `role="img"` label on the traces stays as the accessible account of
+the visual.
+
 ## 0.6.71
 
 ### table headers claimed no direction on pages that are mostly tables
