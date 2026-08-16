@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.73
+
+### the theme button named the state it was in, not what pressing it does
+
+The theme button announced itself as "Switch theme, currently auto" and had a tooltip reading
+"Theme: auto". Both describe the state the reader is already in, on a control that cycles through
+three of them, so the one thing neither says is what pressing it will do — which for a three-way
+cycle is not guessable. It now reads "Switch to the light theme", then "Switch to the dark
+theme", then "Match the system theme", naming the outcome each press produces.
+
+The icon keeps showing the current state, which is the division of labour that was intended: the
+name of a button is its action, and its appearance is its state.
+
 ## 0.6.72
 
 ### the hero readout offered a screen reader a snapshot of a moving animation

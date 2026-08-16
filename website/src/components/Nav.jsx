@@ -46,7 +46,17 @@ export default function Nav() {
     };
   }, []);
 
-  const cycle = () => setTheme((t) => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto'));
+  const next = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+  const cycle = () => setTheme(next);
+
+  /*
+    The label names what pressing it does, not what is currently true.
+
+    It read "Switch theme, currently auto", which tells a screen-reader user the state
+    they are already in and leaves the outcome to be discovered by pressing. A button's
+    accessible name is its action; the state it happens to be in is what the icon shows.
+  */
+  const label = next === 'auto' ? 'Match the system theme' : `Switch to the ${next} theme`;
 
   return (
     <nav className="nav" data-scrolled={scrolled}>
@@ -69,8 +79,8 @@ export default function Nav() {
             className="nav__toggle"
             onClick={cycle}
             whileTap={reduced ? undefined : { scale: 0.92 }}
-            title={`Theme: ${theme}`}
-            aria-label={`Switch theme, currently ${theme}`}
+            title={label}
+            aria-label={label}
           >
             {theme === 'light' ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
