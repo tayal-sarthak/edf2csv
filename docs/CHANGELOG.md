@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.129
+
+### nothing ever installed the package and ran it
+
+Every check in CI ran against the working tree, where `npm test` has just built the code. Twice the
+thing that was broken was the tarball, and neither time could any of those checks see it: 0.5.30
+published four files and no `dist/` at all, and 0.6.117 — eleven releases ago — shipped a manifest
+whose `bin` pointed at a `dist/cli.js` no lifecycle hook was building, because `prepack` does not
+run for a git install.
+
+The suite reasons about the manifest: `files` says what ships, `bin` and `exports` say what has to
+be in it. That is a check on what the package *claims*. Nothing packed the thing and used it.
+
+A job now does. It runs `npm pack`, installs the tarball into an empty directory somewhere else —
+the way anybody else gets this package — and asks it the two questions a consumer asks: does
+`edf2csv --version` run and report the version the manifest declares, and does `import('edf2csv')`
+hand back `convert`, `EdfFile` and `parseHeader`. Neither can pass against a tarball with no code in
+it, which is exactly what both of those releases shipped.
+
+Its own job rather than a step on the existing ones, so a failure says "tarball" instead of being
+the last line of a matrix entry, and so it runs beside them instead of after.
+
 ## 0.6.128
 
 ### a sample metadata.json claimed a version 125 releases old

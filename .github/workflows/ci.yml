@@ -67,6 +67,36 @@ jobs:
       - name: A batch converts each recording as converting it alone would
         run: node test/fuzz/trees.mjs
 
+  # Every check above runs against the working tree. Twice now the thing that was broken was
+  # the tarball: 0.5.30 published four files and no `dist/`, and 0.6.117 shipped a manifest
+  # whose `bin` pointed at a file no hook was building. Both looked fine from inside the
+  # repository, because inside the repository `npm test` had just built it.
+  #
+  # So this packs the package and installs it somewhere else, the way anybody else gets it,
+  # and then asks it the two questions a consumer asks: does the command run, and does the
+  # library import. Neither can pass on a tarball with no code in it.
+  tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pack it, install it elsewhere, and use it
+        run: |
+          set -euo pipefail
+          tarball="$GITHUB_WORKSPACE/$(npm pack --silent)"
+          expected="$(node -p "require('$GITHUB_WORKSPACE/package.json').version")"
+          mkdir -p "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$tarball"
+          got="$(./node_modules/.bin/edf2csv --version)"
+          [ "$got" = "$expected" ] || { echo "the installed binary reports $got, not $expected"; exit 1; }
+          node -e "import('edf2csv').then(m => { for (const name of ['convert', 'EdfFile', 'parseHeader']) if (typeof m[name] !== 'function') { console.error(name + ' is not exported by the installed package'); process.exit(1); } })"
+
   website:
     runs-on: ubuntu-latest
     steps:
