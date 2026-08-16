@@ -910,6 +910,10 @@ a {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-sunken);
+  /* The reference pages have long contents lists; the box scrolls rather than pushing
+     the prose down the page. See the narrow-viewport cap below, which lowers this. */
+  max-height: min(60vh, 30rem);
+  overflow-y: auto;
 }
 
 .docs__toc-title {
@@ -938,13 +942,6 @@ a {
 
 .docs__toc a[data-level='3']:hover {
   color: var(--accent-text);
-}
-
-/* The reference pages have long contents lists; the box scrolls rather than pushing
-   the prose down the page. */
-.docs__toc {
-  max-height: min(60vh, 30rem);
-  overflow-y: auto;
 }
 
 /*

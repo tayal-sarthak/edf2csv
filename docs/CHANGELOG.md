@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.137
+
+### one box, its height decided in three places
+
+`.docs__toc` was declared twice, thirty-eight lines apart, with four unrelated selectors between
+them. The first block is the box: grid, gap, padding, border, background. The second added the two
+declarations that decide how tall it is and that it scrolls.
+
+Nothing was wrong with the result — the browser merges them — but a reader of the first block had no
+reason to think the box was capped at all, and it had already cost something. 0.6.107 needed to
+lower that cap on a phone and could only do it by adding a *third* `.docs__toc` block in a media
+query, so the height of one box was being decided in three places, none of which was where the box
+is defined.
+
+One block now, with the cap in it and a line pointing at the narrow-viewport override that lowers
+it. Computed styles read back identical either side of the change: 480px and `auto` on the desktop
+page, 176px and `auto` at 375 wide.
+
 ## 0.6.136
 
 ### the workflow that signs the release trusted three moving tags
