@@ -3,6 +3,18 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.96
+
+### the preview card had no description on the platform that shows it largest
+
+0.6.62 gave the preview card an `og:image:alt`, which covers the platforms that read Open Graph. X
+is not one of them: it reads `twitter:image:alt` and does not fall back. So on the platform where
+the card is largest and most often seen, the one image this site publishes had no description at
+all — on a site that has just spent a dozen releases on the things screen readers are told.
+
+The sentence is written once and used by both tags. Two copies of the same alt text is how one of
+them ends up describing a picture that has since changed.
+
 ## 0.6.95
 
 ### a second push left the first run testing a dead commit

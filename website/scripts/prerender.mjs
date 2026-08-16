@@ -179,14 +179,22 @@ function breadcrumbs(doc) {
  * what a pasted link used to unfurl into.
  */
 function socialImageTags() {
+  const alt = 'edf2csv: your recording, as numbers. npx edf2csv recording.edf';
   return [
     `<meta property="og:image" content="${SITE_URL}/og.png" />`,
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="630" />`,
-    `<meta property="og:image:alt" content="edf2csv: your recording, as numbers. npx edf2csv recording.edf" />`,
+    `<meta property="og:image:alt" content="${alt}" />`,
     `<meta property="og:locale" content="en_US" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:image" content="${SITE_URL}/og.png" />`,
+    /*
+      X reads its own alt tag and does not fall back to the Open Graph one, so the card
+      that carries the whole preview was the one image on this site with no description.
+      Written once above and used by both, because two literals of the same sentence is
+      how one of them ends up describing an image that has changed.
+    */
+    `<meta name="twitter:image:alt" content="${alt}" />`,
   ];
 }
 
