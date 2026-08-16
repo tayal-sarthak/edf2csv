@@ -153,7 +153,8 @@ Channels   5 signals + 1 annotation channel
 3  Resp oro-nasal  Resp oro-nasal  V     10 Hz   -1 to 1      signals_10hz.csv
 4  Temp rectal     Temp rectal     degC  1 Hz    34 to 40     signals_1hz.csv
 
-Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
+Sampling rates differ, so channels are written to 3 files, one per rate. No
+channel is resampled.
 Would write 3,196,800 rows, roughly 108 MB.
 ```
 

@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.2
+
+### --info explained itself in 156-column sentences
+
+156 columns, on the sentence explaining why a mixed-rate recording is split across files.
+
+`--help` has been written to 80 columns since it existed. Hints under warnings joined it in
+0.7.1. `--info` — the mode whose entire purpose is being read by a person before they commit
+to a conversion — was still emitting whatever length the sentence happened to come out at,
+and seven of its lines ran past 80:
+
+```
+Sampling rates differ, and the long layout puts them in one table anyway: each
+row carries its own time, so nothing has to line up. No channel is resampled.
+Would write 1,155 rows, roughly 32.4 KB.
+```
+
+Only the prose. Everything above it in `--info` is laid out in columns — the `Format` /
+`Size` / `Patient` block, and the channel table — and those are aligned to each other, not
+wrapped. Either can exceed 80 legitimately, because a header is free to carry a long patient
+identifier or a long channel label, and re-flowing a column is how a table stops being one.
+So the split is exactly where the columns end: everything below the channel table wraps,
+everything above it is left alone.
+
+The guard added in 0.7.1 was extended to cover this. It reads `--info` over every fixture
+crossed with four option sets, finds the channel table, and asserts that no line after it
+passes 80 — the header block and the table above deliberately excluded rather than exempted
+by accident. Raising the wrap width to 300 makes it fail on 123-column lines, so it is
+testing what it claims to.
+
+The captured `--info` output on the landing page and in four documentation pages was
+regenerated from a real run of the recording it names, which the docs suite already
+re-derives and compares byte for byte.
+
 ## 0.7.1
 
 ### a hint under a warning ran to 180 columns

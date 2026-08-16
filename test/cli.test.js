@@ -1055,18 +1055,35 @@ describe('--info', () => {
 
     const wide = [];
     let hints = 0;
+    let prose = 0;
     for (const name of names) {
-      for (const extra of [[], ['--layout', 'long'], ['--decimals', '20']]) {
-        const { stderr } = await cli([fixture(name), '--info', ...extra]);
+      for (const extra of [[], ['--layout', 'long'], ['--decimals', '20'], ['--gzip']]) {
+        const { stdout, stderr } = await cli([fixture(name), '--info', ...extra]);
         for (const line of stderr.split('\n')) {
           if (!/^ {9}\S/u.test(line)) continue;
           hints++;
-          if (line.length > 80) wide.push(`${name}: ${line.length} cols — ${line.trim()}`);
+          if (line.length > 80) wide.push(`${name}: hint ${line.length} cols — ${line.trim()}`);
+        }
+        /*
+          --info's own prose, which is everything below the channel table. The lines above
+          it are laid out in columns — the key-value block and the table itself — and either
+          may exceed 80 because a header is free to carry a long patient id or channel
+          label. Those are aligned, not wrapped, and re-flowing them would be the bug.
+        */
+        const lines = stdout.split('\n');
+        const head = lines.findIndex((l) => l.startsWith('#  COLUMN'));
+        if (head === -1) continue;
+        const after = lines.indexOf('', head);
+        for (const line of lines.slice(after + 1)) {
+          if (line === '') continue;
+          prose++;
+          if (line.length > 80) wide.push(`${name}: info ${line.length} cols — ${line}`);
         }
       }
     }
     assert.ok(hints > 20, `expected hints to assert about, saw ${hints}`);
-    assert.deepEqual(wide, [], `hint lines past 80 columns:\n${wide.join('\n')}`);
+    assert.ok(prose > 20, `expected --info prose to assert about, saw ${prose}`);
+    assert.deepEqual(wide, [], `lines past 80 columns:\n${wide.join('\n')}`);
   });
 
   it('never reports a size the conversion then exceeds', async () => {
@@ -2056,7 +2073,8 @@ describe('converting several recordings at once', () => {
     );
 
     const without = await cli([fixture('tiny.edf'), '--info', '--annotations-only', '--gzip']);
-    assert.match(without.stdout, /no annotations\.csv\.gz either/u);
+    // Wrapped to the terminal, so the sentence may carry a newline where a space would go.
+    assert.match(without.stdout.replace(/\s+/gu, ' '), /no annotations\.csv\.gz either/u);
   });
 
   it('starts every recording where --info says it does', async () => {

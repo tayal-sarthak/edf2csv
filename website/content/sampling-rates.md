@@ -137,7 +137,8 @@ Channels   3 signals
 1  ECG          ECG          mV    128 Hz  -5 to 5      signals_128hz.csv
 2  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     signals_1hz.csv
 
-Sampling rates differ, so channels are written to 3 files, one per rate. No channel is resampled.
+Sampling rates differ, so channels are written to 3 files, one per rate. No
+channel is resampled.
 Would write 1,155 rows, roughly 22.2 KB.
 ```
 

@@ -15,6 +15,39 @@ import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
 import { VERSION } from '../version.js';
 
+/** Where terminal prose wraps. The width --help is written to, and the ANSI default. */
+const WRAP_COLUMNS = 80;
+
+/** The continuation indent under a `warning: ` / `note: ` prefix. */
+const HINT_INDENT = ' '.repeat(9);
+
+/**
+ * Greedy word wrap, `indent` on every line including the first.
+ *
+ * Only free prose goes through this. The aligned parts of `--info` — the `Format`/`Size`
+ * key-value lines and the channel table — are laid out in columns, and re-flowing a column
+ * is how you turn a table into a paragraph.
+ *
+ * A word wider than the column is left to overrun rather than broken. The long words here
+ * are file paths and quoted channel labels, and neither survives being split across lines:
+ * the point of printing a path is that it can be copied back out.
+ */
+function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
+  const lines: string[] = [];
+  let line = indent;
+  for (const word of text.split(/\s+/u)) {
+    if (word === '') continue;
+    if (line === indent) line += word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      lines.push(line);
+      line = indent + word;
+    }
+  }
+  if (line !== indent) lines.push(line);
+  return lines.join('\n');
+}
+
 function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<number>): string {
   if (rows.length === 0) return '';
   const width: number[] = [];
@@ -178,13 +211,23 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   lines.push(table(rows, new Set([0])));
 
   lines.push('');
+  /*
+    From here down --info stops laying out columns and starts explaining itself, so from
+    here down it wraps. The key-value lines and the channel table above are aligned to each
+    other and must not be re-flowed; these are sentences, and the longest of them ran to 156
+    columns — which is not a line anyone reads, it is a line a terminal breaks somewhere.
+    --help has been written to 80 since it existed and hints joined it in 0.7.1; --info is
+    the mode whose whole purpose is being read by a person, and it was the last one guessing.
+  */
   if (plan.groups.length > 1) {
     lines.push(
-      plan.layout === 'long'
-        ? `Sampling rates differ, and the long layout puts them in one table anyway: each row ` +
-          `carries its own time, so nothing has to line up. No channel is resampled.`
-        : `Sampling rates differ, so channels are written to ${counted(plan.groups.length, 'file')}, one per rate. ` +
-          `No channel is resampled.`,
+      wrap(
+        plan.layout === 'long'
+          ? `Sampling rates differ, and the long layout puts them in one table anyway: each row ` +
+            `carries its own time, so nothing has to line up. No channel is resampled.`
+          : `Sampling rates differ, so channels are written to ${counted(plan.groups.length, 'file')}, one per rate. ` +
+            `No channel is resampled.`,
+      ),
     );
   }
   /*
@@ -214,11 +257,13 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     // and a script that opens the name it was given must find a file there.
     const suffix = plan.gzip ? '.csv.gz' : '.csv';
     lines.push(
-      file.annotationSignals.length > 0
-        ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
-          'many events there are cannot be told from the header.'
-        : `Would write channels${suffix} and no signal data — and no annotations${suffix} ` +
-          'either, since this recording has no annotation channel.',
+      wrap(
+        file.annotationSignals.length > 0
+          ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
+            'many events there are cannot be told from the header.'
+          : `Would write channels${suffix} and no signal data — and no annotations${suffix} ` +
+            'either, since this recording has no annotation channel.',
+      ),
     );
     return lines.join('\n');
   }
@@ -227,12 +272,14 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   // Reporting it as the size on disk would overstate a compressed conversion several-fold.
   const compressing = plan.gzip;
   lines.push(
-    // A window narrow enough to select one sample is an ordinary thing to ask for, and this
-    // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
-    // and missed here, because the recording that test builds never estimates exactly one.
-    `Would write ${plan.estimate.rows.toLocaleString('en-US')} ` +
-      `${plan.estimate.rows === 1 ? 'row' : 'rows'}, roughly ` +
-      `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
+    wrap(
+      // A window narrow enough to select one sample is an ordinary thing to ask for, and this
+      // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
+      // and missed here, because the recording that test builds never estimates exactly one.
+      `Would write ${plan.estimate.rows.toLocaleString('en-US')} ` +
+        `${plan.estimate.rows === 1 ? 'row' : 'rows'}, roughly ` +
+        `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
+    ),
   );
 
   return lines.join('\n');
@@ -334,35 +381,6 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
     null,
     indent ?? undefined,
   );
-}
-
-/** Where terminal prose wraps. Matches the width --help is written to. */
-const WRAP_COLUMNS = 80;
-
-/** The continuation indent under a `warning: ` / `note: ` prefix. */
-const HINT_INDENT = ' '.repeat(9);
-
-/**
- * Greedy word wrap, `indent` on every line including the first.
- *
- * A word wider than the column is left to overrun rather than broken. The long words here
- * are file paths and quoted channel labels, and neither survives being split across lines:
- * the point of printing a path is that it can be copied back out.
- */
-function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
-  const lines: string[] = [];
-  let line = indent;
-  for (const word of text.split(/\s+/u)) {
-    if (word === '') continue;
-    if (line === indent) line += word;
-    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
-    else {
-      lines.push(line);
-      line = indent + word;
-    }
-  }
-  if (line !== indent) lines.push(line);
-  return lines.join('\n');
 }
 
 /**
