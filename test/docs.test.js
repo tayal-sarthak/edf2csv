@@ -1990,7 +1990,7 @@ describe('documentation and source agree on their lists', () => {
 
       Checked from the file list rather than by packing, which would mean running a build
       inside the test suite: `files` says what ships and `bin`/`exports`/`types` say what has
-      to be in it, and `prepack` is what guarantees the second exists when the first is read.
+      to be in it, and `prepare` is what guarantees the second exists when the first is read.
     */
     const manifest = JSON.parse(await read('package.json'));
     /*

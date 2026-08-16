@@ -5,5 +5,11 @@ website/src/generated/
 .DS_Store
 test/crossvalidate/generated/
 
+# What `npm pack` leaves in the root. Commits here are made with `git add -A`, and the guard
+# that catches a stray top-level entry catches it by failing the suite — which is also what
+# `prepublishOnly` runs, so a forgotten tarball would block the next release rather than just
+# sit there. One line is cheaper than that.
+*.tgz
+
 # Anything removed from the tree is preserved here rather than destroyed.
 deleted/

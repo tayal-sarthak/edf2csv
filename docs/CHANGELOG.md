@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.122
+
+### a tarball left by npm pack would have been committed into the package
+
+`npm pack` writes `edf2csv-<version>.tgz` into the repository root, and nothing ignored it. Commits
+here are made with `git add -A`, so the next one would have swept up a 316 kB copy of the package
+into the package's own history.
+
+The repository already has a guard for exactly this — "tracks nothing at the top level that nobody
+put there on purpose", written after a stray `undefined/` directory sat in the tree for eighty
+versions — but the way that guard reports a stray tarball is by failing the suite, and the suite is
+what `prepublishOnly` runs. So the sequence was: pack a tarball to look at, commit anything, and the
+next release cannot publish until someone works out why. One line in `.gitignore` costs less than
+the diagnosis.
+
+Verified by packing for real: `git check-ignore` now attributes the tarball to `*.tgz`, and
+`git status` no longer offers it.
+
+The same commit corrects a sentence 0.6.117 left behind: the paragraph explaining that test still
+named `prepack` as the hook guaranteeing `dist/` exists, two releases after the hook became
+`prepare` and the assertion beneath it changed to match.
+
 ## 0.6.121
 
 ### two comments addressed to a linter this repository does not have
