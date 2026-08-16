@@ -1,0 +1,21 @@
+{
+  "name": "edf2csv",
+  "short_name": "edf2csv",
+  "description": "Convert EEG and biosignal files to CSV in one command. Works with EDF, EDF+ and BDF.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#0e0d0b",
+  "theme_color": "#0e0d0b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ]
+}

@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.69
+
+### a pinned or bookmarked site had no name and no icon
+
+Bookmarked to an Android home screen or pinned in a browser that reads one, the site had no name
+and no icon of its own to offer: it took whatever the browser could scrape, which is the page
+title of whichever page was open and a screenshot-derived glyph.
+
+The manifest states the name, the description the About field uses, the two icons the site
+already ships, and the background it already paints. `"display": "browser"` on purpose — this is
+documentation, not an app, and claiming `standalone` would strip the address bar from a site
+whose whole job is linking to other pages.
+
 ## 0.6.68
 
 ### the Markdown mirror of every page was served and linked from nowhere

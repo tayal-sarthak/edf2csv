@@ -180,6 +180,7 @@ function chromeTags() {
     `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfbf9" />`,
     `<meta name="robots" content="max-image-preview:large" />`,
     `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`,
+    `<link rel="manifest" href="/site.webmanifest" />`,
   ];
 }
 
