@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.91
+
+### a third of the homepage HTML was decorative dots
+
+Server-rendering the homepage in 0.6.62 had a consequence nobody measured: the 765 dots standing
+for the values a resampling reader invents are one span each, and all of them went into the HTML.
+The page was 147 kB, 50 kB of it those spans — 35% of the document, spent on a decoration that
+conveys nothing without eyes on it. Every crawler fetch, every phone on a slow connection and
+every agent reading the homepage paid for it.
+
+They are drawn after hydration now. The homepage HTML is 92 kB, and what left it is only the part
+that was never readable: the count, the caption, the three real samples and the entire argument are
+still in the served HTML, and the word count a crawler sees is unchanged at 825. Confirmed in the
+browser afterwards: 765 ghosts and 6 real dots, exactly as before.
+
 ## 0.6.90
 
 ### a third of the npm package was release notes

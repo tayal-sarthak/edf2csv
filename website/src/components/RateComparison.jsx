@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 
 /*
@@ -22,6 +22,19 @@ export default function RateComparison() {
   const reduced = useReducedMotion();
   // amount 0.4 so the count-up starts once the block is properly on screen.
   const inView = useInView(ref, { once: true, amount: 0.4 });
+
+  /*
+    The 765 fabricated dots are drawn in the browser, not in the server render.
+
+    They are one span each, and the prerendered homepage carried all of them: 50 kB of
+    markup, 35% of the page's HTML, spent on a decoration that says nothing to a reader
+    who cannot see it. Every crawler, every slow connection and every AI fetch of the
+    homepage paid for it. The three real samples stay in the HTML because there are
+    three of them and because they are the honest half of the comparison; the count and
+    the sentence explaining it were always text, and still are.
+  */
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => setDrawn(true), []);
 
   return (
     <div className="rates" ref={ref}>
@@ -70,17 +83,18 @@ export default function RateComparison() {
               transition={{ type: 'spring', stiffness: 320, damping: 22, delay: 0.1 + i * 0.09 }}
             />
           ))}
-          {Array.from({ length: FABRICATED }, (_, i) => (
-            <motion.span
-              key={`ghost-${i}`}
-              className="dot dot--ghost"
-              initial={reduced ? false : { scale: 0, opacity: 0 }}
-              animate={inView ? { scale: 1, opacity: 0.85 } : undefined}
-              // Spread the fill across roughly a second so it reads as accumulation,
-              // not as a grid that was always there.
-              transition={{ duration: 0.25, delay: reduced ? 0 : 0.45 + (i / FABRICATED) * 1.1 }}
-            />
-          ))}
+          {drawn &&
+            Array.from({ length: FABRICATED }, (_, i) => (
+              <motion.span
+                key={`ghost-${i}`}
+                className="dot dot--ghost"
+                initial={reduced ? false : { scale: 0, opacity: 0 }}
+                animate={inView ? { scale: 1, opacity: 0.85 } : undefined}
+                // Spread the fill across roughly a second so it reads as accumulation,
+                // not as a grid that was always there.
+                transition={{ duration: 0.25, delay: reduced ? 0 : 0.45 + (i / FABRICATED) * 1.1 }}
+              />
+            ))}
         </div>
         <p className="rate-note">
           Average that column, count its samples, or plot it, and the numbers are not the
