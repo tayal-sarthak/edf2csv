@@ -8,9 +8,7 @@
 
 import { createWriteStream, fstatSync } from 'node:fs';
 import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { finished, pipeline } from 'node:stream/promises';
+import { finished } from 'node:stream/promises';
 import type { Writable } from 'node:stream';
 import { createGzip, gzipSync } from 'node:zlib';
 import path from 'node:path';
@@ -30,7 +28,6 @@ import {
 } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import {
-  fixed,
   makeSampleFormatter,
   makeTimeFormatter,
   newOffsetBudget,
@@ -1509,10 +1506,6 @@ export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionEr
   return null;
 }
 
-/** Data rows across every signal table, so "nothing was written" is one question. */
-function rowsIn(written: readonly WrittenFile[]): number {
-  return written.reduce((total, file) => total + file.rows, 0);
-}
 
 
 /** Raised when the input moved while it was being read. See where it is pushed. */

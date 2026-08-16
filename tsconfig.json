@@ -8,6 +8,18 @@
     "outDir": "dist",
 
     "strict": true,
+    /*
+      Dead code is not free here, because `verbatimModuleSyntax` below keeps import
+      statements exactly as written: an import nobody reads is still emitted, still resolved
+      at startup, and still shipped. Four of them were — `node:crypto`, `createReadStream`,
+      `pipeline` and `node:events`, left behind when the checksum machinery moved into the
+      reader — along with a `rowsIn` helper that had a doc comment and no callers.
+
+      Not `noUnusedParameters`: the codebase names a deliberately unused argument `unused`
+      rather than `_unused`, which that check does not accept, and renaming twenty callbacks
+      to satisfy it would be the tail wagging the dog.
+    */
+    "noUnusedLocals": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,

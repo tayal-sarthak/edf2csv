@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.11
+
+### the package shipped four imports nobody read
+
+Four imports nobody read, and a function nobody called, all of it shipped.
+
+```
+src/convert/run.ts(11,1): 'createHash' is declared but its value is never read.
+src/convert/run.ts(12,1): 'createReadStream' is declared but its value is never read.
+src/convert/run.ts(13,20): 'pipeline' is declared but its value is never read.
+src/convert/run.ts(1513,10): 'rowsIn' is declared but its value is never read.
+src/edf/reader.ts(20,10): 'decodeLatin1' is declared but its value is never read.
+src/format/csv.ts(11,1): 'once' is declared but its value is never read.
+```
+
+In most projects that is lint noise. Here it is not, because `verbatimModuleSyntax` is on:
+TypeScript keeps import statements exactly as written rather than eliding the ones whose
+bindings are unused, so every line above was emitted into `dist/`, published to npm, and
+resolved at startup by anyone who installed it. `dist/convert/run.js` opened `node:crypto`,
+`node:fs` and `node:stream/promises` for three bindings it never touched, and
+`dist/format/csv.js` opened `node:events` for one.
+
+The first three are the checksum machinery, left behind when hashing moved into
+`EdfFile.sha256()`. `rowsIn` had a doc comment — "Data rows across every signal table, so
+'nothing was written' is one question" — and no callers.
+
+The guard is the compiler: `noUnusedLocals` is now on, so this is a build error rather than
+something to be noticed by reading. `npm test` builds first, so the suite fails too. Putting
+any one of them back reproduces the message above.
+
+Not `noUnusedParameters` alongside it. This codebase names a deliberately unused callback
+argument `unused` rather than `_unused`, which that check does not accept, and renaming twenty
+callbacks to satisfy a checker would be the tail wagging the dog.
+
+Nothing about the conversion changes. `--checksum` still hashes, `--gzip` still compresses,
+and the round-trip, layout and terminal sweeps all report what they reported before.
+
 ## 0.7.10
 
 ### --stdout --gzip put a deflate stream on the terminal

@@ -17,7 +17,7 @@ import { FIXED_HEADER_BYTES, SIGNAL_HEADER_BYTES, parseHeader, peekSignalCount }
 import type { EdfHeader, EdfSignal } from './header.js';
 import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
-import { decodeLatin1, readInt16LE } from './bytes.js';
+import { readInt16LE } from './bytes.js';
 import { counted } from '../format/list.js';
 
 /**

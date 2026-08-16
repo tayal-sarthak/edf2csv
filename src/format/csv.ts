@@ -8,7 +8,6 @@
  */
 
 import type { Writable } from 'node:stream';
-import { once } from 'node:events';
 
 /**
  * Flush once this many characters have accumulated.
