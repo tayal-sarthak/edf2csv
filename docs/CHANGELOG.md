@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.81
+
+### the links the template writes were the ones nothing checked
+
+The prerenderer hand-writes links that nothing reads back: the four in the header, the two in the
+footer, the skip target, the eleven on the 404, the previous/next pair, and the Markdown-mirror
+line added in 0.6.68. A typo in any of them produces a page that builds, passes its word count,
+carries valid structured data and looks correct in the browser anybody actually opens — and 404s
+for whoever clicks it. The documentation's own links are already checked by the test suite;
+these were the ones written in the template, which is the file nothing was testing.
+
+The build now resolves every internal `href` and `src` in every emitted page against the list of
+files it just wrote, treating `/docs/x` as satisfied by `docs/x/index.html` and skipping
+`/_vercel/`, which the platform injects at request time and no build produces. Checked by
+misspelling the header's link to getting-started: the build stops and names every page that
+carried it.
+
 ## 0.6.80
 
 ### a table-header rule set its colour twice and used the second

@@ -10,7 +10,7 @@
   It also emits sitemap.xml, robots.txt, and llms.txt.
 */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -560,6 +560,47 @@ function assertPagesHaveContent(docs, pages) {
   }
 }
 
+/**
+ * Every internal link in the emitted HTML resolves to something the build wrote.
+ *
+ * The prerenderer hand-writes links that no test reads: the header, the footer, the
+ * skip target, the 404's list, and the Markdown-mirror line added in 0.6.68. A typo in
+ * any of them is a 404 that nothing catches — the pages still build, still pass their
+ * word count, and still look right in the one browser anybody checks. Cheap to verify
+ * from the file listing the build has just produced, so it is verified.
+ */
+function assertLinksResolve(pages, emitted) {
+  const broken = [];
+  for (const [name, html] of pages) {
+    for (const [, href] of html.matchAll(/(?:href|src)="(\/[^"#?]*)(?:[#?][^"]*)?"/g)) {
+      // Vercel injects the analytics script at request time; no build writes it.
+      if (href.startsWith('/_vercel/')) continue;
+      const relative = href.replace(/^\//, '').replace(/\/$/, '');
+      // A directory URL is served by the index.html inside it, and "/" by the root one.
+      const candidates = relative
+        ? [relative, `${relative}/index.html`]
+        : ['index.html'];
+      if (!candidates.some((candidate) => emitted.has(candidate))) {
+        broken.push(`${name} -> ${href}`);
+      }
+    }
+  }
+  if (broken.length > 0) {
+    throw new Error(`prerender: these links point at files the build did not write:\n  ${broken.join('\n  ')}`);
+  }
+}
+
+/** Everything under dist/, relative and slash-separated, for the link check. */
+function emittedFiles(dir, base = DIST) {
+  const out = new Set();
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) for (const nested of emittedFiles(full, base)) out.add(nested);
+    else out.add(path.relative(base, full).split(path.sep).join('/'));
+  }
+  return out;
+}
+
 const ROBOTS = `# edf2csv documentation. Indexing and citation are welcome.
 User-agent: *
 Allow: /
@@ -624,6 +665,17 @@ async function main() {
   writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap(docs));
   writeFileSync(path.join(DIST, 'robots.txt'), ROBOTS);
   writeFileSync(path.join(DIST, 'llms.txt'), llmsTxt(docs));
+
+  // Last, so it sees every file the build produced, including the ones just written.
+  const emitted = emittedFiles(DIST);
+  assertLinksResolve(
+    [
+      ['index.html', readFileSync(path.join(DIST, 'index.html'), 'utf8')],
+      ['404.html', readFileSync(path.join(DIST, '404.html'), 'utf8')],
+      ...docs.map((doc) => [`docs/${doc.slug}`, rendered.get(doc.slug) ?? '']),
+    ],
+    emitted,
+  );
 
   console.log(
     `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, ` +
