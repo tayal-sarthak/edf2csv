@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.92
+
+### eleven pages honoured a theme they gave you no way to change
+
+The documentation pages have honoured a saved theme since the day the anti-flash script was added,
+and offered no way to set one. The toggle lives in the React nav, and React only mounts on the
+landing page — so a reader who arrived on the CLI reference from a search result, which is how
+people arrive at documentation, could read eleven pages in a theme they had not chosen and find no
+control anywhere on them. The fix was to visit the homepage and come back.
+
+Twelve lines of inline script, rather than shipping a 195 kB React bundle to eleven static pages
+for one button. It cycles the same three states in the same order, writes the same storage key and
+carries the same labels as the React one, so they are two faces of a single setting. Exercised
+through all three presses on the CLI reference: auto to light to dark and back, with the attribute,
+the stored value and the button's accessible name agreeing at each step.
+
 ## 0.6.91
 
 ### a third of the homepage HTML was decorative dots

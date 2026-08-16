@@ -92,6 +92,37 @@ function findAssets() {
 /** Restores the reader's theme before first paint, so a dark-mode reader never sees a white flash. */
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
+/**
+ * The theme control, for the pages React never runs on.
+ *
+ * Every prerendered page has honoured a saved theme since the script above was added, and
+ * none of them could change it: the toggle lives in the React nav, which only the landing
+ * page mounts. A reader arriving on the CLI reference from a search result — which is how
+ * most people arrive at documentation — had to find their way to the homepage to switch,
+ * and back again.
+ *
+ * Twelve lines of inline script rather than shipping React to eleven static pages. It
+ * cycles the same three states in the same order and writes the same storage key, so the
+ * two controls are the same control.
+ */
+const THEME_TOGGLE = `<button type="button" class="nav__toggle" id="theme" aria-label="Switch to the light theme" title="Switch to the light theme">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.55"/></svg>
+          </button>`;
+
+const THEME_TOGGLE_SCRIPT = `(function(){
+var b=document.getElementById('theme');if(!b)return;
+var order={auto:'light',light:'dark',dark:'auto'};
+var label={auto:'Match the system theme',light:'Switch to the light theme',dark:'Switch to the dark theme'};
+function get(){try{return localStorage.getItem('edf2csv-theme')||'auto'}catch(e){return 'auto'}}
+function sync(){var n=order[get()]||'light';b.setAttribute('aria-label',label[n]);b.title=label[n];}
+b.addEventListener('click',function(){
+var n=order[get()]||'light';
+try{localStorage.setItem('edf2csv-theme',n)}catch(e){}
+if(n==='auto')document.documentElement.removeAttribute('data-theme');
+else document.documentElement.setAttribute('data-theme',n);
+sync();});
+sync();})();`;
+
 function structuredData(doc) {
   const article = {
     '@context': 'https://schema.org',
@@ -268,6 +299,7 @@ function page(doc, docs, assets) {
           <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
           <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
           <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
+          ${THEME_TOGGLE}
         </div>
       </div>
     </nav>
@@ -301,6 +333,7 @@ ${doc.html}
     </main>
 
     ${FOOTER}
+    <script>${THEME_TOGGLE_SCRIPT}</script>
   </body>
 </html>
 `;
@@ -351,6 +384,7 @@ function notFoundPage(docs, assets) {
           <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
           <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
           <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
+          ${THEME_TOGGLE}
       </div>
     </div></nav>
     <main class="shell not-found" id="main">
@@ -361,6 +395,7 @@ function notFoundPage(docs, assets) {
       </nav>
     </main>
     ${FOOTER}
+    <script>${THEME_TOGGLE_SCRIPT}</script>
   </body>
 </html>
 `;
