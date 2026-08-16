@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.140
+
+### on paper, the majority of the documentation's links led nowhere
+
+The print stylesheet already understood the problem: a link's destination is invisible on paper, so
+it wrote out the address after any `http` one. It just solved the smaller half of it.
+
+Across the eleven documentation pages there are 52 links the documentation makes to itself and 48 it
+makes anywhere else. The internal ones are the majority, and they are the ones a printed page most
+needs, because that is what these pages are full of — "see the CLI reference", "which
+`--channels` would read as two names", "as above". Every one of those printed as an underlined
+phrase leading nowhere. Getting started alone has eleven internal links and one external, so the
+rule that existed covered a twelfth of that page's references.
+
+The origin is written out rather than the bare path, since `/docs/cli-reference` is not something a
+reader with a sheet of paper can do anything with. It matches the prerenderer's default `SITE_URL`.
+Checked by reading the compiled print rules back out of the loaded stylesheet.
+
 ## 0.6.139
 
 ### the most-quoted table on the site had its headings checked by nothing

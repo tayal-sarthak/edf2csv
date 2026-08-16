@@ -1283,9 +1283,26 @@ a {
     break-after: avoid;
   }
 
-  /* A link's destination is invisible on paper unless it is written out. */
+  /*
+    A link's destination is invisible on paper unless it is written out.
+
+    Both kinds, which until now meant one: the rule below covered `http`, and the 52 links
+    the documentation makes to itself — more than the 48 it makes to anywhere else — printed
+    as underlined words leading nowhere. These pages cross-reference each other constantly,
+    and a printed page that says "see the CLI reference" without saying where is the one that
+    most needs the address. The origin is spelled out because a relative path is not something
+    a reader can type; it matches the prerenderer's default SITE_URL.
+  */
   .prose a[href^='http']::after {
     content: ' (' attr(href) ')';
+  }
+
+  .prose a[href^='/']::after {
+    content: ' (edf2csv.vercel.app' attr(href) ')';
+  }
+
+  .prose a[href^='http']::after,
+  .prose a[href^='/']::after {
     font-size: 0.85em;
     color: #444444;
     word-break: break-all;
