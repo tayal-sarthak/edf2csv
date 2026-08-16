@@ -2118,8 +2118,8 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
 
     const expected = new Set([
-      '.gitattributes', '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md',
-      'SECURITY.md', 'docs', 'package-lock.json', 'package.json', 'src', 'test',
+      '.gitattributes', '.github', '.gitignore', 'CITATION.cff', 'CONTRIBUTING.md', 'LICENSE',
+      'README.md', 'SECURITY.md', 'docs', 'package-lock.json', 'package.json', 'src', 'test',
       'tsconfig.json', 'vercel.json', 'website',
     ]);
     const top = [...new Set(tracked.map((file) => file.split('/')[0]))].sort();

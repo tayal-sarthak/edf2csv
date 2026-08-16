@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.145
+
+### everything this project checks was undiscoverable from the repository
+
+This repository has 363 tests, seven sweeps, four build-time guards in the prerenderer and a file of
+tests that reads its own documentation and compares it to the source. None of that was discoverable
+from the repository. `npm test` works and tells you nothing about the rest of it.
+
+The specific way that costs someone: a change to behaviour fails a test in `test/docs.test.js`
+naming a page they never touched — a diagnostic code table, a flag list, a number on the correctness
+page. Without knowing what that file is for, the reasonable conclusion is that the test is broken.
+It is not; the page is. That sentence is now written down.
+
+So are the seven sweeps and what each one asserts, that they take a seed and a size, that the
+website build refuses to emit a page that is quietly wrong, and that a version bump has to move four
+files or the suite fails. The last one is not something a pull request needs — it is there because
+it is the failure most likely to waste an afternoon.
+
+And one paragraph on what gets declined, which is the only part that is opinion: this tool does not
+invent data. Not resampling, not converting units, not closing gaps, not guessing at a header that
+contradicts itself. A change that makes the output more convenient by making it less true is the
+change that does not land.
+
 ## 0.6.144
 
 ### a bug report about a header arrived without one
