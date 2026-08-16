@@ -560,6 +560,7 @@ edf2csv sleep-study.edf --out ./converted --json > result.json
 
 ```json
 {
+  "tool": { "name": "edf2csv", "version": "0.6.127" },
   "output_dir": "./converted",
   "files": [
     { "name": "signals_100hz.csv", "rows": 2880000 },

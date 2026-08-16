@@ -13,6 +13,7 @@ import { counted } from '../format/list.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
+import { VERSION } from '../version.js';
 
 function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<number>): string {
   if (rows.length === 0) return '';
@@ -265,6 +266,7 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
 
   return JSON.stringify(
     {
+      tool: TOOL,
       path: file.path,
       bytes: file.fileSize,
       format: describeFormat(header),
@@ -366,9 +368,21 @@ export function formatSummary(result: ConvertResult): string {
   return lines.join('\n');
 }
 
+/**
+ * Which version produced this record.
+ *
+ * `metadata.json` has carried it since the file existed, because a conversion should be
+ * reproducible later. The two JSON *streams* did not, and they are the ones most likely to
+ * outlive the run: `--json` exists to be piped into something, logged, or committed beside a
+ * result, where the question a year on is which release's field names and rounding these are.
+ * The same shape as metadata.json's, so a consumer reads one field either way.
+ */
+const TOOL = { name: 'edf2csv', version: VERSION } as const;
+
 export function summaryJson(result: ConvertResult, indent: number | null = 2): string {
   return JSON.stringify(
     {
+      tool: TOOL,
       output_dir: result.outputDir,
       files: result.files,
       annotations: result.annotationCount,

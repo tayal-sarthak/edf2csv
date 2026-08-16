@@ -1108,6 +1108,7 @@ The `warnings` array holds one entry per diagnostic:
 
 ```json
 {
+  "tool": { "name": "edf2csv", "version": "0.6.127" },
   "output_dir": "./converted",
   "files": [
     { "name": "signals_256hz.csv", "rows": 768 },

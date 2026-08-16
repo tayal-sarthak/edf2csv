@@ -752,6 +752,7 @@ edf2csv recording.edf --out ./converted --json
 
 ```json
 {
+  "tool": { "name": "edf2csv", "version": "0.6.127" },
   "output_dir": "./converted",
   "files": [
     { "name": "signals_256hz.csv", "rows": 768 },
@@ -778,6 +779,7 @@ Field by field:
 
 | Field | Meaning |
 | --- | --- |
+| `tool` | The name and version that produced this record. The same object `metadata.json` carries, so a piped or logged result says which release wrote it |
 | `output_dir` | The directory that was written, exactly as it will be found on disk |
 | `files` | Every CSV written, in the order it was produced, with its data-row count excluding the header line. `metadata.json` isn't listed |
 | `annotations` | Number of events written to `annotations.csv`, after time-window filtering. `0` when the recording has no annotation channel |
@@ -794,6 +796,7 @@ The `code` values are stable identifiers meant for programmatic checks: `MIXED_S
 
 | Field | Meaning |
 | --- | --- |
+| `tool` | The name and version that produced this record, as in the summary above and in `metadata.json` |
 | `path`, `bytes` | The recording as given, and its size on disk |
 | `format` | `EDF`, `EDF+ (continuous)`, `BDF+ (discontinuous)` and so on |
 | `start_datetime_local` | Zone-less `YYYY-MM-DDTHH:MM:SS`, or `null` when the header's date and time cannot be read |

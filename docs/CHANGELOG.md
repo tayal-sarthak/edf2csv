@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.127
+
+### the JSON meant for a pipeline never said which version wrote it
+
+`metadata.json` has carried `"tool": { "name": "edf2csv", "version": "..." }` since the file
+existed, so a conversion can be reproduced later. Neither JSON *stream* carried anything of the
+kind — not the `--json` conversion summary, not `--info --json`.
+
+Those are the two that most need it. A `metadata.json` sits in the directory it describes, beside
+the CSVs it belongs to. A `--json` document exists to be piped into `jq`, appended to a log, or
+committed next to a result, and it gets separated from its run immediately and permanently. The
+question a year later is which release's field names, rounding and warning codes these are, and the
+document could not answer it. The same reasoning that put a version on `llms-full.txt` in 0.6.83:
+the copy travels further than the thing it describes.
+
+```json
+{
+  "tool": { "name": "edf2csv", "version": "0.6.127" },
+  "output_dir": "./converted",
+  ...
+```
+
+The same object and the same key as `metadata.json`, first in the document, so a consumer reads one
+field whichever of the three it is holding. Both shapes, both documented, and every sample of them
+across the four pages that print one has been updated to match.
+
 ## 0.6.126
 
 ### the header never said which page you were on, and had a style for it
