@@ -433,11 +433,25 @@ async function renderLanding() {
 */
 function sitemap(docs) {
   const urls = [
-    // The landing page is rebuilt whenever any page changes, so it carries the newest date.
+    /*
+      The landing page's date comes from the landing page's own sources.
+
+      It was the newest date across `content/*.md`, on the reasoning that the homepage is
+      rebuilt whenever any page changes — but the homepage's text is not in `content/`. It
+      is in Landing.jsx, and the 0.6.64 rewrite of the hero changed every visible sentence
+      above the fold while touching no Markdown at all, so the sitemap would have gone on
+      reporting a homepage last modified days earlier. A <lastmod> that is wrong in the
+      "nothing changed" direction is the one kind that costs something: it tells a crawler
+      not to bother re-reading a page that has been rewritten.
+    */
     {
       loc: `${SITE_URL}/`,
-      lastmod: docs
-        .map((doc) => lastModified(`content/${doc.slug}.md`))
+      lastmod: [
+        ...docs.map((doc) => lastModified(`content/${doc.slug}.md`)),
+        lastModified('src/components/Landing.jsx'),
+        lastModified('src/App.jsx'),
+        lastModified('index.html'),
+      ]
         .filter(Boolean)
         .sort()
         .at(-1),

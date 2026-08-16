@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.75
+
+### the sitemap dated the homepage from files the homepage is not written in
+
+0.6.62 gave the sitemap a `<lastmod>` read from commit history, and derived the homepage's date
+from the newest date across `content/*.md`. The homepage's text is not in `content/`. It is in
+Landing.jsx, so the previous release — which rewrote every sentence above the fold — left the
+sitemap reporting a homepage last modified two days earlier, on the same commit that changed it.
+
+That is the one direction a wrong date costs something. Reading late is a crawler re-reading a
+page it did not need to; reading early tells it not to bother with a page that has been
+rewritten, which is exactly what a sitemap is supposed to prevent. The homepage's date is now the
+newest of its own sources and the documentation's, since the landing page renders both.
+
 ## 0.6.74
 
 ### the Markdown mirrors competed with the pages they mirror
