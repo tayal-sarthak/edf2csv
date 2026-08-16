@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.143
+
+### a hung job would have held a runner for six hours
+
+Seven jobs across four workflows, and not one of them had a `timeout-minutes`. GitHub's default is
+360.
+
+So anything that hangs rather than fails — an `npm ci` against a registry that stopped answering, a
+sweep that loops on an input it cannot finish — holds a runner for six hours before anybody is told
+anything, and `core` is a three-version matrix, so that is eighteen runner-hours for one stuck push.
+The fuzz job added last release is exactly the shape that can hang: it generates inputs nobody has
+seen, which is the point of it.
+
+Each job now has a ceiling several times its real duration — 15 minutes for the suite, 30 for the
+sweeps, 10 for the website build, 60 for the weekly fuzz — so a slow morning is still a pass and a
+hang is a failure within the hour it happens.
+
 ## 0.6.142
 
 ### the fuzzer ran the same 300 files every time

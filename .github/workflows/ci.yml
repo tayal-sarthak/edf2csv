@@ -18,12 +18,18 @@ concurrency:
 permissions:
   contents: read
 
+# Every job carries a `timeout-minutes`, here and in the other three workflows. GitHub's
+# default is 360, so anything that hangs — an `npm ci` waiting on a registry that stopped
+# answering, a sweep that loops on an input it cannot finish — holds a runner for six hours
+# before anyone is told, and the matrix below is three of them at once. The limits are several
+# times what each job actually takes, so a slow morning is not a failure and a hang is.
 jobs:
   core:
     strategy:
       matrix:
         node-version: [20, 22, 24]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -44,6 +50,7 @@ jobs:
   # covers computing it on both.
   sweeps:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -77,6 +84,7 @@ jobs:
   # library import. Neither can pass on a tarball with no code in it.
   tarball:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -99,6 +107,7 @@ jobs:
 
   website:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
