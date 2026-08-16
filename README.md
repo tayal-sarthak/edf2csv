@@ -137,5 +137,7 @@ look at part of a recording, or a pipeline that speaks CSV.
 
 Requires Node 20 or newer. No runtime dependencies, and none installed when you install it. MIT licensed.
 
+Every release is described in the [changelog](https://github.com/tayal-sarthak/edf2csv/blob/main/docs/CHANGELOG.md).
+
 Reads EDF, EDF+ and BDF/BDF+ (BioSemi 24-bit). No filtering, no artifact removal, no
 AI, no network calls.

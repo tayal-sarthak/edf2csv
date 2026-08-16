@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.90
+
+### a third of the npm package was release notes
+
+`docs/CHANGELOG.md` has been in the package's `files` list since the early releases, when it was a
+few kilobytes. It is 404 kB now — this project writes long entries, and there have been ninety of
+them — which made it by a wide margin the largest single file in the tarball, larger than every
+piece of compiled code put together. The primary way anyone runs this tool is `npx edf2csv`, which
+fetches the tarball; a third of what it fetched was release notes about versions that are not the
+one being run.
+
+Removing it takes the package from 457 kB to 313 kB, and the unpacked size from 1.4 MB to 1.0 MB.
+Nothing is lost: the changelog is on GitHub and rendered on the site, the README now links it
+where it did not before, and the test that keeps the newest entry in step with package.json reads
+the file from the repository, not from the package.
+
+The source maps stay. They are large too, and they are the reason a stack trace from a user's
+machine points at a line of TypeScript — that is what they are for, and a test already checks they
+point at files the package actually ships.
+
 ## 0.6.89
 
 ### the pages knew their place in the sequence and never said so
