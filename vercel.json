@@ -5,6 +5,13 @@
   "buildCommand": "cd website && npm run build",
   "outputDirectory": "website/dist",
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/docs",
+      "destination": "/docs/getting-started",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/docs/(.*).md",

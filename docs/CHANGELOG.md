@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.93
+
+### trimming the URL to /docs reached a 404
+
+Every documentation URL on this site is `/docs/<something>`, and `/docs` itself was a 404. That is
+the address people arrive at by trimming a URL back to see what else is there, and the one a
+crawler tries when it works out the shape of a site. The 404 it reached is a good 404 — it lists
+every page — but it is still an error response for a path this site clearly uses as a directory,
+and search engines treat one as a dead end rather than as a section.
+
+A permanent redirect to getting-started, which is the page the sidebar puts first and the one the
+landing page's primary button already points at. `permanent: true` because this will not change:
+the documentation lives under `/docs/` and its first page is its first page.
+
 ## 0.6.92
 
 ### eleven pages honoured a theme they gave you no way to change
