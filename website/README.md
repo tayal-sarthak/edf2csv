@@ -8,6 +8,7 @@ The documentation site for edf2csv, and the documentation itself.
 website/
 ├── content/          the documentation, as Markdown
 ├── public/fonts/     Space Grotesk and JetBrains Mono, self-hosted
+├── public/og.png     the 1200x630 social-preview card, plus icons
 ├── src/              the site
 └── dist/             build output, gitignored
 ```
@@ -53,6 +54,17 @@ runtime. That makes moving between pages instant and the deploy a plain pile of
 static files with no API behind it, at the cost of a larger initial download. The
 libraries are split into their own chunk so editing a page doesn't invalidate them
 in anyone's cache.
+
+Every page is real HTML before JavaScript arrives. The documentation is prerendered
+by `scripts/prerender.mjs`, and the landing page is server-rendered through Vite's
+SSR transform (`src/entry-server.jsx`) and hydrated in the browser. Google runs
+JavaScript; most of the AI crawlers that answer "how do I convert EDF to CSV" do
+not, and before this they saw an empty homepage. The prerenderer also emits the
+sitemap (with `lastmod` read from git, the one field Google actually uses), the
+social-preview tags pointing at `public/og.png`, and the structured data — a
+SoftwareApplication entity on the landing page, TechArticle plus BreadcrumbList on
+each documentation page. None of it carries ratings, download counts or any other
+number the project cannot back.
 
 Every terminal block and CSV sample on the landing page is real output, captured from
 the tool running against a synthetic recording. There are no mocked screenshots.

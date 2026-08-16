@@ -3,18 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>edf2csv - EDF and EDF+ recordings to CSV, one command</title>
+    <!-- Front-loads the phrase people actually search; the H1 keeps the site's own voice. -->
+    <title>Convert EDF to CSV from the command line - edf2csv</title>
     <meta
       name="description"
-      content="Convert EDF, EDF+ and BDF biosignal recordings to CSV from the command line. Local, streaming, and verified bit-for-bit against pyEDFlib."
+      content="Convert EDF, EDF+ and BDF recordings - EEG, ECG, sleep studies - to CSV with one command. Local, streaming, and verified bit-for-bit against pyEDFlib."
     />
     <meta name="color-scheme" content="dark light" />
-    <link rel="preload" as="font" type="font/woff2" href="./fonts/SpaceGrotesk.woff2" crossorigin />
-    <link rel="preload" as="font" type="font/woff2" href="./fonts/JetBrainsMono.woff2" crossorigin />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E0D0B'/%3E%3Cpath d='M4 16h4l3-8 4 16 3-11 3 6h7' fill='none' stroke='%23FFB020' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
-    />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e0d0b" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfbf9" />
+    <meta name="robots" content="max-image-preview:large" />
+    <!-- Restores a chosen theme before first paint, so a light-mode reader never sees a dark flash.
+         The same script is inlined into every prerendered documentation page. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('edf2csv-theme');
+          if (t && t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/SpaceGrotesk.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/JetBrainsMono.woff2" crossorigin />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- Vercel Web Analytics. Cookieless and aggregate; it records page views, not people.
          Inert until Analytics is enabled for the project in the Vercel dashboard. -->
     <script defer src="/_vercel/insights/script.js"></script>

@@ -21,7 +21,10 @@ function Mark() {
 export default function Nav() {
   const reduced = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_KEY) ?? 'auto');
+  // Guarded because this also runs during prerendering, where there is no storage.
+  const [theme, setTheme] = useState(
+    () => (typeof localStorage === 'undefined' ? 'auto' : localStorage.getItem(STORAGE_KEY)) ?? 'auto',
+  );
 
   useEffect(() => {
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');

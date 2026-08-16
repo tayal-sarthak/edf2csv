@@ -3,6 +3,43 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.62
+
+### Changed: the homepage is real HTML, and a pasted link unfurls into something
+
+Two findings from an SEO pass over the website, both the same shape: the site said less about
+itself to machines than it does to people.
+
+The documentation pages have been prerendered static HTML from the start, precisely so that
+crawlers that do not run JavaScript — which is most of the AI crawlers the docs were written
+for — get the full text. The landing page never got the same treatment: it was an empty
+`<div id="root">` until the bundle arrived, so the one page that explains what the tool is was
+blank to exactly the readers the prerendering exists for. It is now server-rendered at build
+time through Vite's SSR transform and hydrated in the browser, and the build fails if the
+rendered landing ever comes back as a stub, the same check the documentation pages have.
+
+A pasted link had no image at all: `twitter:card` said `summary` and no `og:image` existed, so
+Slack, iMessage and the rest unfurled the URL into two lines of grey text. There is now a
+1200x630 card in the site's own oscilloscope idiom — the H1, the command, a trace — referenced
+with `summary_large_image` from every page. One committed PNG rather than a per-page generator,
+because eleven near-identical title cards would say less than one good one.
+
+The smaller corrections follow the same principle. The sitemap dropped `<priority>`, which
+Google states it ignores, for `<lastmod>` read from each page's commit history — and a page
+whose date git cannot supply gets no tag, because a fabricated date teaches crawlers to
+distrust all of them. The title now leads with the phrase people type ("Convert EDF to CSV
+from the command line") while the H1 keeps the site's own voice. Documentation pages carry
+BreadcrumbList and a `dateModified` from the same commit history; the SoftwareApplication
+entity gained `sameAs` links tying the site, the repository and the npm package into one
+thing, and a `softwareVersion` read from package.json at build. It still carries no
+aggregateRating and no download count: the schema for star ratings is the one piece of SEO
+this site will not do, because inventing social proof is fabricating data on a site whose
+argument is that fabricating data is the problem.
+
+Also fixed on the way through: the landing page never inlined the theme-restore script the
+documentation pages have, so a reader who had chosen light mode got a flash of dark on every
+visit to the homepage.
+
 ## 0.6.61
 
 ### Added: the pyEDFlib cross-check runs weekly instead of never

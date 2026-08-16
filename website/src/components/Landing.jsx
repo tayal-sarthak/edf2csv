@@ -207,8 +207,8 @@ export default function Landing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
             >
-              EDF, EDF+ and BDF biosignal files become CSV you can open in pandas, R or
-              Excel. Local, streaming, and honest about what it found.
+              Convert EDF, EDF+ and BDF biosignal recordings to CSV you can open in
+              pandas, R or Excel. Local, streaming, and honest about what it found.
             </motion.p>
 
             <motion.div

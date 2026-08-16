@@ -11,14 +11,47 @@
 */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer as createViteServer } from 'vite';
 import { renderMarkdown, extractHeadings } from '../src/lib/markdown.js';
 import { readDocs } from './docs-index.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(here, '..');
 const DIST = path.join(ROOT, 'dist');
+
+/**
+ * The tool version this deploy was built beside, for SoftwareApplication.softwareVersion.
+ * Read from the repository's own package.json, so it is true of the commit being built
+ * rather than a number someone has to remember to update.
+ */
+const TOOL_VERSION = JSON.parse(
+  readFileSync(path.join(ROOT, '..', 'package.json'), 'utf8'),
+).version;
+
+/**
+ * When a page's Markdown last changed, from git, as an ISO timestamp.
+ *
+ * Google ignores <priority> and <changefreq> but does read <lastmod> — provided it is
+ * accurate, which is why it comes from the commit history rather than from file mtimes
+ * (a fresh checkout sets every mtime to the moment of cloning). Null when git is
+ * unavailable or the history is too shallow to say, in which case the tag is omitted:
+ * a missing date is honest, a made-up one teaches crawlers to distrust all of them.
+ */
+function lastModified(relativePath) {
+  try {
+    const out = execFileSync('git', ['log', '-1', '--format=%cI', '--', relativePath], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return out || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Vercel exposes the production domain during a build, so canonical links and the
@@ -32,6 +65,14 @@ const SITE_URL = (
 ).replace(/\/$/, '');
 
 const REPO = 'https://github.com/tayal-sarthak/edf2csv';
+const NPM = 'https://www.npmjs.com/package/edf2csv';
+
+/** The person behind the tool, for Article authorship and entity disambiguation. */
+const AUTHOR = {
+  '@type': 'Person',
+  name: 'Sarthak Tayal',
+  url: 'https://github.com/tayal-sarthak',
+};
 
 const escape = (value) =>
   String(value)
@@ -52,12 +93,14 @@ function findAssets() {
 const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
 function structuredData(doc) {
-  return {
+  const article = {
     '@context': 'https://schema.org',
     '@type': 'TechArticle',
     headline: doc.title,
     description: doc.description,
     url: `${SITE_URL}/docs/${doc.slug}`,
+    author: AUTHOR,
+    image: `${SITE_URL}/og.png`,
     isPartOf: {
       '@type': 'WebSite',
       name: 'edf2csv documentation',
@@ -75,6 +118,55 @@ function structuredData(doc) {
     },
     license: 'https://opensource.org/licenses/MIT',
   };
+  // Only when git can actually say. See lastModified for why absence beats invention.
+  const modified = lastModified(`content/${doc.slug}.md`);
+  if (modified) article.dateModified = modified;
+  return article;
+}
+
+/**
+ * Where the page sits: home, then the page. BreadcrumbList is one of the few schema
+ * types still drawn as a rich result, and it costs two lines of true information.
+ */
+function breadcrumbs(doc) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'edf2csv', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: doc.title, item: `${SITE_URL}/docs/${doc.slug}` },
+    ],
+  };
+}
+
+/**
+ * The social-preview tags every page shares.
+ *
+ * One committed 1200x630 card rather than a generated-per-page image: the pages are
+ * documentation, and eleven near-identical title cards would say less than one good
+ * one. `summary_large_image` because a bare `summary` card with no image at all is
+ * what a pasted link used to unfurl into.
+ */
+function socialImageTags() {
+  return [
+    `<meta property="og:image" content="${SITE_URL}/og.png" />`,
+    `<meta property="og:image:width" content="1200" />`,
+    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:alt" content="edf2csv: your recording, as numbers. npx edf2csv recording.edf" />`,
+    `<meta property="og:locale" content="en_US" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:image" content="${SITE_URL}/og.png" />`,
+  ];
+}
+
+/** Theme colour and icons, matched to what index.html declares statically. */
+function chromeTags() {
+  return [
+    `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e0d0b" />`,
+    `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfbf9" />`,
+    `<meta name="robots" content="max-image-preview:large" />`,
+    `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`,
+  ];
 }
 
 function page(doc, docs, assets) {
@@ -102,7 +194,6 @@ function page(doc, docs, assets) {
     : '';
 
   const canonical = `${SITE_URL}/docs/${doc.slug}`;
-  const jsonLd = JSON.stringify(structuredData(doc));
 
   return `<!doctype html>
 <html lang="en">
@@ -113,20 +204,22 @@ function page(doc, docs, assets) {
     <meta name="description" content="${escape(doc.description)}" />
     <link rel="canonical" href="${canonical}" />
     <meta name="color-scheme" content="dark light" />
+    ${chromeTags().join('\n    ')}
 
     <meta property="og:type" content="article" />
     <meta property="og:title" content="${escape(doc.title)} - edf2csv" />
     <meta property="og:description" content="${escape(doc.description)}" />
     <meta property="og:url" content="${canonical}" />
     <meta property="og:site_name" content="edf2csv" />
-    <meta name="twitter:card" content="summary" />
+    ${socialImageTags().join('\n    ')}
 
     <link rel="preload" as="font" type="font/woff2" href="/fonts/SpaceGrotesk.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/JetBrainsMono.woff2" crossorigin />
     <link rel="stylesheet" href="${assets.css}" />
-    <link rel="icon" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script>${THEME_SCRIPT}</script>
-    <script type="application/ld+json">${jsonLd}</script>
+    <script type="application/ld+json">${JSON.stringify(structuredData(doc))}</script>
+    <script type="application/ld+json">${JSON.stringify(breadcrumbs(doc))}</script>
     <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
@@ -217,14 +310,15 @@ function notFoundPage(docs, assets) {
 }
 
 /*
-  The landing page is built by Vite from a static index.html, so its canonical link
-  and structured data are injected here, where the resolved site URL is known.
+  The landing page is built by Vite from a static index.html, so its canonical link,
+  structured data and prerendered markup are injected here, where the resolved site
+  URL and the server-rendered HTML are known.
 
   The SoftwareApplication block describes what the tool is and where the source is.
   It deliberately carries no aggregateRating or downloadCount: inventing either would
   be fabricating social proof, and a wrong number is worse than no number.
 */
-function enrichLandingPage(docs) {
+function enrichLandingPage(appHtml) {
   const file = path.join(DIST, 'index.html');
   let html = readFileSync(file, 'utf8');
 
@@ -241,7 +335,14 @@ function enrichLandingPage(docs) {
           'Command-line converter from EDF, EDF+ and BDF biosignal recordings to CSV. ' +
           'Runs locally, streams large files, and never resamples channels or alters units.',
         url: SITE_URL,
+        image: `${SITE_URL}/og.png`,
+        author: AUTHOR,
         codeRepository: REPO,
+        installUrl: NPM,
+        // The same project on the registry and on GitHub, so the three URLs resolve
+        // to one entity instead of three lookalikes.
+        sameAs: [REPO, NPM],
+        softwareVersion: TOOL_VERSION,
         license: 'https://opensource.org/licenses/MIT',
         programmingLanguage: 'TypeScript',
         softwareRequirements: 'Node.js 20 or newer',
@@ -260,27 +361,71 @@ function enrichLandingPage(docs) {
   const head = [
     `<link rel="canonical" href="${SITE_URL}/" />`,
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:title" content="edf2csv - EDF and EDF+ recordings to CSV, one command" />`,
-    `<meta property="og:description" content="Convert EDF, EDF+ and BDF biosignal recordings to CSV from the command line. Local, streaming, and verified against pyEDFlib." />`,
+    `<meta property="og:title" content="Convert EDF to CSV from the command line - edf2csv" />`,
+    `<meta property="og:description" content="Convert EDF, EDF+ and BDF biosignal recordings to CSV with one command. Local, streaming, and verified against pyEDFlib." />`,
     `<meta property="og:url" content="${SITE_URL}/" />`,
     `<meta property="og:site_name" content="edf2csv" />`,
-    `<meta name="twitter:card" content="summary" />`,
+    ...socialImageTags(),
     `<script type="application/ld+json">${JSON.stringify(graph)}</script>`,
   ].join('\n    ');
 
   html = html.replace('</head>', `  ${head}\n  </head>`);
+  html = html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
   writeFileSync(file, html);
 }
 
+/**
+ * Server-render the landing page through Vite's SSR transform.
+ *
+ * The documentation pages have always been real HTML; this closes the one gap left.
+ * Without it the homepage is an empty <div id="root"> to every crawler that does not
+ * run JavaScript — which is most AI crawlers, on the site whose documentation was
+ * deliberately prerendered for exactly those readers.
+ */
+async function renderLanding() {
+  const vite = await createViteServer({
+    root: ROOT,
+    server: { middlewareMode: true },
+    appType: 'custom',
+    logLevel: 'error',
+  });
+  try {
+    const { render } = await vite.ssrLoadModule('/src/entry-server.jsx');
+    return render();
+  } finally {
+    await vite.close();
+  }
+}
+
+/*
+  <lastmod> only. Google states outright that it ignores <priority> and <changefreq>
+  and reads <lastmod> when it proves accurate, so the two decorative tags are gone and
+  the one that matters comes from commit history. A page whose date git cannot supply
+  gets no tag rather than a guess.
+*/
 function sitemap(docs) {
   const urls = [
-    { loc: `${SITE_URL}/`, priority: '1.0' },
-    ...docs.map((doc) => ({ loc: `${SITE_URL}/docs/${doc.slug}`, priority: '0.8' })),
+    // The landing page is rebuilt whenever any page changes, so it carries the newest date.
+    {
+      loc: `${SITE_URL}/`,
+      lastmod: docs
+        .map((doc) => lastModified(`content/${doc.slug}.md`))
+        .filter(Boolean)
+        .sort()
+        .at(-1),
+    },
+    ...docs.map((doc) => ({
+      loc: `${SITE_URL}/docs/${doc.slug}`,
+      lastmod: lastModified(`content/${doc.slug}.md`),
+    })),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
-  .map((url) => `  <url>\n    <loc>${url.loc}</loc>\n    <priority>${url.priority}</priority>\n  </url>`)
+  .map((url) => {
+    const lastmod = url.lastmod ? `\n    <lastmod>${url.lastmod}</lastmod>` : '';
+    return `  <url>\n    <loc>${url.loc}</loc>${lastmod}\n  </url>`;
+  })
   .join('\n')}
 </urlset>
 `;
@@ -312,6 +457,7 @@ ${docs.map((doc) => `- [${doc.title}](${SITE_URL}/docs/${doc.slug}.md): ${doc.de
 ## Source
 
 - [Repository](${REPO}): MIT licensed, zero runtime dependencies, requires Node 20 or newer.
+- [Complete documentation as one file](${SITE_URL}/llms-full.txt): every page above, concatenated.
 `;
 }
 
@@ -379,10 +525,7 @@ Allow: /
 Sitemap: ${SITE_URL}/sitemap.xml
 `;
 
-const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0E0D0B"/><path d="M4 16h4l3-8 4 16 3-11 3 6h7" fill="none" stroke="#FFB020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-`;
-
-function main() {
+async function main() {
   const assets = findAssets();
   const docs = readDocs().map((doc) => ({ ...doc, html: renderMarkdown(doc.body) }));
 
@@ -399,18 +542,29 @@ function main() {
 
   assertPagesHaveContent(docs, rendered);
 
-  enrichLandingPage(docs);
+  // Held to the same standard as the documentation pages: if the server render ever
+  // comes back as a stub, fail the build rather than ship a homepage only browsers see.
+  const appHtml = await renderLanding();
+  const landingWords = appHtml.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+  if (landingWords < 150) {
+    throw new Error(
+      `prerender: the landing page server-rendered to ${landingWords} words, which would ` +
+        `make the homepage invisible to crawlers that do not run JavaScript.`,
+    );
+  }
+
+  enrichLandingPage(appHtml);
   writeFileSync(path.join(DIST, 'llms-full.txt'), llmsFullTxt(docs));
   writeFileSync(path.join(DIST, '404.html'), notFoundPage(docs, assets));
   writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap(docs));
   writeFileSync(path.join(DIST, 'robots.txt'), ROBOTS);
   writeFileSync(path.join(DIST, 'llms.txt'), llmsTxt(docs));
-  writeFileSync(path.join(DIST, 'favicon.svg'), FAVICON);
 
   console.log(
-    `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, 404, sitemap, robots.txt, llms.txt, llms-full.txt`,
+    `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, ` +
+      `landing (${landingWords} words), 404, sitemap, robots.txt, llms.txt, llms-full.txt`,
   );
   console.log(`prerender: site url ${SITE_URL}`);
 }
 
-main();
+await main();

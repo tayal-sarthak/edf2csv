@@ -56,7 +56,16 @@
       ]
     },
     {
-      "source": "/:path((?!assets/|fonts/|sitemap\\.xml|robots\\.txt|llms\\.txt).*)",
+      "source": "/(og\\.png|apple-touch-icon\\.png|favicon\\.svg)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/:path((?!assets/|fonts/|sitemap\\.xml|robots\\.txt|llms\\.txt|og\\.png|apple-touch-icon\\.png|favicon\\.svg).*)",
       "headers": [
         {
           "key": "Cache-Control",
