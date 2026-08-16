@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.101
+
+### the four figures on the landing page answered to nothing
+
+The landing page ends with four figures in large type: 16,943 values verified against pyEDFlib,
+1.4 seconds for a 40 MB recording, a 48 MB heap cap, zero runtime dependencies. Each is a claim
+about something measured, each is written by hand in Landing.jsx, and what justifies them is
+written on the correctness page — with nothing connecting the two. Two numbers on this site have
+already drifted from their sources that way, a row count in 0.4.67 and a byte count in 0.5.150,
+and those had sources. These had none.
+
+The suite now reads the figures out of the landing page and requires the correctness page to state
+each one. The zero is checked against package.json instead, since "no runtime dependencies" is a
+fact about the manifest and nowhere else — the prose could agree with itself all day while a
+dependency sat in the file.
+
+The same test count this suite publishes moved from 358 to 359 as a result, and the guard that
+checks it caught the page still saying 358, which is what that guard is for.
+
 ## 0.6.100
 
 ### the header was written twice and named itself nothing

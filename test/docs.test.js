@@ -115,6 +115,48 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('puts no figure on the landing page the documentation does not support', async () => {
+    /*
+      The landing page ends with four numbers in large type — 16,943 verified values, 1.4
+      seconds, a 48 MB heap cap, zero dependencies — and every one of them is a claim about
+      what was measured. They are written in Landing.jsx; what justifies them is written on
+      the correctness page, and nothing connected the two, so the marketing figure could
+      drift from the measured one in either direction without anything noticing.
+
+      That has already happened twice on this site to numbers that did have a source: a row
+      count in 0.4.67 and a byte count in 0.5.150. These are the figures with no source at
+      all, which makes them the ones most able to go stale quietly.
+
+      The zero is checked against the package rather than the prose, since "no runtime
+      dependencies" is a fact about package.json and nowhere else.
+    */
+    const jsx = await read('website/src/components/Landing.jsx');
+    const block = /const FACTS = \[([\s\S]*?)\];/u.exec(jsx);
+    assert.ok(block, 'the landing page no longer has a FACTS block');
+
+    const facts = [...block[1].matchAll(/value: '([^']+)', label: '([^']+)'/gu)];
+    assert.equal(facts.length, 4, `expected four figures, found ${facts.length}`);
+
+    const page = await read('website/content/correctness.md');
+    for (const [, value, label] of facts) {
+      if (/dependenc/u.test(label)) {
+        const manifest = JSON.parse(await read('package.json'));
+        assert.equal(
+          Object.keys(manifest.dependencies ?? {}).length,
+          Number(value),
+          `the landing page claims ${value} runtime dependencies`,
+        );
+        continue;
+      }
+      // "1.4s" on the page, "1.4 seconds" in the prose; the digits are the claim.
+      const digits = value.replace(/[^\d.,]/gu, '');
+      assert.ok(
+        page.includes(digits),
+        `the landing page shows "${value}" (${label}) and correctness.md never states ${digits}`,
+      );
+    }
+  });
+
   it('states a test count the suite can produce', async () => {
     /*
       The correctness page prints the runner's summary and a per-file table, and both had
