@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.74
+
+### the Markdown mirrors competed with the pages they mirror
+
+Every documentation page is published twice: as HTML at `/docs/<slug>`, and as the same prose in
+Markdown at `/docs/<slug>.md`. The mirrors exist so an agent or a reader can fetch the text
+without stripping tags, and 0.6.68 finally linked them — which also made them properly
+crawlable. Two URLs carrying identical prose, and a plain-text file has no way to declare a
+canonical link, so the pair competes as duplicates of each other and a search engine picks a
+winner on its own terms.
+
+`X-Robots-Tag: noindex` on the mirrors settles it. They stay fetchable by anyone who asks for
+them, which is the entire reason they are published, and each page keeps exactly one indexable
+copy — the HTML one that carries the canonical link, the structured data and the navigation.
+
 ## 0.6.73
 
 ### the theme button named the state it was in, not what pressing it does

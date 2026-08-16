@@ -55,6 +55,13 @@ static files with no API behind it, at the cost of a larger initial download. Th
 libraries are split into their own chunk so editing a page doesn't invalidate them
 in anyone's cache.
 
+The `/docs/<slug>.md` mirrors are served with `X-Robots-Tag: noindex` (see the repository
+root's `vercel.json`). They are the same prose as the HTML pages they sit beside, at a
+second address, and a plain-text file has no way to declare a canonical link — so left
+indexable they would compete with the pages they mirror. The header keeps them fetchable
+by anyone who asks, which is the reason they exist, while leaving one indexable copy of
+each page.
+
 Every page is real HTML before JavaScript arrives. The documentation is prerendered
 by `scripts/prerender.mjs`, and the landing page is server-rendered through Vite's
 SSR transform (`src/entry-server.jsx`) and hydrated in the browser. Google runs
