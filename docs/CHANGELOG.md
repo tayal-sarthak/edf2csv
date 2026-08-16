@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.115
+
+### a mistyped flag got Node's sentence, and Node never finished it
+
+Mistyping a flag is the most common way to get a command wrong, and it was the one refusal this
+tool did not write. It printed Node's:
+
+```text
+Unknown option '--chanels'. To specify a positional argument starting with a '-', place it at
+the end of the command after '--', as in '-- "--chanels"
+```
+
+Three things are wrong with shipping that. The sentence does not finish — Node opens a quote before
+`--` and never closes it, so the last thing the reader sees is a dangling `'`. It has no `error:`
+prefix, which every other refusal in this tool carries and which is what separates a message from
+the output around it. And the advice answers a different question: it explains how to pass a *file*
+whose name starts with a dash, to someone who has just misspelt one of twenty flags.
+
+```text
+error: There is no --chanels option.
+       If that is the name of a file, put it after -- so it is read as one: edf2csv -- "--chanels"
+```
+
+The dash-file advice is kept, because that case is real and the message is the only place it is
+said — it is simply no longer the whole answer. Short options come back the same way. Node's other
+two, a switch given a value and an option missing its value, are still Node's: they say something
+true in words a reader can act on, and rewriting them would be churn.
+
 ## 0.6.114
 
 ### a comment restated the false fact that cost a channel 69 percent of its samples

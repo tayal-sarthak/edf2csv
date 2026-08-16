@@ -1817,13 +1817,23 @@ function optionalDecimals(raw: unknown): number | undefined {
  * for `--jobs` — `--out ./-nightly` reached the child as two arguments and died on it, while the
  * serial path converted the same command. The half a user can hit was left as Node wrote it.
  *
- * Only this case is reworded. Node's other three — an unknown option, a switch given a value, an
- * option missing its value — say something true in words a reader can act on, and replacing them
- * with near-identical sentences would be churn.
+ * An unknown option is reworded too, and for a plainer reason than tone. Node's sentence is
+ * "Unknown option '--chanels'. To specify a positional argument starting with a '-', place it at
+ * the end of the command after '--', as in '-- "--chanels"' — except the closing quote is not
+ * there. Node opens one before `--` and never closes it, so this tool printed an unfinished
+ * sentence, without the `error:` prefix every other refusal carries, at the single most common way
+ * to get a command wrong. The advice is also for a different mistake than the one almost everyone
+ * makes: it explains how to pass a *file* whose name begins with a dash, where the reader has
+ * mistyped one of twenty flags.
+ *
+ * Node's remaining two — a switch given a value, an option missing its value — say something true
+ * in words a reader can act on, and replacing them with near-identical sentences would be churn.
  */
 function usageMessage(error: unknown, argv: readonly string[]): string {
   const raw = message(error);
-  if ((error as { code?: unknown } | null)?.code !== 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') return unknownOption(raw);
+  if (code !== 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
     return raw;
   }
   const ambiguous = /^Option '(-[^']+)' argument is ambiguous/u.exec(raw);
@@ -1849,6 +1859,19 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
     `error: ${flag} was given "${value}", which begins with a dash and so reads as another ` +
       `flag rather than as its value.\n` +
       `       Write it as one argument instead: ${joined}`,
+  );
+}
+
+/** An option this tool does not have, in a finished sentence. */
+function unknownOption(raw: string): string {
+  const found = /^Unknown option '([^']+)'/u.exec(raw);
+  // If Node ever rewords it, its text is still true; only the polish is lost.
+  if (!found) return raw;
+  const flag = found[1] as string;
+  return printableLines(
+    `error: There is no ${flag} option.\n` +
+      `       If that is the name of a file, put it after -- so it is read as one: ` +
+      `edf2csv -- "${flag}"`,
   );
 }
 

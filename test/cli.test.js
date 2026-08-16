@@ -167,9 +167,21 @@ describe('argument errors exit 2', () => {
       assert.ok((await readdir(target)).includes('signals.csv'), `${form}${name} wrote nothing`);
     }
 
-    // Node's other refusals say something true and are left alone.
+    /*
+      An unknown option is this tool's sentence too, and a finished one. Node's ends
+      `as in '-- "--nope"` with the quote it opened before `--` never closed, and arrived
+      without the `error:` prefix every other refusal here carries.
+    */
     const unknown = await cli([fixture('tiny.edf'), '--nope']);
-    assert.match(unknown.stderr, /Unknown option '--nope'/u, unknown.stderr);
+    assert.equal(unknown.code, 2, unknown.stderr);
+    assert.match(unknown.stderr, /^error: There is no --nope option\./u, unknown.stderr);
+    assert.match(unknown.stderr, /put it after -- so it is read as one: edf2csv -- "--nope"/u);
+    assert.ok(!unknown.stderr.includes('positional argument'), unknown.stderr);
+
+    // Short options come back the same way.
+    const shortUnknown = await cli([fixture('tiny.edf'), '-Z']);
+    assert.equal(shortUnknown.code, 2, shortUnknown.stderr);
+    assert.match(shortUnknown.stderr, /^error: There is no -Z option\./u, shortUnknown.stderr);
   });
 
   it('requires an input file', async () => {
