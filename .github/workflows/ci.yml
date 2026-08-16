@@ -12,7 +12,7 @@ jobs:
   core:
     strategy:
       matrix:
-        node-version: [20, 22]
+        node-version: [20, 22, 24]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.94
+
+### CI tested every supported Node but the current one
+
+The matrix was [20, 22]. `engines` says `>=20`, so every Node above 20 is a version this package
+claims to support, and Node 24 has been the active LTS line since October 2025 — which makes it
+the version a good share of `npx edf2csv` runs actually execute on, and the one nothing tested.
+The gap is not hypothetical for a tool that reaches into `fs.read` byte counts and Node's own
+assertion behaviour, which is exactly the sort of thing that changes between major versions: the
+`MAX_READ_BYTES` cap in the reader exists because of one of them.
+
+Added to the matrix, and the suite run on Node 24 locally first rather than pushed and hoped for:
+358 tests, none failing.
+
 ## 0.6.93
 
 ### trimming the URL to /docs reached a 404
