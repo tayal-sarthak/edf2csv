@@ -259,6 +259,21 @@ a {
   border-color: var(--line-strong);
 }
 
+/*
+  The prerendered pages' toggle carries all three glyphs and shows the one matching the
+  current theme. The landing page's React toggle renders a single glyph and is untouched
+  by these rules, since it emits no [data-glyph] elements.
+*/
+.nav__toggle [data-glyph] {
+  display: none;
+}
+
+:root:not([data-theme]) .nav__toggle [data-glyph='auto'],
+:root[data-theme='light'] .nav__toggle [data-glyph='light'],
+:root[data-theme='dark'] .nav__toggle [data-glyph='dark'] {
+  display: block;
+}
+
 @media (max-width: 700px) {
   .nav__links .nav__hide-sm {
     display: none;

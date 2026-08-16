@@ -105,8 +105,17 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  * cycles the same three states in the same order and writes the same storage key, so the
  * two controls are the same control.
  */
+/*
+  All three glyphs ship, and CSS shows the one matching the current theme — see
+  `.nav__toggle [data-glyph]` in the stylesheet. The script sets the attribute on <html>
+  and the icon follows from it, so the icon needs no JavaScript of its own and cannot
+  fall out of step with the theme the way a hand-updated one does: this button showed
+  the same glyph in all three states for as long as it existed, which is one release.
+*/
 const THEME_TOGGLE = `<button type="button" class="nav__toggle" id="theme" aria-label="Switch to the light theme" title="Switch to the light theme">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.55"/></svg>
+            <svg data-glyph="auto" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none" opacity="0.55"/></svg>
+            <svg data-glyph="light" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke-linecap="round"/></svg>
+            <svg data-glyph="dark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke-linejoin="round"/></svg>
           </button>`;
 
 const THEME_TOGGLE_SCRIPT = `(function(){

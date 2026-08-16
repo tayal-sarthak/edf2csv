@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.99
+
+### the toggle added last release showed one icon for three states
+
+The toggle 0.6.92 added to the documentation pages worked and looked like it did not. Its script
+updated the accessible name and the tooltip on every press, and the glyph was a fixed piece of
+markup: eleven pages showed the same "follow the system" icon whether the reader was in light,
+dark or auto. The landing page's React toggle has always swapped between a sun, a moon and that
+one, so the two controls disagreed about which state they were in — while writing to the same
+storage key.
+
+Fixed in CSS rather than in the script. All three glyphs ship inside the button and a rule shows
+the one matching `data-theme` on the root element, which is the attribute the script already sets.
+So the icon is derived from the theme rather than maintained alongside it, and there is no second
+place for it to fall out of step. Exercised through all three presses: one glyph visible at a time,
+matching the theme at every step.
+
 ## 0.6.98
 
 ### the website README described a directory three releases old
