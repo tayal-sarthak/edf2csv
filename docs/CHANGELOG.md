@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.111
+
+### a helper nobody calls was still holding the id rule 0.6.87 replaced
+
+`highlight.js` still exported `highlightWithin` and `addHeadingAnchors`, a pair of browser passes
+over markdown rendered at runtime, and `content.js` still exported `docPath`. Nothing has called any
+of the three since the documentation became prerendered: `renderMarkdown` highlights the code and
+stamps the ids at build time and marks the blocks `data-highlighted`, so there is no second pass to
+make. Vite tree-shakes unused exports, so all three were absent from the bundle and cost nothing,
+which is why they sat there.
+
+They are gone because of what one of them contained. `addHeadingAnchors` computed ids as
+`node.id || slugify(text)` — the plain rule, one id per heading text — which is exactly what 0.6.87
+replaced with `makeSlugger` after the warnings page shipped two `NO_SAMPLES` headings both answering
+to `#no_samples`. It looked like a working helper and would have put that bug straight back. A
+function nobody calls costs nothing; a function nobody calls that holds a rule this project has
+already fixed is a trap with a tidy name.
+
+The file's own header described a pass over the DOM, which had not been true of anything left in it,
+so that is corrected too. The landing page still ships its 48 highlighted tokens and the CLI
+reference its 128 and 29 heading permalinks.
+
 ## 0.6.110
 
 ### a hash comment in a code block counted as a heading

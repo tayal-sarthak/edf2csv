@@ -5,11 +5,9 @@
   comments recede, strings and flags take the accent, numbers sit between the two.
   Anything richer would fight the rest of the page for attention.
 
-  It runs over already-rendered DOM, reading textContent (which is unescaped) and
-  writing back escaped HTML, so there is no double-escaping to get wrong.
+  It takes source text and returns escaped HTML, so the caller hands it the unescaped
+  original and there is no double-escaping to get wrong.
 */
-
-import { slugify } from './slug.js';
 
 const RULES = {
   bash: /(?<comment>#[^\n]*)|(?<string>'[^'\n]*'|"[^"\n]*")|(?<flag>(?:^|(?<=\s))--?[a-zA-Z][\w-]*)|(?<number>\b\d+(?:\.\d+)?\b)/g,
@@ -69,31 +67,16 @@ export function highlight(source, language) {
   return out;
 }
 
-/** Highlight every fenced code block inside a rendered markdown container. */
-export function highlightWithin(container) {
-  if (!container) return;
-  for (const block of container.querySelectorAll('pre > code')) {
-    if (block.dataset.highlighted === 'true') continue;
-    const className = block.getAttribute('class') ?? '';
-    const language = /language-([\w-]+)/.exec(className)?.[1] ?? 'text';
-    const source = block.textContent ?? '';
-    block.innerHTML = highlight(source, language);
-    block.dataset.highlighted = 'true';
-  }
-}
+/*
+  `highlightWithin` and `addHeadingAnchors` used to live here, for a browser pass over
+  markdown rendered at runtime. Nothing has called either since the documentation became
+  prerendered: `renderMarkdown` highlights and stamps ids at build time and marks the blocks
+  `data-highlighted`, so there is no second pass to make. Vite tree-shakes unused exports, so
+  they cost no bytes and were invisible for it.
 
-/** Give headings stable ids so the page can be deep-linked. */
-export function addHeadingAnchors(container) {
-  if (!container) return [];
-  const headings = [];
-  for (const node of container.querySelectorAll('h2, h3')) {
-    const text = node.textContent ?? '';
-    // slugify, not a copy of it: the module exists because a second copy of this rule already
-    // disagreed with the first about hyphens, and the ids it makes have to be the ones the
-    // prerendered pages and every /docs/...#fragment link were built with.
-    const id = node.id || slugify(text);
-    node.id = id;
-    headings.push({ id, text, level: Number(node.tagName.slice(1)) });
-  }
-  return headings;
-}
+  They are gone because `addHeadingAnchors` was still doing `node.id || slugify(text)` — the
+  plain rule, one id per heading text, which is what 0.6.87 replaced with `makeSlugger` after
+  two `NO_SAMPLES` headings both answered to `#no_samples`. Wiring it back up would have
+  reintroduced that bug, and a helper that looks ready to use is a worse place to keep a known
+  wrong rule than no helper at all.
+*/

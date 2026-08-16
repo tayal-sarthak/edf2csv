@@ -9,7 +9,3 @@ import docs from '../generated/docs-index.json';
 */
 
 export const pages = docs;
-
-export function docPath(slug) {
-  return `/docs/${slug}`;
-}
