@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.65
+
+### every documentation page said two of its links were the current one
+
+Every prerendered page carried `aria-current="true"` on the header's "Docs" link, hard-coded,
+while the sidebar correctly marked the page actually being read. A screen reader on the CLI
+reference was therefore told two links were the current one, and neither the header link nor the
+page it points at is the CLI reference. The attribute also drives the styling rule the sidebar
+uses, so the header link rendered permanently highlighted, as though it were where you were.
+
+The header is a link to the documentation, not a claim about which page is open. The sidebar is
+where that is expressed, and it was already expressing it correctly.
+
 ## 0.6.64
 
 ### the hero said four things before saying what the tool does

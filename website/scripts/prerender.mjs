@@ -230,7 +230,7 @@ function page(doc, docs, assets) {
           edf2csv
         </a>
         <div class="nav__links">
-          <a href="/docs/getting-started" aria-current="true">Docs</a>
+          <a href="/docs/getting-started">Docs</a>
           <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
           <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
           <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
