@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.86
+
+### the contents list omitted every diagnostic code on the page about them
+
+The on-page contents list showed h2s only. That is right for a page whose subheadings subdivide an
+argument, and wrong for the reference pages, where the subheading is the entry: warnings-and-errors
+is 13,000 words holding 42 of them, one per diagnostic code, and a reader who has just seen
+INPUT_CHANGED in their terminal was handed a list of eleven section titles, not one of which is
+what they came to look up. They could search the page, which is what people did, or scroll 13,000
+words. The ids were already there and already permanent.
+
+Subheadings are now listed, indented under their section and set a step smaller, so 53 entries read
+as a structure rather than a wall. The box scrolls at 60% of the viewport rather than pushing the
+first paragraph off the screen on the pages that need it most.
+
 ## 0.6.85
 
 ### printing a reference page spent the first sheet on navigation

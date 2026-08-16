@@ -894,6 +894,25 @@ a {
   transition: color 0.16s var(--ease);
 }
 
+/* Subheadings are indented under the section they belong to, and set slightly smaller,
+   so a list of 53 entries still reads as a structure rather than a wall. */
+.docs__toc a[data-level='3'] {
+  padding-left: 0.9rem;
+  font-size: 0.86rem;
+  color: var(--text-faint);
+}
+
+.docs__toc a[data-level='3']:hover {
+  color: var(--accent-text);
+}
+
+/* The reference pages have long contents lists; the box scrolls rather than pushing
+   the prose down the page. */
+.docs__toc {
+  max-height: min(60vh, 30rem);
+  overflow-y: auto;
+}
+
 .docs__toc a:hover {
   color: var(--accent-text);
 }

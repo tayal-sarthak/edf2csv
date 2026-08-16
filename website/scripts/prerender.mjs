@@ -188,7 +188,16 @@ function page(doc, docs, assets) {
   const index = docs.findIndex((entry) => entry.slug === doc.slug);
   const previous = index > 0 ? docs[index - 1] : null;
   const next = index < docs.length - 1 ? docs[index + 1] : null;
-  const headings = extractHeadings(doc.body).filter((heading) => heading.level === 2);
+  /*
+    Both levels, not just h2.
+
+    The contents list showed h2s only, which suits a page whose h3s are subdivisions of
+    an argument. It does not suit the reference pages, where the h3 *is* the entry: the
+    warnings page is 13,000 words holding 42 of them, one per diagnostic code, and the
+    reader who arrives having just seen INPUT_CHANGED in their terminal was offered a
+    list of eleven section titles, none of which is the thing they came to look up.
+  */
+  const headings = extractHeadings(doc.body).filter((heading) => heading.level <= 3);
 
   const sidebar = docs
     .map(
@@ -203,7 +212,10 @@ function page(doc, docs, assets) {
     ? `<nav class="docs__toc" aria-label="On this page">
             <span class="docs__toc-title">On this page</span>
             ${headings
-              .map((heading) => `<a href="#${heading.id}">${escape(heading.text)}</a>`)
+              .map(
+                (heading) =>
+                  `<a href="#${heading.id}" data-level="${heading.level}">${escape(heading.text)}</a>`,
+              )
               .join('\n            ')}
           </nav>`
     : '';
