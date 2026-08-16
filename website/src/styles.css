@@ -316,10 +316,6 @@ a {
   );
 }
 
-:root[data-theme='light'] .hero__backdrop {
-  opacity: 0.62;
-}
-
 @media (max-width: 900px) {
   /* On one column the copy runs the full width, so the beam is pulled further back. */
   .hero__backdrop {
@@ -1034,11 +1030,11 @@ a {
 }
 
 .prose th {
-  color: var(--text);
   font-weight: 500;
   font-size: 0.82rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  /* Uppercased and small, so it reads as a label rather than as a first row of data. */
   color: var(--text-faint);
 }
 

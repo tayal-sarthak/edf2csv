@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.79
+
+### a dead light-theme rule outranked the one that dims the hero on phones
+
+`:root[data-theme='light'] .hero__backdrop { opacity: 0.62 }` set the same value the base rule
+already set, so it looked like a leftover that cost nothing. It cost something: at two class-ish
+selectors and an attribute it outranks `@media (max-width: 900px) .hero__backdrop`, which drops
+the beam to 0.32 because the hero collapses to one column and the copy runs the full width across
+it.
+
+So a phone in light mode had two behaviours. Chosen from the header, the attribute is present, the
+dead rule wins, and the beam stays at 0.62 behind the sentence describing the tool. Coming from
+the system preference, no attribute is set, the selector does not match, and the same phone in the
+same colours renders it at 0.32. Measured both ways before removing it, and both ways after: 0.32
+and 0.32.
+
 ## 0.6.78
 
 ### the third text colour failed contrast on text meant to be read
