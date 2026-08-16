@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.131
+
+### the first page anyone reads said to open it in Excel the one way not to
+
+Getting started is the page a first-time reader opens, and its Excel section said: "Open
+`signals.csv` directly. It's plain UTF-8 CSV with a header row and needs no import wizard." The only
+caveat it gave was the row limit.
+
+That is the one piece of advice this tool has both a flag and a warning against.
+
+Excel on Windows reads a CSV with no byte order mark in the system code page rather than as UTF-8,
+so `µV` — one character, two bytes — arrives as `Âµ`, in the unit column of an EEG conversion. That
+is exactly what `--bom` exists for; the flag's own help text says so, and this page did not mention
+`--bom` once, in any section. It also says why it is not the default, because that matters: Python's
+`csv.reader` over a plain `open()` and Node's `readFileSync(path, 'utf8')` both hand the first
+column back as `﻿time_s`, so a lookup of `time_s` misses. On for a spreadsheet, off for code.
+
+And `FORMULA_LABEL`, added four releases ago, warns that a label beginning `=`, `+` or `@` is run as
+a formula by a spreadsheet rather than shown as text — where its own hint says to use the text
+import path. "Needs no import wizard" was the page steering people around it.
+
 ## 0.6.130
 
 ### a test raced a signal against a process that was not listening yet

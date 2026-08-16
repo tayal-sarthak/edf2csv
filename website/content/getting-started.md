@@ -227,6 +227,28 @@ warning: At least one output file will have more than 1,048,576 rows, which is m
 
 `channels.csv`, `annotations.csv` and short slices open in a spreadsheet without trouble. Full-length signal files usually don't.
 
+Two things are worth knowing before you double-click the file, and this page used to mention
+neither.
+
+Excel on Windows reads a CSV with no byte order mark in the system code page rather than as UTF-8,
+so `µV` — one character, two bytes of UTF-8 — arrives as `Âµ` in the unit column and in any accented
+patient or channel text. [`--bom`](/docs/cli-reference#--bom) writes the mark that tells it
+otherwise:
+
+```bash
+edf2csv recording.edf --bom
+```
+
+It is off by default because it is not free: `csv.reader` over a plain `open()` in Python, and
+`fs.readFileSync(path, 'utf8')` in Node, both hand back the first column name as `\ufefftime_s`,
+so a lookup of `time_s` misses. pandas strips it either way. Use it when the destination is Excel,
+leave it off when the destination is code.
+
+And if the conversion raised [`FORMULA_LABEL`](/docs/warnings-and-errors#formula_label), a channel's
+label or unit starts with `=`, `+` or `@`, which a spreadsheet runs as a formula rather than showing
+as text. Open that one through the import path instead — Data → From Text/CSV in Excel with the
+column set to Text — or read it with pandas or R, which evaluate nothing.
+
 ## Where to go next
 
 - [Output files](/docs/output-files) describes every column of every file the conversion writes, including the whole of `metadata.json`.
