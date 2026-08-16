@@ -127,7 +127,8 @@ time axis that's quietly wrong.
 
 ```
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
-         Each row carries its true recording time, so gaps stay visible instead of being closed.
+         Each row carries its true recording time, so gaps stay visible instead
+         of being closed.
 ```
 
 ### Record count, record duration, and signal count
@@ -437,7 +438,8 @@ the channel's position in the file, and tells you:
 
 ```
 warning: 2 signals share the label "T8-P8" (positions 0, 1).
-         Their columns are suffixed with the signal number so they stay distinguishable.
+         Their columns are suffixed with the signal number so they stay
+         distinguishable.
 ```
 
 The two columns then appear as `T8-P8_ch0` and `T8-P8_ch1`. When you want one specifically,

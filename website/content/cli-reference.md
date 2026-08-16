@@ -151,7 +151,8 @@ error: "/data/csv/sleep-study" already exists.
 ```
 warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an
          earlier conversion into this directory and were not rewritten.
-         Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
+         Delete them, or convert into a fresh directory, so the two runs do not
+         get mixed up.
 ```
 
 If the destination path exists but is a regular file rather than a directory, that's an error with its own message. `--force` means "replace my previous output", not "write into whatever this happens to be".
@@ -378,7 +379,9 @@ A recording does not always begin at zero. The first data record's timekeeping a
 
 ```
 warning: No samples fall inside the requested window (0.000s to 1.000s), so the signal files hold their headers and no data.
-         This recording starts at 1000.000s, so the whole window sits before it. --start and --end are read on the recording's own clock, which --info prints as "Timed from".
+         This recording starts at 1000.000s, so the whole window sits before it.
+         --start and --end are read on the recording's own clock, which --info
+         prints as "Timed from".
 
 error: --start "5000" is at or past the end of this 3s recording, which runs from 1000s to 1003s.
 ```
@@ -420,8 +423,8 @@ On a recording with no annotation channel, the conversion still succeeds and sti
 ```
 warning: --annotations-only was requested but this recording has no annotation channel,
          so there are no events to export.
-         Plain EDF files carry no annotations. Convert without --annotations-only to get
-         the signals.
+         Plain EDF files carry no annotations. Convert without
+         --annotations-only to get the signals.
 ```
 
 ## --decimals
@@ -526,14 +529,16 @@ Its records may be *stored* in a different order than they are *timed*:
 
 ```
 warning: 2 data records start earlier than the record before them.
-         Rows are written in file order, so the time column will not increase monotonically.
+         Rows are written in file order, so the time column will not increase
+         monotonically.
 ```
 
 Or they may overlap: each starting after the one before it, but before that one *ends*, so a record's samples run past the start of the record after it. The starts increase, and the column steps backwards anyway — records of one second at 0 s and 0.25 s, two samples each, write 0.000, 0.500, 0.250, 0.750.
 
 ```
 warning: 1 data record starts before the record before it ends, so its samples overlap in time.
-         Rows are written in file order, so the time column will not increase monotonically.
+         Rows are written in file order, so the time column will not increase
+         monotonically.
 ```
 
 Every sample is still written, once, in file order. Sort on `time_s` yourself if you need it and either warning appeared.

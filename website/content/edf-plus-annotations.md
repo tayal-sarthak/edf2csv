@@ -125,7 +125,8 @@ and conversion warns before it starts:
 
 ```
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
-         Each row carries its true recording time, so gaps stay visible instead of being closed.
+         Each row carries its true recording time, so gaps stay visible instead
+         of being closed.
 ```
 
 ## Gaps stay visible
@@ -252,7 +253,8 @@ but it doesn't pass silently either:
 
 ```
 warning: --annotations-only was requested but this recording has no annotation channel, so there are no events to export.
-         Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.
+         Plain EDF files carry no annotations. Convert without
+         --annotations-only to get the signals.
 ```
 
 A file whose only content is annotations, with no signal channels at all, converts
@@ -274,7 +276,8 @@ first record says anything but `+0`. The substitution is reported by name:
 
 ```
 warning: 1 of 3 data records carries no readable timekeeping annotation (record 1), so its true position in time is unknown.
-         That record is timed as if it were contiguous; treat its timestamp as unreliable.
+         That record is timed as if it were contiguous; treat its timestamp as
+         unreliable.
 ```
 
 Up to five record indices are listed, with an ellipsis when there are more. The
@@ -293,7 +296,8 @@ conversion, and the count is reported:
 
 ```
 warning: 2 annotation entries were unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a non-conforming tool.
+         The rest were exported normally. The file may have been written by a
+         non-conforming tool.
 ```
 
 One malformed annotation shouldn't cost you an entire conversion, but dropping it

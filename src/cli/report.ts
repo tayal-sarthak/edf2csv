@@ -336,14 +336,56 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
   );
 }
 
-/** One line per diagnostic, prefixed so warnings are greppable. */
+/** Where terminal prose wraps. Matches the width --help is written to. */
+const WRAP_COLUMNS = 80;
+
+/** The continuation indent under a `warning: ` / `note: ` prefix. */
+const HINT_INDENT = ' '.repeat(9);
+
+/**
+ * Greedy word wrap, `indent` on every line including the first.
+ *
+ * A word wider than the column is left to overrun rather than broken. The long words here
+ * are file paths and quoted channel labels, and neither survives being split across lines:
+ * the point of printing a path is that it can be copied back out.
+ */
+function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
+  const lines: string[] = [];
+  let line = indent;
+  for (const word of text.split(/\s+/u)) {
+    if (word === '') continue;
+    if (line === indent) line += word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      lines.push(line);
+      line = indent + word;
+    }
+  }
+  if (line !== indent) lines.push(line);
+  return lines.join('\n');
+}
+
+/**
+ * One diagnostic per `warning: ` line, prefixed so warnings are greppable; the hint below it
+ * wrapped to the terminal.
+ *
+ * The hint has been on its own unprefixed continuation line since these gained hints at all,
+ * so grepping for `warning:` never picked it up and wrapping it costs nothing that was being
+ * relied on — which is what 0.6.132 got wrong when it left every diagnostic long on the
+ * grounds that they are one line each. Half of that is true. The `warning:` head is a line
+ * per diagnostic and stays one, at whatever width the message runs to; the hint underneath
+ * it is prose addressed to a person reading a terminal, and 17 of them ran past 80 columns,
+ * the widest to 180. At that width the second half of the advice is wherever the terminal
+ * decided to put it, indented under nothing, and the 9-space rule that says "this belongs to
+ * the warning above" is lost at exactly the moment there is enough text for it to matter.
+ */
 export function formatDiagnostics(diagnostics: readonly Diagnostic[]): string {
   return diagnostics
     .map((d) => {
       // Diagnostics quote channel labels, which come from the file, so they need the
       // same treatment as the --info table.
       const head = `${d.severity === 'warning' ? 'warning' : 'note'}: ${printable(d.message)}`;
-      return d.hint ? `${head}\n         ${printable(d.hint)}` : head;
+      return d.hint ? `${head}\n${wrap(printable(d.hint), HINT_INDENT)}` : head;
     })
     .join('\n');
 }

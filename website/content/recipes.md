@@ -340,7 +340,8 @@ done
 
 ```text
 warning: --annotations-only was requested but this recording has no annotation channel, so there are no events to export.
-         Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.
+         Plain EDF files carry no annotations. Convert without
+         --annotations-only to get the signals.
 ```
 
 Because that warning goes to stderr, the loop above keeps going and the folder that comes out has one directory per recording either way. The `glob` below finds nothing for the files that had no events.

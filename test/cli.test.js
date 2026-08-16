@@ -1038,6 +1038,37 @@ describe('--info', () => {
     }
   });
 
+  it('wraps every hint to the terminal, without wrapping the warning above it', async () => {
+    /*
+      The `warning: ` head is one line per diagnostic so that grepping a log finds whole
+      warnings, and it stays one line at whatever width the message runs to. The hint below
+      it is prose for a person and wraps at 80 — it already sat on its own unprefixed
+      continuation line, so nothing greps for it and nothing depended on its width.
+
+      Asserted over every fixture because the long hints are the ones a damaged header
+      produces, and those are exactly the fixtures kept here.
+    */
+    const names = (await readdir(path.join(ROOT, 'test', 'fixtures', 'generated'))).filter((n) =>
+      /\.(edf|bdf)$/u.test(n),
+    );
+    assert.ok(names.length > 10, `expected the generated fixtures, got ${names.length}`);
+
+    const wide = [];
+    let hints = 0;
+    for (const name of names) {
+      for (const extra of [[], ['--layout', 'long'], ['--decimals', '20']]) {
+        const { stderr } = await cli([fixture(name), '--info', ...extra]);
+        for (const line of stderr.split('\n')) {
+          if (!/^ {9}\S/u.test(line)) continue;
+          hints++;
+          if (line.length > 80) wide.push(`${name}: ${line.length} cols — ${line.trim()}`);
+        }
+      }
+    }
+    assert.ok(hints > 20, `expected hints to assert about, saw ${hints}`);
+    assert.deepEqual(wide, [], `hint lines past 80 columns:\n${wide.join('\n')}`);
+  });
+
   it('never reports a size the conversion then exceeds', async () => {
     const names = (await readdir(path.join(ROOT, 'test', 'fixtures', 'generated')))
       .filter((n) => /\.(edf|bdf)$/u.test(n))
@@ -3090,7 +3121,10 @@ describe('--layout long', () => {
     ]);
     assert.equal(code, 0);
     assert.match(stderr, /2 data records start earlier than the record before them/u);
-    assert.match(stderr, /will not increase monotonically/u);
+    // Hints are wrapped to the terminal, so the sentence can carry a newline and nine
+    // spaces anywhere a space would go. What is asserted is the sentence, not the column
+    // it happened to break at.
+    assert.match(stderr.replace(/\s+/gu, ' '), /will not increase monotonically/u);
 
     const rows = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
     const times = rows.slice(1).map((row) => Number(row.split(',')[0]));

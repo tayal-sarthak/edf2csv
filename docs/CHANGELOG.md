@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.1
+
+### a hint under a warning ran to 180 columns
+
+Seventeen of them, the widest at 180 columns, on the line that tells you what to do about the
+warning above it.
+
+0.6.132 looked at this and left it, on the grounds that `formatDiagnostics` is "one line per
+diagnostic, prefixed so warnings are greppable" and that wrapping would break `grep warning:`
+for anything reading the output of a batch. Half of that is right, and it is the half about
+the message. The hint has never been on that line. It has always been emitted below it,
+indented nine spaces, carrying no prefix — so `grep warning:` has never returned a hint and
+nothing that greps this output can have been relying on its width.
+
+So the head stays one line, at whatever width the message runs to, and the hint wraps at 80:
+
+```
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear in the CSV column name and in channels.csv's unit cell exactly as the header has them.
+         Address the channel by position with --channels "#0" rather than by name,
+         since the name cannot be typed. Printing the CSV to a terminal may do more
+         than print it.
+```
+
+At 180 columns the terminal was already breaking that sentence — just wherever the window
+happened to end, with the continuation starting in column one. The nine-space indent is the
+only thing saying "this belongs to the warning above", and it was being lost at exactly the
+width where there is enough text for the reader to need it.
+
+Nothing about a `Diagnostic` changes. `hint` is still one unwrapped string, so `--json` and
+the library API are byte-identical; the wrapping is in the terminal renderer, where the
+column width is a fact. A word wider than the column is left to overrun rather than broken,
+because the long words here are paths and quoted channel labels and neither survives being
+split across two lines.
+
+The documented samples on the website were regenerated to match, which meant separating each
+hint from the message above it — the pages hand-wrap long messages for the page width, and a
+naive rewrap folded those continuations into the hint. The split is made against the hint
+texts in `src/`, so a sample is only rewrapped where the tool's own hint is found in it.
+
 ## 0.7.0
 
 ### the patch number reached 149

@@ -48,7 +48,8 @@ Would write 3,196,800 rows, roughly 108 MB.
 warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
-         Use --start and --duration to convert a section, or read the file with pandas or R.`;
+         Use --start and --duration to convert a section, or read the file with
+         pandas or R.`;
 
 const FILES = [
   {

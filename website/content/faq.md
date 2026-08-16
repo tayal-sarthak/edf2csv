@@ -82,7 +82,8 @@ exceed the limit, edf2csv warns you before writing:
 
 ```text
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
-         Use --start and --duration to convert a section, or read the file with pandas or R.
+         Use --start and --duration to convert a section, or read the file with
+         pandas or R.
 ```
 
 `channels.csv` and `annotations.csv` are small and open in a spreadsheet without trouble. For the
@@ -141,7 +142,8 @@ this and tells you:
 ```text
 warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an earlier
          conversion into this directory and were not rewritten.
-         Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
+         Delete them, or convert into a fresh directory, so the two runs do not
+         get mixed up.
 ```
 
 Nothing is deleted for you. Either delete the stale files or convert into a fresh directory.
@@ -214,7 +216,8 @@ conversion time:
 
 ```text
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
-         Each row carries its true recording time, so gaps stay visible instead of being closed.
+         Each row carries its true recording time, so gaps stay visible instead
+         of being closed.
 ```
 
 Other tools handle this differently. `mne.io.read_raw_edf` closes EDF+D gaps silently, which
@@ -414,7 +417,8 @@ that inversion intact, since correcting it would mean overriding what the file s
 
 ```text
 warning: Signal 3 ("inverted") declares physical minimum 100 above physical maximum -100, which inverts its polarity.
-         The values are converted exactly as the header specifies, inversion included.
+         The values are converted exactly as the header specifies, inversion
+         included.
 ```
 
 ## What happens with a truncated recording, or one that is still being written?
@@ -425,7 +429,8 @@ the discrepancy:
 
 ```text
 warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
-         The recording looks truncated. It may have been cut short or copied incompletely.
+         The recording looks truncated. It may have been cut short or copied
+         incompletely.
 ```
 
 If bytes are left over after the last complete record, they're ignored and reported separately as

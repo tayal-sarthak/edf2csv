@@ -148,7 +148,8 @@ Anything the tool noticed is printed after the table, on stderr — for this rec
 warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
-         Use --start and --duration to convert a section, or read the file with pandas or R.
+         Use --start and --duration to convert a section, or read the file with
+         pandas or R.
 ```
 
 The second is the spreadsheet limit, which [Can I open the output in Excel?](/docs/faq#can-i-open-the-output-in-excel) goes into.
@@ -222,7 +223,8 @@ Open `signals.csv` directly. It's plain UTF-8 CSV with a header row and needs no
 
 ```text
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
-         Use --start and --duration to convert a section, or read the file with pandas or R.
+         Use --start and --duration to convert a section, or read the file with
+         pandas or R.
 ```
 
 `channels.csv`, `annotations.csv` and short slices open in a spreadsheet without trouble. Full-length signal files usually don't.

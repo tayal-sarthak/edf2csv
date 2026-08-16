@@ -160,7 +160,8 @@ At least one numeric field in the header used a comma as its decimal separator, 
 
 ```
 warning: Some header numbers use a comma decimal separator, which the EDF spec does not allow.
-         They were read as decimal points. Check the values in the channel table.
+         They were read as decimal points. Check the values in the channel
+         table.
 ```
 
 **What to do.** Look at the channel table in `--info` or at `channels.csv` and confirm the physical ranges are what you expect for those channels. A range of `-250 to 250` for an EEG channel in microvolts is plausible; `-250000 to 250000` would suggest the separator was interpreted differently than the writer intended.
@@ -198,7 +199,8 @@ A channel declares the same value for its digital minimum and digital maximum.
 
 ```
 warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values cannot be scaled.
-         Its cells are left empty rather than filled with a value the header cannot justify.
+         Its cells are left empty rather than filled with a value the header
+         cannot justify.
 ```
 
 An empty field is the same convention `annotations.csv` uses for an absent duration, and it reads back as `NaN` in pandas and `NA` in R. Earlier versions wrote the channel's physical minimum instead; a column of repeated numbers is indistinguishable from a genuinely flat recording once the CSV is opened somewhere else, which is the sort of invented data this tool exists to avoid. Channels either side of the degenerate one are unaffected.
@@ -237,7 +239,8 @@ and raised no diagnostic at all.
 
 ```
 warning: Signal 0 ("huge") declares a physical range from -1e+308 to 1e+308, whose span is too large to represent, so its values cannot be scaled.
-         Its cells are left empty rather than filled with a value the header cannot justify.
+         Its cells are left empty rather than filled with a value the header
+         cannot justify.
 ```
 
 A span can also be too *small*. The gain is the span divided by the digital range, so 2e-320
@@ -248,7 +251,8 @@ same number, with no diagnostic and `--strict` exiting 0.
 
 ```
 warning: Signal 0 ("MAG") declares a physical range from -1e-320 to 1e-320, whose span is too small to represent, so its values cannot be scaled.
-         Its cells are left empty rather than filled with a value the header cannot justify.
+         Its cells are left empty rather than filled with a value the header
+         cannot justify.
 ```
 
 A range that is genuinely flat — minimum equal to maximum — is a different thing and keeps its
@@ -276,7 +280,8 @@ The gain is `(physical_max - physical_min) / (digital_max - digital_min)`, so wh
 
 ```
 warning: Signal 3 ("inverted") declares physical minimum 100 above physical maximum -100, which inverts its polarity.
-         The values are converted exactly as the header specifies, inversion included.
+         The values are converted exactly as the header specifies, inversion
+         included.
 ```
 
 The message names whichever pair is reversed, so a file with its digital bounds the wrong way round says so rather than reporting the physical ones.
@@ -303,16 +308,16 @@ The same code also reports the file that was *not* written, when the conversion 
 ```
 warning: No signal file was written: every channel selected carries zero samples per data
          record, so there is nothing to put in one.
-         channels.csv still describes them. Run with --info to see which channels do carry
-         samples.
+         channels.csv still describes them. Run with --info to see which
+         channels do carry samples.
 ```
 
 Or the recording has no signal channels at all, holding only EDF+ annotations — in which case nothing was selected, and `channels.csv` has no rows to describe:
 
 ```
 warning: No signal file was written: there is no signal data in this recording to put in one.
-         annotations.csv holds whatever events it carries. channels.csv lists signal
-         channels, so it has none to list.
+         annotations.csv holds whatever events it carries. channels.csv lists
+         signal channels, so it has none to list.
 ```
 
 Until 0.5.54 the second case got the first case's wording, which said three things about channels to a file that has none.
@@ -352,7 +357,8 @@ edf2csv preserves labels verbatim in output and only disambiguates when the file
 
 ```
 warning: 2 signals share the label "T8-P8" (positions 0, 1).
-         Their columns are suffixed with the signal number so they stay distinguishable.
+         Their columns are suffixed with the signal number so they stay
+         distinguishable.
 ```
 
 **From channel selection.** A `--channels` term matched more than one channel. Matching is case-insensitive on the whole label, so a term that names a duplicated label selects all of them.
@@ -375,7 +381,8 @@ The suffix is checked against every other label in the file, not just against th
 ```
 warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
          "_ch" suffix produces, so its column is "T8_ch0_ch2".
-         Column names are unique; look this channel up in channels.csv by its signal_index.
+         Column names are unique; look this channel up in channels.csv by its
+         signal_index.
 ```
 
 `time_s` is checked the same way, and it is the one name on that list no file supplies — the writer puts it in front of the channels. A channel labelled `time_s` moves aside for it:
@@ -383,7 +390,8 @@ warning: Signal 2 is labelled "T8_ch0", which is also the column name another ch
 ```
 warning: Signal 0 is labelled "time_s", which is the name of the time column every
          signals.csv starts with, so its column is "time_s_ch0".
-         Column names are unique; look this channel up in channels.csv by its signal_index.
+         Column names are unique; look this channel up in channels.csv by its
+         signal_index.
 ```
 
 Until 0.5.113 it did not, and the header came out `time_s,time_s,ECG` with nothing said. Every read-back in these pages — `index_col="time_s"`, `pop("time_s")`, `pivot(index="time_s")` — resolves a repeated name to one of the two columns without saying which, and pandas and Python's own `csv.DictReader` resolve it opposite ways round.
@@ -399,8 +407,9 @@ Sample times are written to at most fifteen decimal places, which separates ever
 ```
 warning: Channels at 3000000000000000 Hz sample faster than the time column can distinguish, so
          consecutive rows in signals.csv carry the same time_s value.
-         Every sample is written, in order. Use the row number rather than time_s to tell
-         them apart, or convert one rate at a time with --channels.
+         Every sample is written, in order. Use the row number rather than
+         time_s to tell them apart, or convert one rate at a time with
+         --channels.
 ```
 
 The same code covers the limit of that, where the rate is not a number at all. A sampling rate is samples per record divided by the record duration, and the record-duration field accepts values small enough that the quotient overflows a double: four samples in a 1e-308 second record is `Infinity`. Those samples cannot be placed in time, so none is written, and the warning says which of the two happened:
@@ -409,8 +418,8 @@ The same code covers the limit of that, where the rate is not a number at all. A
 warning: Channels in signals.csv work out to a sampling rate of Infinity Hz — their samples per
          record over a record duration too small to divide into — so their samples cannot be
          placed in time and no rows are written for them.
-         Check the record duration in the header. One power of ten larger and the same file
-         converts, with consecutive rows carrying the same time_s.
+         Check the record duration in the header. One power of ten larger and
+         the same file converts, with consecutive rows carrying the same time_s.
 ```
 
 Until 0.5.84 nothing was raised for it: `1 / Infinity` is zero, the check tests for a step greater than zero, and every sample was dropped in silence — under an `EMPTY_WINDOW` warning saying the records "carry no samples in range", on a run that asked for no range.
@@ -430,8 +439,8 @@ The same failure as `TIME_RESOLUTION`, one column over: the value this time rath
 ```
 warning: gravimeter steps by less than any number of decimals this can print, so some
          consecutive samples round to the same value in signals.csv.
-         Every sample is written, in order, and the physical values are computed at full
-         precision either way. What is lost is only in the printed text.
+         Every sample is written, in order, and the physical values are computed
+         at full precision either way. What is lost is only in the printed text.
 ```
 
 Asked of the ceiling, not of the precision in use — so it holds whatever `--decimals` says, and it stays quiet for an ordinary channel however coarse a precision you ask for. `--decimals 2` on a channel needing 3 is a trade you made knowingly; up to 0.5.10 it raised this on every channel of an ordinary EEG, which also made `--decimals 2 --strict` impossible, since `--strict` turns any diagnostic into a non-zero exit. 0.5.10 fixed that by skipping the check whenever `--decimals` was given, and so silenced the real case too: at `--decimals 20` a channel stepping by 1e-106 printed every code it had as `0.00000000000000000000` and said nothing. 0.5.21 asks the question that actually matters — whether any precision this can print would separate consecutive codes.
@@ -454,7 +463,8 @@ This code covers six related conditions, and a single file can raise more than o
 
 ```
 warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
-         Each row carries its true recording time, so gaps stay visible instead of being closed.
+         Each row carries its true recording time, so gaps stay visible instead
+         of being closed.
 ```
 
 That hint is withdrawn on a file that cannot keep it. A recording marked `EDF+D` whose record times are not recorded anywhere — no annotation channel, or none that can be read — is written as if contiguous, and the warning says so and points at the one below it. Until 0.5.106 both printed as they are, and the second denied the first.
@@ -469,7 +479,8 @@ edf2csv falls back to timing the records as if they were contiguous and says so.
 
 ```
 warning: 1 data record starts earlier than the record before it.
-         Rows are written in file order, so the time column will not increase monotonically.
+         Rows are written in file order, so the time column will not increase
+         monotonically.
 ```
 
 Rows are written in file order, not sorted by time, so `time_s` will step backwards at those points.
@@ -479,8 +490,9 @@ Rows are written in file order, not sorted by time, so `time_s` will step backwa
 ```
 warning: This file is marked continuous (EDF+C), but 2 of its 3 data records say they start
          somewhere other than where continuity puts them.
-         Times are written as if the records were contiguous, which is what EDF+C means.
-         If the recording really has gaps, the file should have been marked EDF+D.
+         Times are written as if the records were contiguous, which is what
+         EDF+C means. If the recording really has gaps, the file should have
+         been marked EDF+D.
 ```
 
 A BDF+ file gets its own spelling — `BDF+C` and `BDF+D` — the same as the discontinuous entry above. Until 0.5.105 this half of the code printed the EDF markers whatever the format, so a BDF+ recording was told about a string it does not contain and pointed at a marker BDF+ does not define.
@@ -491,7 +503,8 @@ Compared against what the file can express rather than for equality, since a rec
 
 ```
 warning: 2 data records start before the record before them ends, so their samples overlap in time.
-         Rows are written in file order, so the time column will not increase monotonically.
+         Rows are written in file order, so the time column will not increase
+         monotonically.
 ```
 
 Until 0.5.25 only the strictly-backwards case above was looked for, so this went unreported: starts of 0, 0.5 and 1.0 on one-second records are increasing, and the column steps backwards anyway, because the first record's samples run to 0.75 while the second begins at 0.5.
@@ -502,8 +515,9 @@ Until 0.5.25 only the strictly-backwards case above was looked for, so this went
 warning: This recording's timekeeping annotations place it -10000000000000002s from its own
          start date, which is too far out for its 1s records to be told apart: at that
          magnitude adding a sample interval leaves the number unchanged.
-         Sample times are written from zero instead, so every row is present and the column
-         increases. Add the onsets in annotations.csv to recover absolute times if you need them.
+         Sample times are written from zero instead, so every row is present and
+         the column increases. Add the onsets in annotations.csv to recover
+         absolute times if you need them.
 ```
 
 The magnitude is what matters, not the sign — a negative origin the same distance out fails identically. Until 0.5.17 the check looked only in the positive direction, seeded from zero, so an all-negative recording never reached it: twelve rows became four, exit 0, and nothing was said, while the byte-for-byte positive mirror of the same file wrote all twelve and explained itself.
@@ -518,7 +532,8 @@ This code covers five conditions, which are counted separately because they lose
 
 ```
 warning: 1 annotation entry was unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a non-conforming tool.
+         The rest were exported normally. The file may have been written by a
+         non-conforming tool.
 ```
 
 edf2csv skips the bad entry and keeps going. A single malformed annotation shouldn't cost you a whole conversion, but losing it in silence would mean you never learn that an event is missing from `annotations.csv`.
@@ -528,8 +543,9 @@ edf2csv skips the bad entry and keeps going. A single malformed annotation shoul
 ```
 warning: 1 data record carries a timekeeping annotation that could not be read, so it does
          not say where in time it sits.
-         No event was lost — a timekeeping annotation states a record's start time and is
-         never exported. Times are derived from the records that could be read.
+         No event was lost — a timekeeping annotation states a record's start
+         time and is never exported. Times are derived from the records that
+         could be read.
 ```
 
 In a continuous recording the records sit end to end, so any record that *can* be read fixes the origin for all of them: a record stating 1.5 s in a file of one-second records puts the recording's start at 0.5 s. Only if no record at all states a time does the file fall back to being timed from zero.
@@ -538,12 +554,14 @@ A first entry may also carry events after the start time — the format allows b
 
 ```
 warning: 2 annotation entries were unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a non-conforming tool.
+         The rest were exported normally. The file may have been written by a
+         non-conforming tool.
 warning: 2 data records carry a timekeeping annotation that could not be read, so they do
          not say where in time they sit.
-         2 of them also carried event text, which went with them and is counted above. A
-         timekeeping annotation itself states a record's start time and is never exported.
-         Times are derived from the records that could be read.
+         2 of them also carried event text, which went with them and is counted
+         above. A timekeeping annotation itself states a record's start time and
+         is never exported. Times are derived from the records that could be
+         read.
 ```
 
 Until 0.5.114 such an entry was counted only as lost timekeeping, so a file whose first entry read `+1,5` rather than `+1.5` exported two of its six events under a warning saying that none had been lost.
@@ -552,7 +570,8 @@ Until 0.5.114 such an entry was counted only as lost timekeeping, so a file whos
 
 ```
 warning: 1 of 3 data records carries no readable timekeeping annotation (record 2), so its true position in time is unknown.
-         That record is timed as if it were contiguous; treat its timestamp as unreliable.
+         That record is timed as if it were contiguous; treat its timestamp as
+         unreliable.
 ```
 
 Up to five record indices are listed by number, with the rest elided. The affected records are timed arithmetically as a fallback, and this warning exists precisely because that fallback produces a timestamp indistinguishable from a real one.
@@ -561,8 +580,9 @@ Up to five record indices are listed by number, with the rest elided. The affect
 
 ```
 warning: 1 annotation states a duration that is not a number, so its duration_s cell is empty.
-         The onset and the description were read normally. An empty duration_s otherwise
-         means the file stated no duration, so these rows cannot be told apart from those.
+         The onset and the description were read normally. An empty duration_s
+         otherwise means the file stated no duration, so these rows cannot be
+         told apart from those.
 ```
 
 The hint is the reason this is counted at all: an empty `duration_s` is documented as meaning the file gave no duration, so without the count these rows are indistinguishable from the ones that genuinely had none. Before 0.5.55 nothing was raised.
@@ -571,8 +591,9 @@ The hint is the reason this is counted at all: an empty `duration_s` is document
 
 ```
 warning: 1 annotation states a duration below zero, which is not a length of time.
-         The value is written to annotations.csv as the file gave it. Adding it to onset_s
-         ends the event before it starts, so check these rows before using the durations.
+         The value is written to annotations.csv as the file gave it. Adding it
+         to onset_s ends the event before it starts, so check these rows before
+         using the durations.
 ```
 
 Counted apart from the condition above because that one failed to parse and lost its value, while this one parsed and kept it: what is wrong with it is arithmetic. A duration of exactly zero is not negative and raises nothing. Before 0.5.58 nothing was raised.
@@ -589,7 +610,8 @@ Raised only by `--info --stdout`, on a recording the conversion would refuse.
 
 ```
 warning: --stdout would refuse this recording: needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
-         Narrow it to one rate with --channels, write --layout long to get them all in one table, or convert to a directory instead.
+         Narrow it to one rate with --channels, write --layout long to get them
+         all in one table, or convert to a directory instead.
 ```
 
 A warning rather than a refusal for the reason the destination guards are: `--info` writes nothing, so a rule about the output has no business stopping it from describing the recording — and being told the command will not work is exactly what was asked. Until 0.5.87 `--info` ignored `--stdout` entirely and predicted rows and named files for a command that writes neither.
@@ -606,7 +628,9 @@ The file has an annotation channel whose timekeeping says the records begin at a
 
 ```
 warning: This file has an annotation channel stating that its records begin at 1000s, but its reserved field carries no EDF+C or EDF+D marker — so it is read as plain EDF, time_s counts from zero, and the two disagree by 1000s.
-         annotations.csv keeps the onsets the file gives, so its events and signals.csv are on different clocks. Mark the file EDF+C, or subtract the offset from the onsets, before joining them.
+         annotations.csv keeps the onsets the file gives, so its events and
+         signals.csv are on different clocks. Mark the file EDF+C, or subtract
+         the offset from the onsets, before joining them.
 ```
 
 Until 0.5.104 nothing was raised: `signals.csv` opened at `0.000`, `annotations.csv` put the event at `1000.5`, and the pages promise the opposite — "`onset_s` is on the same clock as `time_s` in the signal files".
@@ -625,7 +649,9 @@ The header's start date and time fields do not parse as a date and a time.
 
 ```
 warning: The header's start date and time ("32.13.99" and "25.61.61") are not a date and a time, so the recording has no start instant.
-         time_s is unaffected — it counts from the start of the recording either way. What cannot be done is turning it into a wall-clock instant, and metadata.json records start_datetime_local as null.
+         time_s is unaffected — it counts from the start of the recording either
+         way. What cannot be done is turning it into a wall-clock instant, and
+         metadata.json records start_datetime_local as null.
 ```
 
 Until 0.5.101 nothing was raised: `--info` echoed the fields with "(unparseable)" beside them and a conversion said nothing at all, so a recording with no usable timestamp passed `--strict` and left a bare `null` in the archive. Every other unusable header field reports itself.
@@ -642,7 +668,8 @@ You passed `--annotations-only` but the recording has no annotation channel.
 
 ```
 warning: --annotations-only was requested but this recording has no annotation channel, so there are no events to export.
-         Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.
+         Plain EDF files carry no annotations. Convert without
+         --annotations-only to get the signals.
 ```
 
 **What to do.** Run `--info` and look at the `Format` line. If it says `EDF` rather than `EDF+`, there were never any events to extract. Convert without `--annotations-only` to get the signal data:
@@ -700,7 +727,8 @@ At least one output file will have more than 1,048,576 rows, which is the limit 
 
 ```
 warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
-         Use --start and --duration to convert a section, or read the file with pandas or R.
+         Use --start and --duration to convert a section, or read the file with
+         pandas or R.
 ```
 
 `--info` reports the estimate before you convert anything:
@@ -725,7 +753,8 @@ The output directory contains files that edf2csv produced on an earlier run and 
 
 ```
 warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an earlier conversion into this directory and were not rewritten.
-         Delete them, or convert into a fresh directory, so the two runs do not get mixed up.
+         Delete them, or convert into a fresh directory, so the two runs do not
+         get mixed up.
 ```
 
 A directory that has been converted into several times can hold a great many of these — a mixed-rate recording writes one file per rate — so past eight the rest are counted rather than named, the same as every other message here that lists something the run does not control. One leftover reads as one, in the advice as well as in the sentence above it.
@@ -741,9 +770,9 @@ A window can select nothing without being past the end of the recording — `--s
 ```
 warning: No samples fall inside the requested window (1.950s to 2.000s), so the signal
          files hold their headers and no data.
-         The window is inside the recording but lands where there is no data — past the
-         last sample, or inside a gap in a discontinuous file. Run with --info to see
-         where the records actually sit.
+         The window is inside the recording but lands where there is no data —
+         past the last sample, or inside a gap in a discontinuous file. Run with
+         --info to see where the records actually sit.
 ```
 
 Or, on a discontinuous recording whose records sit at 0s, 1s and 10s, anywhere in the eight-second gap:
@@ -765,8 +794,9 @@ One of a channel's four free-text header fields — label, unit, transducer or p
 ```
 warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear
          in the CSV column name and in channels.csv's unit cell exactly as the header has them.
-         Address the channel by position with --channels "#0" rather than by name, since
-         the name cannot be typed. Printing the CSV to a terminal may do more than print it.
+         Address the channel by position with --channels "#0" rather than by
+         name, since the name cannot be typed. Printing the CSV to a terminal
+         may do more than print it.
 ```
 
 When only a cell field carries them, the column name is untouched and the channel can still be selected by name — unless it has no label, or its label contains a comma, which [`--channels`](/docs/cli-reference#-c---channels) would read as two names. In both of those the position is the only way in, and the hint says that instead. Whichever branch it takes, the command it prints is one that runs. The cell is named too, since `channels.csv` has fourteen columns:
@@ -774,8 +804,8 @@ When only a cell field carries them, the column name is untouched and the channe
 ```
 warning: Signal 0's unit contains 1 control character (\x07), which will appear in
          channels.csv's unit cell exactly as the header has it.
-         The column name is unaffected, so --channels "ECG" still selects it. Printing the
-         CSV to a terminal may do more than print it.
+         The column name is unaffected, so --channels "ECG" still selects it.
+         Printing the CSV to a terminal may do more than print it.
 ```
 
 **What edf2csv does.** Passes the label through exactly as the header has it. Losing what the file says is not an improvement, and CSV quoting keeps the row parseable whatever the bytes are — the warning exists so that you know, not because anything is rewritten. `--info` is the exception: it escapes them for display, since an ANSI escape in a header could otherwise drive your terminal. The same goes for paths, which the filesystem supplies and nobody vets — a directory named with an ESC byte, or a file name holding a newline, is escaped everywhere edf2csv prints it, so a summary line stays one line and stays inert.
@@ -795,9 +825,9 @@ One of a channel's four free-text header fields starts with `=`, `+` or `@`. Exc
 ```
 warning: Signal 0's label starts with =, which Excel, LibreOffice and Google Sheets read as
          the start of a formula rather than as text.
-         The text is written exactly as the header has it, so the cell is what the recording
-         says. Open the CSV with pandas or R, or import it into the spreadsheet as text, if
-         you do not want it evaluated.
+         The text is written exactly as the header has it, so the cell is what
+         the recording says. Open the CSV with pandas or R, or import it into
+         the spreadsheet as text, if you do not want it evaluated.
 ```
 
 **What edf2csv does.** Writes the field exactly as the header has it, and says so. The usual mitigation is to prefix the cell with an apostrophe, and that means writing something the recording does not contain — the one thing this tool does not do. `NONPRINTABLE_LABEL` answers control bytes the same way, for the same reason.

@@ -502,8 +502,8 @@ again once it is finished.
 ```
 warning: The input changed while it was being converted, so this output covers the file as it
          was when the conversion started, not as it is now.
-         No checksum was recorded: the bytes that were converted are no longer there to hash.
-         Convert again once the recording is finished.
+         No checksum was recorded: the bytes that were converted are no longer
+         there to hash. Convert again once the recording is finished.
 ```
 
 ### recording: what the header said
