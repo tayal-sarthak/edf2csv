@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.106
+
+### a phone got ten links to other pages before the page it asked for
+
+Documentation pages are two columns: the list of the eleven pages on the left, the page on the
+right. Below 900px that collapses to one column, and the list collapsed into the top of it — 448
+pixels of links to other pages, which is the entire first screen of a 375x812 phone.
+
+Measured on the CLI reference: the title sat at y=624, on the bottom edge of the viewport, and the
+first sentence of the page at y=1333. A reader arriving from a search result — which is how people
+arrive at reference documentation — got a screen and a half of navigation before the thing the
+result had just promised them, and the ten links they were being offered instead were the ten pages
+they had not asked for.
+
+It is a sidebar because it sits beside the page. With nothing beside anything, it is a footer, so
+below 900px it is now one. The title moves to y=152 and the first sentence to y=861; the desktop
+layout is untouched, sidebar still sticky at the left.
+
 ## 0.6.105
 
 ### the preview server answered every documentation URL with the homepage

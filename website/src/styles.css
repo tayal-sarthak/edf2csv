@@ -843,11 +843,22 @@ a {
   gap: 2px;
 }
 
+/*
+  On a phone the page you asked for comes first, and the list of the other ten comes after it.
+
+  The two-column layout collapses to one at 900px, and the sidebar collapsed into the top of it:
+  eleven links to other pages, 448px of them, filling the whole first screen of a 375x812 phone.
+  On the CLI reference the title landed at y=624, at the very bottom edge, and the first sentence
+  of the page at y=1333 — a screen and a half of navigation before the thing a search result had
+  just promised. It is a sidebar because it sits beside the page; with nothing beside anything,
+  it is a footer.
+*/
 @media (max-width: 900px) {
   .docs__nav {
     position: static;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 1.25rem;
+    order: 2;
+    border-top: 1px solid var(--line);
+    padding-top: 1.75rem;
   }
 }
 
