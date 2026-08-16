@@ -258,7 +258,7 @@ ${doc.html}
     <footer class="footer">
       <div class="shell footer__inner">
         <span>edf2csv is MIT licensed. It reads a file and writes files, nothing else.</span>
-        <span><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a></span>
+        <span class="footer__links"><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a><a href="${NPM}" target="_blank" rel="noreferrer">npm</a></span>
       </div>
     </footer>
   </body>

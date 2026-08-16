@@ -19,9 +19,12 @@ export default function App() {
           <span>
             edf2csv is MIT licensed. It reads a file and writes files, nothing else.
           </span>
-          <span>
+          <span className="footer__links">
             <a href="https://github.com/tayal-sarthak/edf2csv" target="_blank" rel="noreferrer">
               GitHub
+            </a>
+            <a href="https://www.npmjs.com/package/edf2csv" target="_blank" rel="noreferrer">
+              npm
             </a>
           </span>
         </div>

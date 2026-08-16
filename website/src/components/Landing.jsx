@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
 import PhosphorScope from './PhosphorScope.jsx';
-import Reveal from './Reveal.jsx';
 import { pages } from '../lib/content.js';
 import { highlight } from '../lib/highlight.js';
 
@@ -188,34 +187,26 @@ export default function Landing() {
 
   return (
     <main>
+      {/*
+        The hero entrance is CSS (`.rise`), not a JavaScript animation. The page is
+        prerendered, so the title has to be visible the moment the HTML paints — an
+        inline opacity-0 waiting for hydration would blank the largest text on the
+        page for exactly as long as the bundle takes.
+      */}
       <section className="hero">
         <PhosphorScope />
         <div className="shell hero__grid">
           <div>
-            <motion.h1
-              className="hero__title"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <h1 className="hero__title rise">
               Your recording, <em>as numbers</em>.
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              className="hero__lede"
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <p className="hero__lede rise rise--2">
               Convert EDF, EDF+ and BDF biosignal recordings to CSV you can open in
               pandas, R or Excel. Local, streaming, and honest about what it found.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <div className="rise rise--3">
               <CommandBar command="npx edf2csv recording.edf" />
 
               <div className="hero__actions">
@@ -240,65 +231,55 @@ export default function Landing() {
                   View source
                 </motion.a>
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.985 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <div className="rise rise--2">
             <Waveform />
-          </motion.div>
+          </div>
         </div>
       </section>
 
       <section className="section" id="inspect">
         <div className="shell">
-          <Reveal as="h2" className="section__title">
+          <h2 className="section__title">
             See what is in the file before you write 108 MB of it
-          </Reveal>
-          <Reveal as="p" className="section__lede" delay={0.05}>
+          </h2>
+          <p className="section__lede">
             An eight hour sleep study at 100 Hz becomes three million rows. Run it with
             <code> --info</code> and the tool reads only the header, prints the channel
             table, estimates the output, and writes nothing.
-          </Reveal>
-          <Reveal delay={0.1}>
-            <pre
-              className="code"
-              dangerouslySetInnerHTML={{ __html: highlight(INFO_OUTPUT, 'bash') }}
-            />
-          </Reveal>
+          </p>
+          <pre
+            className="code"
+            dangerouslySetInnerHTML={{ __html: highlight(INFO_OUTPUT, 'bash') }}
+          />
         </div>
       </section>
 
       <section className="section" id="rates">
         <div className="shell">
-          <Reveal as="h2" className="section__title">
+          <h2 className="section__title">
             It will not invent samples that were never recorded
-          </Reveal>
-          <Reveal as="p" className="section__lede" delay={0.05}>
+          </h2>
+          <p className="section__lede">
             EDF files routinely mix rates: EEG at 100 Hz next to a thermistor at 1 Hz. One
             wide table cannot hold both without making the slow channel up, so each rate
             gets its own file instead.
-          </Reveal>
-          <Reveal delay={0.1}>
-            <RateComparison />
-          </Reveal>
+          </p>
+          <RateComparison />
         </div>
       </section>
 
       <section className="section" id="output">
         <div className="shell">
-          <Reveal as="h2" className="section__title">
-            What lands on disk
-          </Reveal>
-          <Reveal as="p" className="section__lede" delay={0.05}>
+          <h2 className="section__title">What lands on disk</h2>
+          <p className="section__lede">
             A directory named after the recording. Pick a file to see what is inside it.
-          </Reveal>
+          </p>
 
           <div className="panels">
-            <Reveal className="tree" delay={0.1}>
+            <div className="tree">
               <div className="tree__root">sleep-study_csv/</div>
               {FILES.map((file) => (
                 <button
@@ -311,9 +292,9 @@ export default function Landing() {
                   {file.name}
                 </button>
               ))}
-            </Reveal>
+            </div>
 
-            <Reveal className="panel-detail" delay={0.16}>
+            <div className="panel-detail">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={active.name}
@@ -330,37 +311,33 @@ export default function Landing() {
                   />
                 </motion.div>
               </AnimatePresence>
-            </Reveal>
+            </div>
           </div>
         </div>
       </section>
 
       <section className="section" id="correctness">
         <div className="shell">
-          <Reveal as="h2" className="section__title">
-            Checked against the reference reader
-          </Reveal>
-          <Reveal as="p" className="section__lede" delay={0.05}>
+          <h2 className="section__title">Checked against the reference reader</h2>
+          <p className="section__lede">
             Values are compared against pyEDFlib, the reader most of the field already
             trusts. Not close to it. Identical to it, down to the last bit of the double.
-          </Reveal>
-          <Reveal className="facts" delay={0.1}>
+          </p>
+          <div className="facts">
             {FACTS.map((fact) => (
               <div className="fact" key={fact.value}>
                 <div className="fact__value">{fact.value}</div>
                 <div className="fact__label">{fact.label}</div>
               </div>
             ))}
-          </Reveal>
+          </div>
         </div>
       </section>
 
       <section className="section" id="docs">
         <div className="shell">
-          <Reveal as="h2" className="section__title">
-            Documentation
-          </Reveal>
-          <Reveal className="doc-cards" delay={0.06}>
+          <h2 className="section__title">Documentation</h2>
+          <div className="doc-cards">
             {pages.map((page) => (
               <a
                 key={page.slug}
@@ -376,7 +353,20 @@ export default function Landing() {
                 <div className="doc-card__desc">{page.description}</div>
               </a>
             ))}
-          </Reveal>
+            {/* Twelfth card, and a real destination: the docs as one plain-text file. */}
+            <a className="doc-card" href="/llms-full.txt">
+              <div className="doc-card__title">
+                For AI assistants
+                <span className="doc-card__arrow" aria-hidden="true">
+                  &rarr;
+                </span>
+              </div>
+              <div className="doc-card__desc">
+                The entire documentation as one plain-text file, llms-full.txt, ready to
+                paste into a coding agent.
+              </div>
+            </a>
+          </div>
         </div>
       </section>
     </main>

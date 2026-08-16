@@ -295,8 +295,44 @@ a {
 
 @media (max-width: 900px) {
   .hero__grid {
-    grid-template-columns: 1fr;
+    /*
+      minmax(0, 1fr), not 1fr. A plain 1fr track has min-width auto, which lets the
+      scope readout's min-width propagate up and set the track wider than the phone:
+      every element on the page then shared one clipped right edge and the whole
+      page scrolled sideways. minmax(0, 1fr) is what the two-column layout above
+      already uses, for the same reason.
+    */
+    grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/*
+  Hero entrance. CSS rather than a JavaScript animation because the landing page is
+  prerendered: the title must be visible the moment the HTML paints, not after the
+  bundle arrives. `backwards` holds the first frame only while the delay runs, and the
+  global reduced-motion rule collapses the duration to nothing.
+*/
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.rise {
+  animation: rise 0.6s var(--ease) backwards;
+}
+
+.rise--2 {
+  animation-delay: 0.08s;
+}
+
+.rise--3 {
+  animation-delay: 0.16s;
 }
 
 .hero__title {
@@ -595,7 +631,9 @@ a {
 
 @media (max-width: 860px) {
   .panels {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr) for the same reason as .hero__grid: a plain 1fr lets the CSV
+       sample's unwrappable width set the track, and the page scrolls sideways. */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -738,7 +776,9 @@ a {
 
 @media (max-width: 900px) {
   .docs {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), not 1fr — see .hero__grid. Code blocks in the prose would
+       otherwise widen the track and put the whole page on a sideways scroll. */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1000,6 +1040,11 @@ a {
   gap: 1rem 2rem;
   align-items: center;
   justify-content: space-between;
+}
+
+.footer__links {
+  display: flex;
+  gap: 1.4rem;
 }
 
 .footer a {

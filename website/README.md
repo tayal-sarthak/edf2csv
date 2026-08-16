@@ -79,5 +79,10 @@ system preference unless the reader overrides it from the header.
 Motion is used where it explains something: the hero trace animates because the tool
 turns a continuous signal into rows of numbers, and the sampling-rate comparison
 animates because watching 765 values appear out of nowhere makes the point faster
-than a sentence does. Everything collapses to static under
+than a sentence does. The rest of the page does not fade in on scroll — it used to,
+and a page where every heading rises into place is indistinguishable from every
+other page where every heading rises into place. Content is simply there; motion is
+reserved for the two visuals that argue something and for interaction feedback. The
+hero's entrance is CSS rather than JavaScript so the prerendered title is visible
+the instant the HTML paints. Everything collapses to static under
 `prefers-reduced-motion: reduce`.

@@ -3,6 +3,34 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.63
+
+### Fixed: phones could scroll the whole site sideways, and every heading faded in
+
+Three grids collapse to a single column on narrow screens, and all three collapsed to `1fr`.
+A plain `1fr` track has `min-width: auto`, so the one child with an unwrappable width — the
+scope readout's 420px minimum on the landing page, a CSV sample's longest line in the docs —
+set the track wider than the phone, and every element on the page shared one clipped right
+edge with 26px of sideways scroll to find it. The two-column desktop layouts already used
+`minmax(0, 1fr)` for exactly this reason; the single-column collapses now match them. The
+code blocks scroll inside their own boxes, which was always the intent.
+
+The scroll-reveal animation is gone. Every section's heading, lede and body used to fade
+upward as the reader reached it, which was defended in the README as arriving "in reading
+order" — but a page where every heading rises into place is indistinguishable from every
+other page where every heading rises into place, and the pattern costs something real here:
+the prerendered landing page shipped its text wrapped in inline `opacity: 0` until the bundle
+arrived to animate it. Content is now simply present. Motion stays where it argues something
+— the hero trace turning into rows, the 765 interpolated dots appearing out of nowhere — and
+in interaction feedback. The hero's own entrance became three lines of CSS, which paint with
+the HTML instead of after it.
+
+Two smaller things. The documentation grid on the landing page held eleven cards in a
+four-column grid, leaving a permanent empty cell; a twelfth card now points at
+llms-full.txt, the whole documentation as one plain-text file for pasting into a coding
+agent — a real destination this site already served without linking to it. And the footer
+finally links the npm package, which no page on the site did.
+
 ## 0.6.62
 
 ### Changed: the homepage is real HTML, and a pasted link unfurls into something
