@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.118
+
+### the 404 drew a line meant for a sidebar it does not have
+
+The 404 page lists the documentation, using the same markup as a documentation page's sidebar with a
+`docs__nav--static` modifier on it. That modifier exists to say "this one is in the page, not beside
+it", and exactly one declaration was reading it: `position`.
+
+So the 404 quietly took everything else aimed at a collapsed sidebar. On a phone it got a rule whose
+whole purpose is separating a sidebar from the article it had been sitting above — and drew a
+horizontal line across a page that has no article, directly under the sentence "The documentation is
+below, or start from the beginning." It read as a mistake because it was one. 0.6.106 changed which
+edge the line was on without noticing it was on the wrong page.
+
+The mobile rule is scoped to `:not(.docs__nav--static)` now, so the modifier governs the whole
+treatment rather than one property of it. Checked on both: the 404's list has no border and no added
+padding, and a documentation page still moves its sidebar below the article with the separator
+intact.
+
 ## 0.6.117
 
 ### installing from a git URL got a bin pointing at a file nothing built

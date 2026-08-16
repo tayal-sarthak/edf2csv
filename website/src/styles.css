@@ -853,8 +853,16 @@ a {
   just promised. It is a sidebar because it sits beside the page; with nothing beside anything,
   it is a footer.
 */
+/*
+  Not the 404's copy, which is the page rather than a column beside one.
+
+  `--static` already existed to say exactly that, and only `position` was reading it. So the
+  404 took the rest: a rule that exists to separate a collapsed sidebar from the article it
+  had been sitting above drew a line across a page that has no article, under a sentence
+  saying the documentation is below. `order` did nothing there, the border did.
+*/
 @media (max-width: 900px) {
-  .docs__nav {
+  .docs__nav:not(.docs__nav--static) {
     position: static;
     order: 2;
     border-top: 1px solid var(--line);
