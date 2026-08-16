@@ -362,7 +362,7 @@ function enrichLandingPage(appHtml) {
     `<link rel="canonical" href="${SITE_URL}/" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:title" content="Convert EDF to CSV from the command line - edf2csv" />`,
-    `<meta property="og:description" content="Convert EDF, EDF+ and BDF biosignal recordings to CSV with one command. Local, streaming, and verified against pyEDFlib." />`,
+    `<meta property="og:description" content="Convert EEG and biosignal files to CSV in one command. Works with EDF, EDF+ and BDF." />`,
     `<meta property="og:url" content="${SITE_URL}/" />`,
     `<meta property="og:site_name" content="edf2csv" />`,
     ...socialImageTags(),

@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.64
+
+### the hero said four things before saying what the tool does
+
+The hero read "EDF, EDF+ and BDF biosignal files become CSV you can open in pandas, R or Excel.
+Local, streaming, and honest about what it found" — two sentences, four claims, before saying
+plainly what the thing does. The repository's own About field has said it in one sentence the
+whole time: convert EEG and biosignal files to CSV in one command. That is now the lede, and the
+claims it displaced are made by the sections underneath, which is where a reader who wants them
+is already going.
+
+The meta description carried the same problem in a worse place. It read "Convert EDF, EDF+ and
+BDF recordings - EEG, ECG, sleep studies - to CSV with one command", and that parenthetical is
+what a search result and a pasted link show first. It now leads with the sentence and states the
+formats after it, with no dashes to read around.
+
 ## 0.6.63
 
 ### Fixed: phones could scroll the whole site sideways, and every heading faded in

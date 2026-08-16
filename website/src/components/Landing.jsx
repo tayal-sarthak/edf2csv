@@ -201,9 +201,14 @@ export default function Landing() {
               Your recording, <em>as numbers</em>.
             </h1>
 
+            {/*
+              One sentence, the same one the repository's About field leads with. The
+              lede used to run two: what it converts, then three claims about how. A
+              reader who has just landed wants the first of those, and the rest of the
+              page is the rest of it.
+            */}
             <p className="hero__lede rise rise--2">
-              Convert EDF, EDF+ and BDF biosignal recordings to CSV you can open in
-              pandas, R or Excel. Local, streaming, and honest about what it found.
+              Convert EEG and biosignal files to CSV in one command.
             </p>
 
             <div className="rise rise--3">
