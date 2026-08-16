@@ -1993,9 +1993,18 @@ describe('documentation and source agree on their lists', () => {
       to be in it, and `prepack` is what guarantees the second exists when the first is read.
     */
     const manifest = JSON.parse(await read('package.json'));
+    /*
+      `prepare`, not `prepack`.
+
+      `prepack` builds for `npm pack` and `npm publish` and for nothing else. npm runs
+      `prepare` for those too, and also when the package is installed from a git URL or from
+      a checkout — the two cases `prepack` left with no build at all, so `npm i
+      github:tayal-sarthak/edf2csv` installed a package whose `bin` pointed at a dist/cli.js
+      that was never written. `prepare` covers every case `prepack` did and those as well.
+    */
     assert.ok(
-      /(^|&&\s*)npm run build/u.test(manifest.scripts.prepack ?? ''),
-      'prepack must build, or `npm pack` ships whatever dist happens to be lying around',
+      /(^|&&\s*)npm run build/u.test(manifest.scripts.prepare ?? ''),
+      'prepare must build, or a git install ships a bin pointing at nothing',
     );
 
     // Everything the manifest points at has to be under something `files` includes.

@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.117
+
+### installing from a git URL got a bin pointing at a file nothing built
+
+`npm i github:tayal-sarthak/edf2csv` installed a package with no code in it.
+
+The manifest had `prepack: npm run build`. npm runs `prepack` for `npm pack` and `npm publish`, and
+for nothing else. The hook it runs when a package is installed **from a git URL**, or from a
+checkout, is `prepare` — and there wasn't one. So a git install cloned the repository, installed
+nothing else, and left `bin.edf2csv` pointing at `dist/cli.js`, a file the build had never been
+asked to write. The registry install was always fine, because the tarball carries a built `dist/`;
+it is the two ways of installing straight from source that got a manifest describing files that
+were not there.
+
+Shown by cloning to a fresh directory and running plain `npm install`, which uses the same hook: no
+`dist/` before, no `dist/` after, `bin` target missing. Add `prepare` and the same clone comes out
+with `dist/cli.js` present and `--version` answering.
+
+`prepare` replaces `prepack` rather than joining it, since it runs on pack and publish as well —
+everything `prepack` covered plus the two cases it did not. A registry install still does not build,
+which is correct: it already has the compiled code. The suite now checks for the hook that covers
+all four rather than the one that covered two.
+
 ## 0.6.116
 
 ### the tool knew which flag you meant and did not say
