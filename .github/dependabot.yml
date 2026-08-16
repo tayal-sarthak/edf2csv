@@ -1,0 +1,49 @@
+# Nothing in this repository was watching its dependencies.
+#
+# The package itself has none at runtime, which is the point of it and is checked by the suite.
+# That is not the whole surface: the website ships React, motion and marked to readers and builds
+# with Vite, the root has TypeScript and @types/node, and every workflow pins actions by major tag.
+# An advisory against any of those would have sat unnoticed until someone happened to run `npm
+# audit`, and nobody was going to.
+#
+# Grouped and weekly, because the failure mode of this file is a pull request every morning until
+# it gets turned off. Minor and patch updates arrive as one pull request per ecosystem; a major
+# comes on its own, since that is the one worth reading.
+
+version: 2
+updates:
+  # The package: devDependencies only, since it has no others.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      dev:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  # The website, which is where the dependencies actually are.
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      site:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  # checkout, setup-node and setup-python, in three workflows. Pinned by major tag, so a fix
+  # inside v4 arrives on its own; this is what notices when v5 exists.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']

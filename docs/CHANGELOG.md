@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.113
+
+### nothing was watching the dependencies the site actually has
+
+Nothing in this repository was watching its dependencies.
+
+"No runtime dependencies" is the package's own claim and the suite checks it, which made it easy to
+read as "no dependencies". It is not the surface. The website ships React, motion and marked to
+every reader and builds with Vite; the root carries TypeScript and @types/node; and three workflows
+pin actions by major tag. An advisory against any of them would have sat there until somebody
+happened to run `npm audit`, and nobody was going to — the same shape of gap as 0.6.97, which added
+a way to report a vulnerability to a project that had none.
+
+Weekly, and grouped: minor and patch updates arrive as one pull request per ecosystem, a major comes
+on its own because that is the one worth reading. The failure mode of this file is a pull request
+every morning until someone deletes it, so it is configured not to do that. Three entries, one per
+ecosystem, both lockfiles present for the two npm ones.
+
 ## 0.6.112
 
 ### every build printed a warning about a script no build can resolve
