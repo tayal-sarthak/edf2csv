@@ -40,6 +40,15 @@
       ]
     },
     {
+      "source": "/llms-full.txt",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {
@@ -58,7 +67,7 @@
       ]
     },
     {
-      "source": "/(sitemap\\.xml|robots\\.txt|llms\\.txt)",
+      "source": "/(sitemap\\.xml|robots\\.txt|llms\\.txt|llms-full\\.txt)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -76,7 +85,7 @@
       ]
     },
     {
-      "source": "/:path((?!assets/|fonts/|sitemap\\.xml|robots\\.txt|llms\\.txt|og\\.png|apple-touch-icon\\.png|favicon\\.svg).*)",
+      "source": "/:path((?!assets/|fonts/|sitemap\\.xml|robots\\.txt|llms\\.txt|llms-full\\.txt|og\\.png|apple-touch-icon\\.png|favicon\\.svg).*)",
       "headers": [
         {
           "key": "Cache-Control",

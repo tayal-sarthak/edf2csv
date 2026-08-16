@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.109
+
+### the file holding every page at once was the one left indexable
+
+Every `/docs/<slug>.md` mirror is served `X-Robots-Tag: noindex`, because it is the same prose as
+the HTML page beside it at a second address, and a plain-text file cannot declare a canonical link —
+so left indexable it competes with the page it copies. That reasoning is written down in
+website/README.md, and `llms-full.txt` is the one file it was never applied to, while being the file
+it applies to hardest: all eleven pages concatenated, 374 kB, at a single URL. The eleven mirrors
+were noindexed one page at a time and the file holding all eleven at once was left indexable.
+
+It also sat outside the cache group. `sitemap.xml`, `robots.txt` and `llms.txt` are served with an
+hour of caching and excluded from the catch-all; `llms-full.txt` matched neither, so the largest
+file on the site — the one an agent re-fetches to fill a context window — was the one told to
+revalidate on every request.
+
+Both fixed in the same five lines of vercel.json, and the header routes checked against a URL each
+way. `llms.txt` stays indexable: it is a 3 kB index of the site, not a copy of it.
+
 ## 0.6.108
 
 ### a browser that refuses the clipboard made the copy button do nothing
