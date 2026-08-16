@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.10
+
+### --stdout --gzip put a deflate stream on the terminal
+
+445,210 control bytes, straight at the terminal.
+
+`--stdout --gzip` is a documented pair, and everywhere it is documented it is redirected:
+
+```bash
+edf2csv recording.edf --stdout --gzip > signals.csv.gz
+```
+
+Leave the redirect off and stdout is the terminal, so the deflate stream went to the screen.
+For the smallest fixture here that is 244 bytes carrying 46 control codes and three ESCs; for
+an ordinary recording it is the figure above. Some of those the terminal displays as mojibake
+and some it acts on, and which is which depends on the compressed data, which is to say on
+the recording. Nothing usable appears either way.
+
+This tool escapes every control byte out of a header before printing it, on the stated
+reasoning that a file should not be able to drive the reader's terminal — a recording holding
+`\x1b[2J` can clear the screen, and nobody writes an EDF header that way on purpose. Emitting
+several hundred thousand of them from output it generated itself is the same hazard with the
+argument for it removed. gzip has declined to write compressed data to a terminal for thirty
+years, which is where the expectation comes from.
+
+```
+error: --stdout --gzip would write compressed bytes straight to the terminal.
+       Redirect it to a file or a pipe:
+       edf2csv <recording> --stdout --gzip > signals.csv.gz
+```
+
+**Only when stdout is a terminal.** A pipe and a regular file both report `isTTY` false, so
+the documented command is untouched and so is `| gunzip -c`. That is also why this cannot be
+settled by refusing the flag pair the way `--stdout --json` is: the pair is correct, and it is
+the destination that is not.
+
+Found by the pseudo-terminal harness added in 0.7.9 for a different reason. That is two
+defects now from the one surface the test suite structurally cannot reach — a captured stdout
+is never a terminal, so every test in the suite runs with `isTTY` false and none of them can
+see a terminal-only branch. `npm run terminal` now makes three runs instead of two, and also
+asserts that every byte the refusal prints is text.
+
 ## 0.7.9
 
 ### a failed conversion printed its error onto the progress meter

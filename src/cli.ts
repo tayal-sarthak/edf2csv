@@ -422,6 +422,35 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   /*
+    Compressed bytes at a terminal.
+
+    `--stdout --gzip` is a documented pair, and every place it is documented redirects it:
+    `edf2csv rec.edf --stdout --gzip > signals.csv.gz`. Without the redirect it wrote the
+    deflate stream to the terminal — 46 control bytes and three ESCs out of 244 for the
+    smallest fixture here, which is a terminal left in whatever state those happened to
+    describe, and nothing usable on the screen either way.
+
+    This tool escapes every control byte out of a header before printing it, on the reasoning
+    that a file should not be able to drive the reader's terminal. Doing it to them directly,
+    from output it generated itself, is the same hazard with the argument for it removed.
+
+    Only when stdout is a terminal. A pipe and a regular file are both `isTTY === false`, so
+    the documented command is unaffected — and that is also why this cannot be answered by
+    refusing the flag pair outright, the way `--stdout --json` is.
+
+    gzip itself has declined to write compressed data to a terminal for thirty years, which
+    is where a reader's expectation comes from.
+  */
+  if (toStdout && values['gzip'] === true && process.stdout.isTTY === true) {
+    process.stderr.write(
+      'error: --stdout --gzip would write compressed bytes straight to the terminal.\n' +
+        detail('Redirect it to a file or a pipe:') +
+        `       edf2csv <recording> --stdout --gzip > signals.csv.gz\n`,
+    );
+    return EXIT_USAGE;
+  }
+
+  /*
     One recording prints the document it always printed; several print one per line.
 
     Pretty-printed objects run together are still readable by a streaming JSON parser, but

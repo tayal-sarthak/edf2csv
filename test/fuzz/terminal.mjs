@@ -22,7 +22,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,24 +88,30 @@ let checked = 0;
 
 try {
   const { writeEdf } = await import('../fixtures/edf-writer.mjs');
-  const recording = path.join(work, 'shrinking.edf');
   // Big enough to need more than one read batch, so it can change under the reader.
-  writeEdf({
-    path: recording,
-    numRecords: 1700,
-    recordDuration: 1,
-    signals: Array.from({ length: 10 }, (unused, channel) => ({
-      label: `ch${channel}`,
-      dimension: 'uV',
-      physMin: -100,
-      physMax: 100,
-      digMin: -1000,
-      digMax: 1000,
-      samplesPerRecord: 256,
-      gen: (record, sample) => (record + sample) % 1000,
-    })),
-  });
-  const whole = statSync(recording).size;
+  const write = (name) => {
+    const at = path.join(work, name);
+    writeEdf({
+      path: at,
+      numRecords: 1700,
+      recordDuration: 1,
+      signals: Array.from({ length: 10 }, (unused, channel) => ({
+        label: `ch${channel}`,
+        dimension: 'uV',
+        physMin: -100,
+        physMax: 100,
+        digMin: -1000,
+        digMax: 1000,
+        samplesPerRecord: 256,
+        gen: (record, sample) => (record + sample) % 1000,
+      })),
+    });
+    return at;
+  };
+  // Two recordings: the first is truncated under the reader on purpose, so the checks that
+  // need a whole file get their own.
+  const shrinking = write('shrinking.edf');
+  const steady = write('steady.edf');
 
   /*
     A conversion that fails while the meter is up. Every `error: ` and `warning: ` this tool
@@ -113,8 +119,8 @@ try {
     meter leaves the cursor mid-line, so the failure path has to take it down first.
   */
   const failed = underTty(
-    [CLI, recording, '--out', path.join(work, 'out'), '--channels', 'ch0'],
-    recording,
+    [CLI, shrinking, '--out', path.join(work, 'out'), '--channels', 'ch0'],
+    shrinking,
   );
   checked++;
   if (failed.code === 0) {
@@ -137,15 +143,39 @@ try {
     }
   }
 
-  // And the ordinary success, where the meter must also leave no residue behind the summary.
-  execFileSync('node', [CLI, '--version'], { stdio: 'ignore' });
-  const ok = underTty([CLI, recording, '--out', path.join(work, 'ok'), '--channels', 'ch0']);
+  /*
+    Compressed bytes at a terminal, which is the other thing only a terminal can be wrong
+    about. `--stdout --gzip` is documented, and documented redirected; without the redirect
+    it put a deflate stream on the screen.
+  */
+  const gz = underTty([CLI, steady, '--stdout', '--gzip', '--channels', 'ch0']);
   checked++;
-  if (ok.code !== 0 && statSync(recording).size === whole) {
+  if (gz.code !== 2) {
+    problems.push(`--stdout --gzip at a terminal exited ${gz.code}, expected 2`);
+  } else if (!gz.output.includes('compressed bytes straight to the terminal')) {
+    problems.push(`--stdout --gzip was refused without saying why: ${JSON.stringify(gz.output.slice(0, 120))}`);
+  }
+  // Every byte it printed has to be text; the point is that none of it drives the terminal.
+  const control = [...gz.output].filter((c) => {
+    const n = c.codePointAt(0);
+    return (n < 32 && n !== 10 && n !== 13) || (n >= 127 && n <= 159);
+  });
+  if (control.length > 0) problems.push(`the refusal itself carried ${control.length} control bytes`);
+
+  // And the ordinary success, where the meter must also leave no residue behind the summary.
+  const ok = underTty([CLI, steady, '--out', path.join(work, 'ok'), '--channels', 'ch0']);
+  checked++;
+  if (ok.code !== 0) {
     problems.push(`a clean conversion under a tty exited ${ok.code}`);
   } else {
-    const wrote = ok.output.split(/\r|\n/u).find((line) => line.startsWith('Wrote '));
-    if (wrote === undefined) problems.push('the summary did not start its own line');
+    // Same shape as the error above: the meter is erased first, so the summary follows the
+    // erase rather than the meter's text.
+    const wrote = ok.output
+      .split(/\r|\n/u)
+      .find((line) => line.replace(/^\u001b\[K/u, '').startsWith('Wrote '));
+    if (wrote === undefined) {
+      problems.push(`the summary did not start its own line: ${JSON.stringify(ok.output.slice(-160))}`);
+    }
   }
 } finally {
   rmSync(work, { recursive: true, force: true });
@@ -153,7 +183,10 @@ try {
 
 process.stdout.write(`\n${checked} runs under a pseudo terminal.\n`);
 if (problems.length === 0) {
-  process.stdout.write('Every prefix began its own line, with the meter taken down first.\n');
+  process.stdout.write(
+    'Every prefix began its own line, the meter was taken down first, and nothing but\n' +
+      'text reached the screen.\n',
+  );
 } else {
   for (const problem of problems) process.stdout.write(`  ${problem}\n`);
   process.exitCode = 1;

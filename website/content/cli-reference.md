@@ -632,6 +632,18 @@ R's `read.csv` and `readr::read_csv` do the same. DuckDB reads it with `read_csv
 edf2csv recording.edf --stdout --gzip > signals.csv.gz
 ```
 
+The redirect is not optional there. Without one, stdout is the terminal, and a deflate stream
+is not something a terminal can display — it is a few hundred bytes of which a good fraction
+are control codes, some of which the terminal will act on. So that combination is refused when
+stdout is a terminal, and only then: a pipe and a regular file are both not terminals, so the
+command above and `| gunzip` are unaffected.
+
+```
+error: --stdout --gzip would write compressed bytes straight to the terminal.
+       Redirect it to a file or a pipe:
+       edf2csv <recording> --stdout --gzip > signals.csv.gz
+```
+
 `--info` reports the estimate as the size **before** compression, since what compression achieves depends on the data:
 
 ```
@@ -868,6 +880,7 @@ fi
 - A folder holding no recordings. "None here" is something the run can state; a folder it could not open is exit 1 instead, because "could not look" is not.
 - `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate in the default wide layout, which would produce more than one table. `--layout long` produces one table whatever the rates are, so it is accepted.
 - `--stdout` combined with something it contradicts: `--json`, which writes to stdout too; `--out`, `--checksum` or `--force`, which act on files it does not write; a folder, or more than one recording, since a stream is one table out of one file. `--jobs` is not refused — a job count is a property of the run rather than a request about this file's output.
+- `--stdout --gzip` with no redirect, which would put a deflate stream on the terminal. Refused only when stdout is actually a terminal; into a file or a pipe it is the documented way to compress the stream.
 
 The last three categories require reading the file's header first, so exit 2 doesn't mean the file was never opened. It means the command as written can't be carried out.
 
