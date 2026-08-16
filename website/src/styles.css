@@ -161,7 +161,17 @@ a {
   transition: top 0.18s var(--ease);
 }
 
-.skip:focus-visible {
+/*
+  `:focus`, not `:focus-visible`.
+
+  A skip link is reached by the keyboard or by assistive technology and by nothing else
+  — it is the first element in the document and sits off-screen until focused, so there
+  is no pointer path to it and nothing to suppress a ring for. `:focus-visible` adds a
+  heuristic where none is wanted: focus moved by a script, or by a browser whose
+  heuristics differ, leaves the link focused and still off-screen, which is the one
+  failure mode that makes it worse than not having one.
+*/
+.skip:focus {
   top: 0.75rem;
 }
 

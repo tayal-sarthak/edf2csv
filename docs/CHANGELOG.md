@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.77
+
+### the skip link could be focused and stay off-screen
+
+The skip link added in 0.6.66 revealed itself on `:focus-visible`, which is the right selector for
+a control that can also be clicked and the wrong one here. A skip link is the first element in the
+document and sits off-screen until focused, so there is no pointer path to it: everything that
+ever focuses it is a keyboard or an assistive technology, and there is no mouse-focus ring to
+suppress. What `:focus-visible` adds in that situation is a heuristic that can decline — focus
+moved by a script, or a browser whose rules differ — and when it declines the link is focused and
+still off-screen, which is worse than having no skip link at all, because the reader's focus is
+now somewhere they cannot see.
+
+`:focus` has no such gap. The built stylesheet was checked for the rule and the link confirmed as
+the document's active element after focus; the visual reveal cannot be exercised in a window that
+does not itself have focus, which is the only part of this a browser in the background will not
+show you.
+
 ## 0.6.76
 
 ### the homepage guard would have passed a homepage with no heading
