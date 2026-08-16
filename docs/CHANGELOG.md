@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+The patch number rolls into the minor at 100. Semver puts no ceiling on it, so nothing forced the
+question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothing they can hold, and
+sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
+serial. A roll is not a claim that anything broke.
+
+## 0.7.0
+
+### the patch number reached 149
+
+The patch number reached 149.
+
+Semver puts no ceiling on it, which is why nothing ever forced the question — 0.6.149 is a perfectly
+valid version and it sorts correctly against 0.6.150 in every tool that parses it. It just stops
+working for the reader. "0.6.149" carries no shape: you cannot tell at a glance whether it is recent
+or ancient, whether the gap to 0.6.62 is large, or which of two numbers in a changelog is newer
+without counting digits. Two digits is a number a person compares; three is a serial.
+
+So the patch rolls into the minor at 100, and this is the roll. The convention is written at the top
+of this file, along with the part that matters most: it is not a claim that anything broke. Nothing
+in this release changes behaviour — the same code that shipped as 0.6.149 ships as 0.7.0.
+
+At the current rate that is a minor bump every few days, which is the honest description of what
+this project's release cadence has been.
+
 ## 0.6.149
 
 ### any site could put these pages in a frame
