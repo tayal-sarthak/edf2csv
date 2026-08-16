@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.141
+
+### a Windows checkout got line endings the suite disagrees with
+
+This repository had no `.gitattributes`, so the line endings in a working tree were whatever the
+person cloning had `core.autocrlf` set to — and Git for Windows turns it on by default.
+
+That is not cosmetic here. The suite is largely a comparison between text this tool generates, which
+is always LF, and text read back out of committed files. Put those on opposite sides of an equality
+with `\r` in between and they stop matching. Demonstrated rather than assumed: converting
+`output-files.md` to CRLF and running the suite fails the metadata.json shape guard immediately. The
+structured data on this site claims `macOS, Linux, Windows`, and one third of that was a checkout
+where the tests do not pass for reasons having nothing to do with the code.
+
+`* text=auto eol=lf` decides it in the repository instead — LF in the object store, LF on checkout
+everywhere, which is what tsconfig's `"newLine": "lf"` already demands of the compiler's own output.
+Recordings, fonts, images and tarballs are marked binary so the normalisation cannot reach them:
+none are committed today, since every recording is generated into a gitignored directory, but a
+sample checked in later would otherwise be quietly corrupted by that rule.
+
+`git add --renormalize .` reports no changes, so nothing in the tree moves — this only fixes the
+next checkout.
+
 ## 0.6.140
 
 ### on paper, the majority of the documentation's links led nowhere

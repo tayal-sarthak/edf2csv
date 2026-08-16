@@ -2118,9 +2118,9 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
 
     const expected = new Set([
-      '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md', 'SECURITY.md', 'docs',
-      'package-lock.json', 'package.json', 'src', 'test', 'tsconfig.json', 'vercel.json',
-      'website',
+      '.gitattributes', '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md',
+      'SECURITY.md', 'docs', 'package-lock.json', 'package.json', 'src', 'test',
+      'tsconfig.json', 'vercel.json', 'website',
     ]);
     const top = [...new Set(tracked.map((file) => file.split('/')[0]))].sort();
     const strays = top.filter((entry) => !expected.has(entry));
