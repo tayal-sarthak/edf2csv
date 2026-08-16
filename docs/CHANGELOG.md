@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.121
+
+### two comments addressed to a linter this repository does not have
+
+Two lines in this repository were addressed to ESLint:
+
+```text
+src/cli/report.ts:53          // eslint-disable-next-line no-control-regex
+website/src/components/Waveform.jsx:100   // eslint-disable-next-line react-hooks/exhaustive-deps
+```
+
+There is no ESLint here. No config at the root, none under `website/`, not in either manifest, not
+in any workflow. They are instructions to a program that has never run, and they were doing the
+work a comment should have been doing: `no-control-regex` on a function whose entire job is
+rendering control characters as escapes, and `exhaustive-deps` on an effect that leaves `paint` out
+because it is rebuilt every render and listing it would re-run the effect on every render to redraw
+the identical frame.
+
+Both now say that, in English, to the reader who is actually going to be looking. A suppression
+comment answers a question nobody asked and, worse, hides the answer to the one somebody will.
+
 ## 0.6.120
 
 ### a rule for focusing something nothing can focus

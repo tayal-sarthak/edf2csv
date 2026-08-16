@@ -95,9 +95,11 @@ export default function Waveform() {
 
   // With motion reduced there is one frame to draw, so draw it once rather than
   // rewriting the same numbers sixty times a second.
+  // `paint` is left out of the dependencies on purpose: it is rebuilt on every render, so
+  // listing it would re-run this effect on every render to redraw the identical frame.
+  // Nothing it closes over changes — the channel data is memoised and the refs are stable.
   useEffect(() => {
     if (reduced) paint(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
   useAnimationFrame((elapsed) => {

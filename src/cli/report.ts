@@ -50,7 +50,7 @@ function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<num
  * `metadata.json` still copy the field verbatim, and CSV quoting already makes that safe.
  */
 export function printable(text: string): string {
-  // eslint-disable-next-line no-control-regex
+  // The control characters are what this function is for, not an oversight in it.
   return text.replace(/[\u0000-\u001f\u007f-\u009f]/gu, (c) =>
     `\\x${c.codePointAt(0)!.toString(16).padStart(2, '0')}`,
   );
