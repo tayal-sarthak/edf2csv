@@ -303,10 +303,20 @@ function notFoundPage(docs, assets) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Page not found - edf2csv</title>
+    <!--
+      noindex here rather than the shared max-image-preview value: this page has no
+      content of its own to preview, and it is the one page that must never be indexed.
+    -->
     <meta name="robots" content="noindex" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e0d0b" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfbf9" />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/SpaceGrotesk.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/JetBrainsMono.woff2" crossorigin />
     <link rel="stylesheet" href="${assets.css}" />
-    <link rel="icon" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script>${THEME_SCRIPT}</script>
     <script defer src="/_vercel/insights/script.js"></script>
   </head>

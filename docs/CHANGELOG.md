@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.82
+
+### the 404 was a version behind on everything in its head
+
+The 404 got its footer and its header back in 0.6.67, and its head stayed a version behind
+everything else: no `theme-color`, so a phone browser painted its chrome a default colour on the
+one page in the site that does not match it; no font preloads, so the page that is already a
+disappointment also arrived with a flash of fallback type; no touch icon and no manifest link.
+
+It keeps its own `robots` value. Every other page carries `max-image-preview:large`, which is
+about how a page appears when it is indexed; this is the page that must never be indexed at all,
+and `noindex` is not a tag to share from a helper for the sake of symmetry.
+
 ## 0.6.81
 
 ### the links the template writes were the ones nothing checked
