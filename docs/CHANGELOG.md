@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.85
+
+### printing a reference page spent the first sheet on navigation
+
+Reference documentation gets printed and saved next to the recordings it describes, and this site
+had no print styles at all. A printed CLI reference spent its first sheet on a sticky header, an
+eleven-item sidebar and a contents list of links that cannot be clicked on paper, then asked the
+printer for a near-black background across every page, which obliging printers supply.
+
+The navigation, the contents list, the skip link, the heading permalinks and the footer are the
+parts that only work on a screen, so they are dropped. Colours are forced to black on white.
+Headings avoid breaking away from the text they introduce, and code blocks are allowed to break
+across pages rather than being pushed whole onto the next sheet, since a forty-line transcript
+would otherwise leave half a sheet blank. External links have their destination written out after
+them, because a link on paper is otherwise a word with nowhere to go.
+
 ## 0.6.84
 
 ### every heading was addressable and none of them said so

@@ -1147,6 +1147,72 @@ a {
   color: var(--accent-text);
 }
 
+/* -------------------------------------------------------------------- print */
+
+/*
+  A printed or PDF-exported page.
+
+  Reference documentation gets printed and saved beside the recordings it describes,
+  and the page as it stands spends its first sheet on a sticky header, an eleven-item
+  sidebar and a contents list that cannot be clicked on paper. The prose is what is
+  being printed; the navigation is the part that only works on a screen.
+
+  Colours are forced light because a printer asked for near-black backgrounds obliges,
+  and code blocks are allowed to break across pages rather than being pushed whole onto
+  the next sheet — a forty-line --help transcript would otherwise leave half a page blank.
+*/
+@media print {
+  :root {
+    --bg: #ffffff;
+    --bg-raised: #ffffff;
+    --bg-sunken: #ffffff;
+    --text: #000000;
+    --text-dim: #1a1a1a;
+    --text-faint: #444444;
+    --line: #cccccc;
+    --line-strong: #999999;
+    --accent-text: #000000;
+  }
+
+  .nav,
+  .docs__nav,
+  .docs__toc,
+  .doc-footer,
+  .footer,
+  .skip,
+  .prose__anchor {
+    display: none;
+  }
+
+  .docs {
+    display: block;
+    padding: 0;
+  }
+
+  .prose {
+    max-width: none;
+  }
+
+  .prose pre,
+  .prose table {
+    border: 1px solid var(--line);
+    break-inside: auto;
+  }
+
+  .prose h2,
+  .prose h3 {
+    break-after: avoid;
+  }
+
+  /* A link's destination is invisible on paper unless it is written out. */
+  .prose a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    color: #444444;
+    word-break: break-all;
+  }
+}
+
 /* --------------------------------------------------------------- doc cards */
 
 .doc-cards {
