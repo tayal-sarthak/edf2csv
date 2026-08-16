@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.71
+
+### table headers claimed no direction on pages that are mostly tables
+
+The reference pages are largely tables: every flag with its default, every diagnostic code with
+its cause, every exit status with what produces it. marked emits `<th>` with no `scope`, so a
+screen reader announcing a cell in the middle of the warnings table had to guess which header
+governed it, and the guess is what the heuristics do rather than what the markup says.
+
+One `replaceAll` in the renderer, because every table on this site is the same shape — one header
+row across the top — so `scope="col"` is true of all of them and would have to stop being applied
+blindly the day one of them grows a row header. 18 header cells on the CLI reference alone.
+
 ## 0.6.70
 
 ### a screen reader listed five regions all called section

@@ -56,6 +56,16 @@ export function renderMarkdown(body) {
     },
   );
 
+  /*
+    `scope="col"` on header cells, which marked does not emit.
+
+    The reference pages are mostly tables — every flag, every diagnostic code, every
+    exit status — and a table whose headers claim no direction leaves a screen reader
+    to guess which cells they govern. Every table here is the same shape, a single
+    header row across the top, so the answer is always "the column below".
+  */
+  html = html.replaceAll('<th>', '<th scope="col">');
+
   return html;
 }
 
