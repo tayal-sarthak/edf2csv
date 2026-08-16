@@ -3,6 +3,26 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.139
+
+### the most-quoted table on the site had its headings checked by nothing
+
+`--info`'s channel table is the most-quoted block on this site — four pages print its heading row —
+and that row was the one part of it nothing checked. The test that compares `--info` output against
+the documentation reads the header fields above the table, File and Format and Duration and
+Channels, and stops there. The seven column names were written by hand in `src/cli/report.ts` and
+again on each of the four pages, with nothing between them.
+
+These names are not decoration. The CLI reference tells you to "match against the label from the
+`LABEL` column of `--info`, not the `COLUMN` name" — advice that can only be followed while those
+two words are the ones on screen, and that sentence lives on a different page from three of the
+tables it describes.
+
+They agree today. The check runs `--info` and requires every page printing a heading row to print
+that sequence of names, compared as names rather than as text, since the column widths come from
+whichever recording the page is using. Confirmed capable of failing: changing `UNIT` to `UNITS` in
+the source alone turns it red on all four pages.
+
 ## 0.6.138
 
 ### two of the four output files had their columns described and never checked

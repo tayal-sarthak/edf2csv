@@ -1084,6 +1084,47 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 4, `expected several channel examples to check, found ${checked}`);
   });
 
+  it('heads the channel table with the columns --info actually prints', async () => {
+    /*
+      `--info`'s channel table is the most-quoted block on this site: four pages print its
+      heading row, and the test below compares the header *fields* above it — File, Format,
+      Duration, Channels — and stops there. The row naming the columns was written out by hand
+      in src/cli/report.ts and again on each of those pages, and nothing connected them.
+
+      It matters more than a heading row usually would, because these names are referred to by
+      name elsewhere: the CLI reference tells you to "match against the label from the `LABEL`
+      column of `--info`, not the `COLUMN` name", advice that is only followable while those
+      two words are the ones on screen.
+
+      Compared as a sequence of names rather than as text: the column widths come from the
+      recording, so the spacing differs between one page's example and another's.
+    */
+    const { stdout } = await run(process.execPath, [
+      CLI, path.join(ROOT, 'test/fixtures/generated/ascending-rates.edf'), '--info',
+    ]);
+    const heading = stdout.split('\n').find((line) => line.startsWith('#  '));
+    assert.ok(heading, '--info no longer prints a channel table');
+    const printed = heading.trim().split(/\s+/u);
+    assert.ok(printed.length >= 5, `that does not look like a heading row: ${heading}`);
+
+    let checked = 0;
+    for (const name of (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    )) {
+      const text = await read(path.join('website/content', name));
+      for (const line of text.split('\n')) {
+        if (!line.startsWith('#  ') || !line.includes('COLUMN')) continue;
+        checked++;
+        assert.deepEqual(
+          line.trim().split(/\s+/u),
+          printed,
+          `${name} heads the --info table with columns it does not print`,
+        );
+      }
+    }
+    assert.ok(checked >= 3, `expected the table on several pages, found ${checked}`);
+  });
+
   it('prints the example recording the same way on every page that shows --info', async () => {
     /*
       The annotations page ran `edf2csv sleep-study.edf --info` and showed the answer as
