@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.78
+
+### the third text colour failed contrast on text meant to be read
+
+`--text-faint` was 3.10:1 against the raised surface in dark and 3.27:1 against the sunken one in
+light, both under the 4.5:1 WCAG asks for body text. It would be defensible if it painted only
+chrome, and the name suggests it does — but it is the colour of the footer, of every comment
+inside every code sample, of the header row of every table in the documentation, and of the line
+0.6.68 added pointing at the Markdown mirror. Those are all things written to be read.
+
+It is now #867e6f in dark and #726b5d in light: 4.58:1 and 4.60:1 against their worst backgrounds,
+and still visibly a step below `--text-dim` at 6.2:1, which is the reason the third step exists.
+
 ## 0.6.77
 
 ### the skip link could be focused and stay off-screen

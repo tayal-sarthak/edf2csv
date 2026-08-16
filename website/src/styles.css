@@ -40,7 +40,16 @@
   --bg-sunken: #090807;
   --text: #ece7dd;
   --text-dim: #9d9587;
-  --text-faint: #6a6357;
+  /*
+    4.58:1 against the raised surface, its worst background, where it used to be 3.10:1.
+
+    This is not only decorative chrome: the footer, the comments inside every code
+    sample and the header row of every table in the documentation are painted with it,
+    all of them ordinary reading text, and all of them under the 4.5:1 that WCAG AA
+    asks for. It stays clearly dimmer than --text-dim (6.21:1), which is the whole
+    point of having a third step.
+  */
+  --text-faint: #867e6f;
   --line: #292520;
   --line-strong: #3b352d;
   --accent: #ffb020;
@@ -56,7 +65,7 @@
   --bg-sunken: #f2efe9;
   --text: #17150f;
   --text-dim: #5e574a;
-  --text-faint: #8b8375;
+  --text-faint: #726b5d;
   --line: #e4dfd4;
   --line-strong: #cec7b8;
   --accent: #b4590a;
@@ -73,7 +82,7 @@
     --bg-sunken: #f2efe9;
     --text: #17150f;
     --text-dim: #5e574a;
-    --text-faint: #8b8375;
+    --text-faint: #726b5d;
     --line: #e4dfd4;
     --line-strong: #cec7b8;
     --accent: #b4590a;
