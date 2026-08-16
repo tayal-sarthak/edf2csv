@@ -919,8 +919,27 @@ async function convertOne(
   */
   const destinationExistedBefore = toStdout ? false : existsSync(destination);
 
-  const onInterrupt = (signal: NodeJS.Signals): void => {
+  /*
+    Take the progress meter off the line before anything else is printed on it.
+
+    The meter writes `\r  converting\u2026 47%` and leaves the cursor after the percentage, so
+    whatever is written next continues that line. Success cleared it and an interrupt cleared
+    it; a conversion that *failed* did not, and the error landed on the end of the meter:
+
+        converting\u2026 96%error: Expected 317440 bytes of data at record 1638 but only 0 ...
+
+    Which is the one thing this output is shaped to avoid. Every release since 0.7.1 has kept
+    `error: ` and `warning: ` at the start of a line so a batch's stderr can be grepped for
+    them, and here the prefix sat mid-line, where `grep \'^error:\'` over a failed run finds
+    nothing at all. Only reachable on a terminal, which is why nothing caught it: the meter is
+    off whenever stderr is not a TTY, and a captured stderr never is.
+  */
+  const clearProgress = (): void => {
     if (showProgress) process.stderr.write('\r\u001b[K');
+  };
+
+  const onInterrupt = (signal: NodeJS.Signals): void => {
+    clearProgress();
     /*
       Say which of the three happened, rather than the middle one every time.
 
@@ -973,7 +992,7 @@ async function convertOne(
         : undefined,
     });
 
-    if (showProgress) process.stderr.write('\r\u001b[K');
+    clearProgress();
 
     if (result.diagnostics.length > 0 && !asJson) {
       /*
@@ -1049,6 +1068,11 @@ async function convertOne(
       }
     }
     return result.diagnostics.length;
+  } catch (error) {
+    // The meter is still on the line when a conversion throws, and the caller's `error: `
+    // is the next thing written.
+    clearProgress();
+    throw error;
   } finally {
     process.off('SIGINT', onInterrupt);
     process.off('SIGTERM', onInterrupt);

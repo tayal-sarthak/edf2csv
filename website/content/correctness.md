@@ -4,11 +4,12 @@ description: What edf2csv checks, how it is compared against pyEDFlib, why the c
 order: 7
 ---
 
-## Eight separate claims
+## Ten separate claims
 
-Correctness here covers eight different things, verified eight different ways. The list grew
+Correctness here covers ten different things, verified ten different ways. The list grew
 past the "three" this section used to promise as the batch, fuzz and estimate harnesses were
-added, and the heading did not keep up until 0.4.34.
+added, and the heading did not keep up until 0.4.34 — nor after it: a ninth claim was added
+and the heading still said eight, which is what the test below now counts.
 
 1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values and 120 annotations, all in agreement**.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
@@ -19,8 +20,9 @@ added, and the heading did not keep up until 0.4.34.
 7. **The two layouts hold the same samples.** `--layout long` is a different shape, not different data, which is what makes it an honest answer to a mixed-rate recording. Checked by `npm run layouts`: **50 recordings crossed with six option sets**, converted both ways, compared per channel as an ordered sequence of value cells — every sequence identical.
 8. **Asking for part of a recording returns that part unchanged.** `--channels` selects columns and `--start`/`--end` selects rows, and both are documented as selections rather than transformations. Checked by `npm run narrowing`: every fixture's full conversion is taken as the truth, then each channel is converted alone and three windows are converted from it, and the narrowed output must be the corresponding slice of the full one byte for byte — **106 single-channel selections and 253 windows over 50 recordings**. Window bounds are placed halfway between two sample times on purpose: a bound read back off the CSV is a rounded number, and a conversion filters the exact ones, so a bound sitting on a sample asks a question neither answer is wrong about.
 9. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
+10. **Every `error:` and `warning:` begins a line, on a terminal too.** That is what makes a batch's stderr greppable, and it is the one claim the suite structurally cannot check: the progress meter exists only when stderr is a TTY, and a captured stderr is a pipe. Checked by `npm run terminal`, which allocates a pseudo terminal and fails a conversion under it — **2 runs**, asserting the meter is taken down before anything is printed over it. It found the defect fixed in 0.7.9, where a failed conversion printed `converting… 96%error: Expected 317440 bytes …` and `grep '^error:'` came back empty.
 
-The second and eighth are what `npm test` runs; the third through seventh are the fuzz, estimate, round-trip and layout commands. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and eighth are what `npm test` runs; the third through seventh are the fuzz, estimate, round-trip and layout commands. The tenth needs a pseudo terminal, which Node cannot allocate, so it borrows python3's `pty` module and reports that it checked nothing when that is unavailable rather than failing a machine without it. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib
@@ -377,20 +379,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 366
+ℹ tests 367
 ℹ suites 53
-ℹ pass 366
+ℹ pass 367
 ℹ fail 0
 ```
 
-The 366 tests are split across six files by what they exercise:
+The 367 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 47 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 102 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 148 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
-| `test/docs.test.js` | 54 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 55 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 9 | A destination that fills up, for `--stdout` and for `--out`, which needs a filesystem of a known small size and so is kept apart |
 | `test/large.test.js` | 6 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 

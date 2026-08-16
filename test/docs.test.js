@@ -157,6 +157,45 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('counts its own claims correctly', async () => {
+    /*
+      "## Eight separate claims" sat over a list of nine, and the paragraph below it says in
+      so many words that the heading "did not keep up until 0.4.34" — which was true again
+      the next time a claim was added, and stayed true through every release since.
+
+      The same failure as the test counts two tests down: a number on the correctness page
+      that the page itself disproves. This one is cheaper to check, since both the claim and
+      its evidence are in the same file.
+    */
+    const page = await read('website/content/correctness.md');
+    const words = {
+      three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+      nine: 9, ten: 10, eleven: 11, twelve: 12,
+    };
+
+    const heading = /^## (\w+) separate claims$/mu.exec(page);
+    assert.ok(heading, 'the claims heading is gone or reworded');
+    const claimed = words[heading[1].toLowerCase()];
+    assert.ok(claimed, `"${heading[1]}" is not a number word this test knows`);
+
+    // The numbered list under that heading, which ends at the next `## `.
+    const section = page.slice(page.indexOf(heading[0]));
+    const list = section.slice(0, section.indexOf('\n## ', 1));
+    const items = [...list.matchAll(/^(\d+)\. \*\*/gmu)].map((m) => Number(m[1]));
+    assert.deepEqual(
+      items,
+      Array.from({ length: items.length }, (unused, i) => i + 1),
+      'the claims are misnumbered',
+    );
+    assert.equal(claimed, items.length, `the heading says ${heading[1]} and the list has ${items.length}`);
+
+    // And the sentence under it, which states the same number twice more.
+    const sentence = /Correctness here covers (\w+) different things, verified (\w+) different ways/u.exec(page);
+    assert.ok(sentence, 'the sentence restating the count is gone');
+    assert.equal(words[sentence[1]], items.length, `"covers ${sentence[1]}"`);
+    assert.equal(words[sentence[2]], items.length, `"verified ${sentence[2]} different ways"`);
+  });
+
   it('states a test count the suite can produce', async () => {
     /*
       The correctness page prints the runner's summary and a per-file table, and both had

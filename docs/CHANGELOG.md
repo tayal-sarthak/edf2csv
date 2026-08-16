@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.9
+
+### a failed conversion printed its error onto the progress meter
+
+```
+  converting… 96%error: Expected 317440 bytes of data at record 1638 but only 0 bytes were
+```
+
+The progress meter writes `\r  converting… 47%` and leaves the cursor after the percentage.
+Finishing a conversion took it down. Interrupting one took it down. Failing one did not — the
+`finally` around that block removes the signal handlers and nothing else — so the error was
+written onto the end of the meter.
+
+That is the one property this output is shaped around. `error: ` and `warning: ` begin a line
+so that a batch's stderr can be grepped for them; it is why the message on those lines is
+left unwrapped at whatever width it runs to, and it has been the stated reason in every
+release from 0.7.1 to 0.7.5. Here the prefix was mid-line, and `grep '^error:'` over a failed
+run came back empty.
+
+Taking the meter down is now one named function called from all three places rather than the
+same escape sequence written at two of them.
+
+**Why nothing caught it.** The meter only exists when `process.stderr.isTTY` is true, and a
+test that captures stderr is reading a pipe, so the meter is off in every test in the suite —
+all 367 of them, and every fuzz run. The feature has never been exercised by anything.
+
+So there is now a tenth verification command, `npm run terminal`, which allocates a pseudo
+terminal, fails a conversion under it, and asserts that whatever precedes `error: ` on its
+line is a carriage return and an erase rather than the meter. Removing the fix makes it
+report:
+
+```
+  "error: " does not start its line — preceded by "\r  converting… 96%"
+```
+
+It is not part of `npm test`, for the reason `crossvalidate` is not: Node cannot allocate a
+pseudo terminal, so it borrows python3's `pty` module, and the CI matrix includes Windows. It
+reports that it checked nothing, and exits 0, where that is unavailable.
+
+**And the heading above it.** Adding a tenth claim to the correctness page meant counting
+them, which turned up nine sitting under "## Eight separate claims" — in the section whose
+own second sentence says the heading "did not keep up until 0.4.34". It did not keep up after
+it either. Both the heading and the sentence restating the number are now checked against the
+list they describe, along with the list being numbered 1..n without a gap.
+
 ## 0.7.8
 
 ### --quiet kept the blank line under the summary it removed
