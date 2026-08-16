@@ -66,6 +66,13 @@ const SITE_URL = (
 
 const REPO = 'https://github.com/tayal-sarthak/edf2csv';
 const NPM = 'https://www.npmjs.com/package/edf2csv';
+/*
+  Every release is described here, and the site linked it from nowhere. The documentation
+  answers what the tool does now; a reader who wants to know when a flag arrived, or whether
+  the version they installed has a fix, had the README's link or nothing — and the README is
+  not on this site.
+*/
+const CHANGELOG = `${REPO}/blob/main/docs/CHANGELOG.md`;
 
 /** The person behind the tool, for Article authorship and entity disambiguation. */
 const AUTHOR = {
@@ -265,7 +272,7 @@ const nav = (slug = '') => `<nav class="nav" data-scrolled="false" aria-label="S
 const FOOTER = `<footer class="footer">
       <div class="shell footer__inner">
         <span>edf2csv is MIT licensed. It reads a file and writes files, nothing else.</span>
-        <span class="footer__links"><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a><a href="${NPM}" target="_blank" rel="noreferrer">npm</a></span>
+        <span class="footer__links"><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a><a href="${NPM}" target="_blank" rel="noreferrer">npm</a><a href="${CHANGELOG}" target="_blank" rel="noreferrer">Changelog</a></span>
       </div>
     </footer>`;
 
@@ -617,6 +624,7 @@ ${docs.map((doc) => `- [${doc.title}](${SITE_URL}/docs/${doc.slug}.md): ${doc.de
 
 - [Repository](${REPO}): MIT licensed, zero runtime dependencies, requires Node 20 or newer.
 - [Complete documentation as one file](${SITE_URL}/llms-full.txt): every page above, concatenated.
+- [Changelog](${CHANGELOG}): every release, what it changed and why.
 `;
 }
 

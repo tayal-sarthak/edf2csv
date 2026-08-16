@@ -29,6 +29,13 @@ export default function App() {
             <a href="https://www.npmjs.com/package/edf2csv" target="_blank" rel="noreferrer">
               npm
             </a>
+            <a
+              href="https://github.com/tayal-sarthak/edf2csv/blob/main/docs/CHANGELOG.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Changelog
+            </a>
           </span>
         </div>
       </footer>

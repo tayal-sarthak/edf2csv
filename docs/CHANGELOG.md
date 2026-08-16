@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.134
+
+### the site never linked the changelog
+
+Every release this project has made is described in `docs/CHANGELOG.md`, at some length. The
+documentation site linked it from nowhere: not the footer, not the twelve cards on the landing page,
+not `llms.txt`. The README has the link, and the README is not on this site.
+
+The documentation answers what the tool does now, which is a different question from the two people
+actually arrive with: when did this flag appear, and does the version I have got the fix. Both are
+answered in a file that was one click away from GitHub and no clicks away from anywhere else.
+
+It is in the footer now — the one that is a single constant since 0.6.67, so the documentation
+pages, the 404 and the landing page all got it at once — and in the Source section of `llms.txt`,
+where an agent asking what changed can find it. Checked at 1280 and at 375, where the three links
+still sit on one line.
+
 ## 0.6.133
 
 ### the security policy was invisible from npm, where the package lives
