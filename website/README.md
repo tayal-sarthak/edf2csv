@@ -7,9 +7,13 @@ The documentation site for edf2csv, and the documentation itself.
 ```text
 website/
 ├── content/          the documentation, as Markdown
-├── public/fonts/     Space Grotesk and JetBrains Mono, self-hosted
-├── public/og.png     the 1200x630 social-preview card, plus icons
-├── src/              the site
+├── public/
+│   ├── fonts/        Space Grotesk and JetBrains Mono, self-hosted and subset
+│   ├── og.png        the 1200x630 social-preview card
+│   ├── favicon.svg   and apple-touch-icon.png
+│   └── site.webmanifest
+├── scripts/          docs-index.mjs and prerender.mjs, which build the static pages
+├── src/              the landing page, its components and the shared stylesheet
 └── dist/             build output, gitignored
 ```
 
@@ -54,6 +58,19 @@ runtime. That makes moving between pages instant and the deploy a plain pile of
 static files with no API behind it, at the cost of a larger initial download. The
 libraries are split into their own chunk so editing a page doesn't invalidate them
 in anyone's cache.
+
+## What the build refuses to ship
+
+`scripts/prerender.mjs` stops the build rather than emitting a page that is quietly wrong.
+Each of these exists because the failure it catches is invisible in a browser:
+
+- A documentation page that rendered with almost no text, or a landing page missing its
+  heading, its one-sentence lede, the install command or a link into the documentation.
+  A page that lost its content still looks fine to anyone whose browser runs the bundle.
+- An internal link pointing at a file the build did not write. The links in the template —
+  the header, the footer, the skip target, the 404's list — are the ones no test reads back.
+- An id used twice on one page, or an `href="#..."` matching no element. Neither throws
+  and neither 404s; the browser simply scrolls to the wrong paragraph.
 
 The `/docs/<slug>.md` mirrors are served with `X-Robots-Tag: noindex` (see the repository
 root's `vercel.json`). They are the same prose as the HTML pages they sit beside, at a

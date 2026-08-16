@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.98
+
+### the website README described a directory three releases old
+
+The website README's file tree predated three releases' worth of files: it named `public/fonts/`
+and, since 0.6.62, `public/og.png` "plus icons", while the directory also holds favicon.svg,
+apple-touch-icon.png and site.webmanifest, and it did not mention `scripts/` at all — the two
+files that produce every static page on the site.
+
+It also said nothing about what the build now refuses to ship. Four guards have been added across
+0.6.76, 0.6.81 and 0.6.88, and each exists because the failure it catches is invisible in a
+browser: a page that lost its content still renders for anyone whose bundle loads, a mistyped
+link in the template still builds, and a duplicated id still scrolls somewhere. Someone editing
+this site should know the build will stop them, and why, before it does.
+
 ## 0.6.97
 
 ### there was no private way to report a parser vulnerability
