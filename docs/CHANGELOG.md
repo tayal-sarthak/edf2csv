@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.105
+
+### the preview server answered every documentation URL with the homepage
+
+`npm run preview` is the one command for looking at what the build produced, and it could not show
+you any of it. Vite's default `appType` is `spa`, which puts a fallback in front of the preview
+server answering every extensionless request with index.html — correct for an app behind a
+client-side router, and this site is not one. It is eleven prerendered documentation pages, a
+landing page and a 404.
+
+So the homepage came back at all eleven documentation URLs, and at every wrong URL as well. The 404
+page the prerenderer writes was unreachable, and the soft 404 that page exists to avoid was
+precisely what checking the site locally produced. The prerenderer's guards were doing all the
+work: nothing else could see the pages they were guarding.
+
+The preview server now resolves the way Vercel does — `/docs/faq` to `docs/faq/index.html`, and
+anything it cannot find to 404.html with a 404 status. Checked across the landing page, a
+documentation page with and without its trailing slash, a Markdown mirror, llms.txt, a wrong URL
+and a bare directory. `appType` is `mpa` besides, so `npm run dev` — which has no prerendered
+documentation to serve — says that instead of answering with the homepage.
+
 ## 0.6.104
 
 ### the homepage shipped every hero trace twice, 71 kB of its 92
