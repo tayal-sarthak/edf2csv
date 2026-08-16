@@ -36,6 +36,30 @@ function decodeEntities(value) {
 }
 
 /**
+ * A slugifier that keeps ids unique within one document.
+ *
+ * Two headings can legitimately carry the same text: `NO_SAMPLES` is documented twice on
+ * the warnings page, once as the warning a single empty channel raises and once as the
+ * fatal error an entirely empty recording raises, and the page explains the distinction
+ * in prose between them. Both became `id="no_samples"` — invalid HTML, and worse than
+ * invalid, silently wrong: the contents entry for the fatal error scrolled to the
+ * warning, and after 0.6.84 the permalink beside the second heading handed out a link
+ * to the first.
+ *
+ * The first occurrence keeps the plain slug, so every link that already points at one
+ * still lands where it did. Repeats are numbered.
+ */
+export function makeSlugger() {
+  const used = new Map();
+  return (text) => {
+    const base = slugify(text);
+    const seen = used.get(base) ?? 0;
+    used.set(base, seen + 1);
+    return seen === 0 ? base : `${base}-${seen + 1}`;
+  };
+}
+
+/**
  * Render Markdown to the HTML the site ships: heading anchors applied and fenced
  * code already tokenised, so no client-side pass is needed to make a page readable.
  */
@@ -55,8 +79,11 @@ export function renderMarkdown(body) {
     heading itself already provides to anyone reading in order, so announcing eleven
     more "link, permalink" stops per page would cost more than it gives.
   */
+  // The same slugger the table of contents uses, walking the same headings in the same
+  // order, so the two cannot disagree about which heading is the numbered one.
+  const slug = makeSlugger();
   html = html.replace(/<(h[23])>([\s\S]*?)<\/\1>/g, (_whole, tag, inner) => {
-    const id = slugify(decodeEntities(inner.replace(/<[^>]+>/g, '')));
+    const id = slug(decodeEntities(inner.replace(/<[^>]+>/g, '')));
     const anchor = `<a class="prose__anchor" href="#${id}" aria-hidden="true" tabindex="-1">#</a>`;
     return `<${tag} id="${id}">${inner}${anchor}</${tag}>`;
   });
@@ -86,11 +113,12 @@ export function renderMarkdown(body) {
 /** Headings for an on-page table of contents. */
 export function extractHeadings(body) {
   const headings = [];
+  const slug = makeSlugger();
   for (const line of body.split(/\r?\n/)) {
     const match = /^(#{2,3})\s+(.*)$/.exec(line);
     if (!match) continue;
     const text = match[2].replace(/`/g, '').trim();
-    headings.push({ level: match[1].length, text, id: slugify(text) });
+    headings.push({ level: match[1].length, text, id: slug(text) });
   }
   return headings;
 }

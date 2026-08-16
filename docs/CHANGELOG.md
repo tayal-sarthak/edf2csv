@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.87
+
+### two headings shared an id and the second link went to the first
+
+`NO_SAMPLES` is documented twice on the warnings page, deliberately: once as the warning a single
+empty channel raises, once as the fatal error an entirely empty recording raises, with a paragraph
+between them explaining that the same name means two things. Both headings were given
+`id="no_samples"`. That is invalid HTML, and it fails in the quiet way — the browser scrolls to the
+first match, so the contents entry for the fatal error took the reader to the warning, and 0.6.84's
+permalink beside the second heading handed out a link that goes to the first. Nothing 404s. It
+simply arrives at the wrong paragraph.
+
+Slugs are now unique per page: the first occurrence keeps the plain id, so every link that already
+points at one still lands where it did, and repeats are numbered. The renderer and the contents
+list share one slugger walking the same headings in the same order, because two independent
+implementations of "which one is the duplicate" is how they would disagree later.
+
 ## 0.6.86
 
 ### the contents list omitted every diagnostic code on the page about them
