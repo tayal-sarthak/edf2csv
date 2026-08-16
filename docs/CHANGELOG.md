@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.120
+
+### a rule for focusing something nothing can focus
+
+Every h2 and h3 on a documentation page carries a `#` permalink, hidden at opacity 0 until the
+heading is hovered. The stylesheet also revealed it on `:focus`, and the comment above described it
+as visible "until the heading is hovered or it is itself focused".
+
+There is no such thing as it being focused. The anchor is `tabindex="-1"` and `aria-hidden="true"`,
+on purpose — a page like the warnings reference has fifty-three of them, and announcing fifty-three
+"link, permalink" stops would cost a screen-reader user more than the permalinks give. Out of the
+tab order, not focused on click in this browser either, and nothing on the site calls `.focus()` on
+one. The selector had nothing it could ever match.
+
+Two lines, and neither is the point. The point is that a reader of this stylesheet was being told
+the permalink has a keyboard route to it, one directory from the file that explains why it
+deliberately has none.
+
 ## 0.6.119
 
 ### a style shipped to every reader since the first commit, on nothing

@@ -1007,7 +1007,14 @@ a {
 /*
   The permalink beside a heading. Present in the markup rather than conjured on hover,
   so it can be copied from the page source and works with JavaScript disabled; invisible
-  until the heading is hovered or it is itself focused, so it does not clutter the prose.
+  until the heading is hovered, so it does not clutter the prose.
+
+  It used to claim "or it is itself focused", and carried a `:focus` rule to match. The
+  anchor is `tabindex="-1"` and `aria-hidden="true"` — deliberately, since announcing
+  fifty-three "link, permalink" stops on the warnings page would cost more than it gives —
+  so it is not in the tab order, this browser does not focus it on click either, and
+  nothing on the site calls `.focus()` on one. The rule could not fire, and the sentence
+  above it described a way of reaching the permalink that does not exist.
 */
 .prose__anchor {
   margin-left: 0.4em;
@@ -1017,8 +1024,7 @@ a {
 }
 
 .prose h2:hover .prose__anchor,
-.prose h3:hover .prose__anchor,
-.prose__anchor:focus {
+.prose h3:hover .prose__anchor {
   opacity: 1;
 }
 
