@@ -28,6 +28,14 @@ filesystem work around it:
 - Unbounded memory or disk use from header fields that claim more than the file contains.
 - Anything that writes outside the output directory, including through channel labels, since
   those are attacker-controlled text that reaches filenames.
+- A way for header text to reach something that executes it. The label, unit, transducer and
+  prefiltering fields are free text and are written into the CSV verbatim, which is deliberate;
+  what is not acceptable is the tool being silent about where that lands. The known case — a
+  field beginning `=`, `+` or `@`, which a spreadsheet reads as a formula — raises
+  [`FORMULA_LABEL`](https://edf2csv.vercel.app/docs/warnings-and-errors#formula_label) rather
+  than being rewritten, since rewriting it would mean the CSV no longer says what the recording
+  says. Another program these fields reach that treats them as instructions rather than as text
+  is worth reporting.
 
 ## What is not
 

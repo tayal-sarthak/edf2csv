@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.125
+
+### the security policy knew the labels were hostile and named one place they go
+
+The security policy listed four things that are in scope, all of them about the parser and the
+filesystem: reading or writing outside the given files, a crash instead of a reported error,
+unbounded memory or disk from a lying header, and anything escaping the output directory "including
+through channel labels, since those are attacker-controlled text that reaches filenames".
+
+It knew those fields were attacker-controlled and named only one of the places they go. The other
+one is the CSV itself, which is the whole product: four free-text header fields written through
+verbatim into a file the README says opens in Excel. 0.6.124 added the warning for the case that
+matters today; the policy is what tells someone who finds the next one that it is worth reporting.
+
+So the scope now says it in general — a way for header text to reach something that executes it —
+rather than enumerating the one instance. It also records the answer, because a reporter should know
+it up front: these fields are written unchanged on purpose, the tool warns rather than rewrites, and
+"the CSV no longer says what the recording says" is not an acceptable fix here.
+
 ## 0.6.124
 
 ### a channel label could be a spreadsheet formula and nothing said so
