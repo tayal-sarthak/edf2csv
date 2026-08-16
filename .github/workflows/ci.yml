@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
 
+# A second push to a pull request leaves the first run going: three Node versions of the suite
+# plus seven sweeps, all proving things about a commit nobody will merge, while the run that
+# matters queues behind them.
+# Keyed by ref, so pushes to a branch supersede each other and main is left alone — a run on
+# main is the one that says whether the released commit is good, and cancelling it would
+# leave that question unanswered.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 

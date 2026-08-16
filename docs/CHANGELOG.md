@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.95
+
+### a second push left the first run testing a dead commit
+
+Pushing twice to a branch left both runs going. Each one is now three Node versions of the suite,
+seven sweeps and a website build, so the second push meant the machines were busy proving things
+about a commit already replaced — and 0.6.94 made that a third heavier again.
+
+Keyed by ref, so pushes to the same branch supersede one another. Runs on main are exempt: a run
+on main is the one that says whether the commit being released is good, batched releases put
+several of them in flight at once, and cancelling those would leave that question unanswered for
+every version but the last.
+
 ## 0.6.94
 
 ### CI tested every supported Node but the current one
