@@ -196,7 +196,7 @@ describe('argument errors exit 2', () => {
     const unknown = await cli([fixture('tiny.edf'), '--nope']);
     assert.equal(unknown.code, 2, unknown.stderr);
     assert.match(unknown.stderr, /^error: There is no --nope option\./u, unknown.stderr);
-    assert.match(unknown.stderr, /put it after -- so it is read as one: edf2csv -- "--nope"/u);
+    assert.match(unknown.stderr, /pass it after -- instead:\n {7}edf2csv -- "--nope"/u);
     assert.ok(!unknown.stderr.includes('positional argument'), unknown.stderr);
 
     // Short options come back the same way.

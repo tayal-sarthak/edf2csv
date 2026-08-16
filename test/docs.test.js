@@ -2252,6 +2252,44 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('prints nothing that needs a terminal wider than eighty columns', async () => {
+    /*
+      Eighty is what a terminal is unless someone has changed it, and `--help` had six lines
+      of 81 to 86. What those lines cost is not aesthetic: the option list is three aligned
+      columns, and a wrapped line puts its tail under the flag names, so the alignment that
+      makes the table readable is exactly what breaks first. The longest line the tool printed
+      was worse and newer — the unknown-option hint added in 0.6.115 ran to 95.
+
+      Every message here is either written or wrapped by hand, so nothing enforces this but a
+      check that reads the output back.
+    */
+    const WIDTH = 80;
+    const over = (text, what) =>
+      text
+        .split('\n')
+        .filter((line) => line.length > WIDTH)
+        .map((line) => `${what}: ${line.length} columns: ${line}`);
+
+    const problems = [];
+    const { stdout: help } = await run(process.execPath, [CLI, '--help']);
+    problems.push(...over(help, '--help'));
+
+    const fixtureFile = path.join(ROOT, 'test/fixtures/generated/tiny.edf');
+    const refusals = [
+      ['--chanels'],
+      ['--decimals', '21'],
+      ['--layout', 'tall'],
+      ['--jobs', '0'],
+      ['--channels', 'nope'],
+      ['--stdout', '--checksum'],
+    ];
+    for (const args of refusals) {
+      const { stderr } = await run(process.execPath, [CLI, fixtureFile, ...args]).catch((e) => e);
+      problems.push(...over(String(stderr ?? ''), args.join(' ')));
+    }
+    assert.deepEqual(problems, [], problems.join('\n'));
+  });
+
   it('agrees with the CLI about what the exit codes are', async () => {
     // The reference states three codes and what each means. The meanings are prose, but the
     // set is not: a fourth code appearing with nothing said about it is the drift to catch.

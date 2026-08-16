@@ -3,6 +3,37 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.132
+
+### the help table came apart on an eighty column terminal
+
+Eighty columns is what a terminal is unless somebody has changed it. `--help` had six lines between
+81 and 86, and three refusals ran to 104, 108 and 114.
+
+For the help text that is not an aesthetic complaint. The option list is three aligned columns, and
+when a line wraps its tail lands under the flag names — so the alignment that makes the table
+readable is the first thing a narrow terminal destroys, on the six longest and most detailed
+entries.
+
+The longest line the tool printed was newer than the rest and mine: the unknown-option hint added in
+0.6.115 ran to 95 columns.
+
+```text
+error: --stdout and --checksum cannot be combined: --stdout writes no
+       files, and --checksum has nothing to act on.
+       Drop --checksum, or drop --stdout and convert to a directory.
+```
+
+Every one of these strings is wrapped by hand, so nothing enforced the width and nothing was going
+to notice. There is a check now: it runs `--help` and six refusals and measures what comes back. It
+found the three `--stdout` combination errors on its first run, which is why it exists rather than a
+one-off tidy-up.
+
+Scoped to the usage text and the refusals, deliberately. Diagnostic messages are wider still — 42
+distinct lines across the fixtures run past eighty — and they are quoted verbatim throughout the
+documentation and pinned by a dozen tests, so rewrapping them is a change to make on its own rather
+than alongside this.
+
 ## 0.6.131
 
 ### the first page anyone reads said to open it in Excel the one way not to

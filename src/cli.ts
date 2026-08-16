@@ -46,16 +46,18 @@ Usage
   edf2csv <recording.edf | folder> [more ...] [options]
 
 Options
-  -i, --info             Show the recording's structure and estimated output size,
-                         without converting anything
-  -o, --out <dir>        Output directory (default: <recording>_csv beside the input)
+  -i, --info             Show the recording's structure and the estimated
+                         output size, without converting anything
+  -o, --out <dir>        Output directory (default: <recording>_csv, beside
+                         the input)
   -c, --channels <list>  Only these channels, comma-separated. Use #N to pick a
                          channel by position when two share a label
       --start <time>     Begin at this offset (30s, 5m, 1h30m, 00:30:00)
       --duration <time>  Convert this much
       --end <time>       Stop at this offset (instead of --duration)
       --annotations-only Write only the EDF+ annotations, no signal data
-      --decimals <n>     Fix the decimal places instead of deriving them per channel
+      --decimals <n>     Fix the decimal places instead of deriving them
+                         per channel
       --checksum         Record a SHA-256 of the input in metadata.json
       --layout <kind>    wide (default): one column per channel, one file per
                          sampling rate. long: one file of time_s,channel,value,
@@ -63,10 +65,12 @@ Options
       --gzip             Compress every CSV, writing .csv.gz files
       --bom              Start each CSV with a UTF-8 byte order mark, so Excel
                          reads accented text and units like µV correctly
-  -j, --jobs <n>         Convert this many recordings at once, or "auto" (default: 1)
+  -j, --jobs <n>         Convert this many recordings at once, or "auto"
+                         (default: 1)
   -f, --force            Write into the output directory if it already exists
   -q, --quiet            Suppress the summary; warnings and errors still print
-      --json             Print machine-readable JSON to stdout (works with --info too)
+      --json             Print machine-readable JSON to stdout (works with
+                         --info too)
       --strict           Exit 1 if the recording raised any warning
       --stdout           Write the signal CSV to stdout instead of a directory
                          (one table only: one sampling rate, or --layout long)
@@ -88,7 +92,8 @@ Output
   at different sampling rates are written to separate files, never resampled.
   With --gzip each CSV becomes a .csv.gz; metadata.json stays plain text so the
   directory can still be read at a glance. With --bom each CSV starts with a
-  UTF-8 byte order mark and metadata.json does not, since JSON.parse rejects one.
+  UTF-8 byte order mark and metadata.json does not, since JSON.parse rejects
+  one.
   With --layout long every channel goes into one signals.csv as time_s, channel
   and value, one row per sample, whatever rates the recording mixes — which is
   also the one arrangement --stdout can stream for a mixed-rate file.
@@ -387,8 +392,8 @@ export async function main(argv: readonly string[]): Promise<number> {
       // `error:` and the seven-space continuation, like every other refusal — the shape
       // 0.5.79 gave the rest and these two were not enumerated in its test.
       process.stderr.write(
-        `error: --stdout and ${flag} cannot be combined: --stdout writes no files, and ` +
-          `${flag} has nothing to act on.\n` +
+        `error: --stdout and ${flag} cannot be combined: --stdout writes no\n` +
+          `       files, and ${flag} has nothing to act on.\n` +
           `       Drop ${flag}, or drop --stdout and convert to a directory.\n`,
       );
       return EXIT_USAGE;
@@ -1933,8 +1938,8 @@ function unknownOption(raw: string): string {
   const near = nearestOption(flag);
   return printableLines(
     `error: There is no ${flag} option.${near === null ? '' : ` Did you mean ${near}?`}\n` +
-      `       If that is the name of a file, put it after -- so it is read as one: ` +
-      `edf2csv -- "${flag}"`,
+      `       If it is the name of a file, pass it after -- instead:\n` +
+      `       edf2csv -- "${flag}"`,
   );
 }
 
