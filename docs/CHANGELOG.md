@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.149
+
+### any site could put these pages in a frame
+
+The site sends `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`
+on every response. The third of that set was missing: nothing said whether the pages may be put in a
+frame, so anything could embed them.
+
+For a documentation site that is a small thing, and it is not nothing. These pages carry controls —
+a theme toggle that writes to storage, a copy button that writes to the clipboard — and a page you
+can frame is a page whose controls can be operated by someone the reader cannot see.
+
+`Content-Security-Policy: frame-ancestors 'none'`, which is the current spelling of that
+restriction; `X-Frame-Options` is the deprecated one. A policy carrying only `frame-ancestors` sets
+no `default-src`, so it restricts framing and nothing else — the inline theme script that runs
+before first paint and the JSON-LD blocks on every page are untouched. `vercel.json` is strictly
+validated, so it is checked for parse and for the three headers landing on the catch-all rule.
+
 ## 0.6.148
 
 ### the site could be installed on a Node the repository does not support
