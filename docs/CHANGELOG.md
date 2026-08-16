@@ -3,6 +3,35 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.130
+
+### a test raced a signal against a process that was not listening yet
+
+Two tests spawn a conversion, wait 400 ms, send SIGINT, and require the exit status to be 130 with
+the tool's own "interrupted" message on stderr. During this batch one of them failed on a commit
+that had nothing wrong with it:
+
+```text
+  actual: null,
+  expected: 130,
+```
+
+`null` is not a wrong exit status, it is no exit status. A Node process only survives SIGINT once it
+has a listener for it, and this tool installs its handler when the conversion starts. Until then the
+default takes the signal and terminates the process outright, and `close` reports `code: null` with
+`signal: 'SIGINT'`. Four hundred milliseconds is normally plenty to get past startup — and this
+suite runs its own conversions in parallel, so under that load it sometimes is not.
+
+The tests already know about one race of exactly this kind: if the pre-write scan finishes before
+the signal lands, the run is skipped, because losing the race says nothing about the message being
+tested. This is the same situation at the other end, and it is treated the same way — a skip that
+names the reason rather than a red tick on a good commit. Both branches checked directly: a child
+with no handler comes back `{code: null, killedBy: 'SIGINT'}` and takes the skip, one with a handler
+comes back `{code: 130, killedBy: null}` and is asserted on as before.
+
+Flaky tests are worse than missing ones. A suite people have learned to re-run is a suite that stops
+being read, and this one is what `prepublishOnly` gates a release on.
+
 ## 0.6.129
 
 ### nothing ever installed the package and ran it

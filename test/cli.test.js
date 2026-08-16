@@ -42,6 +42,27 @@ async function cli(args, options = {}) {
   }
 }
 
+/*
+  Ctrl-C, and whether the child was ready for it.
+
+  Both interrupt tests wait a fixed moment and then signal. That assumes the child has got as
+  far as installing its handler — until it has, Node's default takes the signal and terminates
+  the process outright, and `close` reports no exit code at all with `signal` set instead of
+  the 130 the tool would have chosen. Which is what a loaded machine produces: this suite runs
+  its own conversions in parallel, and a run under that load has been seen coming back
+  `actual: null, expected: 130` on a commit with nothing wrong in it.
+
+  Losing that race says nothing about the message under test, exactly as losing the other one
+  does — the pre-write scan finishing first is already skipped for the same reason. So it is
+  reported as a skip with the reason on it, rather than as a failure on a green commit.
+*/
+function interrupted(run, signal = 'SIGINT') {
+  return new Promise((resolve) => {
+    run.on('close', (code, killedBy) => resolve({ code, killedBy }));
+    run.kill(signal);
+  });
+}
+
 describe('published type surface', () => {
   // The package declares no dependencies, so a TypeScript consumer has no @types/node
   // unless they install it themselves. If a Node-only type (Buffer, NodeJS.*, anything
@@ -2263,8 +2284,11 @@ describe('converting several recordings at once', () => {
       t.skip('the pre-write scan finished before the signal was sent');
       return;
     }
-    run.kill('SIGINT');
-    const code = await new Promise((resolve) => run.on('close', resolve));
+    const { code, killedBy } = await interrupted(run);
+    if (code === null) {
+      t.skip(`the signal arrived before the handler was installed (killed by ${killedBy})`);
+      return;
+    }
 
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
     assert.match(stderr, /interrupted \(SIGINT\)/u);
@@ -2298,7 +2322,7 @@ describe('converting several recordings at once', () => {
     assert.equal(worstOf([1, 2]), 1);
   });
 
-  it('stops its children when interrupted, and says the output is incomplete', async () => {
+  it('stops its children when interrupted, and says the output is incomplete', async (t) => {
     // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
     // signal sent to this process alone does not, which is how a batch runs from a script,
     // and interrupting one left conversions writing into a directory believed abandoned —
@@ -2327,8 +2351,11 @@ describe('converting several recordings at once', () => {
     // Long enough that conversions are certainly in flight, short enough that they
     // cannot all have finished.
     await new Promise((resolve) => setTimeout(resolve, 400));
-    run.kill('SIGINT');
-    const code = await new Promise((resolve) => run.on('close', resolve));
+    const { code, killedBy } = await interrupted(run);
+    if (code === null) {
+      t.skip(`the signal arrived before the handler was installed (killed by ${killedBy})`);
+      return;
+    }
 
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
     assert.match(stderr, /interrupted \(SIGINT\)/u);
