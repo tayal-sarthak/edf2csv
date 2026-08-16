@@ -35,7 +35,7 @@ import { ChannelSelectionError } from './convert/channels.js';
 import { OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './convert/timing.js';
-import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson } from './cli/report.js';
+import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson, wrap } from './cli/report.js';
 import { counted, listed } from './format/list.js';
 import { VERSION } from './version.js';
 
@@ -1679,7 +1679,18 @@ function reportError(error: unknown, input?: string, emit: Emit = writeThrough):
   const where = input === undefined ? '' : `${printable(input)}: `;
   if (error instanceof EdfError || error instanceof ConversionError) {
     emit('err', `error: ${where}${printableLines(error.message, '       ')}\n`);
-    if (error.hint) emit('err', `       ${error.hint}\n`);
+    /*
+      Wrapped, for the same reason the hint under a warning is — and because on this file
+      it is frequently the same sentence.
+
+      A mixed-rate recording refused by --stdout and the same recording described by --info
+      both end in "Narrow it to one rate with --channels, write --layout long ...". One
+      arrived as a ConversionError hint and printed on a single 130-column line; the other
+      arrived as a Diagnostic hint and wrapped at 80 from 0.7.1. Identical advice about an
+      identical file, laid out two different ways depending on whether the tool went on to
+      convert it.
+    */
+    if (error.hint) emit('err', `${wrap(error.hint, '       ')}\n`);
     // A request the tool cannot carry out is the command line's problem, not the file's,
     // whatever layer noticed it. See USAGE_ERROR_CODES.
     return error instanceof ConversionError && USAGE_ERROR_CODES.has(error.code)

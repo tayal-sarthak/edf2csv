@@ -32,7 +32,7 @@ const HINT_INDENT = ' '.repeat(9);
  * are file paths and quoted channel labels, and neither survives being split across lines:
  * the point of printing a path is that it can be copied back out.
  */
-function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
+export function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
   const lines: string[] = [];
   let line = indent;
   for (const word of text.split(/\s+/u)) {

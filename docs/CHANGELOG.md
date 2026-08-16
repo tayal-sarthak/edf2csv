@@ -8,6 +8,61 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.3
+
+### the same advice wrapped as a warning and did not as an error
+
+The same sentence, about the same recording, laid out two different ways.
+
+`edf2csv mixed-rates.edf --stdout` is refused, because three sampling rates cannot share one
+table. `edf2csv mixed-rates.edf --info --stdout` describes the same refusal without
+performing it. Both end on the same advice, and until now they printed it like this:
+
+```
+error: --stdout needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+       Narrow it to one rate with --channels, write --layout long to get them all in one table, or convert to a directory instead.
+
+warning: --stdout would refuse this recording: needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+         Narrow it to one rate with --channels, write --layout long to get them
+         all in one table, or convert to a directory instead.
+```
+
+One string, one file, one piece of advice. It wrapped when it arrived as a `Diagnostic.hint`
+and ran to 130 columns when it arrived as a `ConversionError.hint`, and the only thing that
+decided which was whether the tool went on to convert the file.
+
+So `error.hint` goes through the same wrap. It is the third and last place terminal prose is
+emitted: `--help` since it existed, warning hints in 0.7.1, `--info` in 0.7.2, refusal hints
+here.
+
+Only the hint. The `error: ` line above it carries the path the tool was given — a path is
+one word and can be arbitrarily long — and stays a single line, for the same reason
+`warning: ` does: a batch's stderr is grepped for it.
+
+**Not changed, and worth naming.** `ChannelSelectionError`, `TimeRangeError` and
+`OptionError` put their advice in the *message* rather than in a hint, on a second line
+they write themselves:
+
+```
+error: No channel named "ZZZ".
+       Run with --info to list the channels in this file.
+```
+
+That line sits in the same column and does the same job, and it does not wrap. It cannot
+simply be fed through the same function, because one of these messages ends in a command
+meant to be copied —
+
+```
+       If it is the name of a file, pass it after -- instead:
+       edf2csv -- "--chanels"
+```
+
+— and wrapping `edf2csv -- "a really long flag"` puts half a command on each line. Prose
+survives being re-flowed; a command does not. That distinction needs making explicitly
+rather than by a rule that happens to hold for today's strings, so it is left for its own
+change. The guard added here covers the hints, and will catch the day one of these grows
+past 80.
+
 ## 0.7.2
 
 ### --info explained itself in 156-column sentences

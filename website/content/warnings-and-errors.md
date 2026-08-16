@@ -912,7 +912,9 @@ Or data is there, but less than one record of it — which up to 0.5.86 got the 
 
 ```
 error: The file contains 589824 bytes of data, which is less than the 983040 its header says one data record takes.
-       Either the recording was cut short part way through its first record, or the header describes records larger than the ones actually written. Check the samples-per-record fields against the file size.
+       Either the recording was cut short part way through its first record, or
+       the header describes records larger than the ones actually written. Check
+       the samples-per-record fields against the file size.
 ```
 
 Both numbers are there because the interesting comparison is between them: a header declaring records far larger than what was written is the other way to land here, and it is a header problem rather than a truncation.
@@ -937,7 +939,9 @@ The mid-conversion case works differently, and is the one place in this section 
 
 ```
 error: Expected 2864400 bytes of data at record 24600 but only 0 bytes were available; the file appears to have changed size while it was being read.
-       Make sure the recording is not still being written to, then try again. What was written to "out" before it failed is incomplete and should not be used.
+       Make sure the recording is not still being written to, then try again.
+       What was written to "out" before it failed is incomplete and should not
+       be used.
 ```
 
 That last sentence is the part to act on. The rows written before the read failed are on disk, in a `signals.csv` that ends on a row boundary and opens exactly like a finished one — two and a half million of them in the run above, out of 2.88 million. Nothing about the file itself reveals which it is. Delete the directory, or convert into a fresh one.
@@ -955,8 +959,9 @@ The reader failed *after* the conversion had started writing, so the run stopped
 ```
 error: Expected 524288 bytes of data at record 1024 but only 131072 bytes were available; the file
        appears to have changed size while it was being read.
-       Make sure the recording is not still being written to, then try again. What was written to
-       "converted" before it failed is incomplete and should not be used.
+       Make sure the recording is not still being written to, then try again.
+       What was written to "converted" before it failed is incomplete and should
+       not be used.
 ```
 
 **What to do.** Treat the directory as unusable and convert again once the recording has stopped moving. Through `--stdout` the same failure names stdout rather than a directory, since that path writes no files.
@@ -998,7 +1003,8 @@ Writing one of the output files failed part way through, most often because the 
 
 ```
 error: Writing to "recording_csv" failed: ENOSPC: no space left on device
-       The files written so far are incomplete and should not be used. The destination is out of space; free some up or choose another with --out.
+       The files written so far are incomplete and should not be used. The
+       destination is out of space; free some up or choose another with --out.
 ```
 
 The hint is chosen from what actually failed. Until 0.4.36 every write failure carried the disk-space advice, which fits exactly one errno — a directory sitting where `signals.csv` belongs, a read-only volume, a permission denial and a path too long for the filesystem all came back telling you to free up space. Wrong advice is worse than none: it sends you to check `df` on a disk that is fine while the real cause stays unexamined.
@@ -1022,8 +1028,9 @@ Under `--stdout` the sentence changes, because that path writes no files and `--
 
 ```
 error: Writing to stdout failed: ENOSPC: no space left on device, write
-       What reached stdout before it failed is incomplete and should not be used. The
-       destination is out of space; free some up or redirect it somewhere else.
+       What reached stdout before it failed is incomplete and should not be
+       used. The destination is out of space; free some up or redirect it
+       somewhere else.
 ```
 
 ### INPUT_OUTPUT_COLLISION
@@ -1051,8 +1058,9 @@ The `onProgress` callback a library caller passed to `convert` threw.
 
 ```
 error: The onProgress callback threw: Cannot read properties of undefined (reading 'total')
-       This is the caller's callback, not the recording or the destination. Whatever was written
-       before it threw is incomplete and should not be used.
+       This is the caller's callback, not the recording or the destination.
+       Whatever was written before it threw is incomplete and should not be
+       used.
 ```
 
 **What to do.** Fix the callback. The conversion still stops, and whatever it had written is incomplete — carrying on writing into a directory whose owner has just failed is not an improvement.
@@ -1068,8 +1076,8 @@ The command cannot be carried out as written, decided after reading the header.
 ```
 error: --stdout needs exactly one table, but this recording produces 3, one for each sampling
        rate its channels use (256 Hz, 128 Hz, 1 Hz).
-       Narrow it to one rate with --channels, write --layout long to get them all in one table,
-       or convert to a directory instead.
+       Narrow it to one rate with --channels, write --layout long to get them
+       all in one table, or convert to a directory instead.
 ```
 
 **What to do.** Take one of the three routes the hint names. `--info --stdout` reports the same refusal ahead of time as a [`STDOUT_UNSUPPORTED`](#stdout_unsupported) warning rather than an error, since `--info` writes nothing.

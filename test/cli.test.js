@@ -1083,6 +1083,34 @@ describe('--info', () => {
     }
     assert.ok(hints > 20, `expected hints to assert about, saw ${hints}`);
     assert.ok(prose > 20, `expected --info prose to assert about, saw ${prose}`);
+
+    /*
+      And the hint under a refusal, which is the same sentence often enough to matter: a
+      mixed-rate recording refused by --stdout and the same recording described by --info
+      both end in "Narrow it to one rate with --channels ...". One arrived as a
+      ConversionError hint, the other as a Diagnostic hint, and until 0.7.3 they wrapped
+      differently.
+
+      Only the seven-space hint. The `error: ` line above it carries the path the tool was
+      given and stays one line, for the same reason `warning: ` does.
+    */
+    let refusals = 0;
+    for (const args of [
+      [fixture('mixed-rates.edf'), '--stdout'],
+      [fixture('mixed-rates.edf'), '--stdout', '--json'],
+      [fixture('mixed-rates.edf'), '--stdout', '--annotations-only'],
+      [fixture('mixed-rates.edf'), '--channels', 'ZZZ'],
+      [fixture('mixed-rates.edf'), '--layout', 'sideways'],
+      [fixture('mixed-rates.edf'), '--start', '5000'],
+    ]) {
+      const { stderr } = await cli(args);
+      for (const line of stderr.split('\n')) {
+        if (!/^ {7}\S/u.test(line)) continue;
+        refusals++;
+        if (line.length > 80) wide.push(`${args.join(' ')}: ${line.length} cols — ${line.trim()}`);
+      }
+    }
+    assert.ok(refusals > 4, `expected refusal hints to assert about, saw ${refusals}`);
     assert.deepEqual(wide, [], `lines past 80 columns:\n${wide.join('\n')}`);
   });
 
@@ -3533,8 +3561,11 @@ describe('write failures', () => {
     await mkdir(path.join(blocked, 'signals.csv'), { recursive: true });
     const isDirectory = await cli([path.join(dir, 'a.edf'), '--out', blocked, '--force']);
     assert.equal(isDirectory.code, 1, isDirectory.stderr);
-    assert.match(isDirectory.stderr, /A directory is sitting where that file belongs/u);
-    assert.ok(!/Free up space/u.test(isDirectory.stderr), 'the disk is not the problem here');
+    // Hints wrap to the terminal, so the sentence may carry a newline and seven spaces
+    // anywhere a space would go. What is asserted is the advice, not its line breaks.
+    const flat = isDirectory.stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /A directory is sitting where that file belongs/u);
+    assert.ok(!/Free up space/u.test(flat), 'the disk is not the problem here');
 
     const readonly = path.join(dir, 'ro');
     await mkdir(readonly, { recursive: true });
@@ -3542,7 +3573,7 @@ describe('write failures', () => {
     try {
       const denied = await cli([path.join(dir, 'a.edf'), '--out', readonly, '--force']);
       assert.equal(denied.code, 1, denied.stderr);
-      assert.match(denied.stderr, /You do not have permission to write there/u);
+      assert.match(denied.stderr.replace(/\s+/gu, ' '), /You do not have permission to write there/u);
     } finally {
       await chmod(readonly, 0o700);
     }

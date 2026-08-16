@@ -655,7 +655,8 @@ refuses a mixed-rate file rather than merging tables that have different row cou
 
 ```
 error: --stdout needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
-       Narrow it to one rate with --channels, write --layout long to get them all in one table, or convert to a directory instead.
+       Narrow it to one rate with --channels, write --layout long to get them
+       all in one table, or convert to a directory instead.
 ```
 
 Two answers, and which one fits depends on what you want out of the stream. `--channels` narrows
@@ -713,9 +714,10 @@ When stdout is redirected to a regular file, `edf2csv` checks at the end that th
 ```
 error: Writing to stdout failed: 150904 of 2063736 bytes did not reach the destination,
        which stopped accepting them part way through.
-       What is there ends mid-row and should not be used. The destination is almost
-       certainly out of space — a short write is how a filesystem reports filling up
-       mid-write, and nothing after it raised an error because there was nothing after it.
+       What is there ends mid-row and should not be used. The destination is
+       almost certainly out of space — a short write is how a filesystem reports
+       filling up mid-write, and nothing after it raised an error because there
+       was nothing after it.
 ```
 
 A reader that stops reading is a different thing, and gets a different line. `edf2csv recording.edf --stdout | head -1` is an ordinary thing to type and not a failure, but it is not a conversion either, so it does not get a conversion's summary:
