@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.80
+
+### a table-header rule set its colour twice and used the second
+
+`.prose th` set `color: var(--text)` and then, four lines later in the same rule, `color:
+var(--text-faint)`. The first declaration never applied to anything — the last one wins — so the
+table headers throughout the documentation had been the faint colour since the rule was written,
+while the file claimed twice over that they were two different colours. Whichever was intended,
+the stylesheet was not the place to find out.
+
+The faint one is what shipped and what the design wants: uppercased, small and quiet, so a header
+row reads as a label rather than as the first row of data. That is now the only declaration, with
+a line saying why.
+
 ## 0.6.79
 
 ### a dead light-theme rule outranked the one that dims the hero on phones
