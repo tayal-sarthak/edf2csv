@@ -591,6 +591,8 @@ try {
 
 `ConversionError.code` is one of `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION` (an output file would resolve to the recording being read), `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST` (the flags cannot be carried out together), `CALLBACK_FAILED` (your `onProgress` threw) or `WRITE_FAILED`.
 
+`ConversionErrorCode` is the type of that field, so a handler can be written down rather than only written: `function explain(code: ConversionErrorCode)`, a `Record<ConversionErrorCode, string>` of messages, or a `switch` the compiler checks for exhaustiveness. It was reachable but unnameable until 0.7.6, when `EdfErrorCode` and `DiagnosticCode` had both been exported since they existed.
+
 `ChannelSelectionError` messages carry a suggestion when the term is close to a real label, and `EdfError` and `ConversionError` both carry a `hint` describing what to do. Both are worth surfacing to a user rather than swallowing.
 
 `WRITE_FAILED` means files were partially written. They are left on disk, incomplete, and shouldn't be used.
@@ -807,6 +809,6 @@ because the file genuinely does not say which zone it meant. It is what produces
 
 Every one of these is available through `import type { ... } from 'edf2csv'`:
 
-`EdfHeader`, `EdfHeaderInfo`, `EdfSignal`, `RecordBatch`, `ReadRecordsOptions`, `Annotation`, `DecodedRecordAnnotations`, `Scaler`, `Diagnostic`, `DiagnosticCode`, `EdfErrorCode`, `ConvertOptions`, `ConvertResult`, `ConversionProgress`, `WrittenFile`, `ConversionPlan`, `PlanOptions`, `PlanInput`, `RateGroup`, `PlannedChannel`, `ResolvedRange`.
+`EdfHeader`, `EdfHeaderInfo`, `EdfSignal`, `RecordBatch`, `ReadRecordsOptions`, `Annotation`, `DecodedRecordAnnotations`, `Scaler`, `Diagnostic`, `DiagnosticCode`, `EdfErrorCode`, `ConversionErrorCode`, `ConvertOptions`, `ConvertResult`, `ConversionProgress`, `WrittenFile`, `ConversionPlan`, `PlanOptions`, `PlanInput`, `RateGroup`, `PlannedChannel`, `OutputEstimate`, `ChannelSelection`, `ResolvedRange`.
 
 The classes `EdfFile`, `EdfError`, `ConversionError`, `ChannelSelectionError` and `TimeRangeError` are values, so they import normally and work with `instanceof`.

@@ -640,6 +640,81 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('lets a TypeScript caller name every type the API hands them', async () => {
+    /*
+      Types vanish at runtime, so the import test above — which loads dist/index.js and reads
+      properties off it — cannot see a missing `export type` at all. Three were missing:
+      `ConversionError.code` is a `ConversionErrorCode`, `ConversionPlan.estimate` is an
+      `OutputEstimate`, and `selectChannels()` returns a `ChannelSelection`. All three were
+      exported from their own modules and none from the package root, so a caller could hold
+      the value, and read it, and not write down what it was — no function taking it, no
+      Record keyed by it, no exhaustive switch over it. `EdfErrorCode` and `DiagnosticCode`,
+      the two siblings of the first, had been exported since they existed.
+
+      Type-checked rather than asserted against a list, because the failure this catches is a
+      consumer's compile error and nothing short of a compiler produces one.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-types-'));
+    try {
+      await writeFile(
+        path.join(work, 'tsconfig.json'),
+        JSON.stringify({
+          compilerOptions: {
+            module: 'nodenext',
+            moduleResolution: 'nodenext',
+            target: 'es2022',
+            strict: true,
+            noEmit: true,
+            skipLibCheck: true,
+            baseUrl: work,
+            paths: { edf2csv: [path.join(ROOT, 'dist/index.d.ts')] },
+          },
+          files: ['probe.ts'],
+        }),
+      );
+      await writeFile(
+        path.join(work, 'probe.ts'),
+        [
+          "import { selectChannels, buildPlan, parseHeader, EdfFile } from 'edf2csv';",
+          'import type {',
+          '  ConversionErrorCode, OutputEstimate, ChannelSelection, ConversionError,',
+          '  ConversionPlan, ConvertResult, WrittenFile, Diagnostic, DiagnosticCode,',
+          '  EdfErrorCode, EdfSignal, EdfHeader, Annotation, Scaler, ResolvedRange,',
+          "} from 'edf2csv';",
+          '',
+          '// Each binding is the declared type of something the API returns or exposes.',
+          'declare const err: ConversionError;',
+          'declare const plan: ConversionPlan;',
+          'declare const result: ConvertResult;',
+          'declare const file: EdfFile;',
+          'const code: ConversionErrorCode = err.code;',
+          'const estimate: OutputEstimate = plan.estimate;',
+          'const picked: ChannelSelection = selectChannels([], []);',
+          'const written: WrittenFile[] = result.files;',
+          'const signal: EdfSignal | undefined = file.dataSignals[0];',
+          'const header: EdfHeader = file.header;',
+          'const range: ResolvedRange = plan.range;',
+          'const notes: Diagnostic[] = plan.diagnostics;',
+          'const kind: DiagnosticCode = notes[0]!.code;',
+          'declare const bad: EdfErrorCode;',
+          'declare const event: Annotation;',
+          'declare const scaler: Scaler;',
+          'declare const parsed: ReturnType<typeof parseHeader>;',
+          'declare const made: ReturnType<typeof buildPlan>;',
+          'export { code, estimate, picked, written, signal, header, range, kind, bad, event, scaler, parsed, made };',
+        ].join('\n'),
+      );
+
+      const tsc = path.join(ROOT, 'node_modules/.bin/tsc');
+      const { stdout, stderr } = await run(tsc, ['-p', path.join(work, 'tsconfig.json')]).catch(
+        (error) => ({ stdout: error.stdout ?? '', stderr: error.stderr ?? String(error) }),
+      );
+      assert.equal(`${stdout}${stderr}`.trim(), '', `a consumer cannot name part of the API:\n${stdout}${stderr}`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('produces the values the parseTimeSpec example claims in its comments', async () => {
     // The one example whose output is asserted in comments rather than printed, so running
     // it proves nothing on its own.

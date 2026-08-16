@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.6
+
+### three types crossed the API boundary without their names
+
+You could hold the value, and read it, and not write down what it was.
+
+```
+import type { ConversionErrorCode } from 'edf2csv';
+error TS2724: '"edf2csv"' has no exported member named 'ConversionErrorCode'.
+              Did you mean 'ConversionError'?
+```
+
+`ConversionError.code` is a `ConversionErrorCode`. The field is typed, so reading it and
+comparing it to a literal always worked — which is why nothing caught this. What did not work
+is naming the type: no `function explain(code: ConversionErrorCode)`, no
+`Record<ConversionErrorCode, string>` of messages, no `switch` the compiler checks for
+exhaustiveness. The api page recommends exactly that pattern for `DiagnosticCode` two hundred
+lines earlier ("a closed union, so a `switch` over it type-checks"), and both of this one's
+siblings — `EdfErrorCode` and `DiagnosticCode` — have been exported since they existed.
+
+Two more of the same kind. `ConversionPlan.estimate` is an `OutputEstimate`, and
+`selectChannels()` returns a `ChannelSelection`. Both types were exported from their own
+modules and neither from the package root, so the value crossed the boundary and its type did
+not. The api page's list of types "available through `import type { ... } from 'edf2csv'`"
+named twenty-one and was missing all three.
+
+**Why the existing test could not see it.** The API test imports `dist/index.js` and reads
+properties off the namespace, which is the right shape for checking that `convert` and
+`EdfFile` are there. Types are erased before that file exists — a missing `export type` leaves
+the JavaScript byte-identical, so no amount of importing it finds one.
+
+So the guard is a compiler. It writes a consumer that names the declared type of everything
+the API returns or exposes, points `paths` at `dist/index.d.ts`, and runs `tsc --noEmit`
+against it; the assertion is that the output is empty. Deleting `ConversionErrorCode` from
+`src/index.ts` makes it fail with the TS2724 above, which is the error a user would have got.
+
 ## 0.7.5
 
 ### a refusal naming a deep path ran to 268 columns
