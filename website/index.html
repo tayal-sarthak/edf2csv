@@ -28,9 +28,9 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <!-- Vercel Web Analytics. Cookieless and aggregate; it records page views, not people.
-         Inert until Analytics is enabled for the project in the Vercel dashboard. -->
-    <script defer src="/_vercel/insights/script.js"></script>
+    <!-- The analytics tag is added by scripts/prerender.mjs, which adds it to every other
+         page too. It is not here because Vite tries to resolve a root-absolute script src at
+         build time, and this one is served by Vercel at request time and exists in no build. -->
   </head>
   <body>
     <div id="root"></div>

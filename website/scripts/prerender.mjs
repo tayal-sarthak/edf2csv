@@ -249,6 +249,19 @@ const FOOTER = `<footer class="footer">
       </div>
     </footer>`;
 
+/**
+ * Vercel Web Analytics. Cookieless and aggregate; it records page views, not people, and
+ * is inert until Analytics is enabled for the project in the dashboard.
+ *
+ * Written once and added to every page here, including the landing page. It used to sit in
+ * index.html, where Vite tried to resolve it as a build input and said so on every single
+ * build: "can't be bundled without type='module' attribute". It cannot be bundled at all —
+ * Vercel serves it at request time and no build writes it — and a warning printed by every
+ * green build is a warning nobody reads. It was also the last thing on this site written
+ * out in three places by hand.
+ */
+const ANALYTICS = `<script defer src="/_vercel/insights/script.js"></script>`;
+
 /** Theme colour and icons, matched to what index.html declares statically. */
 function chromeTags() {
   return [
@@ -329,7 +342,7 @@ function page(doc, docs, assets) {
     <script>${THEME_SCRIPT}</script>
     <script type="application/ld+json">${JSON.stringify(structuredData(doc))}</script>
     <script type="application/ld+json">${JSON.stringify(breadcrumbs(doc))}</script>
-    <script defer src="/_vercel/insights/script.js"></script>
+    ${ANALYTICS}
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -401,7 +414,7 @@ function notFoundPage(docs, assets) {
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <script>${THEME_SCRIPT}</script>
-    <script defer src="/_vercel/insights/script.js"></script>
+    ${ANALYTICS}
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -478,6 +491,7 @@ function enrichLandingPage(appHtml) {
     `<meta property="og:site_name" content="edf2csv" />`,
     ...socialImageTags(),
     `<script type="application/ld+json">${JSON.stringify(graph)}</script>`,
+    ANALYTICS,
   ].join('\n    ');
 
   html = html.replace('</head>', `  ${head}\n  </head>`);

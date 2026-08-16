@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.112
+
+### every build printed a warning about a script no build can resolve
+
+Every build printed this:
+
+```text
+<script src="/_vercel/insights/script.js"> in "/index.html" can't be bundled without
+type="module" attribute
+```
+
+Vite treats a root-absolute `src` in index.html as a build input and tries to resolve it. This one
+cannot be resolved and never will be: Vercel serves it at request time and no build writes it. So
+the warning was correct about the fact and wrong about it being a problem — and a warning printed by
+every green build is a warning that trains you to skim past the next one, which will not be this.
+
+The tag was also the last thing on this site written out by hand in three places: index.html, the
+documentation page template and the 404. It is one constant in the prerenderer now, added to all
+thirteen pages including the landing one, for the same reason the footer became one in 0.6.67 and
+the header in 0.6.100.
+
+A clean build from an empty `dist/` prints nothing but its two summary lines, and all thirteen pages
+carry exactly one analytics tag, in the head.
+
 ## 0.6.111
 
 ### a helper nobody calls was still holding the id rule 0.6.87 replaced
