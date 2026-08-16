@@ -465,6 +465,24 @@ describe('terminal safety', () => {
     const wrote = single.stderr.split('\n').filter((line) => line.startsWith('Wrote '));
     assert.equal(wrote.length, 1, JSON.stringify(single.stderr));
     assert.match(wrote[0], /\\x0a/u, wrote[0]);
+
+    /*
+      And the failure paths, which the two checks above never reach because they both
+      succeed.
+
+      Two of them printed the path raw. A folder holding no recordings is named back in
+      "No EDF or BDF recordings found in ...", straight off the command line — and a shell
+      glob expands to whatever the directory holds, so "it came from the caller" is not the
+      same as "the caller typed it". The other is a hint rather than a message:
+      ConversionError.hint is fixed prose in every case but one, and that one interpolates
+      `--out`. The `error:` line above it was escaped correctly the whole time.
+    */
+    const nasty = path.join(dir, 'esc\u001b[31mdir');
+    await mkdir(nasty);
+    const empty = await cli([nasty]);
+    assert.notEqual(empty.code, 0);
+    assert.deepEqual(control(empty.stdout + empty.stderr), [], 'the empty-folder message');
+    assert.match(empty.stderr, /esc\\x1b\[31mdir/u, empty.stderr);
   });
 });
 

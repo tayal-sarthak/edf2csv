@@ -281,7 +281,9 @@ export async function main(argv: readonly string[]): Promise<number> {
       return EXIT_ERROR;
     }
     process.stderr.write(
-      `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${p}"`))}.\n`,
+      // Escaped, like every other path this prints. These come from the command line, which
+      // makes them no safer: a shell glob expands to whatever the directory holds.
+      `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${printable(p)}"`))}.\n`,
     );
     return EXIT_USAGE;
   }
@@ -621,7 +623,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           `\ninterrupted (${signal}): ${abandoned.length} conversion` +
             `${abandoned.length === 1 ? '' : 's'} stopped part way through.\n` +
             (abandoned.length > 0
-              ? detail(`Incomplete, and should not be used: ${listed(abandoned)}`)
+              ? detail(`Incomplete, and should not be used: ${listed(abandoned.map(printable))}`)
               : ''),
         );
         process.exit(signal === 'SIGINT' ? 130 : 143);
@@ -1715,7 +1717,18 @@ function reportError(error: unknown, input?: string, emit: Emit = writeThrough):
       identical file, laid out two different ways depending on whether the tool went on to
       convert it.
     */
-    if (error.hint) emit('err', `${wrap(error.hint, '       ')}\n`);
+    /*
+      Escaped, which the message above it has been since 0.5.67 and this line never was.
+
+      A hint is usually a fixed sentence, which is why it looked like text nobody supplies.
+      One is not: a read that fails part way through a conversion reports "What was written
+      to <outputDir> before it failed is incomplete", and `--out` takes whatever path the
+      caller gives it. A directory may be named with an ESC byte on every platform this
+      runs on, so `--out $'out\x1b[31mred'` on a recording that shrinks mid-read put a live
+      colour change on stderr — under an `error:` line that had been escaped correctly, two
+      lines above.
+    */
+    if (error.hint) emit('err', `${wrap(printable(error.hint), '       ')}\n`);
     // A request the tool cannot carry out is the command line's problem, not the file's,
     // whatever layer noticed it. See USAGE_ERROR_CODES.
     return error instanceof ConversionError && USAGE_ERROR_CODES.has(error.code)

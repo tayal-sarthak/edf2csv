@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.7
+
+### a folder named with an escape byte drove the terminal
+
+A directory named with an ESC byte put a live colour change on stderr — one line under an
+`error:` line that had escaped the same path correctly.
+
+0.5.67 established the rule and applied it: a path is untrusted text, a folder may be named
+with an ESC byte and a file name may hold a newline on every platform this runs on, so every
+path this tool prints goes through `printable` first. The `--info` File line, the `Wrote`
+summary, the `[n/m]` batch header and every `error:` message have done so since. Two places
+did not, and both are on failure paths, which is why the tests that cover this — all of which
+convert successfully — never reached them.
+
+**The hint under a refusal.** `ConversionError.hint` is a fixed sentence in every case but
+one, which is why it read as text nobody supplies. The exception: a recording that shrinks
+while it is being converted raises the reader's error, and the hint added to it names where
+the partial output went.
+
+```
+edf2csv shrinking.edf --out $'out\x1b[31mred'
+
+error: Expected 8386560 bytes of data at record 0 but only 2899456 bytes were
+       available; the file appears to have changed size while it was being read.
+       Make sure the recording is not still being written to, then try again.
+       What was written to "…/out<ESC>[31mred" before it failed is incomplete
+```
+
+`--out` takes whatever path the caller gives it. `Diagnostic.hint` has always been escaped by
+`formatDiagnostics`; this is the same field one class over, printed by `reportError`, and it
+was the only line of that message not passing through `printable`.
+
+**The empty-folder summary.** `No EDF or BDF recordings found in "<path>"` names the paths
+straight off the command line. Coming from the caller is not the same as being typed by the
+caller — a shell glob expands to whatever the directory holds, so `edf2csv ./study/*/` puts
+directory names on stderr that nobody looked at. The batch interrupt handler's list of
+abandoned destinations had the same shape and is escaped too.
+
+Escaped, not stripped: the path still prints, as `esc\x1b[31mdir`, so a name that is causing
+trouble stays diagnosable. That is the same trade `printable` has always made — a corrupt
+field should be readable, just not executable.
+
+The existing path-escaping test now covers a run that fails as well as ones that succeed,
+which is the gap that let this sit. Reverting either fix makes it fail.
+
 ## 0.7.6
 
 ### three types crossed the API boundary without their names
