@@ -217,6 +217,12 @@ function page(doc, docs, assets) {
     <title>${escape(doc.title)} - edf2csv</title>
     <meta name="description" content="${escape(doc.description)}" />
     <link rel="canonical" href="${canonical}" />
+    <!--
+      The plain-Markdown mirror of this page, which the build has always written to
+      /docs/<slug>.md and nothing ever pointed at. An agent or a reader who wants the
+      prose without the HTML around it had to guess the URL existed.
+    -->
+    <link rel="alternate" type="text/markdown" href="${canonical}.md" title="${escape(doc.title)} as Markdown" />
     <meta name="color-scheme" content="dark light" />
     ${chromeTags().join('\n    ')}
 
@@ -267,6 +273,10 @@ ${doc.html}
           ${previous ? `<a href="/docs/${previous.slug}">&larr; ${escape(previous.title)}</a>` : '<span></span>'}
           ${next ? `<a href="/docs/${next.slug}">${escape(next.title)} &rarr;</a>` : '<span></span>'}
         </div>
+        <p class="doc-source">
+          Read this page as <a href="${canonical}.md">plain Markdown</a>, or the whole
+          documentation as <a href="/llms-full.txt">one text file</a>.
+        </p>
       </article>
     </main>
 

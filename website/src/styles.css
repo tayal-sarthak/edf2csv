@@ -1055,6 +1055,23 @@ a {
   transition: color 0.16s var(--ease);
 }
 
+.doc-source {
+  margin: 1.4rem 0 0;
+  font-size: 0.86rem;
+  color: var(--text-faint);
+}
+
+.doc-source a {
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong);
+}
+
+.doc-source a:hover {
+  color: var(--accent-text);
+}
+
 .doc-footer a:hover {
   color: var(--accent-text);
 }

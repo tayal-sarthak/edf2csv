@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.68
+
+### the Markdown mirror of every page was served and linked from nowhere
+
+The build has written a plain-Markdown mirror of every page to `/docs/<slug>.md` since the
+llms.txt work, and Vercel serves them with a `text/markdown` content type. Nothing on the site
+ever linked one. They were discoverable by reading llms.txt, guessing the convention, or reading
+the prerenderer — which is a strange place to hide the copy of the documentation meant for people
+and agents who do not want to strip HTML.
+
+Each page now declares its mirror with `<link rel="alternate" type="text/markdown">`, which is
+where a machine looks, and says so in a line under the previous/next links, which is where a
+person looks. That line also points at llms-full.txt, the whole documentation as one file, for
+the same reason.
+
 ## 0.6.67
 
 ### the 404 was the only page with no way back to the source
