@@ -3,6 +3,32 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.116
+
+### the tool knew which flag you meant and did not say
+
+The refusal last release finishes its sentence and carries the prefix, and it still did not say the
+useful thing. `--chanels` is a missing `n`, and the reply was a paragraph about passing files whose
+names begin with a dash. The tool knows all twenty of its options; it can say which one that is.
+
+```text
+error: There is no --chanels option. Did you mean --channels?
+```
+
+Two shapes of mistake, two rules. An unfinished name is a prefix — `--chan`, `--decimal` — taken
+only from three characters up, so `--c` is not resolved to `--channels` or `--checksum` by coin
+toss, and only when exactly one option starts with it. A misspelt name is within a couple of edits,
+the allowance scaled to the option's own length so `--jobs` cannot be reached from three characters
+away.
+
+A wrong guess is worse than none, because it sends someone to re-read a flag that was never the
+problem. So `--xyzzy` gets no suggestion, `-Z` gets none — one character is not evidence — and
+`--st` gets none, since `--start`, `--strict` and `--stdout` all answer to it. Checked in both
+directions.
+
+The option list is one constant now, read by `parseArgs` and by the suggestion. A second copy of
+twenty flag names is a copy that will be missing the next one.
+
 ## 0.6.115
 
 ### a mistyped flag got Node's sentence, and Node never finished it

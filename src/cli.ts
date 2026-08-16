@@ -104,6 +104,35 @@ Examples
   edf2csv /data/study --out ./converted --jobs auto
 `;
 
+/**
+ * Every option the command line takes.
+ *
+ * Its own constant so `parseArgs` and the "did you mean" suggestion read the same list. A
+ * second copy of twenty flag names is a copy that will be missing the next one.
+ */
+const OPTIONS = {
+  info: { type: 'boolean', short: 'i' },
+  out: { type: 'string', short: 'o' },
+  channels: { type: 'string', short: 'c', multiple: true },
+  start: { type: 'string' },
+  duration: { type: 'string' },
+  end: { type: 'string' },
+  'annotations-only': { type: 'boolean' },
+  decimals: { type: 'string' },
+  checksum: { type: 'boolean' },
+  layout: { type: 'string' },
+  gzip: { type: 'boolean' },
+  bom: { type: 'boolean' },
+  jobs: { type: 'string', short: 'j' },
+  force: { type: 'boolean', short: 'f' },
+  quiet: { type: 'boolean', short: 'q' },
+  json: { type: 'boolean' },
+  strict: { type: 'boolean' },
+  stdout: { type: 'boolean' },
+  help: { type: 'boolean', short: 'h' },
+  version: { type: 'boolean', short: 'V' },
+} as const;
+
 const EXIT_OK = 0;
 const EXIT_ERROR = 1;
 const EXIT_USAGE = 2;
@@ -166,28 +195,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       args: [...argv],
       allowPositionals: true,
       strict: true,
-      options: {
-        info: { type: 'boolean', short: 'i' },
-        out: { type: 'string', short: 'o' },
-        channels: { type: 'string', short: 'c', multiple: true },
-        start: { type: 'string' },
-        duration: { type: 'string' },
-        end: { type: 'string' },
-        'annotations-only': { type: 'boolean' },
-        decimals: { type: 'string' },
-        checksum: { type: 'boolean' },
-        layout: { type: 'string' },
-        gzip: { type: 'boolean' },
-        bom: { type: 'boolean' },
-        jobs: { type: 'string', short: 'j' },
-        force: { type: 'boolean', short: 'f' },
-        quiet: { type: 'boolean', short: 'q' },
-        json: { type: 'boolean' },
-        strict: { type: 'boolean' },
-        stdout: { type: 'boolean' },
-        help: { type: 'boolean', short: 'h' },
-        version: { type: 'boolean', short: 'V' },
-      },
+      options: OPTIONS,
     });
     values = parsed.values as Record<string, unknown>;
     positionals = parsed.positionals;
@@ -1862,14 +1870,69 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
   );
 }
 
-/** An option this tool does not have, in a finished sentence. */
+/** Levenshtein distance, two rows at a time. Twenty names of under twenty characters. */
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_unused, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = row[0] as number;
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const above = row[j] as number;
+      row[j] = Math.min(above + 1, (row[j - 1] as number) + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = above;
+    }
+  }
+  return row[b.length] as number;
+}
+
+/**
+ * The option they probably meant, or null when nothing is close enough to say.
+ *
+ * Long options only. A stray `-Z` carries one character of evidence, and guessing a word
+ * from it would be guessing.
+ *
+ * Two rules, because typos come in two shapes. An unfinished name is a prefix — `--chan`,
+ * `--decim` — and is only taken from three characters up, so `--c` does not become
+ * `--channels` or `--checksum` by coin toss. A misspelt one is within a couple of edits,
+ * scaled to the name's length so `--jobs` is not reached from three characters away.
+ */
+function nearestOption(flag: string): string | null {
+  if (!flag.startsWith('--')) return null;
+  const typed = flag.slice(2).toLowerCase();
+  if (typed.length < 2) return null;
+
+  const names = Object.keys(OPTIONS);
+  if (typed.length >= 3) {
+    const prefixed = names.filter((name) => name.startsWith(typed));
+    if (prefixed.length === 1) return `--${prefixed[0] as string}`;
+  }
+
+  let best: string | null = null;
+  let score = Infinity;
+  let tied = false;
+  for (const name of names) {
+    const d = editDistance(typed, name);
+    if (d < score) {
+      score = d;
+      best = name;
+      tied = false;
+    } else if (d === score) {
+      tied = true;
+    }
+  }
+  if (best === null || tied) return null;
+  return score <= Math.max(1, Math.min(3, Math.floor(best.length / 3))) ? `--${best}` : null;
+}
+
+/** An option this tool does not have, in a finished sentence, naming the likely one. */
 function unknownOption(raw: string): string {
   const found = /^Unknown option '([^']+)'/u.exec(raw);
   // If Node ever rewords it, its text is still true; only the polish is lost.
   if (!found) return raw;
   const flag = found[1] as string;
+  const near = nearestOption(flag);
   return printableLines(
-    `error: There is no ${flag} option.\n` +
+    `error: There is no ${flag} option.${near === null ? '' : ` Did you mean ${near}?`}\n` +
       `       If that is the name of a file, put it after -- so it is read as one: ` +
       `edf2csv -- "${flag}"`,
   );

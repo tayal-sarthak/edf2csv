@@ -182,6 +182,28 @@ describe('argument errors exit 2', () => {
     const shortUnknown = await cli([fixture('tiny.edf'), '-Z']);
     assert.equal(shortUnknown.code, 2, shortUnknown.stderr);
     assert.match(shortUnknown.stderr, /^error: There is no -Z option\./u, shortUnknown.stderr);
+
+    /*
+      And it names the option they meant, when one is close enough to name.
+
+      Both directions matter. A wrong guess is worse than none — it sends someone to
+      re-read a flag that was never the problem — so nonsense, a one-character short
+      option, and a prefix that fits several names all get no suggestion at all.
+    */
+    for (const [typed, meant] of [
+      ['--chanels', '--channels'],
+      ['--chan', '--channels'],
+      ['--decimal', '--decimals'],
+      ['--anotations-only', '--annotations-only'],
+      ['--gzipp', '--gzip'],
+    ]) {
+      const near = await cli([fixture('tiny.edf'), typed]);
+      assert.ok(near.stderr.includes(`Did you mean ${meant}?`), `${typed}: ${near.stderr}`);
+    }
+    for (const typed of ['--xyzzy', '-Z', '--st']) {
+      const none = await cli([fixture('tiny.edf'), typed]);
+      assert.ok(!none.stderr.includes('Did you mean'), `${typed}: ${none.stderr}`);
+    }
   });
 
   it('requires an input file', async () => {
