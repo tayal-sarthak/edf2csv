@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.100
+
+### the header was written twice and named itself nothing
+
+The prerenderer wrote its header out twice, once for the documentation pages and once for the 404,
+and the two had already drifted: until 0.6.67 the 404's copy carried one link where the others
+carried four, and 0.6.92 had to add the theme toggle to both by hand — the second time in three
+releases that a change to "the header" meant editing two headers. It is one constant now, for the
+reason the footer became one in 0.6.67.
+
+The header also had no accessible name. A documentation page has three `<nav>` landmarks, and the
+other two introduce themselves: "Documentation" for the page list, "On this page" for the contents.
+The third was announced as "navigation", which is the word a screen reader uses when a landmark
+declines to say what it is. All three headers — both prerendered ones and the React one — now
+answer "Site".
+
 ## 0.6.99
 
 ### the toggle added last release showed one icon for three states

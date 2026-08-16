@@ -59,7 +59,9 @@ export default function Nav() {
   const label = next === 'auto' ? 'Match the system theme' : `Switch to the ${next} theme`;
 
   return (
-    <nav className="nav" data-scrolled={scrolled}>
+    // Named to match the prerendered header: a page with more than one <nav> should not
+    // leave one of them listed as simply "navigation".
+    <nav className="nav" data-scrolled={scrolled} aria-label="Site">
       <div className="shell nav__inner">
         <a className="nav__brand" href="/">
           <Mark />

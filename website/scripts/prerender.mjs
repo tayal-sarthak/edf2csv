@@ -208,6 +208,34 @@ function socialImageTags() {
 }
 
 /**
+ * The site header, shared by the documentation pages and the 404.
+ *
+ * It was written out twice, and the two copies had already drifted once: until 0.6.67 the
+ * 404's version carried one link where the documentation pages carried four, and 0.6.92
+ * had to add the theme toggle to both by hand. Same reasoning as FOOTER below — a second
+ * literal is not a copy, it is a copy that will be older than the first one soon enough.
+ *
+ * `aria-label` because a documentation page has three <nav> landmarks — this, the page
+ * list and the on-page contents — and the other two name themselves. A screen reader's
+ * landmark list read "Documentation", "On this page", and one simply called "navigation".
+ */
+const NAV = `<nav class="nav" data-scrolled="false" aria-label="Site">
+      <div class="shell nav__inner">
+        <a class="nav__brand" href="/">
+          <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16h4l3-8 4 16 3-11 3 6h9" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          edf2csv
+        </a>
+        <div class="nav__links">
+          <a href="/docs/getting-started">Docs</a>
+          <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
+          <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
+          <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
+          ${THEME_TOGGLE}
+        </div>
+      </div>
+    </nav>`;
+
+/**
  * The site footer, shared by the documentation pages and the 404.
  *
  * One string rather than two copies: the 404 had no footer at all, which is how it
@@ -305,21 +333,7 @@ function page(doc, docs, assets) {
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <nav class="nav" data-scrolled="false">
-      <div class="shell nav__inner">
-        <a class="nav__brand" href="/">
-          <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16h4l3-8 4 16 3-11 3 6h9" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          edf2csv
-        </a>
-        <div class="nav__links">
-          <a href="/docs/getting-started">Docs</a>
-          <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
-          <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
-          <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
-          ${THEME_TOGGLE}
-        </div>
-      </div>
-    </nav>
+    ${NAV}
 
     <main class="shell docs" id="main">
       <nav class="docs__nav" aria-label="Documentation">
@@ -391,19 +405,7 @@ function notFoundPage(docs, assets) {
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <nav class="nav"><div class="shell nav__inner">
-      <a class="nav__brand" href="/">
-        <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16h4l3-8 4 16 3-11 3 6h9" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        edf2csv
-      </a>
-      <div class="nav__links">
-          <a href="/docs/getting-started">Docs</a>
-          <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
-          <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
-          <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
-          ${THEME_TOGGLE}
-      </div>
-    </div></nav>
+    ${NAV}
     <main class="shell not-found" id="main">
       <h1 class="section__title">That page is not here</h1>
       <p class="section__lede">The documentation is below, or start from the beginning.</p>
