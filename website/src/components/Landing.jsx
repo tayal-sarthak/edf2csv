@@ -286,12 +286,24 @@ export default function Landing() {
           <div className="panels">
             <div className="tree">
               <div className="tree__root">sleep-study_csv/</div>
+              {/*
+                `aria-current`, not `aria-selected`.
+
+                `aria-selected` is only defined on a handful of roles — option, tab,
+                treeitem, row and the two header cells — and a plain button is none of
+                them, so the attribute was ignored outright. The highlight said which
+                file was showing to anyone who could see it and to nobody else: a screen
+                reader read six identical "button" entries, and the panel beside them
+                changed with nothing to say it had. `aria-current` is allowed on any
+                element and is what the documentation sidebar already uses for the same
+                job, so the two lists now answer the same question the same way.
+              */}
               {FILES.map((file) => (
                 <button
                   key={file.name}
                   type="button"
                   className="tree__item"
-                  aria-selected={file.name === selected}
+                  aria-current={file.name === selected ? 'true' : undefined}
                   onClick={() => setSelected(file.name)}
                 >
                   {file.name}

@@ -3,6 +3,22 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.102
+
+### the selected file was marked with an attribute buttons do not have
+
+The landing page's output section lists six files and shows one at a time; the file you are looking
+at is the one highlighted in amber. The highlight was the whole answer. The buttons carried
+`aria-selected`, which is defined on option, tab, treeitem, row, columnheader and rowheader, and on
+nothing else — a plain button is none of those, so the attribute was dropped on the floor. A screen
+reader read six buttons with identical names and no indication that one of them was current, while
+the panel beside them silently swapped its heading, its paragraph and its sample every time one was
+pressed.
+
+`aria-current` is allowed on any element and is exactly what the documentation sidebar has used to
+mark the page you are on since that sidebar existed. The two lists in this site that answer "which
+one am I looking at" now answer it the same way.
+
 ## 0.6.101
 
 ### the four figures on the landing page answered to nothing

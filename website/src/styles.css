@@ -721,7 +721,7 @@ a {
   background: var(--bg-raised);
 }
 
-.tree__item[aria-selected='true'] {
+.tree__item[aria-current='true'] {
   color: var(--accent-text);
   background: var(--accent-soft);
 }
