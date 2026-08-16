@@ -110,11 +110,32 @@ export function renderMarkdown(body) {
   return html;
 }
 
-/** Headings for an on-page table of contents. */
+/**
+ * Headings for an on-page table of contents.
+ *
+ * Fenced code is skipped, because a `##` at the start of a line inside a fence is a comment
+ * in half the languages this documentation quotes and a heading in none of them. Reading it
+ * as one put a shell comment in the contents list, and — since this walk feeds a slugger that
+ * numbers repeats — shifted the numbering for everything after it: a page with two `## Flags`
+ * sections and a `## Flags` comment between them listed `flags`, `flags-2` and `flags-3` while
+ * the page itself carried `flags` and `flags-2`, so the entry for the second section pointed at
+ * nothing and the entry for the comment pointed at the second section. The same failure 0.6.87
+ * fixed inside a page, arriving from the one heading walk that is not marked's.
+ *
+ * No page has such a line today, which is the only reason this has never shipped visibly, and
+ * the build's anchor check would refuse it — after someone had written it.
+ */
 export function extractHeadings(body) {
   const headings = [];
   const slug = makeSlugger();
+  let fenced = false;
   for (const line of body.split(/\r?\n/)) {
+    // Up to three spaces of indent, ``` or ~~~, per CommonMark.
+    if (/^ {0,3}(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
     const match = /^(#{2,3})\s+(.*)$/.exec(line);
     if (!match) continue;
     const text = match[2].replace(/`/g, '').trim();

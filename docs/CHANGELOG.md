@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.110
+
+### a hash comment in a code block counted as a heading
+
+The site has two things that walk the headings of a page. `renderMarkdown` stamps ids on what
+marked parsed as a heading; `extractHeadings` builds the contents list from a regex over raw lines.
+Since 0.6.87 both feed the same slugger, which numbers repeated headings, so the two only agree as
+long as they agree about what a heading *is* — and the regex one counted a `##` at the start of a
+line inside a fenced code block. That is a comment in a shell script and in Python, and a heading in
+neither.
+
+A page with two `## Flags` sections and a `## Flags` comment in a code block between them listed
+`flags`, `flags-2` and `flags-3` while the page carried `flags` and `flags-2`. So the contents entry
+for the second real section pointed at nothing, and the entry taken from the code comment pointed at
+the second real section. That is 0.6.87's failure exactly, one layer up: not a broken link, a
+working link to the wrong paragraph.
+
+`extractHeadings` now tracks fences, backtick and tilde, indented up to three spaces as CommonMark
+allows. No page has such a line today — which is the only reason this never shipped visibly, and the
+build's anchor check would have refused it after someone wrote one. All 222 contents entries across
+the eleven pages are unchanged.
+
 ## 0.6.109
 
 ### the file holding every page at once was the one left indexable
