@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.108
+
+### a browser that refuses the clipboard made the copy button do nothing
+
+The install command on the landing page has a copy button, and a browser is allowed to refuse it.
+Two of them do: an insecure origin has no `navigator.clipboard` at all, so the call throws before it
+starts, and Firefox can decline the write. Both landed in a `catch` whose entire body set the button
+back to the state it was already in — the reader pressed Copy and nothing happened at all, no check
+mark, no message, no clipboard. On the one control the page asks anyone to use.
+
+The refusal now selects the command instead, and says so: "This browser refused the clipboard. The
+command is selected; press your copy shortcut." Selecting it is what the button was for; the
+reader's own shortcut finishes the job, which is a great deal better than a button that appears
+broken.
+
+Checked by making `navigator.clipboard` throw the way an insecure origin does — the selection lands
+on exactly `npx edf2csv recording.edf` and the label changes — and by letting the write succeed,
+which still reports "Copied" and still returns to "Copy command" afterwards.
+
 ## 0.6.107
 
 ### the contents box took 59 percent of a phone screen and still scrolled

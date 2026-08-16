@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
@@ -122,31 +122,56 @@ const FACTS = [
 ];
 
 function CommandBar({ command }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState('idle');
   const reduced = useReducedMotion();
+  const textRef = useRef(null);
 
+  /*
+    A browser is allowed to refuse the clipboard, and two of them do: an insecure origin
+    has no `navigator.clipboard` at all, so the call throws before it starts, and Firefox
+    can decline the write outright. Both landed in a catch that set the button back to the
+    state it was already in — the reader pressed Copy and absolutely nothing happened, on
+    the one control the page asks them to use.
+
+    Selecting the command is what the button was for. The reader's own copy shortcut
+    finishes the job, and the label says so rather than leaving them to guess why the
+    check mark never came.
+  */
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(command);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      setStatus('copied');
+      setTimeout(() => setStatus('idle'), 1600);
     } catch {
-      setCopied(false);
+      if (textRef.current) getSelection()?.selectAllChildren(textRef.current);
+      setStatus('selected');
+      setTimeout(() => setStatus('idle'), 4000);
     }
   };
+
+  const copied = status === 'copied';
+  const label =
+    status === 'copied'
+      ? 'Copied'
+      : status === 'selected'
+        ? 'This browser refused the clipboard. The command is selected; press your copy shortcut'
+        : 'Copy command';
 
   return (
     <div className="command">
       <span className="command__prompt" aria-hidden="true">
         $
       </span>
-      <span className="command__text">{command}</span>
+      <span className="command__text" ref={textRef}>
+        {command}
+      </span>
       <motion.button
         type="button"
         className="command__copy"
         onClick={copy}
         whileTap={reduced ? undefined : { scale: 0.9 }}
-        aria-label={copied ? 'Copied' : 'Copy command'}
+        title={label}
+        aria-label={label}
       >
         <AnimatePresence mode="wait" initial={false}>
           {copied ? (
