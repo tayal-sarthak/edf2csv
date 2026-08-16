@@ -2145,6 +2145,25 @@ describe('documentation and source agree on their lists', () => {
       as it has been, and while it said so the sample drifted into a description of a different
       file altogether.
     */
+    /*
+      And no page states a version inside one of those samples.
+
+      output-files.md's transcript said `"version": "0.2.0"` while the package was at 0.6.127 —
+      125 releases, on the document the comment above calls "what someone reads before writing
+      code against it". The keys were guarded and the values in them were not, so it sat there.
+      A sample cannot state a release without going stale on the next one, and there is nothing
+      here for it to say: `"..."` is what the landing page's copy of the same object has always
+      shown, and it is honest at every version.
+    */
+    for (const page of await readdir(path.join(ROOT, 'website/content'))) {
+      if (!page.endsWith('.md')) continue;
+      const text = await read(path.join('website/content', page));
+      const stated = [...text.matchAll(/"name":\s*"edf2csv",?\s*"?\n?\s*"version":\s*"([^"]*)"/gu)];
+      for (const [, version] of stated) {
+        assert.equal(version, '...', `${page} states a version inside a tool object: ${version}`);
+      }
+    }
+
     const { mkdtemp, rm } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');
 

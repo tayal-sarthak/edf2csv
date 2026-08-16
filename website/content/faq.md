@@ -560,7 +560,7 @@ edf2csv sleep-study.edf --out ./converted --json > result.json
 
 ```json
 {
-  "tool": { "name": "edf2csv", "version": "0.6.127" },
+  "tool": { "name": "edf2csv", "version": "..." },
   "output_dir": "./converted",
   "files": [
     { "name": "signals_100hz.csv", "rows": 2880000 },
@@ -619,7 +619,7 @@ Every conversion already records which version produced it. `metadata.json` open
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.2.0"
+    "version": "..."
   }
 }
 ```

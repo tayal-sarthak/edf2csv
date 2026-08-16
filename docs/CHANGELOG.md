@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.128
+
+### a sample metadata.json claimed a version 125 releases old
+
+The documentation prints a whole `metadata.json` as its explanation of the format, and the comment
+beside the test that guards it calls that transcript "what someone reads before writing code against
+it". It said `"version": "0.2.0"`. The package is at 0.6.128. A hundred and twenty-five releases,
+sitting in the sample that teaches the file.
+
+The test guarded the record's *keys* and never looked at what was in them, so the one value in that
+document that cannot help going stale was the one nothing watched.
+
+0.6.127 then added four more of them: the `--json` samples on four pages, each printing the release
+that happened to be current when they were written, each of which would have been wrong by this one.
+
+They all read `"..."` now — which is what the landing page's copy of the same object has shown since
+it was written, and the only thing a sample can say about a version and still be right next week. A
+check alongside the key guard refuses any other value, in any documented tool object, on any page.
+
 ## 0.6.127
 
 ### the JSON meant for a pipeline never said which version wrote it

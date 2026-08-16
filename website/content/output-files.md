@@ -399,7 +399,7 @@ a conversion reproducible six months later.
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.2.0"
+    "version": "..."
   },
   "source": {
     "path": "/data/recordings/sleep-study.edf",

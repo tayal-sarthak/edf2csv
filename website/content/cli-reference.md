@@ -752,7 +752,7 @@ edf2csv recording.edf --out ./converted --json
 
 ```json
 {
-  "tool": { "name": "edf2csv", "version": "0.6.127" },
+  "tool": { "name": "edf2csv", "version": "..." },
   "output_dir": "./converted",
   "files": [
     { "name": "signals_256hz.csv", "rows": 768 },
