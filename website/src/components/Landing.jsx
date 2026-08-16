@@ -245,9 +245,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="section" id="inspect">
+      <section className="section" id="inspect" aria-labelledby="inspect-title">
         <div className="shell">
-          <h2 className="section__title">
+          <h2 className="section__title" id="inspect-title">
             See what is in the file before you write 108 MB of it
           </h2>
           <p className="section__lede">
@@ -262,9 +262,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="section" id="rates">
+      <section className="section" id="rates" aria-labelledby="rates-title">
         <div className="shell">
-          <h2 className="section__title">
+          <h2 className="section__title" id="rates-title">
             It will not invent samples that were never recorded
           </h2>
           <p className="section__lede">
@@ -276,9 +276,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="section" id="output">
+      <section className="section" id="output" aria-labelledby="output-title">
         <div className="shell">
-          <h2 className="section__title">What lands on disk</h2>
+          <h2 className="section__title" id="output-title">What lands on disk</h2>
           <p className="section__lede">
             A directory named after the recording. Pick a file to see what is inside it.
           </p>
@@ -321,9 +321,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="section" id="correctness">
+      <section className="section" id="correctness" aria-labelledby="correctness-title">
         <div className="shell">
-          <h2 className="section__title">Checked against the reference reader</h2>
+          <h2 className="section__title" id="correctness-title">Checked against the reference reader</h2>
           <p className="section__lede">
             Values are compared against pyEDFlib, the reader most of the field already
             trusts. Not close to it. Identical to it, down to the last bit of the double.
@@ -339,9 +339,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="section" id="docs">
+      <section className="section" id="docs" aria-labelledby="docs-title">
         <div className="shell">
-          <h2 className="section__title">Documentation</h2>
+          <h2 className="section__title" id="docs-title">Documentation</h2>
           <div className="doc-cards">
             {pages.map((page) => (
               <a

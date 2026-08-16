@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.70
+
+### a screen reader listed five regions all called section
+
+The landing page is five `<section>` elements, and a screen reader's list of regions showed five
+entries all called "section". The headings are right there — each section opens with the h2 that
+names it — but nothing connected the two, so the one navigation aid that would let a reader jump
+straight to the sampling-rate argument or the correctness figures listed five identical rows.
+
+Each section now points `aria-labelledby` at its own heading. The ids follow the anchors the
+sections already had, so `#rates` and `rates-title` sit next to each other rather than inventing
+a second naming scheme.
+
 ## 0.6.69
 
 ### a pinned or bookmarked site had no name and no icon
