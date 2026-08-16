@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.133
+
+### the security policy was invisible from npm, where the package lives
+
+0.6.97 gave this project a security policy. Everywhere it is actually read, it was invisible.
+
+`files` is `["dist", "README.md", "LICENSE"]`, so SECURITY.md is not in the tarball, and npm shows
+the README and nothing else — so the package page, which is where most people meet this tool, had no
+route to a private report at all. GitHub does surface SECURITY.md in its own interface, which is
+what made this easy to miss: the file looked findable because it was findable from the one place its
+author looks.
+
+The README now says where to report and links the policy for the rest. Six lines, on the page every
+consumer of this package already has in front of them.
+
 ## 0.6.132
 
 ### the help table came apart on an eighty column terminal

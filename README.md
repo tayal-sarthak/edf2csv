@@ -133,6 +133,15 @@ edf2csv converts. For neighbouring jobs, these tools are a better fit:
 edf2csv suits a spreadsheet destination, a colleague who doesn't use Python, a quick
 look at part of a recording, or a pipeline that speaks CSV.
 
+## Reporting a vulnerability
+
+Privately, through GitHub's [security advisory
+form](https://github.com/tayal-sarthak/edf2csv/security/advisories/new). What is in scope, what
+isn't, and what to include are in
+[SECURITY.md](https://github.com/tayal-sarthak/edf2csv/blob/main/SECURITY.md). The short version:
+the surface is the parser and the files around it, since the tool makes no network calls and runs
+nothing out of the recordings it reads.
+
 ## Notes
 
 Requires Node 20 or newer. No runtime dependencies, and none installed when you install it. MIT licensed.
