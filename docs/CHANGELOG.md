@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.8
+
+### --quiet kept the blank line under the summary it removed
+
+One stray blank line per recording, in the mode whose entire purpose is to print less.
+
+The blank line under a block of warnings is there to separate them from the summary
+underneath, which means it belongs to the summary. `--quiet` drops the summary and printed
+the separator anyway.
+
+On one recording that is a trailing newline nobody would notice. On a batch of five hundred
+it is five hundred blank lines in a log, and it distorted the one place the spacing is load
+bearing:
+
+```
+$ edf2csv mixed-rates.edf --out ./out --quiet --strict
+warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
+         They are written to one file per rate so no channel is resampled.
+
+
+--strict: 1 warning raised, so this run is reported as a failure. The output was
+still written.
+```
+
+Two blank lines before the verdict, where the same run without `--quiet` shows one — because
+the ordinary run spends that space on the summary and `--quiet` was leaving the gap where the
+summary had been.
+
+The test that covers `--quiet` converts `tiny.edf`, which raises nothing at all, so it
+asserted an empty stderr and never reached the case. It now also converts a recording that
+warns, and checks the `--strict` verdict is spaced the same way in both modes rather than
+merely that the blank line is gone.
+
+A batch under `--quiet` now runs its recordings' warnings together with no gap between them.
+That is the intended shape rather than a side effect: `--quiet` suppresses the `[n/m]` header,
+so since 0.5.49 every warning in that mode carries the path it came from, and what is wanted
+there is a dense greppable log rather than a paginated one.
+
 ## 0.7.7
 
 ### a folder named with an escape byte drove the terminal

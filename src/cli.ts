@@ -988,9 +988,19 @@ async function convertOne(
         Same fix 0.5.34 made for `--info` over a folder, which has no header to lose.
       */
       const where = options.batch === true && quiet ? `${printable(input)}: ` : '';
+      /*
+        The trailing blank line separates these warnings from the summary underneath them,
+        so it belongs to the summary and goes when the summary does.
+
+        `--quiet` printed it anyway: one stray blank line per recording, in the mode whose
+        entire purpose is to print less. On a batch of five hundred that is five hundred of
+        them in the log, and on a single recording it left `--quiet --strict` showing two
+        blank lines between the warning and the "--strict:" line where the ordinary run
+        shows one.
+      */
       emit(
         'err',
-        `${formatDiagnostics(result.diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n\n`,
+        `${formatDiagnostics(result.diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n${quiet ? '' : '\n'}`,
       );
     }
     if (asJson) {

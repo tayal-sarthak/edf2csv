@@ -3870,6 +3870,50 @@ describe('conversion', () => {
     assert.equal(stderr, '');
   });
 
+  it('leaves no blank line behind the summary --quiet removed', async () => {
+    /*
+      The blank line under a block of warnings separates them from the summary below, so it
+      belongs to the summary. `--quiet` dropped the summary and printed the separator
+      anyway — a stray blank line per recording, in the mode that exists to print less, and
+      five hundred of them in a batch of five hundred.
+
+      The recording above raises nothing, so the case never showed there. This one raises
+      the mixed-rate warning.
+    */
+    const quiet = await cli([fixture('mixed-rates.edf'), '--out', await outDir(), '--quiet']);
+    assert.equal(quiet.code, 0, quiet.stderr);
+    assert.match(quiet.stderr, /^warning: /u, quiet.stderr);
+    assert.doesNotMatch(quiet.stderr, /\n\n$/u, `trailing blank line: ${JSON.stringify(quiet.stderr)}`);
+
+    /*
+      And the shape it distorted: --strict prints its verdict after a blank line, so under
+      --quiet there were two of them where an ordinary run shows one.
+    */
+    const strict = await cli([
+      fixture('mixed-rates.edf'), '--out', await outDir(), '--quiet', '--strict',
+    ]);
+    assert.equal(strict.code, 1, strict.stderr);
+    assert.doesNotMatch(strict.stderr, /\n\n\n/u, JSON.stringify(strict.stderr));
+
+    const loud = await cli([fixture('mixed-rates.edf'), '--out', await outDir(), '--strict']);
+    // Blank lines immediately above the "--strict:" verdict, in each mode.
+    const blanksBefore = (text) => {
+      const lines = text.split('\n');
+      let at = lines.findIndex((line) => line.startsWith('--strict:'));
+      let blanks = 0;
+      while (at > 0 && lines[at - 1] === '') {
+        blanks++;
+        at--;
+      }
+      return blanks;
+    };
+    assert.equal(
+      blanksBefore(strict.stderr),
+      blanksBefore(loud.stderr),
+      `--quiet must not change how the --strict line is spaced:\n${JSON.stringify(strict.stderr)}\n${JSON.stringify(loud.stderr)}`,
+    );
+  });
+
   it('accepts a time window in human units', async () => {
     const dir = await outDir();
     const { code } = await cli([fixture('fractional-recdur.edf'), '--out', dir, '--start', '0.5s', '--duration', '500ms', '--json']);
