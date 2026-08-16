@@ -3,6 +3,33 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.142
+
+### the fuzzer ran the same 300 files every time
+
+The correctness page's fourth claim is that a damaged file is always reported and never a crash,
+checked by corrupting real recordings byte by byte. 0.6.94 put that sweep in CI. It has run at seed
+1 every time since.
+
+Which makes it a regression test wearing a fuzzer's clothes. The same 300 corrupted recordings, on
+every push, forever: once it has passed it can only fail again if the code changes underneath it.
+The value of the claim is that damage takes forms nobody anticipated, and a fixed seed produces
+exactly the forms it produced the first time and no others.
+
+A weekly job now runs the two sweeps that generate their own inputs — the byte corrupter and the
+folder-tree builder — at a seed taken from the date, and at several times the size: 2,000 corrupted
+recordings against CI's 300, and 40 folder trees against 12. The seed is days-since-epoch and gets
+printed, so anything it finds is reproducible with `npm run fuzz -- <seed> 2000` on any machine, and
+`workflow_dispatch` takes a seed directly for exactly that.
+
+Scheduled and on its own, for the reason the pyEDFlib cross-check is: this job can fail on a commit
+that broke nothing, because what it finds was already there. That is a fine thing for a Tuesday
+morning and a terrible thing to put between a pull request and a merge — which is also why CI keeps
+its fixed seed and stays deterministic.
+
+Run here at the current date's seed before committing: 480 runs over 120 corrupted recordings and 6
+trees, all clean.
+
 ## 0.6.141
 
 ### a Windows checkout got line endings the suite disagrees with

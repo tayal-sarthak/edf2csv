@@ -1,0 +1,51 @@
+name: Fuzz with a seed nobody chose
+
+# Every sweep in CI runs at its default seed, which makes them regression tests rather than
+# fuzzers: `npm run fuzz` corrupts the same 300 recordings on every push, so once it has passed
+# it can only fail again if the code changes under it. The whole value of "a damaged file is
+# reported, never a crash" is that damage takes forms nobody thought of, and a fixed seed only
+# ever produces the forms it produced the first time.
+#
+# So this runs the two that generate their inputs — the byte corrupter and the folder-tree
+# builder — at a seed taken from the date, and at several times the size. Weekly and on its own,
+# for the same reason the pyEDFlib cross-check is: it can fail on a commit that broke nothing,
+# because what it finds is a bug that was already there, and that must not be the thing standing
+# between a pull request and a merge.
+on:
+  schedule:
+    - cron: '0 7 * * 2'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: A specific seed, to reproduce a failure this job reported
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run fixtures
+
+      # Days since the epoch, so a failure is reproducible: the log prints the seed, and
+      # `npm run fuzz -- <seed> 2000` runs exactly the same files on anybody's machine.
+      - name: Pick a seed
+        run: echo "SEED=$(( $(date -u +%s) / 86400 ))" >> "$GITHUB_ENV"
+      - name: Use the seed given, if one was
+        if: inputs.seed != ''
+        run: echo "SEED=${{ inputs.seed }}" >> "$GITHUB_ENV"
+
+      - name: A damaged file is reported, never a crash
+        run: node test/fuzz/mutate.mjs "$SEED" 2000
+      - name: A batch converts each recording as converting it alone would
+        run: node test/fuzz/trees.mjs "$SEED" 40
