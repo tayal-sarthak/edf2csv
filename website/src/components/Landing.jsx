@@ -186,7 +186,7 @@ export default function Landing() {
   const active = FILES.find((file) => file.name === selected) ?? FILES[0];
 
   return (
-    <main>
+    <main id="main">
       {/*
         The hero entrance is CSS (`.rise`), not a JavaScript animation. The page is
         prerendered, so the title has to be visible the moment the HTML paints — an

@@ -12,6 +12,9 @@ import Landing from './components/Landing.jsx';
 export default function App() {
   return (
     <>
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
       <Nav />
       <Landing />
       <footer className="footer">

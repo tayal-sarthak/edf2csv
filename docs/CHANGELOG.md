@@ -3,6 +3,19 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.66
+
+### reaching the prose by keyboard took fifteen tab stops
+
+A documentation page opens with the header links and then an eleven-item sidebar, so a reader
+using the keyboard pressed Tab fifteen times before reaching the first word of the page, on every
+page. The landing page is shorter about it but no different in kind.
+
+There is now a skip link as the first focusable element, pointing at the `<main>` both layouts
+already had. It is positioned off-screen rather than hidden with `display: none`, which would
+remove it from the tab order and make it useless to exactly the people it exists for; it slides
+into view when focused and returns when focus moves on.
+
 ## 0.6.65
 
 ### every documentation page said two of its links were the current one

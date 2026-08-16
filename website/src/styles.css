@@ -141,6 +141,30 @@ a {
   padding-inline: var(--gutter);
 }
 
+/*
+  Skip link. Off-screen until focused, rather than display:none, which would take it
+  out of the tab order and defeat the point. A documentation page opens with the
+  header and an eleven-item sidebar, so reaching the prose by keyboard meant fifteen
+  tab stops on every page.
+*/
+.skip {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 60;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 0.92rem;
+  font-weight: 500;
+  transition: top 0.18s var(--ease);
+}
+
+.skip:focus-visible {
+  top: 0.75rem;
+}
+
 /* ---------------------------------------------------------------- navigation */
 
 .nav {

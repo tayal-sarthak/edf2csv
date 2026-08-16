@@ -223,6 +223,7 @@ function page(doc, docs, assets) {
     <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
+    <a class="skip" href="#main">Skip to content</a>
     <nav class="nav" data-scrolled="false">
       <div class="shell nav__inner">
         <a class="nav__brand" href="/">
@@ -238,7 +239,7 @@ function page(doc, docs, assets) {
       </div>
     </nav>
 
-    <main class="shell docs">
+    <main class="shell docs" id="main">
       <nav class="docs__nav" aria-label="Documentation">
           ${sidebar}
       </nav>
