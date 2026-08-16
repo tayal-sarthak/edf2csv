@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.144
+
+### a bug report about a header arrived without one
+
+Almost every question about this tool is a question about a header, and the recording is almost never
+shareable — EDF stores patient identifiers in the header as plain text, so "please attach the file"
+is a request most people in this field correctly refuse. SECURITY.md worked that out for advisories
+and says what to send instead. Ordinary bug reports arrived through an empty text box.
+
+There is a form now, and it asks for one thing above all: the output of `edf2csv rec.edf --info
+--json`. That document reads the header and writes nothing, and since 0.6.127 it carries the version
+that produced it — along with the format, every channel's calibration, and every warning raised.
+Which is, in practice, the whole of what an answer depends on. Checked against a real recording: 3
+channels, 2 warnings, the version, no data touched.
+
+It also says to replace `patient_id` and `recording_id` before posting, and that nothing else in the
+document identifies anyone. Asking for a header without saying that would be asking people to paste
+a name and a date of birth into a public issue.
+
+Blank issues stay enabled. A form that refuses the questions it did not anticipate is worse than no
+form. Security reports are routed to the private advisory link instead, where they belong.
+
 ## 0.6.143
 
 ### a hung job would have held a runner for six hours

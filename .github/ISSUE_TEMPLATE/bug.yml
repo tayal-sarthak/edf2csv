@@ -1,0 +1,55 @@
+name: Something converted wrongly, or would not convert
+description: A recording this tool read, refused, or got a number wrong on
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Almost every question about this tool is a question about a header. The fields below
+        are the ones that make a report answerable without the recording itself — which
+        usually cannot be shared, since EDF stores patient identifiers in the header in plain
+        text.
+
+        If the recording is one you *can* share, attach it and skip most of this.
+
+  - type: textarea
+    id: info
+    attributes:
+      label: What `--info --json` says about the recording
+      description: |
+        `edf2csv your-recording.edf --info --json` reads the header and writes nothing. Its
+        output carries the version, the format, every channel's calibration and every warning
+        raised — which is most of what any answer here depends on.
+
+        It also carries `patient_id` and `recording_id`, which often hold a name and a date of
+        birth. Replace them before posting; nothing else in the document identifies anyone.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The command, and what it printed
+      description: The whole thing, including any warnings. Paste it as it appeared.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: |
+        If a number is wrong, say what it should be and how you know — a value from another
+        reader, or the arithmetic from the header, is the fastest possible answer to have.
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Node version and operating system
+      description: "`node --version`, and macOS, Linux or Windows."
+    validations:
+      required: true

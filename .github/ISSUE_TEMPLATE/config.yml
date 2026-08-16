@@ -1,0 +1,15 @@
+# A blank issue stays available: not every report is a bug in a recording, and a form that
+# refuses the questions it did not anticipate is worse than no form.
+blank_issues_enabled: true
+contact_links:
+  - name: A security problem
+    url: https://github.com/tayal-sarthak/edf2csv/security/advisories/new
+    about: >-
+      Report privately instead. A crafted recording that crashes the tool, writes outside its
+      output directory, or exhausts memory belongs here rather than in a public issue — see
+      SECURITY.md for what is in scope.
+  - name: Documentation
+    url: https://edf2csv.vercel.app/docs
+    about: >-
+      Every flag, every warning code and every column of every output file is documented,
+      including what the tool deliberately does not do.
