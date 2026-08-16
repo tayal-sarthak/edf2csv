@@ -289,7 +289,9 @@ export default function PhosphorScope() {
       io.disconnect();
       ro.disconnect();
       themes.disconnect();
-      scheme.removeEventListener('change', readTheme);
+      // onTheme, which is what was added. Removing `readTheme` removed nothing:
+      // removeEventListener matches on identity, and these are two different functions.
+      scheme.removeEventListener('change', onTheme);
       document.removeEventListener('visibilitychange', sync);
     };
   }, [reduced]);

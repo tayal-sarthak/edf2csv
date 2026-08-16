@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.103
+
+### the hero backdrop removed a listener it had never added
+
+The oscilloscope backdrop watches `prefers-color-scheme` so the beam recolours when the system
+theme flips. It added `onTheme` as the listener and its cleanup removed `readTheme` —
+`removeEventListener` matches on function identity, so it removed nothing and the listener outlived
+the effect that made it.
+
+The effect it belongs to re-runs whenever `prefers-reduced-motion` changes, which is its one
+dependency, and React's StrictMode runs every effect twice in development. So there was always at
+least one abandoned listener holding the canvas, its 2D context and the whole effect closure, and a
+reader who turns reduced motion on collects another. They are not inert: the canvas element is the
+same one the live effect is using, so the next system theme change had the retired painter drawing
+the animated seed trail onto the canvas the current one had just filled with the reduced-motion
+still.
+
+One word. It is the same word in both calls now.
+
 ## 0.6.102
 
 ### the selected file was marked with an attribute buttons do not have
