@@ -821,6 +821,16 @@ a {
   }
 }
 
+/* The 404 lists the documentation in the page rather than beside it. */
+.docs__nav--static {
+  position: static;
+}
+
+.not-found {
+  padding-block: 5rem 6rem;
+  max-width: 720px;
+}
+
 .docs__link {
   display: block;
   padding: 0.42rem 0.7rem;

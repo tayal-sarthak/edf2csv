@@ -3,6 +3,20 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.67
+
+### the 404 was the only page with no way back to the source
+
+The 404 was the one page with no footer, which made it the one page with no link to the
+repository or the package — a page reached by a broken link or a typo, and therefore the page
+most likely to be somebody's first, offering the fewest ways out. It also had no skip link, and
+its header carried one nav item where every other page carries four.
+
+The footer is now a single string both the documentation pages and the 404 render, rather than a
+literal copied into one of them, which is what let them diverge in the first place. The two
+inline `style` attributes it was laying itself out with became rules in the stylesheet next to
+the ones they were duplicating.
+
 ## 0.6.66
 
 ### reaching the prose by keyboard took fifteen tab stops

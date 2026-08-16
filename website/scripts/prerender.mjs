@@ -159,6 +159,20 @@ function socialImageTags() {
   ];
 }
 
+/**
+ * The site footer, shared by the documentation pages and the 404.
+ *
+ * One string rather than two copies: the 404 had no footer at all, which is how it
+ * ended up the one page with no way out to the repository, and a second literal is
+ * how it would drift back out of step the next time the footer changes.
+ */
+const FOOTER = `<footer class="footer">
+      <div class="shell footer__inner">
+        <span>edf2csv is MIT licensed. It reads a file and writes files, nothing else.</span>
+        <span class="footer__links"><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a><a href="${NPM}" target="_blank" rel="noreferrer">npm</a></span>
+      </div>
+    </footer>`;
+
 /** Theme colour and icons, matched to what index.html declares statically. */
 function chromeTags() {
   return [
@@ -256,12 +270,7 @@ ${doc.html}
       </article>
     </main>
 
-    <footer class="footer">
-      <div class="shell footer__inner">
-        <span>edf2csv is MIT licensed. It reads a file and writes files, nothing else.</span>
-        <span class="footer__links"><a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a><a href="${NPM}" target="_blank" rel="noreferrer">npm</a></span>
-      </div>
-    </footer>
+    ${FOOTER}
   </body>
 </html>
 `;
@@ -291,20 +300,27 @@ function notFoundPage(docs, assets) {
     <script defer src="/_vercel/insights/script.js"></script>
   </head>
   <body>
+    <a class="skip" href="#main">Skip to content</a>
     <nav class="nav"><div class="shell nav__inner">
       <a class="nav__brand" href="/">
         <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16h4l3-8 4 16 3-11 3 6h9" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         edf2csv
       </a>
-      <div class="nav__links"><a href="/docs/getting-started">Docs</a></div>
+      <div class="nav__links">
+          <a href="/docs/getting-started">Docs</a>
+          <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
+          <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
+          <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
     </div></nav>
-    <main class="shell" style="padding-block: 5rem 6rem; max-width: 720px;">
+    <main class="shell not-found" id="main">
       <h1 class="section__title">That page is not here</h1>
       <p class="section__lede">The documentation is below, or start from the beginning.</p>
-      <nav class="docs__nav" style="position: static;">
+      <nav class="docs__nav docs__nav--static" aria-label="Documentation">
             ${links}
       </nav>
     </main>
+    ${FOOTER}
   </body>
 </html>
 `;
