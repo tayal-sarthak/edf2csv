@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.107
+
+### the contents box took 59 percent of a phone screen and still scrolled
+
+The on-page contents box is capped at `min(60vh, 30rem)` so a long list scrolls inside itself
+rather than pushing the page down. Sixty percent of a desktop window is a reasonable share. Sixty
+percent of a phone is not: on a 375x812 screen the box was 480 pixels, 59% of everything visible.
+
+And the cap only ever engages on the two reference pages, whose lists are 942 and 1635 pixels tall
+on that screen. So a reader on the warnings page got most of a screen filled with an index, most of
+that index still hidden inside it, and the page the index belongs to below both — the worst
+available arrangement of those three things.
+
+11rem below 900px. The box is 176 pixels, 22% of the screen, showing four entries with the fifth
+cut off, which is what tells you it is a list and that it continues. With 0.6.106 putting the title
+back at the top of the page, the position line, the title, the lede, the contents and the first
+paragraph of the page now all land inside the first screen; the first paragraph was at y=1333 two
+releases ago and is at y=557 now. The desktop cap is unchanged.
+
 ## 0.6.106
 
 ### a phone got ten links to other pages before the page it asked for

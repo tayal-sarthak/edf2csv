@@ -939,6 +939,22 @@ a {
   overflow-y: auto;
 }
 
+/*
+  60vh is a sensible share of a desktop window and an unreasonable one of a phone.
+
+  On a 375x812 screen the contents box took 480 pixels — 59% of everything visible — and
+  still scrolled, because the pages where the cap engages at all are the two references whose
+  lists run to 942 and 1635 pixels. So the reader got most of a screen of index, most of the
+  index still hidden inside it, and the page it belongs to below both. 11rem is 22% of that
+  screen and shows four entries with the fifth cut, which says what the list is and that there
+  is more of it — and leaves the opening of the page itself above the fold.
+*/
+@media (max-width: 900px) {
+  .docs__toc {
+    max-height: 11rem;
+  }
+}
+
 .docs__toc a:hover {
   color: var(--accent-text);
 }
