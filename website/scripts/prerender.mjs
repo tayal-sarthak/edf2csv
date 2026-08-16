@@ -219,16 +219,36 @@ function socialImageTags() {
  * list and the on-page contents — and the other two name themselves. A screen reader's
  * landmark list read "Documentation", "On this page", and one simply called "navigation".
  */
-const NAV = `<nav class="nav" data-scrolled="false" aria-label="Site">
+/**
+ * A header link, marked when it is the page you are on.
+ *
+ * `aria-current="page"`, not `"true"`. Both are valid; `"page"` is the token defined for
+ * "this is the current page in a set of pages", and a screen reader says "current page"
+ * for it where `"true"` gets the generic "current item". The list of files on the landing
+ * page keeps `"true"`, correctly: those are not pages.
+ */
+function headerLink(href, text, slug, className = '') {
+  const current = href === `/docs/${slug}`;
+  const classes = className ? ` class="${className}"` : '';
+  return `<a${classes} href="${href}"${current ? ' aria-current="page"' : ''}>${text}</a>`;
+}
+
+/*
+  Three of the header's links go to documentation pages, and the stylesheet has marked the
+  current one since the header existed — `.nav__links a[aria-current]` — against markup that
+  never set the attribute. So the rule matched nothing, and a reader on the CLI reference got
+  a header identical to the one on every other page.
+*/
+const nav = (slug = '') => `<nav class="nav" data-scrolled="false" aria-label="Site">
       <div class="shell nav__inner">
         <a class="nav__brand" href="/">
           <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 16h4l3-8 4 16 3-11 3 6h9" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           edf2csv
         </a>
         <div class="nav__links">
-          <a href="/docs/getting-started">Docs</a>
-          <a class="nav__hide-sm" href="/docs/cli-reference">CLI</a>
-          <a class="nav__hide-sm" href="/docs/correctness">Correctness</a>
+          ${headerLink('/docs/getting-started', 'Docs', slug)}
+          ${headerLink('/docs/cli-reference', 'CLI', slug, 'nav__hide-sm')}
+          ${headerLink('/docs/correctness', 'Correctness', slug, 'nav__hide-sm')}
           <a href="${REPO}" target="_blank" rel="noreferrer">GitHub</a>
           ${THEME_TOGGLE}
         </div>
@@ -292,7 +312,7 @@ function page(doc, docs, assets) {
     .map(
       (entry) =>
         `<a class="docs__link" href="/docs/${entry.slug}"${
-          entry.slug === doc.slug ? ' aria-current="true"' : ''
+          entry.slug === doc.slug ? ' aria-current="page"' : ''
         }>${escape(entry.title)}</a>`,
     )
     .join('\n          ');
@@ -346,7 +366,7 @@ function page(doc, docs, assets) {
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    ${NAV}
+    ${nav(doc.slug)}
 
     <main class="shell docs" id="main">
       <nav class="docs__nav" aria-label="Documentation">
@@ -418,7 +438,7 @@ function notFoundPage(docs, assets) {
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    ${NAV}
+    ${nav()}
     <main class="shell not-found" id="main">
       <h1 class="section__title">That page is not here</h1>
       <p class="section__lede">The documentation is below, or start from the beginning.</p>

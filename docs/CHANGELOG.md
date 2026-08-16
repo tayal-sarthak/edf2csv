@@ -3,6 +3,30 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.126
+
+### the header never said which page you were on, and had a style for it
+
+Three of the header's four links go to documentation pages — Docs, CLI, Correctness — and the
+stylesheet has had a rule for marking the one you are on since the header existed. Nothing ever set
+the attribute it selects on, so the rule matched no element on any page, and a reader on the CLI
+reference got a header identical to the header on every other page. Two ways to fix a rule with no
+markup, and this is the one that keeps the behaviour the rule was written for.
+
+The token is `aria-current="page"` rather than `"true"`, in the header and in the sidebar both. Both
+values are valid; `"page"` is the one defined for "this is the current page in a set of pages", and
+a screen reader announces "current page" for it where `"true"` gets the generic "current item". The
+sidebar has said `"true"` since it was written — the right idea in the wrong word, on the control
+whose entire job is answering "where am I".
+
+The list of files on the landing page keeps `"true"`, and that is not an oversight: those are six
+sample files, not six pages, and `"page"` would be a claim about the browser's location that is not
+true of any of them.
+
+Checked on the built pages: the CLI reference marks two elements, the header's `CLI` and the
+sidebar's `CLI reference`, and both render at full-strength text against the dimmed links around
+them. The 404 marks nothing, since it is not one of the pages.
+
 ## 0.6.125
 
 ### the security policy knew the labels were hostile and named one place they go

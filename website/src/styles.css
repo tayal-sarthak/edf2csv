@@ -235,7 +235,7 @@ a {
 }
 
 .nav__links a:hover,
-.nav__links a[aria-current='true'] {
+.nav__links a[aria-current='page'] {
   color: var(--text);
 }
 
@@ -886,7 +886,7 @@ a {
   background: var(--bg-raised);
 }
 
-.docs__link[aria-current='true'] {
+.docs__link[aria-current='page'] {
   color: var(--accent-text);
   background: var(--accent-soft);
 }
