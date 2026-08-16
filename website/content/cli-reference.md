@@ -234,7 +234,8 @@ Match against the label from the `LABEL` column of `--info`, not the `COLUMN` na
 
 ```
 error: "T8-P8_ch1" is a column name, not a channel name: --channels matches the label, which for this channel is "T8-P8".
-       Use "#1" to select just this one, or "T8-P8" for every channel sharing that label.
+       Use "#1" to select just this one, or "T8-P8" for every channel sharing
+       that label.
 ```
 
 A label that merely looks like a column name is still a label, and wins: if a third channel really is called `T8_ch0`, `--channels "T8_ch0"` selects that channel and not the one whose column happens to be spelled the same way. The suffix rule cannot make a channel unreachable by its own name. A channel with no label at all has nothing to match, so `#<index>` is the only way to ask for it, and the error says that too. So is a channel whose label contains a comma. The comma separates terms and is split on wherever it appears, so `--channels "EEG Fpz-Cz, ref"` asks for two channels rather than one and exits 2 on the first of them — a label that reads perfectly well and cannot be typed as a term. `channels.csv` and the CSV header both carry such a label in full, quoted; `#<index>` is how you select it.
@@ -304,7 +305,8 @@ Suggestions appear only when a label is close enough: within an edit distance of
 
 ```
 error: "EDF Annotations" is this recording's annotation channel, not a signal: it holds event text rather than samples, so it has no column to select.
-       Its events are already written to annotations.csv by any conversion of this file — pass --annotations-only for those and no signal data.
+       Its events are already written to annotations.csv by any conversion of
+       this file — pass --annotations-only for those and no signal data.
 ```
 
 Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.

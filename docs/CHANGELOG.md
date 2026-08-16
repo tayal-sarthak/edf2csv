@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.4
+
+### an error that carried its advice in the message ran to 145 columns
+
+0.7.3 wrapped `error.hint` and named this as the thing it was leaving: `ChannelSelectionError`,
+`TimeRangeError` and `OptionError` do not carry a hint. They write their advice as a second
+line of the message, and it landed in the same column, did the same job, and did not wrap.
+
+```
+error: "EDF Annotations" is this recording's annotation channel, not a signal: it holds event text rather than samples, so it has no column to select.
+       Its events are already written to annotations.csv by any conversion of this file — pass --annotations-only for those and no signal data.
+```
+
+145 columns. So `printableLines` wraps every line after the first, and the first — the one
+that follows `error: ` and gets grepped for — stays whole, as everywhere else.
+
+**The reason this waited a release.** One of these messages ends in a command:
+
+```
+error: There is no --chanel option. Did you mean --channels?
+       If it is the name of a file, pass it after -- instead:
+       edf2csv -- "--chanel"
+```
+
+That last line exists to be pasted back into a shell. Wrapping it puts `edf2csv --` on one
+line and the flag on the next, and what gets pasted is half a command — a worse failure than
+the long line, and a silent one. Prose survives being re-flowed and a command does not, so
+the two are told apart explicitly: a continuation beginning `edf2csv ` is passed through
+untouched. A rule that has to be stated is better than one that happens to hold because
+today's flags are short. The suite now asserts that line survives intact, not merely that
+nothing is too wide.
+
+Two callers write their indent into the message string rather than passing it, because they
+print without an `error: ` prefix in front of them. Reading the line's own leading space when
+none was given keeps both conventions working and keeps the wrap aligned under the same
+column either way.
+
+Still unwrapped, and next: the interrupt and batch-summary lines, which are written straight
+to stderr rather than through this, and interpolate a destination path into a line whose
+length then depends on how deep the output directory is.
+
 ## 0.7.3
 
 ### the same advice wrapped as a warning and did not as an error

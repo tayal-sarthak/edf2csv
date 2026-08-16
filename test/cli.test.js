@@ -1102,6 +1102,11 @@ describe('--info', () => {
       [fixture('mixed-rates.edf'), '--channels', 'ZZZ'],
       [fixture('mixed-rates.edf'), '--layout', 'sideways'],
       [fixture('mixed-rates.edf'), '--start', '5000'],
+      [fixture('mixed-rates.edf'), '--start', '1x'],
+      [fixture('mixed-rates.edf'), '--channels', '#99'],
+      [fixture('mixed-rates.edf'), '--out', '-nightly'],
+      [fixture('mixed-rates.edf'), '--chanel', 'EEG'],
+      [fixture('annotations.edf'), '--channels', 'EDF Annotations'],
     ]) {
       const { stderr } = await cli(args);
       for (const line of stderr.split('\n')) {
@@ -1110,7 +1115,15 @@ describe('--info', () => {
         if (line.length > 80) wide.push(`${args.join(' ')}: ${line.length} cols — ${line.trim()}`);
       }
     }
-    assert.ok(refusals > 4, `expected refusal hints to assert about, saw ${refusals}`);
+    assert.ok(refusals > 8, `expected refusal hints to assert about, saw ${refusals}`);
+
+    /*
+      And the one continuation that must NOT have been wrapped. The unknown-option error
+      ends on a command to paste back into the shell, and a wrap would put `edf2csv --` on
+      one line and the flag on the next.
+    */
+    const { stderr: unknown } = await cli([fixture('mixed-rates.edf'), '--chanel', 'EEG']);
+    assert.match(unknown, /^ {7}edf2csv -- "--chanel"$/mu, unknown);
     assert.deepEqual(wide, [], `lines past 80 columns:\n${wide.join('\n')}`);
   });
 

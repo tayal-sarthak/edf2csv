@@ -107,7 +107,34 @@ export function printable(text: string): string {
 export function printableLines(text: string, indent = ''): string {
   return text
     .split('\n')
-    .map((line, index) => (index === 0 ? '' : indent) + printable(line))
+    .map((line, index) => {
+      const safe = printable(line);
+      // The first line is the one that follows `error: ` or `warning: `, so it is the line
+      // a log gets grepped for, and it stays whole at whatever width it runs to.
+      if (index === 0) return safe;
+
+      /*
+        Callers write the continuation indent one of two ways: most pass it here and leave
+        their message lines flush, but the two usage builders bake `       ` into the string
+        itself because they are printed without an `error: ` prefix in front. Reading the
+        line's own leading space when none was passed keeps both working, and keeps the
+        wrap aligned under the same column either way.
+      */
+      const body = safe.trimStart();
+      const pad = indent === '' ? safe.slice(0, safe.length - body.length) : indent;
+
+      /*
+        A continuation that is a command is copied, not read.
+
+        `edf2csv -- "--chanels"` is the line the unknown-option error ends on, and it exists
+        to be pasted back into the shell. Wrapping puts `edf2csv --` on one line and the
+        flag on the next, and what gets pasted is half a command. Prose survives being
+        re-flowed and a command does not, so the two are told apart rather than being
+        treated alike and hoping today's strings stay short.
+      */
+      if (body.startsWith('edf2csv ')) return pad + body;
+      return wrap(body, pad);
+    })
     .join('\n');
 }
 
