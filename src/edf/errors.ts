@@ -33,6 +33,22 @@ export type DiagnosticCode =
   | 'HEADER_BYTES_MISMATCH'
   | 'NONPRINTABLE_LABEL'
   /**
+   * Header text that a spreadsheet will run instead of read.
+   *
+   * Excel, LibreOffice and Google Sheets treat a cell beginning `=`, `+` or `@` as a formula,
+   * whatever file it arrived in. EDF labels, units, transducer and prefiltering fields are
+   * free text out of the header, and this tool writes them through unchanged on purpose — so
+   * a channel labelled `=1+1` becomes a column header that computes 2, and one labelled
+   * `=HYPERLINK(...)` becomes a link the reader did not write. The README says the output
+   * opens in Excel and SECURITY.md already treats these fields as attacker-controlled; this
+   * is the one place they reach a program that executes text.
+   *
+   * A warning rather than a rewrite. Prefixing the cell with a quote is the usual mitigation
+   * and it would mean writing something the header does not say, which is the one thing this
+   * tool does not do — the same answer NONPRINTABLE_LABEL gives for control bytes.
+   */
+  | 'FORMULA_LABEL'
+  /**
    * The header's start date or time is not a date or a time.
    *
    * Every other unusable header field reports itself. This one did not, so a recording whose

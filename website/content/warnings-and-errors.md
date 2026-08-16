@@ -81,6 +81,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
 | `STALE_OUTPUT` | Files from an earlier conversion are still sitting in the output directory |
 | `NONPRINTABLE_LABEL` | A channel's label, unit, transducer or prefiltering contains control characters; the warning says which |
+| `FORMULA_LABEL` | A channel's label, unit, transducer or prefiltering starts with a character a spreadsheet reads as the start of a formula |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` — or the rate overflowed to `Infinity` and no rows are written at all |
@@ -782,6 +783,28 @@ warning: Signal 0's unit contains 1 control character (\x07), which will appear 
 Until 0.5.102 only the label and the unit were checked. `transducer` and `prefiltering` are header text of exactly the same kind and land in `channels.csv` exactly as the unit does, so an ESC byte in a transducer reached the CSV with nothing said, and `cat channels.csv` would drive the terminal — the hazard this warning exists for, two columns over.
 
 **What to do.** When the label is affected, address the channel by position (`--channels "#0"`) rather than by name. Be careful about printing the CSV to a terminal — `\x1b[2J` clears the screen, so `cat signals.csv` can hide the rest of your session's output. `head`, `less -R` off, or opening the file in an editor are all safe. A tab (`\x09`) is harmless to a terminal but still makes a column name that is hard to match reliably in a script.
+
+Raised for every affected channel, so a file with three of them gets three warnings.
+
+### FORMULA_LABEL
+
+One of a channel's four free-text header fields starts with `=`, `+` or `@`. Excel, LibreOffice and Google Sheets read a cell beginning with any of those as the start of a formula rather than as text, whatever file it arrived in — so a channel labelled `=1+1` opens as a column headed `2`, and one labelled `=HYPERLINK("http://...","EEG")` opens as a link nobody in the reading chain wrote.
+
+**Cause.** EDF's label, unit, transducer and prefiltering fields are free text, and nothing in the format says they may not look like a formula. Usually that is a header written by a script that pasted a computed name in; it is also the shape a deliberately hostile recording would take, which is why the [security policy](https://github.com/tayal-sarthak/edf2csv/blob/main/SECURITY.md) already treats these four fields as attacker-controlled.
+
+```
+warning: Signal 0's label starts with =, which Excel, LibreOffice and Google Sheets read as
+         the start of a formula rather than as text.
+         The text is written exactly as the header has it, so the cell is what the recording
+         says. Open the CSV with pandas or R, or import it into the spreadsheet as text, if
+         you do not want it evaluated.
+```
+
+**What edf2csv does.** Writes the field exactly as the header has it, and says so. The usual mitigation is to prefix the cell with an apostrophe, and that means writing something the recording does not contain — the one thing this tool does not do. `NONPRINTABLE_LABEL` answers control bytes the same way, for the same reason.
+
+A leading `-` is not flagged, though the same advice usually includes it. A lone `-` is a real convention for "no unit" and appears in the test recordings, a leading `-` on a montage label is ordinary, and neither is evaluated unless what follows it parses as a formula. Warning on those would fire on files that are fine, which is how a warning stops being read.
+
+**What to do.** Read the CSV with pandas, R or any CSV library, none of which evaluate anything. If it has to go into a spreadsheet, use its text-import path rather than opening the file directly — in Excel that is Data → From Text/CSV with the column set to Text, and in LibreOffice the import dialog with "Evaluate formulas" off. `--channels` still selects the channel by its literal name.
 
 Raised for every affected channel, so a file with three of them gets three warnings.
 

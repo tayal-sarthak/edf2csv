@@ -3,6 +3,41 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.124
+
+### a channel label could be a spreadsheet formula and nothing said so
+
+Excel, LibreOffice and Google Sheets read a cell beginning `=`, `+` or `@` as the start of a formula
+rather than as text, whatever file it arrived in. EDF's label, unit, transducer and prefiltering
+fields are free text, and this tool writes all four through unchanged into a CSV header row and into
+channels.csv — so a channel labelled `=1+1` opens as a column headed `2`, and one labelled
+`=HYPERLINK("http://...","EEG")` opens as a link nobody in the reading chain wrote.
+
+The README says the output opens in Excel. SECURITY.md already calls these four fields
+attacker-controlled, because they reach filenames. This is the other place they reach something that
+executes text, and until now nothing anywhere said so.
+
+```
+warning: Signal 0's label starts with =, which Excel, LibreOffice and Google Sheets read as
+         the start of a formula rather than as text.
+         The text is written exactly as the header has it, so the cell is what the recording
+         says. Open the CSV with pandas or R, or import it into the spreadsheet as text, if
+         you do not want it evaluated.
+```
+
+Said, not rewritten. The usual mitigation is to prefix the cell with an apostrophe, which means
+writing something the recording does not contain — the one thing this tool refuses to do.
+`NONPRINTABLE_LABEL` answers control bytes the same way and for the same reason.
+
+Not `-`, which the same advice usually includes. A lone `-` is a real convention for "no unit" and
+is in the fixtures already, a leading `-` on a montage label is ordinary, and neither is evaluated
+unless what follows parses as a formula. A warning that fires on files that are fine is a warning
+that stops being read — 0.5.10 is what that costs.
+
+Raised per channel and by `--info` as well as by a conversion, so it appears before anything is
+written. Documented on all three pages the other codes are on, and checked against a recording
+carrying `=1+1` as a label, `@lookup` as a unit and `-A1` and `-` as the two that must stay quiet.
+
 ## 0.6.123
 
 ### the citation file had no year in it

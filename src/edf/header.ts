@@ -481,6 +481,48 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         });
       }
 
+      /*
+        Header text a spreadsheet will run rather than read.
+
+        The same four free-text fields, asked a different question. `=`, `+` and `@` start a
+        formula in Excel, LibreOffice and Sheets no matter which file the cell came from, and
+        these fields land in a CSV header row and in channels.csv verbatim — so a channel
+        labelled `=1+1` opens as a column headed 2, and `=HYPERLINK(...)` opens as a link
+        nobody in the reading chain wrote. SECURITY.md already calls these fields
+        attacker-controlled because they reach filenames; this is where they reach a program
+        that executes text.
+
+        Not `-`, which the same advice usually includes. A lone `-` is a real convention for
+        "no unit" and appears in the fixtures, a leading `-` on a montage label is ordinary,
+        and neither is executed unless what follows parses as a formula — so warning on it
+        would fire on files that are fine, which is how a warning gets ignored.
+
+        Said, not fixed. Prefixing the cell with a quote is the usual mitigation and would mean
+        writing something the header does not say, which is the one thing this tool refuses to
+        do; NONPRINTABLE_LABEL answers control bytes the same way.
+      */
+      const formulaic = fields.filter(([, text]) => /^[=+@]/u.test(text));
+      if (formulaic.length > 0) {
+        const names = formulaic.map(([name]) => name);
+        const named =
+          names.length === 1
+            ? (names[0] as string)
+            : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] as string}`;
+        const shown = [...new Set(formulaic.map(([, text]) => text[0] as string))].join(', ');
+        diagnostics.push({
+          code: 'FORMULA_LABEL',
+          severity: 'warning',
+          message:
+            `Signal ${i}'s ${named} ${formulaic.length === 1 ? 'starts' : 'start'} with ` +
+            `${shown}, which Excel, LibreOffice and Google Sheets read as the start of a ` +
+            `formula rather than as text.`,
+          hint:
+            'The text is written exactly as the header has it, so the cell is what the ' +
+            'recording says. Open the CSV with pandas or R, or import it into the ' +
+            'spreadsheet as text, if you do not want it evaluated.',
+        });
+      }
+
       if (label === '') {
         // Collected, not reported here: what this channel's column ends up called depends on
         // whether some later channel is literally labelled `signal_<i>`, and inside this loop

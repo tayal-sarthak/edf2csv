@@ -512,6 +512,44 @@ describe('EDF+ annotations', () => {
     assert.ok(fine.header.startDateTime instanceof Date);
   });
 
+  it('says when header text will be run by a spreadsheet rather than read', async () => {
+    /*
+      `=`, `+` and `@` start a formula in Excel, LibreOffice and Sheets whatever file the cell
+      came from, and all four free-text header fields are written through verbatim into a CSV
+      header row and into channels.csv. A channel labelled `=1+1` opens as a column headed 2.
+
+      And not `-`, which the same advice usually includes: a lone `-` is a real convention for
+      "no unit" and is in the fixtures, a leading `-` on a montage label is ordinary, and
+      neither is evaluated unless what follows parses as a formula.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-formula-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const channel = (label, dimension) => ({
+      label, dimension, physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+      samplesPerRecord: 2, gen: () => 0,
+    });
+    const target = path.join(dir, 'formula.edf');
+    writeEdf({
+      path: target, numRecords: 1, recordDuration: 1,
+      signals: [channel('=1+1', 'uV'), channel('plain', '@lookup'), channel('-A1', '-')],
+    });
+
+    const file = await EdfFile.open(target);
+    open.push(file);
+    const raised = file.diagnostics.filter((d) => d.code === 'FORMULA_LABEL');
+    assert.equal(raised.length, 2, JSON.stringify(codes(file)));
+    assert.match(raised[0].message, /Signal 0's label starts with =/u, raised[0].message);
+    assert.match(raised[1].message, /Signal 1's unit starts with @/u, raised[1].message);
+    // The dashes said nothing, and the label is still the label.
+    assert.ok(raised.every((d) => !d.message.includes('Signal 2')), JSON.stringify(raised));
+    assert.equal(file.header.signals[0]?.label, '=1+1', 'the field is written through unchanged');
+
+    // An ordinary recording never raises it.
+    const fine = await load('tiny.edf');
+    assert.ok(!codes(fine).includes('FORMULA_LABEL'), codes(fine).join(', '));
+  });
+
   it('does not tell a file holding data that none was written', async () => {
     /*
       "The recording was probably interrupted before any data was written" is right about an
