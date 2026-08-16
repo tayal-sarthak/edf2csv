@@ -278,6 +278,13 @@ function page(doc, docs, assets) {
       </nav>
 
       <article class="prose">
+        <!--
+          Where this page sits in the sequence. The sidebar lists eleven titles and the
+          footer offers the next one, but nothing said the documentation is an ordered
+          set or how much of it is left — the same information the breadcrumb structured
+          data has been giving crawlers since 0.6.62, given to the reader.
+        -->
+        <p class="prose__where">Documentation<span aria-hidden="true"> / </span>${index + 1} of ${docs.length}</p>
         <h1>${escape(doc.title)}</h1>
         ${doc.description ? `<p class="prose__lede">${escape(doc.description)}</p>` : ''}
         ${toc}
@@ -534,11 +541,19 @@ ${docs.map((doc) => `- [${doc.title}](${SITE_URL}/docs/${doc.slug}.md): ${doc.de
   same thing and there is no cloaking.
 */
 function markdownMirror(doc) {
+  /*
+    The version, for the same reason llms-full.txt carries one since 0.6.83.
+
+    A mirror is fetched precisely so it can be kept: pasted into a conversation, cached
+    by an agent, saved beside a script. The HTML page it mirrors states the version in
+    its structured data and links a changelog; the Markdown copy stated neither, so a
+    reader holding one had no way to tell which release's flags they were reading.
+  */
   return `# ${doc.title}
 
 > ${doc.description}
 
-Canonical HTML version: ${SITE_URL}/docs/${doc.slug}
+edf2csv ${TOOL_VERSION}. Canonical HTML version: ${SITE_URL}/docs/${doc.slug}
 
 ${doc.body.trim()}
 `;

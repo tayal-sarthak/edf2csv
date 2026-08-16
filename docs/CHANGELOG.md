@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.89
+
+### the pages knew their place in the sequence and never said so
+
+Two places where the site knew something it never told the reader.
+
+The documentation is an ordered set — the frontmatter carries an `order`, the sidebar is sorted by
+it, the footer offers the next page, and the breadcrumb structured data has described the position
+to crawlers since 0.6.62. Nothing said it to a person. Each page now opens with where it sits:
+"Documentation / 4 of 11", which is what makes the previous/next pair read as a sequence rather
+than as two arbitrary neighbours, and tells someone arriving from a search result how much of the
+set they are standing in.
+
+The Markdown mirrors gained the version, for the reason 0.6.83 gave the llms files one. A mirror is
+fetched in order to be kept — pasted into a conversation, cached by an agent, saved next to a
+script — and the HTML page it copies states its version in structured data while the copy stated
+nothing at all.
+
 ## 0.6.88
 
 ### nothing checked that an anchor arrives where it says
