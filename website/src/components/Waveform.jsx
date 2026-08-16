@@ -146,27 +146,43 @@ export default function Waveform() {
             ),
           )}
 
+          {/*
+            One period of each trace, drawn once and referenced once.
+
+            The scroll loops by drawing the same period twice, side by side, and sliding
+            the pair one width to the left. Both copies used to be <path> elements with
+            the same 600-point `d` attribute spelled out in full — and since 0.6.62 this
+            page is server-rendered, so those eight strings shipped in the HTML: 71 kB of
+            coordinates in a 92 kB document, three quarters of a page whose actual text is
+            825 words. The second copy is not a second trace, it is the same trace one
+            width along, which is what <use> says.
+          */}
           <motion.g
             initial={{ x: 0 }}
             animate={reduced ? { x: 0 } : { x: -WIDTH }}
             transition={reduced ? { duration: 0 } : { duration: 18, ease: 'linear', repeat: Infinity }}
           >
-            {[0, 1].map((copy) =>
-              channels.map((channel) => (
-                <path
-                  key={`${channel.label}-${copy}`}
-                  d={channel.path}
-                  transform={`translate(${copy * WIDTH} 0)`}
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  opacity={0.92}
-                  vectorEffect="non-scaling-stroke"
-                />
-              )),
-            )}
+            {channels.map((channel) => (
+              <path
+                key={channel.label}
+                id={`trace-${channel.label}`}
+                d={channel.path}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={0.92}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {channels.map((channel) => (
+              <use
+                key={`${channel.label}-repeat`}
+                href={`#trace-${channel.label}`}
+                transform={`translate(${WIDTH} 0)`}
+              />
+            ))}
           </motion.g>
 
           {/* Edge fade so the traces do not appear to start and stop at the border. */}

@@ -3,6 +3,29 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.104
+
+### the homepage shipped every hero trace twice, 71 kB of its 92
+
+The hero scope scrolls by drawing one period of each of its four traces twice, side by side, and
+sliding the pair one width left; when the first period runs off, the second is already where it
+was. Both copies were separate `<path>` elements carrying the same 600-point `d` attribute written
+out in full.
+
+That cost nothing while the landing page was an empty `<div id="root">`. Since 0.6.62 it is
+server-rendered, so those eight coordinate strings ship in the HTML — 71 kB of them in a 92 kB
+document. Three quarters of the homepage was the same four curves, spelled twice, on a page whose
+actual prose is 825 words.
+
+The second copy is not a second trace. It is the same trace one width along, which is what `<use>`
+says, and the browser draws it from the geometry it already has. The document is 92,103 bytes
+before and 55,949 after: the clone lands 475 px right of the original at the same 474 px extent,
+which is where the duplicated path was putting it.
+
+The same argument as 0.6.91, where the 765 sample dots stopped being server-rendered. That one had
+the easier answer, since nothing visible depended on the dots existing before hydration. This one
+has to be in the initial HTML — it is the largest thing on the page — so the fix is to say it once.
+
 ## 0.6.103
 
 ### the hero backdrop removed a listener it had never added
