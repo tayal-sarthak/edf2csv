@@ -593,16 +593,6 @@ a {
   margin: 0 0 2.6rem;
 }
 
-.eyebrow {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  margin-bottom: 1rem;
-}
-
 /* ------------------------------------------------------------ rate comparison */
 
 .rates {

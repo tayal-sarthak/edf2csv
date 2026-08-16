@@ -3,6 +3,24 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.119
+
+### a style shipped to every reader since the first commit, on nothing
+
+`.eyebrow` — a small uppercase mono label in the accent colour — was in the stylesheet from the
+website's first commit and has never been on anything. Not in a component, not in the prerenderer,
+not in a single emitted page, across 416 commits.
+
+Unlike an unused JavaScript export, an unused CSS rule is not tree-shaken: it was in the stylesheet
+every reader downloads, on every page, for the whole life of the site. Small — the file goes from
+16.92 kB to 16.84 — but the reason to take it out is not the bytes. It is a named thing that looks
+available, and the next heading that wants a label would be given a class the design no longer has
+any opinion about.
+
+Checked by listing every class selector the stylesheet declares against every class that appears in
+the components, the prerenderer and all thirteen built pages. Eighty selectors, and after this one
+none of them is unused.
+
 ## 0.6.118
 
 ### the 404 drew a line meant for a sidebar it does not have
