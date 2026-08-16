@@ -42,9 +42,23 @@ function decodeEntities(value) {
 export function renderMarkdown(body) {
   let html = marked.parse(body);
 
+  /*
+    Headings get an id and a link to it.
+
+    The ids have been there since the table of contents was added, and every warning
+    code and flag on this site is addressable by one — but the only way to obtain the
+    URL was to read the source or find the heading in the contents list at the top.
+    Linking a colleague to the paragraph about a specific diagnostic is most of what
+    reference documentation is for.
+
+    The anchor is aria-hidden and out of the tab order: it duplicates a destination the
+    heading itself already provides to anyone reading in order, so announcing eleven
+    more "link, permalink" stops per page would cost more than it gives.
+  */
   html = html.replace(/<(h[23])>([\s\S]*?)<\/\1>/g, (_whole, tag, inner) => {
     const id = slugify(decodeEntities(inner.replace(/<[^>]+>/g, '')));
-    return `<${tag} id="${id}">${inner}</${tag}>`;
+    const anchor = `<a class="prose__anchor" href="#${id}" aria-hidden="true" tabindex="-1">#</a>`;
+    return `<${tag} id="${id}">${inner}${anchor}</${tag}>`;
   });
 
   html = html.replace(

@@ -936,6 +936,31 @@ a {
   scroll-margin-top: 6rem;
 }
 
+/*
+  The permalink beside a heading. Present in the markup rather than conjured on hover,
+  so it can be copied from the page source and works with JavaScript disabled; invisible
+  until the heading is hovered or it is itself focused, so it does not clutter the prose.
+*/
+.prose__anchor {
+  margin-left: 0.4em;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.16s var(--ease);
+}
+
+.prose h2:hover .prose__anchor,
+.prose h3:hover .prose__anchor,
+.prose__anchor:focus {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* No hover to reveal it on a touch screen, so it is simply there, quietly. */
+  .prose__anchor {
+    opacity: 0.45;
+  }
+}
+
 .prose h4 {
   font-size: 0.97rem;
   font-weight: 500;

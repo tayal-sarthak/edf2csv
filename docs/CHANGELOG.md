@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.84
+
+### every heading was addressable and none of them said so
+
+Every h2 and h3 in the documentation has carried an id since the on-page contents list was added,
+so every warning code, every flag and every JSON field on this site is already addressable. There
+was no way to get the address. A reader wanting to send a colleague to the paragraph about
+INPUT_CHANGED had to read the page source, or scroll back up and hope the heading appeared in the
+contents list, which lists only h2s.
+
+Each heading now carries a permalink beside it, invisible until the heading is hovered. It is in
+the markup rather than conjured by script on hover, so it survives JavaScript being off and can be
+copied out of the page source. It is `aria-hidden` and out of the tab order on purpose: it points
+at the heading it sits beside, which a screen reader has just read, so announcing eleven more
+stops per page would be noise rather than access. On touch screens, where there is no hover to
+reveal it, it simply sits there at reduced opacity.
+
 ## 0.6.83
 
 ### the files written to be read out of context named no version
