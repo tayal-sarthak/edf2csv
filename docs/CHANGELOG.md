@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.135
+
+### every jump to a section overshot it by a full header
+
+Clicking an entry in a page's contents left the heading 192 pixels down the viewport. It was meant
+to land at 96.
+
+Two rules were doing the same job and the browser applies both. `html { scroll-padding-top: 6rem }`
+tells the scroller to stop that far short of a target; `scroll-margin-top: 6rem` on the h2 and h3
+tells each heading to keep that much space above itself when scrolled to. They add. Measured
+directly: with both set the heading lands at 192, with either one alone it lands at 96.
+
+96 is right — 28 pixels clear of the 68-pixel sticky header. 192 puts it 124 clear, an eighth of a
+laptop window given to blank space above the section somebody just asked to be taken to, and on the
+warnings reference that is 53 contents entries every one of which overshoots.
+
+`scroll-padding-top` is the one kept. It belongs to the scroller, so it covers every target on the
+page — including `#main`, which is where the skip link goes and which the heading rules never
+touched. The pair it replaces covered h2 and h3 and nothing else. Checked afterwards on an h2, an
+h3, and the skip link's target.
+
 ## 0.6.134
 
 ### the site never linked the changelog

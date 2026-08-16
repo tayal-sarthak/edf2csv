@@ -99,6 +99,16 @@
   box-sizing: border-box;
 }
 
+/*
+  One offset for an in-page jump, not two.
+
+  `scroll-padding-top` here and `scroll-margin-top` on the headings were both 6rem, and the two
+  add: a contents entry left its heading 192px down the viewport instead of 96, which is 124px
+  clear of a 68px header — an eighth of a laptop window spent above the thing that was asked
+  for. `scroll-padding-top` is the one kept because it belongs to the scroller and so covers
+  every target, including the skip link's `#main` and any anchor added later; the pair on h2 and
+  h3 covered exactly those two elements.
+*/
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 6rem;
@@ -993,7 +1003,6 @@ a {
   letter-spacing: -0.022em;
   font-weight: 500;
   margin: 2.9rem 0 0.85rem;
-  scroll-margin-top: 6rem;
 }
 
 .prose h3 {
@@ -1001,7 +1010,6 @@ a {
   letter-spacing: -0.015em;
   font-weight: 500;
   margin: 2rem 0 0.6rem;
-  scroll-margin-top: 6rem;
 }
 
 /*
