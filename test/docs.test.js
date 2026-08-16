@@ -2197,6 +2197,64 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('documents the columns channels.csv and annotations.csv actually have', async () => {
+    /*
+      The same argument the metadata.json guard above is written on, applied to the two output
+      files it does not cover. output-files.md gives each of them a row-per-column table, and
+      that table is what somebody reads before writing code against the file — a column added
+      to the writer and not to the page reads as a column that does not exist, and one removed
+      reads as a column they can rely on.
+
+      metadata.json got a guard because its shape had drifted once. These two never had one at
+      all, and channels.csv has fourteen columns written out by hand in two places.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-columns-'));
+    let headers;
+    try {
+      const out = path.join(base, 'out');
+      // A recording with annotations and more than one rate, so both files are written and
+      // `output_file` has something to say.
+      await run(process.execPath, [
+        CLI, path.join(ROOT, 'test/fixtures/generated/discontinuous.edf'),
+        '--out', out, '--quiet',
+      ]);
+      headers = Object.fromEntries(
+        await Promise.all(
+          ['channels.csv', 'annotations.csv'].map(async (name) => [
+            name,
+            (await readFile(path.join(out, name), 'utf8')).split('\n')[0].split(','),
+          ]),
+        ),
+      );
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+
+    const page = await read('website/content/output-files.md');
+    for (const [name, columns] of Object.entries(headers)) {
+      // The table under the file's own heading, up to the next one.
+      const from = page.indexOf(`## ${name}`);
+      assert.ok(from > 0, `${name} has no section in output-files.md`);
+      const section = page.slice(from, page.indexOf('\n## ', from + 1));
+      /*
+        Two columns sharing one row is how the page writes a pair whose explanation is the
+        same sentence — `| \`physical_min\`, \`physical_max\` | ... |` — so a row is read as
+        the set of names in its first cell rather than as one name.
+      */
+      const documented = [...section.matchAll(/^\| ((?:`[a-z_]+`(?:, )?)+) \|/gmu)]
+        .flatMap((m) => m[1].split(', '))
+        .map((cell) => cell.replaceAll('`', ''));
+      assert.deepEqual(
+        documented,
+        columns,
+        `${name}'s documented columns are not the ones it writes`,
+      );
+    }
+  });
+
   it('shows the metadata.json of the recording that sample names', async () => {
     /*
       The sample's `source.path` ends in `sleep-study.edf`, which on this site is one specific

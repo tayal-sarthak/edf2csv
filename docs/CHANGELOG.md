@@ -3,6 +3,28 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.138
+
+### two of the four output files had their columns described and never checked
+
+A conversion writes four things. `metadata.json`'s shape has been guarded since its shape drifted:
+"a key added to the record and not to the page reads as a key that does not exist; one removed reads
+as a key they can rely on." That argument is not about JSON. It is about a documented output being
+described in one place and produced in another.
+
+`channels.csv` and `annotations.csv` are both described by a row-per-column table in output-files.md,
+and neither had ever been checked against the file. `channels.csv` has fourteen columns, written out
+by hand in the writer and again in the table.
+
+They agree today, which is the good case and not the point — nothing was making them agree. The
+check reads the header line of each file out of a real conversion and requires the table to list
+exactly those names in that order. It is confirmed capable of failing: renaming `record_index` to
+`record_number` on the page alone turns it red.
+
+One row can name two columns, where the page explains a pair in a single sentence —
+`| `physical_min`, `physical_max` | ... |` — so a row contributes the set of names in its first
+cell rather than one name.
+
 ## 0.6.137
 
 ### one box, its height decided in three places
