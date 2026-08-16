@@ -595,6 +595,33 @@ function assertPagesHaveContent(docs, pages) {
 }
 
 /**
+ * No page repeats an id, and every same-page anchor points at one that exists.
+ *
+ * 0.6.87 fixed two headings sharing `no_samples`, which had been shipping for as long as
+ * both had existed: duplicate ids do not throw, do not 404 and do not look wrong — the
+ * browser scrolls to whichever came first, so the reader lands on a real paragraph that
+ * is not the one they asked for. That is precisely the failure a person proof-reading a
+ * page will not notice, and precisely the one a build can settle in a few lines.
+ */
+function assertAnchorsResolve(pages) {
+  const problems = [];
+  for (const [name, html] of pages) {
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+    for (const id of new Set(ids)) {
+      const count = ids.filter((other) => other === id).length;
+      if (count > 1) problems.push(`${name}: id "${id}" appears ${count} times`);
+    }
+    const present = new Set(ids);
+    for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
+      if (!present.has(target)) problems.push(`${name}: #${target} matches no element`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`prerender: broken anchors:\n  ${problems.join('\n  ')}`);
+  }
+}
+
+/**
  * Every internal link in the emitted HTML resolves to something the build wrote.
  *
  * The prerenderer hand-writes links that no test reads: the header, the footer, the
@@ -702,14 +729,13 @@ async function main() {
 
   // Last, so it sees every file the build produced, including the ones just written.
   const emitted = emittedFiles(DIST);
-  assertLinksResolve(
-    [
-      ['index.html', readFileSync(path.join(DIST, 'index.html'), 'utf8')],
-      ['404.html', readFileSync(path.join(DIST, '404.html'), 'utf8')],
-      ...docs.map((doc) => [`docs/${doc.slug}`, rendered.get(doc.slug) ?? '']),
-    ],
-    emitted,
-  );
+  const finished = [
+    ['index.html', readFileSync(path.join(DIST, 'index.html'), 'utf8')],
+    ['404.html', readFileSync(path.join(DIST, '404.html'), 'utf8')],
+    ...docs.map((doc) => [`docs/${doc.slug}`, rendered.get(doc.slug) ?? '']),
+  ];
+  assertLinksResolve(finished, emitted);
+  assertAnchorsResolve(finished);
 
   console.log(
     `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, ` +

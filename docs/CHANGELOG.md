@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.88
+
+### nothing checked that an anchor arrives where it says
+
+The duplicate id fixed in 0.6.87 had been shipping for as long as both headings had existed, and it
+survived every check this site has: it is valid-looking markup, it renders correctly, no link
+404s, and the page reads properly top to bottom. The only symptom is that one link in the contents
+list arrives at the wrong paragraph — which is exactly what proof-reading does not catch and what a
+build can settle in a dozen lines.
+
+Every emitted page is now checked for two things: no id used twice, and no `href="#..."` pointing
+at an element that does not exist. Verified by breaking each one deliberately — removing the
+numbering from the slugger, then misspelling a contents link — and confirming the build stops with
+the page and the id named, before putting both back.
+
 ## 0.6.87
 
 ### two headings shared an id and the second link went to the first
