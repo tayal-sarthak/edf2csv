@@ -23,7 +23,18 @@ export class OptionError extends Error {
   }
 }
 
-/** The largest `toFixed` will accept, and what `--decimals` has always documented. */
+/**
+ * The largest `--decimals` accepts, and what both documentation pages state.
+ *
+ * Not a limit of `toFixed`, whatever this comment used to say. `toFixed` takes 0 to 100 and
+ * throws a RangeError at 101 — which is exactly the belief `MAX_DERIVED_DECIMALS` in
+ * edf/scale.ts exists to correct, having once clamped the *derived* precision to 20 on the
+ * same wrong grounds and rounded a magnetometer channel needing 23 places onto a grid three
+ * digital codes wide, losing 69% of its samples in silence.
+ *
+ * Twenty is a bound on a number a person types by hand, not on what the format can express.
+ * The derived precision, which nobody types, runs to 100 and says so.
+ */
 const MAX_DECIMALS = 20;
 
 export function assertOptions(options: {

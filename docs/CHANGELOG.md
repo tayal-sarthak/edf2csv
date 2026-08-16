@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.114
+
+### a comment restated the false fact that cost a channel 69 percent of its samples
+
+`MAX_DECIMALS = 20` in convert/options.ts was labelled "the largest `toFixed` will accept". It is
+not. `toFixed` takes 0 to 100 and throws a RangeError at 101.
+
+That exact sentence is the one `edf/scale.ts` was written to correct. `MAX_DERIVED_DECIMALS` used
+to be 20 "on the stated grounds that 20 was what `toFixed` allowed", and the consequence is
+recorded there: a magnetometer channel spanning ±1e-16 T over a 16-bit converter steps by 3.05e-21
+and needs 23 places, so clamping it to 20 landed every value on a 1e-20 grid — about three digital
+codes to a printed value — and 69% of the samples could not be recovered, with the conversion
+exiting 0 and nothing said.
+
+The limit on `--decimals` is not wrong. It is a bound on a number a person types by hand, which is
+what both documentation pages say, and the derived precision that nobody types runs to 100. What
+was wrong was the reason written beside it: the same false fact, still stated as fact, one
+directory from the file that documents what believing it cost. That is how it comes back.
+
 ## 0.6.113
 
 ### nothing was watching the dependencies the site actually has
