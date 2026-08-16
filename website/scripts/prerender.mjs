@@ -484,7 +484,7 @@ ${urls
 }
 
 function llmsTxt(docs) {
-  return `# edf2csv
+  return `# edf2csv ${TOOL_VERSION}
 
 > Command-line converter from EDF, EDF+ and BDF biosignal recordings (EEG, sleep, ECG, EMG) to CSV. Runs locally with no network access, streams so memory does not grow with recording length, and never resamples channels or alters units.
 
@@ -534,10 +534,22 @@ ${doc.body.trim()}
 
 /** The whole documentation set as one file, for pasting into a coding assistant. */
 function llmsFullTxt(docs) {
+  /*
+    The version this file documents, stated in the file.
+
+    It is 6,400 lines of flag names, exit codes and JSON field names pasted into
+    conversations and context windows, where it can outlive the release it describes by
+    a long way. Without a version on it, a reader — human or otherwise — has no way to
+    tell whether the `--layout` flag it documents existed in the copy they installed.
+    The same number the site's structured data reports, from package.json at build.
+  */
   const header = `# edf2csv documentation
 
-Complete documentation for edf2csv, a command-line converter from EDF, EDF+ and BDF
-biosignal recordings to CSV. Source: ${REPO}
+Complete documentation for edf2csv ${TOOL_VERSION}, a command-line converter from EDF, EDF+
+and BDF biosignal recordings to CSV. Source: ${REPO}
+
+This file is generated from the documentation at ${SITE_URL}/docs, which is canonical. If
+the two disagree, the site is newer.
 
 `;
   return (

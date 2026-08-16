@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.83
+
+### the files written to be read out of context named no version
+
+llms.txt and llms-full.txt exist to be read out of context: pasted into a conversation, fetched
+into a context window, cached by something that will still have it next month. llms-full.txt is
+6,400 lines of flag names, exit codes and JSON field names, and neither file said which release it
+described. A reader holding a copy had no way to tell whether the `--layout` flag it documents
+existed in the version they installed, and no way to tell a stale copy from a current one.
+
+Both now carry the version, read from package.json at build time, so it is the same number the
+site's structured data reports rather than one somebody remembers to update. llms-full.txt also
+names the documentation on the site as canonical and says plainly that the site is the newer of
+the two when they disagree.
+
 ## 0.6.82
 
 ### the 404 was a version behind on everything in its head
