@@ -2006,7 +2006,7 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
 
     const expected = new Set([
-      '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md', 'docs',
+      '.github', '.gitignore', 'CITATION.cff', 'LICENSE', 'README.md', 'SECURITY.md', 'docs',
       'package-lock.json', 'package.json', 'src', 'test', 'tsconfig.json', 'vercel.json',
       'website',
     ]);

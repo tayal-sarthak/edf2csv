@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.97
+
+### there was no private way to report a parser vulnerability
+
+There was nowhere to report a vulnerability privately. GitHub surfaces a repository's SECURITY.md
+from the Security tab, from the issue composer and from the sidebar, and with no such file the only
+route was a public issue — which for a parser bug means publishing the crafted recording that
+triggers it before there is a fix.
+
+The file names the private advisory form and, more usefully, says what counts. This tool reads a
+file and writes files: no network, no code from the input, no dependencies, so the surface is the
+parser and the filesystem work around it — reading or writing outside the given paths, crashing
+instead of reporting, unbounded memory from a header that claims more than the file holds, and
+channel labels reaching filenames, since those are attacker-controlled text. A crash rather than a
+clean exit is listed as reportable even when it is not exploitable, because "a damaged file is
+always reported" is one of the nine things this project claims and checks.
+
+It also says what is not: wrong numbers are correctness bugs and belong in an issue, and the patient
+identifiers EDF stores in plain text are copied into metadata.json by design, documented in the FAQ,
+rather than being a leak.
+
 ## 0.6.96
 
 ### the preview card had no description on the platform that shows it largest
