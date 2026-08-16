@@ -17,10 +17,16 @@ jobs:
       # for a tool whose selling point is that you can trust its numbers.
       id-token: write
 
+    # Actions are pinned by commit SHA rather than by tag, and it matters most here. This job
+    # publishes with npm provenance — an attestation that the tarball was built by this
+    # workflow, from this repository, at this commit. A tag is a mutable pointer: `@v4` is
+    # whatever `v4` names on the day it runs, so the workflow being attested to could change
+    # under the attestation. The `# v4` comment keeps it readable, and dependabot rewrites the
+    # SHA when there is something to move to.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org

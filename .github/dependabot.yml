@@ -36,8 +36,9 @@ updates:
         patterns: ['*']
         update-types: [minor, patch]
 
-  # checkout, setup-node and setup-python, in three workflows. Pinned by major tag, so a fix
-  # inside v4 arrives on its own; this is what notices when v5 exists.
+  # checkout, setup-node and setup-python, in three workflows. Pinned by commit SHA with the
+  # version in a trailing comment, which is the form dependabot reads and rewrites — so an
+  # update arrives as a diff naming the new commit rather than silently under a moving tag.
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.136
+
+### the workflow that signs the release trusted three moving tags
+
+Thirteen `uses:` lines across three workflows named their actions by major tag — `actions/checkout@v4`
+and so on. A tag is a mutable pointer. `@v4` is whatever the `v4` ref names on the day the job runs,
+which is a reasonable trade for most repositories and a strange one for this one.
+
+This repository publishes with npm provenance. That is an attestation, signed by Sigstore, that the
+tarball on the registry was built by this workflow, from this repository, at this commit — and the
+value of it rests on knowing what the workflow did. Under a moving tag the answer is "whatever those
+three actions were that morning", which is precisely the link the attestation is meant to close.
+`publish.yml` is where that argument bites, and it now says so beside the pins.
+
+All thirteen are commit SHAs now, each with its version in a trailing comment. That comment is not
+decoration: it is the form dependabot reads, so the weekly check added in 0.6.113 still proposes
+upgrades — as a diff naming a new commit, which is a thing a person can look at, rather than as
+nothing at all.
+
 ## 0.6.135
 
 ### every jump to a section overshot it by a full header
