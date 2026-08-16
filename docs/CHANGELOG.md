@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.148
+
+### the site could be installed on a Node the repository does not support
+
+The package declares `engines: { node: ">=20.0.0" }`. The website, which is a separate npm project in
+the same repository, declared nothing.
+
+That was survivable while nobody was told to install it. 0.6.145 added a CONTRIBUTING file that says
+`cd website && npm install`, which makes it somebody's next command. On Node 18 that install
+succeeds, because Vite 6 accepts `^18.0.0 || ^20.0.0 || >=22.0.0` and React asks for `>=0.10.0` — and
+then the build fails inside a dependency, with a message about neither Node nor this project. On
+Node 19 or 21 it fails Vite's own range, which is at least a sentence naming Vite.
+
+`>=20.0.0`, matching the package beside it, so one Node version serves the whole repository and npm
+says which one before anything is downloaded. Three lines of manifest; it changes no output, and
+the built site is byte-identical.
+
 ## 0.6.147
 
 ### the build checked one of the two ways a page points at its own ids

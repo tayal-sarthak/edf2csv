@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Documentation site for edf2csv",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "node scripts/docs-index.mjs && vite",
     "build": "node scripts/docs-index.mjs && vite build && node scripts/prerender.mjs",
