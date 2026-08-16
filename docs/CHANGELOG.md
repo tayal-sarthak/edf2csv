@@ -3,6 +3,23 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.147
+
+### the build checked one of the two ways a page points at its own ids
+
+The build refuses to emit a page with a duplicate id or an `href="#..."` that matches nothing. It
+was checking one of the two ways a document points at its own ids.
+
+SVG uses the other one. A gradient, a mask, a clip path, a filter or a marker is reached through
+`url(#id)`, and none of those were being looked at. The failure is quieter than a broken anchor:
+nothing throws, nothing 404s, the property just resolves to none. The hero's edge fade is exactly
+that — the mask that stops the four traces looking as though they begin and end at the border — and
+a typo in its name would have removed it silently, on the largest thing on the homepage.
+
+Four lines, in the guard that was already walking every emitted page. Confirmed by breaking it:
+renaming the gradient to `faed` and leaving the reference alone stops the build with
+`index.html: url(#fade) matches no element`, which is the sentence somebody wants at that moment.
+
 ## 0.6.146
 
 ### a release that changed only the stylesheet left the homepage dated older than itself

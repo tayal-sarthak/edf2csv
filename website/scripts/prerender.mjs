@@ -735,6 +735,18 @@ function assertAnchorsResolve(pages) {
     for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
       if (!present.has(target)) problems.push(`${name}: #${target} matches no element`);
     }
+    /*
+      And the other way a document points at its own ids.
+
+      SVG reaches a gradient, mask, clip path, filter or marker through `url(#id)`, not
+      through an href, so none of those were being checked. The failure is quieter than a
+      broken anchor: nothing throws, nothing 404s, the property simply resolves to none. The
+      hero's edge fade is a `url(#...)` — mistype it and the traces stop looking like they
+      continue past the border, which is a thing you have to already know to notice.
+    */
+    for (const [, target] of html.matchAll(/url\(#([^)"]+)\)/g)) {
+      if (!present.has(target)) problems.push(`${name}: url(#${target}) matches no element`);
+    }
   }
   if (problems.length > 0) {
     throw new Error(`prerender: broken anchors:\n  ${problems.join('\n  ')}`);
