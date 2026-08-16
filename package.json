@@ -71,7 +71,7 @@
     "terminal": "npm run build && node test/fuzz/terminal.mjs"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.2.0",
     "typescript": "^5.7.0"
   },
   "publishConfig": {
