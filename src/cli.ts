@@ -110,6 +110,20 @@ Examples
 `;
 
 /**
+ * A continuation line under an `error: ` or `interrupted (SIGINT): ` head.
+ *
+ * These are written straight to stderr rather than raised as an error, so they never passed
+ * through `printableLines` and never wrapped. Most of them interpolate a destination or a
+ * recording path, which makes the line as long as the caller's directory tree is deep: the
+ * `--stdout` refusal for a folder reached 268 columns on a four-deep path, saying "Name the
+ * recording itself — <path> — or convert to a directory instead."
+ *
+ * A path has no spaces to break at, so it stays whole on its own line and the sentence
+ * around it wraps. That is the useful shape: the path is the part that gets copied.
+ */
+const detail = (text: string): string => `${wrap(text, '       ')}\n`;
+
+/**
  * Every option the command line takes.
  *
  * Its own constant so `parseArgs` and the "did you mean" suggestion read the same list. A
@@ -258,9 +272,11 @@ export async function main(argv: readonly string[]): Promise<number> {
     */
     if (unreadable.length > 0) {
       process.stderr.write(
-        `Nothing could be converted: ${unreadable.length === 1 ? 'that path' : 'those paths'} ` +
-          `could not be read, so whether ${unreadable.length === 1 ? 'it holds' : 'they hold'} ` +
-          `recordings is unknown.\n`,
+        `${wrap(
+          `Nothing could be converted: ${unreadable.length === 1 ? 'that path' : 'those paths'} ` +
+            `could not be read, so whether ${unreadable.length === 1 ? 'it holds' : 'they hold'} ` +
+            `recordings is unknown.`,
+        )}\n`,
       );
       return EXIT_ERROR;
     }
@@ -353,11 +369,14 @@ export async function main(argv: readonly string[]): Promise<number> {
     process.stderr.write(
       inputs.length === 1
         ? `error: --stdout writes a single CSV, and a folder is converted as a batch even ` +
-          `when it holds one recording.\n       Name the recording itself — ` +
-          `${printable(inputs[0] as string)} — or convert to a directory instead.\n`
+          `when it holds one recording.\n` +
+          detail(
+            `Name the recording itself — ${printable(inputs[0] as string)} — or convert ` +
+              `to a directory instead.`,
+          )
         : `error: --stdout writes a single CSV, so it cannot take ` +
           `${counted(inputs.length, 'recording')}.\n` +
-          `       Convert them to directories instead, or run edf2csv once per file.\n`,
+          detail('Convert them to directories instead, or run edf2csv once per file.'),
     );
     return EXIT_USAGE;
   }
@@ -393,8 +412,8 @@ export async function main(argv: readonly string[]): Promise<number> {
       // 0.5.79 gave the rest and these two were not enumerated in its test.
       process.stderr.write(
         `error: --stdout and ${flag} cannot be combined: --stdout writes no\n` +
-          `       files, and ${flag} has nothing to act on.\n` +
-          `       Drop ${flag}, or drop --stdout and convert to a directory.\n`,
+          detail(`files, and ${flag} has nothing to act on.`) +
+          detail(`Drop ${flag}, or drop --stdout and convert to a directory.`),
       );
       return EXIT_USAGE;
     }
@@ -602,7 +621,7 @@ export async function main(argv: readonly string[]): Promise<number> {
           `\ninterrupted (${signal}): ${abandoned.length} conversion` +
             `${abandoned.length === 1 ? '' : 's'} stopped part way through.\n` +
             (abandoned.length > 0
-              ? `       Incomplete, and should not be used: ${listed(abandoned)}\n`
+              ? detail(`Incomplete, and should not be used: ${listed(abandoned)}`)
               : ''),
         );
         process.exit(signal === 'SIGINT' ? 130 : 143);
@@ -715,8 +734,10 @@ export async function main(argv: readonly string[]): Promise<number> {
     */
     if (strict && warnings > 0) {
       process.stderr.write(
-        `\n--strict: ${warnings} warning${warnings === 1 ? '' : 's'} raised, so this run is ` +
-          `reported as a failure. The output was still written.\n`,
+        `\n${wrap(
+          `--strict: ${warnings} warning${warnings === 1 ? '' : 's'} raised, so this run is ` +
+            `reported as a failure. The output was still written.`,
+        )}\n`,
       );
       return EXIT_ERROR;
     }
@@ -914,14 +935,18 @@ async function convertOne(
     process.stderr.write(
       `\ninterrupted (${signal}): the conversion stopped part way through.\n` +
         (toStdout
-          ? `       The CSV on stdout stops mid-recording and should not be used.\n`
+          ? detail('The CSV on stdout stops mid-recording and should not be used.')
           : !wrote
-            ? `       Nothing was written: "${printable(destination)}" was never created.\n`
+            ? detail(`Nothing was written: "${printable(destination)}" was never created.`)
             : destinationExistedBefore
-              ? `       "${printable(destination)}" was already there, so what is in it may be this run's ` +
-                `incomplete output.\n`
-              : `       Files already written to "${printable(destination)}" are incomplete and should not ` +
-                `be used.\n`),
+              ? detail(
+                  `"${printable(destination)}" was already there, so what is in it may be ` +
+                    `this run's incomplete output.`,
+                )
+              : detail(
+                  `Files already written to "${printable(destination)}" are incomplete and ` +
+                    `should not be used.`,
+                )),
     );
     // 128 + signal number, the conventional exit status for dying to a signal.
     process.exit(signal === 'SIGINT' ? 130 : 143);
@@ -1610,7 +1635,7 @@ async function convertInChild(
       if (signal !== null && !stopping) {
         err +=
           `error: stopped by ${signal} before it finished.\n` +
-          `       Incomplete, and should not be used: ${printable(destination)}\n`;
+          detail(`Incomplete, and should not be used: ${printable(destination)}`);
       }
       resolve({ code: code ?? EXIT_ERROR, out, err, report });
     });

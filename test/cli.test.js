@@ -1107,6 +1107,8 @@ describe('--info', () => {
       [fixture('mixed-rates.edf'), '--out', '-nightly'],
       [fixture('mixed-rates.edf'), '--chanel', 'EEG'],
       [fixture('annotations.edf'), '--channels', 'EDF Annotations'],
+      [fixture('mixed-rates.edf'), '--stdout', '--checksum'],
+      [fixture('mixed-rates.edf'), '--stdout', '--force'],
     ]) {
       const { stderr } = await cli(args);
       for (const line of stderr.split('\n')) {
@@ -1124,6 +1126,41 @@ describe('--info', () => {
     */
     const { stderr: unknown } = await cli([fixture('mixed-rates.edf'), '--chanel', 'EEG']);
     assert.match(unknown, /^ {7}edf2csv -- "--chanel"$/mu, unknown);
+
+    /*
+      And the refusals that interpolate a path, which only overrun on a deep one. The
+      fixtures live four directories down from the repository root, so a refusal naming one
+      is already past 80 before the sentence around it starts — the --stdout-on-a-folder
+      message reached 268 columns this way, and no test noticed because none of them used a
+      destination long enough.
+
+      The path itself is one word with nowhere to break, so it stays whole on its own line
+      and overruns deliberately. That is the useful shape: the path is the part that gets
+      copied, and it is asserted to arrive unsplit.
+    */
+    const nested = path.join(
+      await outDir(),
+      'night-recordings',
+      'subject-0142',
+      'session-b',
+      'pre-sleep-baseline',
+    );
+    await mkdir(nested, { recursive: true });
+    await writeFile(path.join(nested, 'rec.edf'), await readFile(fixture('tiny.edf')));
+    const folder = await cli([nested, '--stdout']);
+    const long = [];
+    for (const line of folder.stderr.split('\n')) {
+      if (!/^ {7}\S/u.test(line) || line.length <= 80) continue;
+      // A single unbroken word is the path, and is allowed to run past the column.
+      if (!/\s/u.test(line.trim())) continue;
+      long.push(`${line.length} cols — ${line.trim()}`);
+    }
+    assert.deepEqual(long, [], `wrappable text past 80 columns:\n${long.join('\n')}`);
+    const recording = path.join(nested, 'rec.edf');
+    assert.ok(
+      folder.stderr.split('\n').some((line) => line === `       ${recording}`),
+      `the path must arrive on one line, unsplit:\n${folder.stderr}`,
+    );
     assert.deepEqual(wide, [], `lines past 80 columns:\n${wide.join('\n')}`);
   });
 
@@ -2513,8 +2550,10 @@ describe('converting several recordings at once', () => {
       /error: .*r\d\d\.edf: stopped by SIGKILL before it finished\./u,
       `the killed recording must be named, stderr was:\n${stderr}`,
     );
+    // Wrapped to the terminal: a long destination sits on its own line, unbroken, so the
+    // sentence and the path may be separated by a newline and seven spaces.
     assert.match(
-      stderr,
+      stderr.replace(/\s+/gu, ' '),
       /Incomplete, and should not be used: .*out\/r\d\d/u,
       'and so must the directory it left behind',
     );
@@ -2831,7 +2870,7 @@ describe('a folder the process cannot read', () => {
         !/No EDF or BDF recordings found/u.test(stderr),
         'it did not look, so it cannot say there were none',
       );
-      assert.match(stderr, /whether it holds recordings is unknown/u);
+      assert.match(stderr.replace(/\s+/gu, ' '), /whether it holds recordings is unknown/u);
     } finally {
       await chmod(locked, 0o755);
     }

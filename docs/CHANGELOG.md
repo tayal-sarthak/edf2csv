@@ -8,6 +8,50 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.5
+
+### a refusal naming a deep path ran to 268 columns
+
+268 columns, and how far past 80 it got depended on how deep the caller's directories were.
+
+Seven messages are written straight to stderr rather than raised as an error, so they never
+passed through `printableLines` and none of the last four releases touched them. Five of
+them interpolate a path:
+
+```
+error: --stdout writes a single CSV, and a folder is converted as a batch even when it holds one recording.
+       Name the recording itself — /data/night-recordings/subject-0142/session-b/pre-sleep-baseline/rec.edf — or convert to a directory instead.
+```
+
+That is the one class of long line that no fixed choice of wording could have prevented, and
+the one that gets *worse* on real data — the fixtures in this repository sit four directories
+down and are already past 80 before the sentence around them starts. The interrupt handlers
+are the same shape: "Incomplete, and should not be used: <destination>" after a Ctrl-C, and
+"Files already written to <destination> are incomplete and should not be used" after one
+part way through a batch. Two more carry no path and were merely long: the `--strict` closing
+line at 95, and the "Nothing could be converted" summary.
+
+All seven now go through the same wrap, five of them via a `detail()` helper that puts the
+continuation in the same column as everywhere else.
+
+**The path stays whole.** It is a single word with nowhere to break, so it overruns onto its
+own line rather than being split across two:
+
+```
+       Name the recording itself —
+       /data/night-recordings/subject-0142/session-b/pre-sleep-baseline/rec.edf
+       — or convert to a directory instead.
+```
+
+which is the better shape anyway, because the path is the part that gets copied. The suite
+asserts both halves: that no wrappable text passes 80, and that the path arrives on one line
+unsplit. It builds a four-deep destination to do it, because every existing test used a
+temporary directory short enough that the 268-column line never appeared.
+
+That is the last of the terminal output. `--help`, warning hints, `--info`, refusal hints,
+message continuations, and now the lines written directly — all 80 columns, all with the
+long unbreakable words left long.
+
 ## 0.7.4
 
 ### an error that carried its advice in the message ran to 145 columns

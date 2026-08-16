@@ -126,7 +126,8 @@ A folder the process cannot open is a different answer and gets a different one.
 
 ```
 error: /data/locked: could not be read, so any recordings inside it were skipped.
-Nothing could be converted: that path could not be read, so whether it holds recordings is unknown.
+Nothing could be converted: that path could not be read, so whether it holds
+recordings is unknown.
 ```
 
 When some recordings *were* found alongside it, the closing line counts the unreadable paths beside the conversions, since how many recordings they held is the thing nobody knows:
@@ -499,7 +500,8 @@ Interrupted after the directory was claimed, the files in it stop mid-recording 
 
 ```
 interrupted (SIGINT): the conversion stopped part way through.
-       Files already written to "night-02_csv" are incomplete and should not be used.
+       Files already written to "night-02_csv" are incomplete and should not
+       be used.
 ```
 
 And with `--force` over a directory that was already there, what is in it may be the previous run's output or this one's, and the message says so rather than guessing. Under `--stdout` there is no directory to name, so it warns about the stream instead.
