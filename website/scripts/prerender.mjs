@@ -595,6 +595,29 @@ async function main() {
     );
   }
 
+  /*
+    The parts of the homepage a crawler is actually read for.
+
+    A word count catches a render that collapsed to nothing, and nothing else. It would
+    pass a homepage that lost its h1, or whose lede reverted to placeholder text, or which
+    rendered five sections as four — all of which are the failure this step exists to
+    prevent, just short of total. These are the elements the SEO work put there on purpose,
+    so they are the ones worth asserting rather than hoping about.
+  */
+  const required = [
+    ['an <h1>', /<h1[^>]*>/],
+    ['the one-sentence lede', /Convert EEG and biosignal files to CSV in one command\./],
+    ['the install command', /npx edf2csv recording\.edf/],
+    ['a link into the documentation', /href="\/docs\/getting-started"/],
+  ];
+  const missing = required.filter(([, pattern]) => !pattern.test(appHtml)).map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(
+      `prerender: the server-rendered homepage is missing ${missing.join(', ')}. ` +
+        `A crawler that does not run JavaScript sees only what this render produced.`,
+    );
+  }
+
   enrichLandingPage(appHtml);
   writeFileSync(path.join(DIST, 'llms-full.txt'), llmsFullTxt(docs));
   writeFileSync(path.join(DIST, '404.html'), notFoundPage(docs, assets));

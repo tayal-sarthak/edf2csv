@@ -3,6 +3,21 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.76
+
+### the homepage guard would have passed a homepage with no heading
+
+0.6.62 made the build fail if the homepage server-rendered to fewer than 150 words, which catches
+a render that collapsed to nothing and nothing else. It would pass a homepage that lost its h1,
+or whose lede fell back to placeholder text, or that rendered four of its five sections — every
+one of them the failure the step exists to prevent, stopping just short of total. The count was
+never the claim being made; it was the easiest thing to measure.
+
+The build now asserts the four things a crawler is read for: a heading, the sentence that says
+what the tool does, the install command, and a link into the documentation. Deleting the lede
+fails the build with the name of what went missing, which is how it was checked before being
+committed.
+
 ## 0.6.75
 
 ### the sitemap dated the homepage from files the homepage is not written in
