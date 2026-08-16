@@ -572,8 +572,17 @@ function sitemap(docs) {
       loc: `${SITE_URL}/`,
       lastmod: [
         ...docs.map((doc) => lastModified(`content/${doc.slug}.md`)),
-        lastModified('src/components/Landing.jsx'),
-        lastModified('src/App.jsx'),
+        /*
+          The whole of `src`, not three files named by hand.
+
+          Naming them is what went wrong the first time and it went wrong again: the list was
+          Landing.jsx, App.jsx and index.html, and the homepage is also styles.css, Waveform,
+          PhosphorScope, RateComparison and Nav. 0.6.140 changed the stylesheet and nothing
+          else, so the date reported for the homepage that day was the newest documentation
+          page's — older than the change, which is the direction that tells a crawler not to
+          bother. A directory cannot fall behind the files added to it.
+        */
+        lastModified('src'),
         lastModified('index.html'),
       ]
         .filter(Boolean)

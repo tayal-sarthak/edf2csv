@@ -3,6 +3,27 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.146
+
+### a release that changed only the stylesheet left the homepage dated older than itself
+
+The sitemap's `<lastmod>` for the homepage was the newest of: every documentation page, Landing.jsx,
+App.jsx and index.html. That list was written after the first version of this went wrong — the date
+had been taken from `content/*.md` alone, and the 0.6.64 rewrite of the hero changed every sentence
+above the fold without touching any Markdown.
+
+Naming three files fixed that instance and left the shape of the mistake in place. The homepage is
+also styles.css, Waveform, PhosphorScope, RateComparison and Nav, and none of them were on the list.
+Six days ago is not the example: 0.6.140, five releases back, changed the stylesheet and nothing
+else, so the date the sitemap reported for the homepage that day was the newest documentation page's
+— older than the change that had just been made to the page. Which is the direction the comment
+above it calls the costly one, because it tells a crawler not to bother re-reading something that
+was rewritten.
+
+It reads `src` now, as a directory, plus index.html. A directory cannot fall behind the files added
+to it. Verified against the build: the homepage's lastmod is now 10:08:41, the stylesheet's commit,
+where it had been 10:06:18 — a documentation page edited two minutes earlier.
+
 ## 0.6.145
 
 ### everything this project checks was undiscoverable from the repository
