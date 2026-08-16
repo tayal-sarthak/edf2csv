@@ -3,6 +3,25 @@
 Notable changes to edf2csv. Versions follow [semantic versioning](https://semver.org); while the
 major version is 0, a minor bump may contain breaking changes.
 
+## 0.6.123
+
+### the citation file had no year in it
+
+`CITATION.cff` is the file GitHub's "Cite this repository" button reads, and the file a reference
+manager imports. It carried a title, an abstract, an author, a repository, a licence and a version,
+and no date.
+
+`date-released` is where every citation format gets its year. Without it the generated APA line has
+no year in it and the BibTeX entry has no `year` field — from the one file in this repository whose
+entire purpose is being correct in somebody else's bibliography. The version has been guarded since
+0.5.27, after it sat 107 releases behind; the field that carries the date was simply never there to
+drift.
+
+The suite checks its shape rather than its freshness: a real calendar date, in the `YYYY-MM-DD` form
+CFF 1.2.0 asks for, and not in the future. No test here can tell "released yesterday" from "the
+field was forgotten", and a date one release old is a much smaller problem than no date at all. It
+moves with the version at release time, the way the version itself does.
+
 ## 0.6.122
 
 ### a tarball left by npm pack would have been committed into the package

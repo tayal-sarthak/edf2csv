@@ -295,6 +295,26 @@ describe('documentation and source agree on their lists', () => {
     const lock = JSON.parse(await read('package-lock.json'));
     assert.equal(lock.version, manifest.version, 'package-lock.json is at a different version');
     assert.equal(lock.packages['']?.version, manifest.version, 'the lockfile root entry differs');
+
+    /*
+      And the date it was released, which the file did not carry at all.
+
+      `date-released` is where every citation format gets its year. Without it GitHub's "Cite
+      this repository" produced an APA line with no year in it and a BibTeX entry with no
+      `year` field — from the one file in this repository whose entire purpose is being
+      correct in somebody else's bibliography.
+
+      Shape, not freshness: a real calendar date, in the format CFF 1.2.0 asks for, and not in
+      the future. A stale date is a smaller problem than an absent one, and no check here can
+      tell "the release was yesterday" from "the field was forgotten".
+    */
+    const released = /^date-released:\s*(.+)$/mu.exec(citation);
+    assert.ok(released, 'CITATION.cff declares no date-released');
+    const day = released[1].trim();
+    assert.match(day, /^\d{4}-\d{2}-\d{2}$/u, `date-released is not YYYY-MM-DD: ${day}`);
+    const parsed = new Date(`${day}T00:00:00Z`);
+    assert.ok(!Number.isNaN(parsed.getTime()), `date-released is not a real date: ${day}`);
+    assert.ok(parsed.getTime() <= Date.now(), `date-released is in the future: ${day}`);
   });
 
   it('has a changelog entry for the version being released', async () => {
