@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.13
+
+### the contributor's list of sweeps was missing the newest one
+
+The guard added one release ago was too narrow, and the omission it was written for was still
+sitting in a third file when it went green.
+
+0.7.12 wired `npm run terminal` into CI and added a test that every sweep the correctness page
+offers as evidence is run by some workflow. It checked two files. `CONTRIBUTING.md` carries the
+list a contributor actually runs before opening a pull request, and it said:
+
+```
+The seven sweeps are separate, because they take minutes rather than seconds:
+...
+CI runs the first six on every push
+```
+
+Seven listed where there are eight, `terminal` absent from the list, and a count of what CI
+runs that was already wrong before this line was written and is wronger now. A sweep missing
+from that list is a sweep nobody outside CI ever runs — which for a contributor changing
+terminal output is exactly the one they need.
+
+So the test now reads that file too, and checks three separate things about it: that every
+sweep named as evidence appears in the list, that "The N sweeps are separate" matches how many
+there are, and that "CI runs the first N on every push" matches how many steps the `sweeps`
+job actually has. The last is a claim about the list's *order* — everything before
+`crossvalidate` runs on push — so it is checked against the workflow rather than against the
+count, which is the only way it stays true when a sweep is inserted in the middle.
+
+Each half fails on its own when reverted:
+
+```
+named as evidence but absent from CONTRIBUTING.md: terminal
+CONTRIBUTING.md says CI runs the first six; the sweeps job runs 7
+```
+
+The lesson is the ordinary one about this kind of guard: it is only as wide as the set of
+files you thought to hand it. Three files enumerate the sweeps, and a test written against two
+of them proves nothing about the third.
+
 ## 0.7.12
 
 ### the sweep guarding the terminal was never run by anything

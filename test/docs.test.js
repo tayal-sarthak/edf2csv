@@ -192,13 +192,49 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(unrun, [], `named as evidence but no workflow runs ${unrun.join(', ')}`);
 
     // And the count the workflow states about itself.
+    const words = { six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
     const stated = /names (\w+) sweeps as how this project knows/u.exec(yaml);
     assert.ok(stated, 'the sweeps comment is gone or reworded');
-    const words = { six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
     assert.equal(
       words[stated[1]],
       named.length,
       `the workflow says ${stated[1]} sweeps and the page names ${named.length}: ${named.join(', ')}`,
+    );
+
+    /*
+      And CONTRIBUTING.md, which the first version of this test did not look at — so the very
+      omission it was written for was still sitting in a third file when it went green. It is
+      the list a contributor actually runs before opening a pull request; a sweep missing from
+      it is a sweep nobody outside CI ever runs.
+    */
+    const contributing = await read('CONTRIBUTING.md');
+    const listed = [...contributing.matchAll(/^npm run ([a-z:]+)/gmu)].map((m) => m[1]).sort();
+    assert.deepEqual(
+      named.filter((name) => !listed.includes(name)),
+      [],
+      `named as evidence but absent from CONTRIBUTING.md: ${named.filter((n) => !listed.includes(n)).join(', ')}`,
+    );
+
+    const howMany = /The (\w+) sweeps are separate/u.exec(contributing);
+    assert.ok(howMany, 'the sweeps paragraph in CONTRIBUTING.md is gone or reworded');
+    assert.equal(words[howMany[1]], named.length, `CONTRIBUTING.md says ${howMany[1]} sweeps`);
+
+    /*
+      "CI runs the first N on every push" — a claim about this list's order, so it is checked
+      against the workflow rather than against the count. Everything before crossvalidate runs
+      on push; crossvalidate needs pyEDFlib and has its own weekly job.
+    */
+    const onPush = /CI runs the first (\w+) on every push/u.exec(contributing);
+    assert.ok(onPush, 'the "CI runs the first N" sentence is gone or reworded');
+    const pushJob = yaml.slice(yaml.indexOf('  sweeps:'), yaml.indexOf('  tarball:'));
+    const runOnPush = named.filter((name) => {
+      const direct = /node (test\/\S+\.mjs)/u.exec(scripts[name] ?? '');
+      return pushJob.includes(`npm run ${name}`) || (direct && pushJob.includes(direct[1]));
+    });
+    assert.equal(
+      words[onPush[1]],
+      runOnPush.length,
+      `CONTRIBUTING.md says CI runs the first ${onPush[1]}; the sweeps job runs ${runOnPush.length}`,
     );
   });
 
