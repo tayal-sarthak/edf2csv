@@ -40,9 +40,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  # The correctness page names seven sweeps as how this project knows what it claims, and
-  # until now nothing ran any of them on a push: `npm test` covers the suite and not the
+  # The correctness page names eight sweeps as how this project knows what it claims, and
+  # until 0.6.58 nothing ran any of them on a push: `npm test` covers the suite and not the
   # harnesses, so a regression in an invariant only a sweep checks shipped in silence.
+  #
+  # Seven of the eight run here. `crossvalidate` is the exception and has its own weekly
+  # workflow, because it needs pyEDFlib installed and this package has no dependencies.
   #
   # Its own job rather than steps on `core`, because these take minutes where the suite takes
   # one, and GitHub runs jobs concurrently — the pull request waits for the slowest, not the
@@ -73,6 +76,11 @@ jobs:
         run: node test/fuzz/mutate.mjs
       - name: A batch converts each recording as converting it alone would
         run: node test/fuzz/trees.mjs
+      # The only one that needs something Node cannot provide: a pseudo terminal, borrowed
+      # from python3, which ubuntu-latest has. It reports that it checked nothing and exits 0
+      # where python3 does not, so this step can never fail for the wrong reason.
+      - name: Every prefix begins its own line on a terminal
+        run: node test/fuzz/terminal.mjs
 
   # Every check above runs against the working tree. Twice now the thing that was broken was
   # the tarball: 0.5.30 published four files and no `dist/`, and 0.6.117 shipped a manifest

@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.12
+
+### the sweep guarding the terminal was never run by anything
+
+A sweep nobody runs is a claim nobody checks.
+
+0.7.9 added `npm run terminal`, wrote it up on the correctness page as the tenth of ten
+claims, and never wired it into CI. It has sat unrun for three releases — guarding the one
+surface that produced two defects in this line precisely because nothing exercised it. The
+progress meter and `--stdout --gzip` are terminal-only, every test in the suite runs with
+stderr as a pipe, and the harness written to close that hole was itself outside everything
+automatic.
+
+0.6.58 gave the sweeps a CI job for exactly this reason: `npm test` covers the suite and not
+the harnesses, so a regression in an invariant only a sweep checks ships in silence. The job
+opens with a comment counting them — "The correctness page names seven sweeps as how this
+project knows what it claims" — and it said seven while the page named eight. The same
+failure as the claims heading fixed in 0.7.9, one file over: a number in prose that the thing
+it describes has outgrown.
+
+Seven of the eight now run on every push. `crossvalidate` stays on its weekly workflow because
+it needs pyEDFlib installed and this package has no dependencies — which the comment now says
+rather than leaving the reader to notice the absence.
+
+The step cannot fail for the wrong reason. `terminal.mjs` borrows python3's `pty` module,
+which `ubuntu-latest` has, and where python3 does not exist it reports that it checked nothing
+and exits 0.
+
+The guard reads the correctness page for every `npm run` it offers as evidence, then checks
+some workflow runs each one — either as `npm run <name>` or as the harness the script invokes,
+since the job steps call `node test/fuzz/<name>.mjs` directly so that a failure names the
+invariant rather than the script. It checks the stated count against the list too. Removing
+the new step makes it fail with "named as evidence but no workflow runs terminal".
+
 ## 0.7.11
 
 ### the package shipped four imports nobody read

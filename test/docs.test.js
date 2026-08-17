@@ -157,6 +157,51 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('runs every sweep it offers as evidence', async () => {
+    /*
+      A sweep nobody runs is a claim nobody checks. `npm test` covers the suite and not the
+      harnesses, which is why 0.6.58 gave them a CI job of their own — and then 0.7.9 added
+      `npm run terminal`, wrote it up on the correctness page as the tenth claim, and did not
+      wire it in. It sat unrun for three releases, guarding the one surface that had already
+      produced two defects precisely because nothing exercised it.
+
+      The workflow comment counts them too, and said seven while the page named eight. Same
+      failure as the claims heading below: a number in prose that the thing it describes has
+      outgrown.
+    */
+    const page = await read('website/content/correctness.md');
+    const workflows = await readdir(path.join(ROOT, '.github/workflows'));
+    let yaml = '';
+    for (const file of workflows) yaml += await read(path.join('.github/workflows', file));
+
+    // Housekeeping, not evidence: these support a sweep rather than being one.
+    const support = new Set(['build', 'fixtures', 'clean', 'prepare']);
+    const named = [...new Set([...page.matchAll(/npm run ([a-z:]+)/gu)].map((m) => m[1]))]
+      .filter((name) => !support.has(name))
+      .sort();
+    assert.ok(named.length >= 8, `expected the sweeps to still be named, found ${named.length}`);
+
+    const scripts = JSON.parse(await read('package.json')).scripts;
+    const unrun = named.filter((name) => {
+      if (yaml.includes(`npm run ${name}`)) return false;
+      // The job steps invoke the harness directly so a failure names the invariant, not the
+      // script, so the script's own command line is what has to be looked for.
+      const direct = /node (test\/\S+\.mjs)/u.exec(scripts[name] ?? '');
+      return !(direct && yaml.includes(direct[1]));
+    });
+    assert.deepEqual(unrun, [], `named as evidence but no workflow runs ${unrun.join(', ')}`);
+
+    // And the count the workflow states about itself.
+    const stated = /names (\w+) sweeps as how this project knows/u.exec(yaml);
+    assert.ok(stated, 'the sweeps comment is gone or reworded');
+    const words = { six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+    assert.equal(
+      words[stated[1]],
+      named.length,
+      `the workflow says ${stated[1]} sweeps and the page names ${named.length}: ${named.join(', ')}`,
+    );
+  });
+
   it('counts its own claims correctly', async () => {
     /*
       "## Eight separate claims" sat over a list of nine, and the paragraph below it says in
