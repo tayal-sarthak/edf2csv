@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.14
+
+### "what each one covers" covered fifteen of fifty
+
+The section is headed "The fixtures and what each one covers". It covered fifteen of them.
+
+There are fifty files in `test/fixtures/generated`, and the table listed fifteen — so
+thirty-five recordings, most of them written for a specific defect, existed as evidence nobody
+could look up. Several are the evidence for claims made elsewhere on the same page: the
+estimate sweep promises it never reads low, and `negative-origin.edf` is the recording that
+proved it did; the long layout promises its rows come out sorted by time, and
+`records-backwards.edf` is the one recording that breaks it.
+
+All fifty are described now. Each row says what the file contains and what it pins down, taken
+from the comment above it in `generate.mjs` rather than written fresh — that comment is where
+the reason was recorded when the fixture was added, and it is more accurate than anything
+reconstructed later.
+
+Some of what was missing:
+
+- `sub-nanosecond.edf` — two records of 1e-9 s, against a window slack that was a flat
+  nanosecond, so ten of twenty rows vanished silently.
+- `contiguous-fractional.edf` — an ordinary recording of 0.1 s records, where 0.1 + 2 × 0.1 is
+  0.30000000000000004 and a continuity check written as equality failed a `--strict` run on a
+  file with nothing wrong with it.
+- `far-origin-negative.edf` — the same collapse as its positive twin, at -1e16, which the guard
+  missed because it seeded a signed maximum with zero.
+- `zero-first-annotation.edf` — a first annotation channel with no room in it, so the
+  timekeeping in the channel after it went unread.
+- `fractional-tie.edf` — two samples at the same instant one ULP apart, which a tie test
+  written as equality does not see.
+
+The guard reads the generated directory rather than a list, because that is what the heading
+claims: a fixture added without a row is precisely the drift it catches. Renaming one row makes
+it fail with `fixtures with no row: magnetometer.edf`.
+
+The opening sentence now says all of them are listed, and says what it used to be — a heading
+promising every one over a table holding a third is the sort of claim this page exists not to
+make.
+
 ## 0.7.13
 
 ### the contributor's list of sweeps was missing the newest one

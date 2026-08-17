@@ -238,6 +238,28 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('describes every fixture it says it describes', async () => {
+    /*
+      The section is headed "The fixtures and what each one covers" and its opening sentence
+      says each one pins down a thing a straightforward reader gets wrong. It held fifteen
+      rows against fifty files on disk — so thirty-five fixtures, several of them written for
+      defects this page describes elsewhere, were evidence nobody could look up.
+
+      Checked from the generated directory rather than from a list, because that is what the
+      claim is about: a fixture added without a row is exactly the drift this catches.
+    */
+    const page = await read('website/content/correctness.md');
+    const files = (await readdir(path.join(ROOT, 'test/fixtures/generated'))).filter((f) =>
+      /\.(edf|bdf)$/u.test(f),
+    );
+    assert.ok(files.length > 40, `expected the fixture set, found ${files.length}`);
+
+    const section = page.slice(page.indexOf('## The fixtures and what each one covers'));
+    const table = section.slice(0, section.indexOf('\n## ', 1));
+    const undescribed = files.filter((name) => !table.includes(`\`${name}\``)).sort();
+    assert.deepEqual(undescribed, [], `fixtures with no row: ${undescribed.join(', ')}`);
+  });
+
   it('counts its own claims correctly', async () => {
     /*
       "## Eight separate claims" sat over a list of nine, and the paragraph below it says in

@@ -319,7 +319,7 @@ Buffered reading is a common source of silent corruption, because a sample can s
 
 ## The fixtures and what each one covers
 
-The fixtures are EDF and BDF files built by `test/fixtures/generate.mjs`, using a small purpose-built writer in `test/fixtures/edf-writer.mjs`. Each one pins down one thing that real recordings do and that a straightforward reader gets wrong.
+The fixtures are EDF and BDF files built by `test/fixtures/generate.mjs`, using a small purpose-built writer in `test/fixtures/edf-writer.mjs`. Each one pins down one thing that real recordings do and that a straightforward reader gets wrong, and all of them are listed below — the table used to hold fifteen of the fifty under a heading promising every one, which is the sort of claim this page exists not to make.
 
 Most fixtures use a generator where the digital value equals the sample's global index, so the expected output can be stated by hand rather than derived from the code being tested.
 
@@ -340,6 +340,38 @@ Most fixtures use a generator where the digital value equals the sample's global
 | `degenerate-range.edf` | Three channels: one with digital minimum equal to digital maximum, one with physical minimum equal to physical maximum, and one ordinary | The two degenerate cases must not be treated alike. The undefined mapping writes empty cells and a warning, never `NaN` as text or a stand-in number; the flat-but-defined mapping still writes its constant value; the ordinary channel is untouched by either. |
 | `biosemi.bdf` | 24-bit BDF, including sample values no 16-bit field could hold | Three-byte samples, record sizing at three bytes per sample, and correct sign extension of negative 24-bit values. |
 | `biosemi-plus.bdf` | BDF+D, whose markers are spelled `BDF+D` and `BDF Annotations` | BioSemi's spelling of the EDF+ markers is recognised and normalised, and gaps and events are recovered from a discontinuous BDF file. |
+| `single-rate-empty-channel.edf` | One channel at 4 Hz beside a channel declaring zero samples per record | A channel with no samples has a nominal rate of 0 Hz and no file of its own. Counting it as a rate made this single-rate file warn that it used "2 different sampling rates (4 Hz, 0 Hz)". |
+| `annotations-at-edges.edf` | Three events in the last record: one inside the span, one exactly at `duration`, one past it | EDF+ does not oblige an onset to fall inside the data — an end-of-recording marker sits exactly at `duration`. A whole-file window of [0, duration) dropped those events with no option given and no way to ask for them back. |
+| `annotations-bad-timekeeping.edf` | EDF+D whose second record opens with a TAL lacking the mandatory signed onset, followed by a real event | The timekeeping TAL is the one in first position, not the first one that happens to parse. Taking the latter made the record start 1.5 s — an ordinary event's onset — shifting every sample in it by half a second. |
+| `fractional-start.edf` / `fractional-start-d.edf` | EDF+C and EDF+D twins whose first record starts 0.5 s after the header time, with an event at +0.75 | The origin comes from the first record's timekeeping TAL. Timing samples from zero instead put signals and events half a second apart, landing the event on sample 3 rather than sample 1. The pair differ only in the reserved field, so they must agree. |
+| `negative-origin.edf` | EDF+D whose timekeeping places the recording at -100 s | A negative onset is legal and means an event before the nominal start, so every `time_s` carries a minus sign. The byte estimate measured the column unsigned and read low — the one direction it promises never to go, and no other fixture began before zero. |
+| `biosemi-rate.edf` | A single channel at 1024 Hz | The rate a BioSemi ActiveTwo records at, and the first power of two needing more than nine decimals: 1/1024 is 0.0009765625. The search for an exact expansion stopped at nine, so `time_s * rate` came back 8191.999… instead of a whole number. |
+| `repeating-fast.edf` | Three samples in a 1e-15 s record — 3e15 Hz | 1/3e15 repeats forever, so no exact expansion exists and fifteen places still cannot separate consecutive samples. Every sample is written; what stops being true is that `time_s` identifies a row. `TIME_RESOLUTION` exists for this. |
+| `sub-nanosecond.edf` | Two records of 1e-9 s holding ten samples each | An interval of 1e-10 s, against a window boundary slack that was a flat nanosecond — larger than the interval — so `time < end - 1e-9` excluded the whole second record and ten of twenty rows vanished silently. |
+| `contiguous-fractional.edf` | An ordinary EDF+C with 0.1 s records sitting at 0.1, 0.2, 0.3 … | Exactly where continuity puts them, but 0.1 + 2 × 0.1 is 0.30000000000000004. A continuity check written as equality reported two of eight records as contradicting it — a failed `--strict` run on a file with nothing wrong. |
+| `continuous-liar.edf` | EDF+C whose records really do jump: 0.5 s, 1.5 s, 10.5 s | A file marked continuous whose own records disagree. Nothing looked past the first record, so the gap was silently closed. |
+| `continuous-liar-from-zero.edf` | The same contradiction with records at 0 s, 5 s, 10 s | The origin works out to exactly 0, which was treated as "no origin" and returned on before the contradiction check ran. Where record 0 sits decides nothing about records 1 and 2. |
+| `lost-timekeeping.edf` / `lost-timekeeping-d.edf` | EDF+C and EDF+D twins whose first timekeeping TAL writes its onset with a comma | Records 1 and 2 still say where they are, and continuity fixes the origin from either: 1.5 − 1×1 = 0.5. Reading only `recordStarts[0]` threw that away and timed the file 0.5 s early against annotation onsets that kept their true values. |
+| `two-annotation-channels.edf` | Two annotation channels, the second holding events whose onsets cannot be parsed | Only the first annotation channel carries timekeeping. Flagging the first TAL of every channel as timekeeping counted three dropped events as lost timekeeping — reported as "No event was lost", beside a claim the records did not say where they sit. |
+| `zero-first-annotation.edf` | Two annotation channels, the first declaring zero samples per record | EDF+ puts timekeeping in the first annotation channel, and the reader took `annotationSignals[0]` literally. A zero-byte slot meant the timekeeping in the channel after it went unread: "3 of 3 data records carry no readable timekeeping annotation" about three that are readable. |
+| `far-origin.edf` / `far-origin-collapsed.edf` | EDF+C recordings whose timekeeping sits at 1e16 s and 1e17 s | A double spaces its values 2 s apart at 1e16, so `t + 1` is `t`. At 1e16 eight of twelve rows vanished silently; at 1e17 every record lands on one instant and the window resolver blamed a flag nobody passed. |
+| `far-origin-negative.edf` | The same distance out at -1e16, with the sign written into the TAL by hand | The guard took the signed maximum seeded with 0, so an all-negative recording never got past the seed. The collapse happens anyway — double spacing grows with magnitude, not with value — and twelve rows became four in silence. |
+| `late-start.edf` | EDF+D whose first record sits at 30 s, with an event at 30.5 s | `--duration` is measured from where the conversion starts; the annotation filter anchored it at 0. Signals came from [30, 35) while events were filtered against (−∞, 5), so annotations.csv held only its header. |
+| `records-overlapping.edf` | EDF+D with records at 0 s, 0.5 s and 1 s, one second long | Strictly increasing starts, so a check for "starts before the one before it" sees nothing — yet record 0 runs to 0.75 while record 1 begins at 0.5, so the column steps backwards anyway. A device re-sending a buffer produces this. |
+| `records-backwards.edf` | EDF+D storing records timestamped 10 s, 5 s, 0 s in that order | Nothing obliges a writer to store records in time order. It is the one recording that breaks the long layout's claim that rows come out sorted by `time_s`; every sample is still written, in file order. |
+| `ascending-rates.edf` | Three channels declared slowest first, at 1, 2 and 4 samples per record | Rate groups are ordered fastest first because that is how the wide layout names files, and that leaked into long-layout row order: the file declared `slow, medium, fast` and the rows came out `fast, medium, slow`, against what channels.csv says. |
+| `fractional-tie.edf` | A 0.3 s record holding 12 and 4 samples — 40 Hz and 13.333… Hz | Sample 9 of the fast channel and sample 3 of the slow one are the same instant one ULP apart. A tie test written as equality does not see it, so those two rows fall out in numeric order rather than in channel order, once, mid-file. |
+| `many-rates.edf` | Forty channels, every one at a different rate | The header decides how many channels a file has, so any message enumerating them is as long as the file says. At 40 rates the mixed-rate warning ran past 300 characters on one line. |
+| `rate-decimal-collision.edf` | 4 and 5 samples in a 4,000,000 s record — 1e-6 Hz and 1.25e-6 Hz | Both are shown in exponent form and both round to "0.000001", so the warning read "2 different sampling rates (0.000001 Hz, 0.000001 Hz)". |
+| `rounding-bound.edf` | An unsigned channel bounded at 999.9999, written to two decimals, over five records | The top code renders as "1000.00" — seven characters where flooring the bound suggests six, so the estimate came out under the real file. Five records rather than ten, because a spare character per row cancelled the shortfall exactly and hid it. |
+| `exponent-time.edf` | Records one 1e21 s long | EDF's record-duration field is eight characters and exponent form fits, so `1e21` is a legal thing for a header to say — and three records reach the point where `String(n)` switches to exponent notation mid-column. |
+| `long-stream.edf` | 400 records at 256 Hz, converting to about 2 MB | Output larger than a pipe buffer. The small fixtures all fit, so every write lands and a reader hanging up mid-stream — the EPIPE case — was unreachable. |
+| `control-labels.edf` | An ESC in a label and a unit, a bell character, a tab, and one plain channel | `--info` escapes these because an ANSI escape in a header can drive the terminal. The CSV passes them through, which is right, and nothing said so — `cat signals.csv` on a channel labelled `ESC[2J` clears the screen. |
+| `label-suffix-collision.edf` | Two channels labelled `T8` and a third labelled `T8_ch0` | All three are legal, and the disambiguating suffix landed on a label another channel already had: `time_s,T8_ch0,T8_ch1,T8_ch0` — two columns with one name, under a warning promising the suffix kept them distinct. |
+| `latin1-labels.edf` | A `µV` unit and an accented label, written as Latin-1 bytes | The spec says printable ASCII and exporters write `µV` anyway, because that is what the amplifier measures in. Two characters become three bytes of UTF-8, which a spreadsheet reading the system code page renders as mojibake unless the file says otherwise. |
+| `magnetometer.edf` | ±1e-16 T over a 16-bit converter — a step of 3.05e-21 | Needs 23 decimals and got 20, so three digital codes shared each printed value and the arithmetic for recovering the code stopped working. |
+| `unprintable-step.bdf` | ±1e-99 m over a 24-bit converter | A step below 1e-98, past what `toFixed` will print at any precision. It exists to be warned about rather than recovered — `VALUE_RESOLUTION` is what is left when no number of decimals would separate consecutive codes. |
+| `comma-decimal.edf` | `tiny.edf` with its signal-count and record-duration fields patched to `2,0` and `1,0` | A comma decimal separator, which the spec forbids and writers emit. The signal-count field at offset 252 was read with its own `Number()`, which tolerated NUL padding but not the comma every other field here accepts, so the file died on a message contradicting itself. |
 
 The suite also opens files that aren't EDF at all, and a path that doesn't exist, and asserts that both fail with a typed error and a readable message rather than a raw errno or a stack trace.
 
@@ -379,20 +411,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 368
+ℹ tests 369
 ℹ suites 53
-ℹ pass 368
+ℹ pass 369
 ℹ fail 0
 ```
 
-The 368 tests are split across six files by what they exercise:
+The 369 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 47 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 102 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 148 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
-| `test/docs.test.js` | 56 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 57 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 9 | A destination that fills up, for `--stdout` and for `--out`, which needs a filesystem of a known small size and so is kept apart |
 | `test/large.test.js` | 6 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 
