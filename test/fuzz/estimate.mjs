@@ -46,6 +46,15 @@ const OPTIONS = [
   // The long layout has its own row and byte arithmetic; the promise is the same.
   ['--layout', 'long'],
   ['--layout', 'long', '--decimals', '12'],
+  /*
+    --bom is three bytes per file, and it had its own arm of the byte arithmetic with nothing
+    crossing it. Small, and exactly the size that hides: a one-row conversion is a few dozen
+    bytes, so three unaccounted for is the difference between an estimate that holds and one
+    that reads under. Crossed with the long layout too, where the mark is written once for the
+    single table rather than once per rate.
+  */
+  ['--bom'],
+  ['--bom', '--layout', 'long'],
 ];
 
 function run(args) {

@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.16
+
+### the estimate sweep never crossed --bom
+
+Claim 5 on the correctness page read:
+
+> The row count is exact and the byte count never reads low, across every fixture crossed with
+> **every option combination**.
+
+The sweep crossed eight option sets. `--bom` was not one of them, and `--bom` has its own arm
+of the byte arithmetic — `if (bom) bytes += BOM_BYTES`, three bytes per file, added once per
+table rather than once per rate in the long layout. Nothing anywhere exercised it, underneath a
+sentence saying everything was exercised.
+
+Three bytes is exactly the size that hides. A one-row conversion is a few dozen bytes, so three
+unaccounted for is the difference between an estimate that holds and one that reads under —
+and reading under is the single direction this claim promises it never goes. It is the same
+arithmetic that 0.6.x found wrong twice: once for a bound that gains a digit when rounded, once
+for a time column that gains a minus sign.
+
+`--bom` and `--bom --layout long` are crossed now, taking the sweep from 368 predictions to
+**466**. Every one holds: the arm was right, and what was missing was anything that could have
+told you so.
+
+The claim says what is actually crossed — ten option sets, being the precisions, the windows,
+both layouts, `--gzip` and `--bom`, which between them are every option that changes what lands
+on disk. `--annotations-only` is excluded on purpose and the sweep has always said why: it
+leaves no signal files, and signal bytes are what this estimate is about.
+
+The guard checks the flags rather than the count, because coverage is the thing that slipped:
+each option that changes the output must appear in the sweep's own option list, and claim 5
+must not describe that list as more than it is. Both halves fail when reverted.
+
+Third in a row of this shape — 0.7.12 and 0.7.13 were a sweep nobody ran and a list it was
+missing from, 0.7.14 was a table covering fifteen of fifty. The pattern is not that the code is
+wrong. It is that a sentence describing what has been checked outlives the checking.
+
 ## 0.7.15
 
 ### a destination ending in a dot was refused after being created

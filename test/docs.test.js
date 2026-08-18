@@ -238,6 +238,38 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('crosses the estimate sweep with every option that changes what is written', async () => {
+    /*
+      Claim 5 said the byte count is verified "across every fixture crossed with every option
+      combination", and the sweep crossed eight sets that did not include `--bom`. That flag
+      has its own arm of the byte arithmetic — three bytes per file, added once per table —
+      and nothing exercised it, under a sentence saying everything was.
+
+      Three bytes is exactly the size that hides: a one-row conversion is a few dozen bytes,
+      so three unaccounted for is the difference between an estimate that holds and one that
+      reads under, which is the single direction this claim promises it never goes.
+
+      Checked against the flags rather than against a number, since the point is coverage.
+      `--annotations-only` is excluded deliberately and says so in the sweep: it leaves no
+      signal files, and signal bytes are what the estimate is about.
+    */
+    const sweep = await read('test/fuzz/estimate.mjs');
+    const crossed = new Set([...sweep.matchAll(/'(--[a-z-]+)'/gu)].map((m) => m[1]));
+    for (const flag of ['--decimals', '--start', '--duration', '--gzip', '--layout', '--bom']) {
+      assert.ok(crossed.has(flag), `the estimate sweep never crosses ${flag}`);
+    }
+
+    // And the page must not describe that set as more than it is.
+    const page = await read('website/content/correctness.md');
+    const claim = /5\. \*\*`--info` predicts what a conversion writes\.\*\*(.*)/u.exec(page);
+    assert.ok(claim, 'claim 5 is gone or reworded');
+    assert.doesNotMatch(
+      claim[1],
+      /every option combination/u,
+      'claim 5 promises every option combination; the sweep crosses a fixed list',
+    );
+  });
+
   it('describes every fixture it says it describes', async () => {
     /*
       The section is headed "The fixtures and what each one covers" and its opening sentence
