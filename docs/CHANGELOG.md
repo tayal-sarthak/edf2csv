@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.17
+
+### narrowing was only ever checked in the wide layout
+
+Convert a mixed-rate recording with `--layout long`, then convert one of its channels again to
+check it, and the two disagree:
+
+```
+$ edf2csv many-rates.edf --out full --layout long
+0.33333,ch3,0.100
+
+$ edf2csv many-rates.edf --out one --layout long --channels ch3
+0.3333,ch3,0.100
+```
+
+Same instant, same value, one decimal place apart. Nothing is wrong with either — it is the
+long layout's shared time column doing what it is designed to do. Every rate lands in one
+table, one column cannot mean three things, so its precision is the finest any rate needs. That
+is the finest rate **in the conversion**, not in the file, and `--channels` changes which rates
+are in the conversion. Narrow a 40-rate recording to one channel and the column stops needing
+five decimals.
+
+What was wrong is that nothing said so, and nothing checked it. Claim 8 on the correctness page
+says asking for part of a recording returns that part unchanged, and the sweep behind it
+converted with no options at all — so the property was verified in the wide layout, where each
+rate has its own file and its own precision and narrowing genuinely is byte-for-byte, and never
+in the layout where it is not.
+
+The sweep crosses the long layout now. The comparison there is the property that actually
+holds: same channel, same value, same order, and the same instant compared as a number rather
+than as text. Stating it that way is the point — a byte-for-byte assertion would have failed on
+correct behaviour, and quietly not running is how it avoided saying anything at all.
+
+Both pages that describe the shared column now say which set it is taken over, and what follows
+from that. Someone converting a channel to check their work is exactly the person who meets
+this, and "the file I converted twice has different numbers in it" is a bad half-hour when the
+numbers are the same.
+
+Nothing about the conversion changes.
+
 ## 0.7.16
 
 ### the estimate sweep never crossed --bom

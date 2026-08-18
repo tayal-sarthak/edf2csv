@@ -58,6 +58,7 @@ const names = readdirSync(GEN).filter((n) => /\.(edf|bdf)$/iu.test(n));
 const problems = [];
 let columns = 0;
 let windows = 0;
+let longs = 0;
 
 for (const name of names) {
   const source = path.join(GEN, name);
@@ -130,6 +131,66 @@ for (const name of names) {
         if (bad >= 0) problems.push(`${name}/${fileName} [${start}, ${end}): row ${bad} differs`);
       }
     }
+
+    /*
+      The same question of the long layout, where the answer is weaker and has to be.
+
+      The wide layout gives every rate its own file with its own `time_s` precision, so
+      dropping the other rates cannot touch the column and the comparison above is exact. The
+      long layout puts every rate in one table, and one column cannot mean three things — so
+      its precision is the finest any INCLUDED rate needs. Narrow a 40-rate recording to one
+      channel and the shared column stops needing five decimals and writes four: the same
+      instants, rounded to a different width.
+
+      So the channel, the value and the order are compared exactly, and the time at the
+      coarser of the two precisions — which is the property that actually holds here. Nothing
+      was checking it either way: this sweep converted with no options at all until now, so
+      the byte-for-byte claim above was only ever tested where bytes are the right question.
+    */
+    /*
+      Only where the answer can differ: a recording with one rate writes the same `time_s`
+      precision whether or not it is narrowed, so the long layout adds nothing over the wide
+      comparison above and costs a full conversion per channel to find that out. More than one
+      signal file in the wide run is exactly the condition of having more than one rate.
+    */
+    const longFull = path.join(work, 'long-full');
+    if (signalFiles(full).length > 1 && convert(source, longFull, ['--layout', 'long'])) {
+      const table = read(longFull, 'signals.csv');
+      if (table && table.rows.length > 0) {
+        const channels = [...new Set(table.rows.map((row) => row.split(',')[1]))];
+        for (const column of channels) {
+          const out = path.join(work, `long-${longs}`);
+          if (!convert(source, out, ['--layout', 'long', '--channels', column])) continue;
+          const narrowed = read(out, 'signals.csv');
+          if (!narrowed) continue;
+          longs++;
+          const mine = table.rows.filter((row) => row.split(',')[1] === column);
+          if (mine.length !== narrowed.rows.length) {
+            problems.push(
+              `${name} long "${column}": full holds ${mine.length} rows, --channels wrote ${narrowed.rows.length}`,
+            );
+            continue;
+          }
+          /*
+            The two times are roundings of one instant to different widths, so they are
+            compared at the coarser of the two: 0.33333 and 0.3333 are the same sample, and
+            `Number(a) === Number(b)` says they are not.
+          */
+          const places = (text) => (text.split('.')[1] ?? '').length;
+          const differs = mine.findIndex((row, i) => {
+            const a = row.split(','), b = (narrowed.rows[i] ?? '').split(',');
+            if (a[1] !== b[1] || a[2] !== b[2]) return true;
+            const to = Math.min(places(a[0] ?? ''), places(b[0] ?? ''));
+            return Number(a[0]).toFixed(to) !== Number(b[0]).toFixed(to);
+          });
+          if (differs >= 0) {
+            problems.push(
+              `${name} long "${column}": row ${differs} is "${mine[differs]}" in full and "${narrowed.rows[differs]}" alone`,
+            );
+          }
+        }
+      }
+    }
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -142,7 +203,8 @@ if (problems.length > 0) {
 } else {
   console.log(
     `${columns.toLocaleString('en-US')} single-channel selections and ` +
-      `${windows.toLocaleString('en-US')} windows checked over ${names.length} recordings.`,
+      `${windows.toLocaleString('en-US')} windows checked over ${names.length} recordings,\n` +
+      `plus ${longs.toLocaleString('en-US')} single-channel selections in the long layout.`,
   );
   console.log('Narrowing a conversion returned exactly the part it names.');
 }

@@ -572,6 +572,8 @@ The cost is size. A wide row carries one time for every channel; a long row repe
 
 The `time_s` precision is shared across rates in the long layout — the finest any of them needs — because one column cannot mean three things. A recording mixing 256 Hz and 1 Hz writes both at eight decimal places.
 
+It is the finest rate *in the conversion*, not in the file, so `--channels` can change the width of the column. Converting a mixed-rate recording to `--layout long` and then converting one of its channels again gives the same instants at whatever precision that channel alone needs — `0.3333` where the full table wrote `0.33333`. The values are identical and so is their order; only the rounding of the shared column moves. In the wide layout this cannot happen, because each rate already has its own file and its own precision.
+
 ## --bom
 
 Starts each CSV with a UTF-8 byte order mark — the three bytes `EF BB BF`. Off by default.
