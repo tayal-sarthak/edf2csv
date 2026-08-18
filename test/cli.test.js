@@ -491,6 +491,48 @@ describe('stale output detection', () => {
   // exponent rates (signals_1_000e-7hz.csv). Neither matched the pattern that recognises
   // this tool's own files, so leftovers of exactly those kinds went unreported — the one
   // situation the warning exists for.
+  it('accepts a destination whose last component is a dot', async () => {
+    /*
+      `prepareOutputDir` claims the final component with one non-recursive mkdir after
+      creating its parents recursively, which is what makes two conversions racing for the
+      same directory safe. `path.dirname("out/.")` is `"out"`, so for a destination ending in
+      `.` the parent step created the destination itself and the claim then asked for `.`
+      inside it, which always exists.
+
+      The run refused a directory it had just made, one line after making it — exit 1, no
+      conversion, and an empty directory left on disk. `--force` did not help: the claim fails
+      the same way whatever it is told, so the path was unusable rather than occupied.
+    */
+    const dir = await outDir();
+    // Built by concatenation on purpose: path.join collapses the dot, so joining would
+    // hand the CLI an already-normalised path and test nothing.
+    const dotted = `${path.join(dir, 'fresh')}${path.sep}.`;
+    const ran = await cli([fixture('tiny.edf'), '--out', dotted]);
+    assert.equal(ran.code, 0, ran.stderr);
+    assert.deepEqual(
+      (await readdir(path.join(dir, 'fresh'))).sort(),
+      ['channels.csv', 'metadata.json', 'signals.csv'],
+      'the conversion must land in the directory the dot names',
+    );
+
+    /*
+      And `..`, which names the parent. That one really does already exist, so refusing is
+      right — what was wrong is that it created the component before it in order to find out.
+    */
+    const parented = `${path.join(dir, 'nested')}${path.sep}..`;
+    const up = await cli([fixture('tiny.edf'), '--out', parented]);
+    assert.notEqual(up.code, 0, up.stderr);
+    await assert.rejects(
+      readdir(path.join(dir, 'nested')),
+      'nothing may be created on the way to refusing',
+    );
+
+    // A leading `./` is how the directory is found on disk, so it is left exactly as given.
+    const here = await cli([fixture('tiny.edf'), '--out', './keeps-its-spelling'], { cwd: dir });
+    assert.equal(here.code, 0, here.stderr);
+    assert.match(here.stderr, /^Wrote \.\/keeps-its-spelling$/mu, here.stderr);
+  });
+
   it('recognises every filename shape it can produce, and ignores files it cannot', async () => {
     const dir = await outDir();
     await mkdir(dir, { recursive: true });

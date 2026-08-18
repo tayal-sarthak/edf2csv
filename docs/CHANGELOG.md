@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.15
+
+### a destination ending in a dot was refused after being created
+
+```
+$ edf2csv rec.edf --out ./fresh/.
+error: "./fresh/." already exists.
+       Pass --force to overwrite it, or --out to choose a different directory.
+```
+
+`./fresh` did not exist. This run made it, one line before refusing it, and then left it there
+empty and converted nothing.
+
+`prepareOutputDir` claims the destination with a single non-recursive `mkdir` after creating
+its parents recursively. That is deliberate and load-bearing: it is what makes two conversions
+racing for the same directory safe, because exactly one of them can win the claim and the other
+gets `EEXIST` from the filesystem rather than from a check with a window in it.
+
+The parent is `path.dirname(dir)`, and `path.dirname("fresh/.")` is `"fresh"`. So for a
+destination whose last component is `.`, the recursive parent step creates the destination
+itself, and the claim then asks the filesystem to make `.` inside it — which exists in every
+directory that has ever existed. `EEXIST` comes back, and the already-exists branch reports a
+collision with a directory this run had just created.
+
+`--force` does not rescue it. The claim fails identically whatever it is told, so the path was
+not occupied, it was unusable — and the message sent the reader looking for output that was
+never there.
+
+`..` was the same shape with a truer message: `--out newdir/..` names the parent, which really
+does already exist, so refusing was right. What was wrong is that it created `newdir` in order
+to find that out and left it behind.
+
+Both are fixed by normalising the destination, and only these: the test is that the last
+component is `.` or `..`, which are the two that name something other than themselves.
+`--out ./converted` keeps the spelling it was given, because that one is already how the
+directory is found on disk — which is what `output_dir` is documented to be — and rewriting it
+to `converted` would churn every example on the site for nothing.
+
+**The test that nearly was not one.** The first version built the path with
+`path.join(dir, 'fresh', '.')`, and `path.join` collapses the dot before it goes anywhere, so
+it handed the CLI an already-normalised path and passed against the unfixed code. It builds the
+string by concatenation now, and fails without the fix.
+
 ## 0.7.14
 
 ### "what each one covers" covered fifteen of fifty

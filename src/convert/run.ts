@@ -200,7 +200,30 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       };
     }
 
-    const outputDir = options.outputDir ?? defaultOutputDir(inputPath);
+    /*
+      A destination whose last component is `.` or `..` does not name a directory of its own.
+
+      `prepareOutputDir` claims the final component with a single non-recursive mkdir, having
+      created its parents recursively — which is what makes two conversions racing for one
+      directory safe. `path.dirname("out/.")` is `"out"`, so for these the parent step creates
+      the destination itself and the claim then asks the filesystem to make `.` inside it,
+      which always exists. The result was a refusal naming a directory this same run had just
+      made, one line after making it:
+
+          edf2csv rec.edf --out ./fresh/.
+          error: "./fresh/." already exists.
+                 Pass --force to overwrite it, or --out to choose a different directory.
+
+      Exit 1, nothing converted, and an empty `fresh/` left on disk. `--force` does not help:
+      the claim fails the same way whatever it is told, so the path was unusable rather than
+      occupied.
+
+      Normalised only in that case, so `--out ./converted` keeps the spelling it was given —
+      that one is already how the directory is found on disk, which is what `output_dir`
+      promises, and rewriting it to `converted` would churn every example for no gain.
+    */
+    const asked = options.outputDir ?? defaultOutputDir(inputPath);
+    const outputDir = /(?:^|[\\/])\.\.?$/u.test(asked) ? path.normalize(asked) : asked;
     await assertInputDoesNotOverlapOutputs(inputPath, outputDir, file, plan, options);
     await prepareOutputDir(outputDir, options.force === true);
 
