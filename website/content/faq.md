@@ -332,8 +332,9 @@ digital = (signals["EEG Fpz-Cz"] / gain - offset).round().astype("int64")
 
 The rounding recovers the original integer exactly, because the written decimals are always fine
 enough to keep adjacent digital codes distinct. `npm run roundtrip` checks that across the
-calibration space — 13,440 cells over 840 combinations of digital and physical bounds, EDF and
-BDF, down to a magnetometer's ±1e-16 — and every one comes back as the code the file holds.
+calibration space — 20,160 cells over 1,260 combinations of digital and physical bounds, EDF and
+BDF, down to a magnetometer's ±1e-16 and including the bounds written the wrong way round — and
+every one comes back as the code the file holds.
 
 Two things this depends on. Take the gain from `channels.csv` rather than from what you believe
 the recording's range to be: EDF's physical bound fields are 8 characters, so a header asked for

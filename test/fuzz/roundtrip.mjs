@@ -46,6 +46,22 @@ export const PHYSICAL_PAIRS = [
     lost 69% of its codes. This pair reaches the clamp, which is the point of having it.
   */
   [-1e-16, 1e-16],
+  /*
+    And the same ranges written the wrong way round, which is a channel this tool converts on
+    purpose and this sweep had never seen.
+
+    A header is free to say `physical_min 100, physical_max -100`, and real ones do:
+    INVERTED_PHYSICAL_RANGE reports it and the conversion goes ahead "exactly as the header
+    specifies, inversion included". Every pair above ascends, and the digital pairs are
+    filtered to ascend too, so every calibration this sweep had ever round-tripped had a
+    positive gain — while the claim it stands behind is about recovering a digital code from
+    a CSV cell, and the recipe for that divides by a gain whose sign it takes from the file.
+
+    Rounding is where a sign is easiest to get wrong: `Math.round` breaks ties toward positive
+    infinity, so a value landing halfway between two codes goes one way on an upright channel
+    and the other way on its mirror image.
+  */
+  [250, -250], [100, -100], [1, -1], [40, 0], [1e-16, -1e-16],
 ];
 /** Samples in the single record each calibration is written with. One cell each. */
 export const SAMPLES_PER_CALIBRATION = 16;

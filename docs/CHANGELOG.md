@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.36
+
+### every calibration the round-trip sweep tried had a positive gain
+
+Claim 6 is the reason this tool has no raw-digital output mode: the written decimals are always
+fine enough to get the original integer back, and the FAQ prints the arithmetic for doing it.
+
+```python
+digital = (signals["EEG Fpz-Cz"] / gain - offset).round().astype("int64")
+```
+
+The sweep behind it crossed seven digital minima, six maxima and ten physical pairs. Every
+physical pair ascends, and the digital pairs are filtered to ascend too — so **every calibration
+it had ever round-tripped had a positive gain**. A channel whose header says
+`physical_min 100, physical_max -100` is one this tool converts on purpose: `INVERTED_PHYSICAL_RANGE`
+reports it and the conversion goes ahead "exactly as the header specifies, inversion included",
+there are two fixtures for it and a table row on this page about getting the sign rule right.
+Its digital codes had never been recovered from a cell.
+
+Five reversed pairs are crossed now, taking the sweep from **13,440 cells over 840 calibrations
+to 20,160 over 1,260**. Every one comes back exactly, so the arithmetic holds for a negative
+gain as it does for a positive one — including the rounding, which is where a sign is easiest to
+lose, since `Math.round` breaks ties toward positive infinity and a value halfway between two
+codes therefore goes one way on an upright channel and the other way on its mirror image.
+
+Confirmed capable of failing, and confirmed that the old shape was not. Drop the `Math.abs`
+from `quantizationStep`, so an inverted channel's step comes out negative and the precision
+falls back to three decimals:
+
+```
+20160 cells over 1260 calibrations.
+1820 did not recover:
+  EDF digital -32768..32767, physical 1..-1: cell "0.867" gives -28410, file holds -28399
+```
+
+The same source, under the sweep as it was:
+
+```
+13440 cells over 840 calibrations.
+Every cell recovered the digital code the file holds.
+```
+
 ## 0.7.35
 
 ### the batch sweep compared directory names and called them bytes
