@@ -22,6 +22,7 @@
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -161,6 +162,57 @@ try {
     return (n < 32 && n !== 10 && n !== 13) || (n >= 127 && n <= 159);
   });
   if (control.length > 0) problems.push(`the refusal itself carried ${control.length} control bytes`);
+
+  /*
+    And the command that refusal offers, which is the only line in the tool that has to be
+    pasted rather than read. It said:
+
+        edf2csv <recording> --stdout --gzip > signals.csv.gz
+
+    `<recording>` is a redirect. A shell looks for a file called `recording`, does not find
+    one, and the command never runs — or finds one and hands edf2csv a stream it does not
+    read. The recording is right there in the invocation being refused, and exactly one of
+    them reaches this line.
+
+    Checked by running it: the printed line goes to /bin/sh with `edf2csv` replaced by this
+    Node and this CLI, and a gzip stream has to land where it says it will. The awkward name
+    is the case that decides whether quoting was thought about at all.
+  */
+  const spaced = path.join(work, 'a steady one.edf');
+  copyFileSync(steady, spaced);
+  for (const [recording, what] of [[steady, 'an ordinary name'], [spaced, 'a name with a space']]) {
+    const refusal = underTty([CLI, recording, '--stdout', '--gzip', '--channels', 'ch0']);
+    checked++;
+    const offered = refusal.output
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find((line) => line.startsWith('edf2csv '));
+    if (offered === undefined) {
+      problems.push(`${what}: the refusal offered no command to run`);
+      continue;
+    }
+    if (offered.includes('<recording>')) {
+      problems.push(`${what}: the command is a placeholder a shell reads as a redirect: ${offered}`);
+      continue;
+    }
+    const target = path.join(work, `pasted-${recording === steady ? 'plain' : 'spaced'}.gz`);
+    const command = offered.replace(
+      /^edf2csv /u,
+      `${JSON.stringify(process.execPath)} ${JSON.stringify(CLI)} `,
+    ).replace(/> signals\.csv\.gz$/u, `> ${JSON.stringify(target)}`);
+    const pasted = spawnSync('/bin/sh', ['-c', command], { encoding: 'latin1' });
+    if (pasted.status !== 0) {
+      problems.push(`${what}: the offered command exited ${pasted.status}: ${command}`);
+    } else if (!existsSync(target)) {
+      problems.push(`${what}: the offered command wrote nothing to its destination`);
+    } else {
+      const head = readFileSync(target);
+      // 1f 8b is the gzip magic; anything else means the redirect landed somewhere odd.
+      if (head[0] !== 0x1f || head[1] !== 0x8b) {
+        problems.push(`${what}: what the offered command wrote is not a gzip stream`);
+      }
+    }
+  }
 
   // And the ordinary success, where the meter must also leave no residue behind the summary.
   const ok = underTty([CLI, steady, '--out', path.join(work, 'ok'), '--channels', 'ch0']);

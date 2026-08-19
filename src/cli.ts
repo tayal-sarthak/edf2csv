@@ -442,10 +442,26 @@ export async function main(argv: readonly string[]): Promise<number> {
     is where a reader's expectation comes from.
   */
   if (toStdout && values['gzip'] === true && process.stdout.isTTY === true) {
+    /*
+      `<recording>` is not a placeholder a shell leaves alone.
+
+      This line is printed on its own, indented, in the shape every command this tool offers
+      is printed in — and 0.7.18 and 0.7.19 went through the others making sure each one can
+      be pasted. Pasted, `<recording>` is a redirect: the shell looks for a file called
+      `recording` and the command never runs, or one exists and edf2csv is handed a recording
+      on stdin, which it does not read. Either way the answer to "what do I type instead"
+      does not survive being typed.
+
+      The name is in the invocation being refused, and exactly one of them reaches here: a
+      folder and a second recording are both turned away above. Quoted by the same rule as
+      the other two hints, so a path with a space in it stays one argument.
+    */
+    const named = printable(inputs[0] as string);
     process.stderr.write(
       'error: --stdout --gzip would write compressed bytes straight to the terminal.\n' +
         detail('Redirect it to a file or a pipe:') +
-        `       edf2csv <recording> --stdout --gzip > signals.csv.gz\n`,
+        `       edf2csv ${survivesBare(named) ? named : singleQuoted(named)} ` +
+        `--stdout --gzip > signals.csv.gz\n`,
     );
     return EXIT_USAGE;
   }

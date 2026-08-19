@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.29
+
+### the last hint that printed a command a shell reads as a redirect
+
+The last hint in this tool that printed a command nobody can paste:
+
+```
+$ edf2csv sleep-study.edf --stdout --gzip
+error: --stdout --gzip would write compressed bytes straight to the terminal.
+       Redirect it to a file or a pipe:
+       edf2csv <recording> --stdout --gzip > signals.csv.gz
+```
+
+`<recording>` is not a blank to fill in as far as a shell is concerned — it is a redirect. Paste
+that line and the shell looks for a file called `recording`, does not find one, and the command
+never runs; and on the machine where one does exist, edf2csv is handed a stream it never reads
+and answers about a missing recording instead. Angle brackets are a fine convention in an
+options table, which is where `--out <dir>` lives. This line is not in a table: it is indented on
+its own in the shape 0.7.18 and 0.7.19 went through making pasteable, and it is the only line in
+the tool whose whole job is to be copied.
+
+The name is in the invocation being refused, and exactly one of them reaches here — a folder and
+a second recording are both turned away further up — so the hint now says it, quoted by the same
+rule as the other two:
+
+```
+       edf2csv sleep-study.edf --stdout --gzip > signals.csv.gz
+       edf2csv 'a steady one.edf' --stdout --gzip > signals.csv.gz
+```
+
+Checked by running it. The refusal only happens on a real terminal, so the check lives in the
+pseudo-terminal sweep with the rest of what only a terminal can be wrong about: the printed line
+goes to `/bin/sh` with `edf2csv` replaced by this Node and this CLI, and the bytes that land at
+the destination have to start `1f 8b`. Two recordings, one of them named with a space in it,
+which is the case that decides whether quoting was thought about at all. The sweep goes from
+three runs to five.
+
 ## 0.7.28
 
 ### a hint suggested a conversion that changes nothing it describes

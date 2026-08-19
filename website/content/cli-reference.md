@@ -645,8 +645,12 @@ command above and `| gunzip` are unaffected.
 ```
 error: --stdout --gzip would write compressed bytes straight to the terminal.
        Redirect it to a file or a pipe:
-       edf2csv <recording> --stdout --gzip > signals.csv.gz
+       edf2csv sleep-study.edf --stdout --gzip > signals.csv.gz
 ```
+
+The last line names the recording the refused command named, quoted if the shell would need it
+to be, so it can be pasted back. It used to read `<recording>`, which a shell treats as a
+redirect rather than as a blank to fill in.
 
 `--info` reports the estimate as the size **before** compression, since what compression achieves depends on the data:
 
