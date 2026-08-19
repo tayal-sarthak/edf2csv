@@ -168,6 +168,74 @@ describe('errors', () => {
     // Restored so the temporary directory can be removed on the way out.
     await chmod(denied, 0o644);
   });
+
+  it('refuses the two headers whose refusals nothing had ever asked for', async () => {
+    /*
+      `INVALID_SIGNAL_COUNT` and `INVALID_RECORD_DURATION` are two of the eight fatal errors.
+      Both are named in the exported union, both have a section in warnings-and-errors.md
+      quoting the exact line they print, and neither had ever been raised by anything in this
+      suite — the only occurrence of either name under test/ was the docs cross-check, which
+      reads the pages and confirms a code documented somewhere is documented everywhere. That
+      is a check on prose. Nothing had ever handed the parser a header that produces one.
+
+      Which is measurable rather than a worry: weaken both guards — `signalCount < 0` and
+      `!(recordDuration >= 0)`, the off-by-one either would be written as — and all 384 tests
+      still pass. What gets through then is not caught further down so much as mislabelled. A
+      record duration of zero makes every rate in the file `samples / 0`, and the run ends on
+
+          error: --start 0s is at or past the end of this 0s recording.
+
+      naming an option the command line never carried, about a recording whose real problem is
+      four bytes in its header.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-refusals-'));
+    temporaries.push(scratch);
+    const source = path.join(scratch, 'one.edf');
+    writeEdf({
+      path: source,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 2, gen: () => 500 },
+      ],
+    });
+    const original = await readFile(source);
+
+    // The last twelve bytes of the fixed header: duration of a data record, then the
+    // number of signals. Same layout the parser reads them from.
+    const RECORD_DURATION = [244, 8];
+    const SIGNAL_COUNT = [252, 4];
+    const patched = ([at, width], field) => {
+      const bytes = Buffer.from(original);
+      bytes.write(field.padEnd(width).slice(0, width), at, 'latin1');
+      return bytes;
+    };
+
+    for (const [at, field, code, message] of [
+      [SIGNAL_COUNT, '0', 'INVALID_SIGNAL_COUNT', 'Header declares 0 signals; expected at least 1.'],
+      [SIGNAL_COUNT, '-1', 'INVALID_SIGNAL_COUNT', 'Header declares -1 signals; expected at least 1.'],
+      [RECORD_DURATION, '0', 'INVALID_RECORD_DURATION',
+        'Header declares a data record duration of 0s; expected a positive number.'],
+      [RECORD_DURATION, '-1', 'INVALID_RECORD_DURATION',
+        'Header declares a data record duration of -1s; expected a positive number.'],
+      [RECORD_DURATION, '-0.001', 'INVALID_RECORD_DURATION',
+        'Header declares a data record duration of -0.001s; expected a positive number.'],
+    ]) {
+      assert.throws(
+        () => parseHeader(patched(at, field), original.length),
+        (error) => error.code === code && error.message === message,
+        `"${field}" at ${at[0]} was accepted, or refused in other words`,
+      );
+    }
+
+    // And the smallest header either guard permits is still read: one signal, one second.
+    const { header } = parseHeader(original, original.length);
+    assert.equal(header.signals.length, 1);
+    assert.equal(header.recordDuration, 1);
+  });
 });
 
 describe('digital to physical conversion', () => {

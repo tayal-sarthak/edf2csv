@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.44
+
+### two fatal errors nothing had ever provoked
+
+Two of the eight fatal errors had never been raised by anything in this suite.
+
+`INVALID_SIGNAL_COUNT` and `INVALID_RECORD_DURATION` are both in the exported union, both
+have a section in warnings-and-errors.md quoting the exact line they print, and the only
+occurrence of either name under `test/` was the documentation cross-check — which reads the
+pages and confirms that a code documented on one is documented on all three. That is a check
+on prose. Nothing had ever handed the parser a header that produces one.
+
+Measurable rather than a worry. Weaken both guards to the off-by-one each would be written
+as:
+
+```
+-  if (signalCount <= 0) {                 +  if (signalCount < 0) {
+-  if (!(recordDuration > 0)) {            +  if (!(recordDuration >= 0)) {
+```
+
+and all 384 tests pass. What gets through is not caught further down so much as mislabelled.
+A record duration of zero makes every sampling rate in the file `samples / 0`, and the run
+ends on:
+
+```
+$ edf2csv zero-duration.edf --info
+error: --start 0s is at or past the end of this 0s recording.
+```
+
+naming an option the command line never carried, about a recording whose real problem is four
+bytes of its header. A signal count of zero comes out as "No signal in this file carries any
+samples", which describes a file full of empty channels rather than one that declares none.
+
+Both guards now have a test that hands the parser the header and asserts the code and the
+whole sentence, at zero and below zero and at a fractional negative, with the one-signal
+one-second header beside them as the smallest thing either check has to let through.
+
 ## 0.7.43
 
 ### a hex physical maximum was read as the number it spells
