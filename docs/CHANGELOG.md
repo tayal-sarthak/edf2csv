@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.32
+
+### the crash sweep ran four of the nine ways a file can be converted
+
+Claim 4 says a damaged file is reported rather than crashed, without qualification:
+
+> **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte
+> and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace.
+
+The sweep behind it ran each corrupted file four ways: `--info`, `--info --json`, a conversion,
+and a conversion with `--gzip`. Everything else the tool can be asked to do with a broken file
+was outside the claim that says it never crashes — `--layout long`, which has its own row
+writer and has shipped four defects, every one because nothing exercised it; `--stdout`, which
+has no directory behind it for a failure path to name; `--annotations-only`, which skips the
+signal writing altogether; a window, which is record arithmetic on a header the damage may
+have made nonsense of; and `--channels`, which rebuilds the plan from a selection and is how a
+rate group ends up in a differently-named file.
+
+All five are crossed now. Nine invocations per file takes the sweep from **1,200 runs to
+2,700**, and every one of them exits 0, 1 or 2 with something to say — at the default seed,
+and at two others tried while writing this, one of them over 400 files. So the code was right;
+what was missing was the sentence above it being true of more than four commands.
+
+The invocation list is exported rather than written inline, because the page states the file
+count multiplied by it. Adding a fifth would have made "1,200 runs" wrong by 300 with nothing
+to notice — and five were added at once. `states harness sizes that match the harnesses
+themselves` now recomputes it, as it already does for the estimate, layout and round-trip
+sweeps, and both places the page prints the number are held to the same product.
+
+The sweep takes about two minutes now rather than thirty-five seconds. It is one of seven CI
+runs on every push, and the thing it is looking for is a stack trace nobody would otherwise
+see until a real file produced one.
+
 ## 0.7.31
 
 ### the headline accuracy figures were checked by nothing

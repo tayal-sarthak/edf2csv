@@ -41,6 +41,40 @@ const SEEDS = [
   'biosemi.bdf',
 ].map((name) => path.join(FIXTURES, name));
 
+/**
+ * What each corrupted file is put through.
+ *
+ * Four of these for a long time — a survey, its JSON, a conversion and a compressed one —
+ * and the claim above them said a damaged file is reported rather than crashed, without
+ * qualification. So the layout with its own row writer, the destination with no directory
+ * behind it, the path that skips the signal writing altogether, the window resolver and the
+ * plan rebuilt from a selection were all outside it. The long layout is the one that most
+ * wanted covering: it has shipped four defects, every one of them because nothing exercised
+ * it, and it is the writer a corrupt rate group reaches by a different route.
+ *
+ * Exported because the page states this count multiplied by the file count, and the two had
+ * nothing joining them. A fifth invocation added tomorrow makes the page wrong by 300 runs.
+ */
+export const INVOCATIONS = [
+  () => ['--info'],
+  () => ['--info', '--json'],
+  (dir, i) => ['--out', path.join(dir, `out${i}`), '--quiet'],
+  // The compressed path puts a transform between the writer and the file, which is
+  // its own set of failure routes; 0.3.1 shipped a crash that lived only there.
+  (dir, i) => ['--out', path.join(dir, `gz${i}`), '--quiet', '--gzip'],
+  (dir, i) => ['--out', path.join(dir, `long${i}`), '--quiet', '--layout', 'long'],
+  // No directory behind it, so the failure paths that name one have nothing to name.
+  () => ['--stdout'],
+  (dir, i) => ['--out', path.join(dir, `ann${i}`), '--quiet', '--annotations-only'],
+  // A window is record arithmetic on a header the damage may have made nonsense of.
+  (dir, i) => ['--out', path.join(dir, `win${i}`), '--quiet', '--start', '0.5', '--end', '1.5'],
+  // And a plan rebuilt from a selection, which is how a rate group lands in another file.
+  (dir, i) => ['--out', path.join(dir, `ch${i}`), '--quiet', '--channels', '#0'],
+];
+
+/** Corrupted files per run, unless a different count is asked for. */
+export const DEFAULT_FILES = 300;
+
 /** Ways a corrupted run may end. Anything else is the bug this is looking for. */
 const ALLOWED_EXITS = new Set([0, 1, 2]);
 
@@ -52,7 +86,7 @@ function random(seed) {
   return () => (state = (state * 1103515245 + 12345) % 2147483648) / 2147483648;
 }
 
-export function fuzz(seed = 1, files = 300) {
+export function fuzz(seed = 1, files = DEFAULT_FILES) {
   const rnd = random(seed);
   const int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 
@@ -80,14 +114,8 @@ export function fuzz(seed = 1, files = 300) {
       const file = path.join(dir, `m${i}${path.extname(source)}`);
       writeFileSync(file, bytes);
 
-      for (const args of [
-        ['--info'],
-        ['--info', '--json'],
-        ['--out', path.join(dir, `out${i}`), '--quiet'],
-        // The compressed path puts a transform between the writer and the file, which is
-        // its own set of failure routes; 0.3.1 shipped a crash that lived only there.
-        ['--out', path.join(dir, `gz${i}`), '--quiet', '--gzip'],
-      ]) {
+      for (const build of INVOCATIONS) {
+        const args = build(dir, i);
         runs++;
         let code = 0;
         let stderr = '';

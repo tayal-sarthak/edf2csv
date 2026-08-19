@@ -1111,6 +1111,25 @@ describe('documentation and source agree on their lists', () => {
       'the pasted layout output counts the same recordings the claim above does',
     );
 
+    /*
+      The fuzz sweep the same way, and it is the one whose second number moves: the claim is
+      "1,200 runs over 300 corrupted recordings", which is the file count times how many ways
+      each file is run. That list lived inline in the harness, so adding a fifth invocation
+      made the page wrong by 300 runs with nothing to say so — and five were added at once.
+    */
+    const mutate = await import(path.join(ROOT, 'test/fuzz/mutate.mjs'));
+    const damaged = /([\d,]+) runs over ([\d,]+) corrupted recordings/gu;
+    const fuzzed = [...page.matchAll(damaged)];
+    assert.ok(fuzzed.length >= 2, 'the page no longer states the fuzz sweep size');
+    for (const [, runs, recordings] of fuzzed) {
+      assert.equal(Number(recordings.replaceAll(',', '')), mutate.DEFAULT_FILES);
+      assert.equal(
+        Number(runs.replaceAll(',', '')),
+        mutate.DEFAULT_FILES * mutate.INVOCATIONS.length,
+        `the page states ${runs} runs; the sweep makes ${mutate.INVOCATIONS.length} per file`,
+      );
+    }
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),
