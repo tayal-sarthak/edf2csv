@@ -1097,6 +1097,85 @@ describe('--info', () => {
     t.diagnostic(`converted ${rows.length - 1} rows from -100s`);
   });
 
+  it('names a clock in a form the clock accepts, however far out it sits', async (t) => {
+    /*
+      Both of these say which numbers there are to ask for, and both said them in a notation
+      the parser refuses.
+
+          Timed from 1e+21s  (first sample; --start and --end use this clock)
+          error: --start "9e21" is at or past the end of this 3e+21s recording,
+                 which runs from 1e+21s to 4e+21s.
+
+          $ edf2csv far.edf --start 1e+21s
+          error: --start "1e+21s" uses an unknown unit "e". Use h, m, s, or ms.
+
+      `toFixed` switches to exponent notation at 1e21 and `Number(...)` puts it back, so the
+      one line whose parenthesis is an instruction — type this back in — ended in a token that
+      is not a time, and so did both bounds of the sentence that exists to name the window.
+      The same 1e21 cliff the CSV cells are already expanded past with BigInt, in the two
+      places that print a clock instead of a column.
+
+      Reachable from a conforming file: an EDF+ onset is plain digits of any length, and a
+      record duration wide enough to keep samples apart out there is four characters. The
+      tokens are taken from what the tool printed rather than written out here, so a fix that
+      changes the notation again has to keep them typeable.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-far-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0x00);
+    const far = path.join(dir, 'far-origin.edf');
+    writeEdf({
+      path: far,
+      reserved: 'EDF+D',
+      numRecords: 3,
+      recordDuration: 1e21,
+      talsForRecord: (record) => `+${(10n ** 21n * BigInt(record + 1)).toString()}${T}${T}${Z}`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 40, annotations: true },
+      ],
+    });
+
+    const info = await cli([far, '--info']);
+    assert.equal(info.code, 0, info.stderr);
+    const timed = /^Timed from (\S+)s {2}\(first sample/mu.exec(info.stdout);
+    assert.ok(timed, `--info printed no origin for a recording that has one:\n${info.stdout}`);
+
+    const fromInfo = await cli([far, '--out', path.join(dir, 'a'), '--quiet',
+      `--start=${timed[1]}s`]);
+    assert.equal(fromInfo.code, 0,
+      `--info said "Timed from ${timed[1]}s" and --start refused it:\n${fromInfo.stderr}`);
+
+    // The other half: the error that names the window hands back two bounds, and both have
+    // to be askable. Its own start is quoted back as the caller typed it, so this reads the
+    // pair after "runs from".
+    const past = await cli([far, '--info', `--start=${(9n * 10n ** 21n).toString()}`]);
+    assert.equal(past.code, 2, past.stderr);
+    const bounds = /runs from (\S+)s to (\S+)s/u.exec(past.stderr);
+    assert.ok(bounds, `the window error named no bounds:\n${past.stderr}`);
+
+    const named = await cli([far, '--out', path.join(dir, 'b'), '--quiet',
+      `--start=${bounds[1]}s`, `--end=${bounds[2]}s`]);
+    assert.equal(named.code, 0,
+      `the error offered ${bounds[1]}s to ${bounds[2]}s and refused them:\n${named.stderr}`);
+    const rows = (await readFile(path.join(dir, 'b', 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length - 1, 12, 'the named bounds are the whole recording');
+
+    // Ordinary magnitudes keep the rendering they had, down to the trailing zeros: this is a
+    // notation change at 1e21 and nowhere else.
+    assert.match((await cli([fixture('late-start.edf'), '--info'])).stdout,
+      /^Timed from 30\.000s {2}\(first sample/mu);
+    assert.match((await cli([fixture('negative-origin.edf'), '--info'])).stdout,
+      /^Timed from -100\.000s {2}\(first sample/mu);
+    assert.match((await cli([fixture('tiny.edf'), '--info', '--start=99'])).stderr,
+      /at or past the end of this 2s recording/u);
+    t.diagnostic(`origin printed as ${timed[1]}s, window as ${bounds[1]}s to ${bounds[2]}s`);
+  });
+
   // The estimate exists so someone can decide whether a conversion is worth starting. Reading
   // low is the one direction that makes it useless, so it is checked against every fixture
   // rather than against the one calibration that happened to expose the last shortfall.

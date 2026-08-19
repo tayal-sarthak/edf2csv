@@ -7,7 +7,7 @@
  * a message that shows the forms that work.
  */
 
-import { formatDuration } from '../format/number.js';
+import { fixed, formatDuration } from '../format/number.js';
 
 export class TimeRangeError extends Error {
   constructor(message: string) {
@@ -424,5 +424,15 @@ function quoted(text: string | undefined, seconds: number): string {
 }
 
 function formatSeconds(seconds: number): string {
-  return `${Number(seconds.toFixed(3))}s`;
+  /*
+    The same 1e21 cliff, in the bounds this message hands back.
+
+    `--start "9e21"` was answered with "is at or past the end of this 3e+21s recording, which
+    runs from 1e+21s to 4e+21s" — a sentence whose whole purpose is to say what window there
+    is to ask for, ending in two tokens the parser refuses: `--start 1e+21s` is "uses an
+    unknown unit \"e\"". `Number(...)` was here to drop the trailing zeros, and it also
+    re-introduced the exponent form that `toFixed` had produced.
+  */
+  const text = fixed(seconds, 3);
+  return `${text.includes('.') ? text.replace(/\.?0+$/u, '') : text}s`;
 }

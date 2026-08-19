@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.21
+
+### two lines named a clock in a notation the clock refuses
+
+Two lines whose whole purpose is to say which numbers you may ask for, saying them in a
+notation the parser refuses.
+
+```
+$ edf2csv far.edf --info
+Timed from 1e+21s  (first sample; --start and --end use this clock)
+
+$ edf2csv far.edf --start 9000000000000000000000
+error: --start "9000000000000000000000" is at or past the end of this 3e+21s
+       recording, which runs from 1e+21s to 4e+21s.
+
+$ edf2csv far.edf --start 1e+21s
+error: --start "1e+21s" uses an unknown unit "e". Use h, m, s, or ms.
+```
+
+The parenthesis on the first line is an instruction — type this back in — and the sentence on
+the second exists to name the window there is to ask for. All three tokens are rejected. The
+time parser refuses exponent form deliberately, for the same reason `--decimals` refuses
+`0o5`: it is a form nobody types.
+
+`toFixed` switches to exponent notation at 1e21, which `fixed` in the number formatter has
+expanded with BigInt since the day a CSV cell read `1e+21.000`. These are the two places that
+print a clock rather than a column, and neither went through it — the second re-introduced the
+exponent a third way, through the `Number(...)` that was there to drop trailing zeros.
+
+Reachable from a conforming file: an EDF+ timekeeping onset is plain digits of any length, and
+a record duration wide enough to keep samples apart out there fits the header's eight
+characters. Below 1e21 nothing moves — `Timed from 30.000s`, `-100.000s` and `this 2s
+recording` are byte-for-byte what they were, since `fixed` is `toFixed` everywhere else and
+normalises only negative zero.
+
+The recording's *length* is still written as the file states it, `3e+21s`. That one is a
+description beside `Size`, not a bound to ask for, and `formatDuration` says why it declines
+to decompose a figure that size.
+
 ## 0.7.20
 
 ### a padded annotation duration was read as a zero

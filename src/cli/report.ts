@@ -8,7 +8,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
-import { formatBytes, formatDuration } from '../format/number.js';
+import { fixed, formatBytes, formatDuration } from '../format/number.js';
 import { counted } from '../format/list.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
@@ -186,8 +186,16 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     // In seconds rather than through formatDuration, because this number is meant to be
     // typed back in: `--start` takes `1000s`, and "16m 40s" is not something it accepts.
     // It is also how the empty-window warning renders the window it was given.
+    //
+    // Through `fixed` rather than `toFixed`, which switches to exponent notation at 1e21 —
+    // and `--start 1e+21s` is refused by the time parser with "uses an unknown unit \"e\"",
+    // so the one line that says which clock to use handed back a number that clock rejects.
+    // Reachable from a conforming file: an EDF+ onset is plain digits of any length, and a
+    // record duration large enough to keep samples apart at that magnitude is four
+    // characters. `fixed` expands these with BigInt, which is exact past 2^53 where a double
+    // carries no fraction anyway, and is byte-for-byte `toFixed` everywhere else.
     lines.push(
-      `Timed from ${startsAt.toFixed(3)}s  (first sample; --start and --end use this clock)`,
+      `Timed from ${fixed(startsAt, 3)}s  (first sample; --start and --end use this clock)`,
     );
   }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
