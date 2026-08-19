@@ -1954,6 +1954,28 @@ function optionalDecimals(raw: unknown): number | undefined {
  * Node's remaining two — a switch given a value, an option missing its value — say something true
  * in words a reader can act on, and replacing them with near-identical sentences would be churn.
  */
+/**
+ * A token as it has to be typed for a shell to hand it over unchanged.
+ *
+ * Every hint in this file that prints a command has to print one that works — the comment on
+ * the `--channels` advice in the header parser lists three separate times it did not. These
+ * two are the same failure at the command line rather than in a channel label. `--out "-my
+ * nightly"` was answered with `Write it as one argument instead: --out=-my nightly`, which is
+ * two arguments; `--chan"nels` was answered with `edf2csv -- "--chan"nels"`, whose quotes
+ * collapse into something else again.
+ *
+ * Left bare when a shell would read it as written, so the ordinary `--out=-nightly` reads as
+ * it always has. Otherwise single-quoted, the one POSIX form with no escapes inside it: a
+ * single quote in the token closes, escapes and reopens.
+ */
+function survivesBare(text: string): boolean {
+  return text !== '' && !/[^\w@%+=:,./-]/u.test(text);
+}
+
+function singleQuoted(text: string): string {
+  return `'${text.replaceAll("'", "'\\''")}'`;
+}
+
 function usageMessage(error: unknown, argv: readonly string[]): string {
   const raw = message(error);
   const code = (error as { code?: unknown } | null)?.code;
@@ -1980,10 +2002,11 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
     failure than the message it replaced, and a silent one. Short options join directly.
   */
   const joined = flag.startsWith('--') ? `${flag}=${value}` : `${flag}${value}`;
+  const typeable = survivesBare(joined) ? joined : singleQuoted(joined);
   return printableLines(
     `error: ${flag} was given "${value}", which begins with a dash and so reads as another ` +
       `flag rather than as its value.\n` +
-      `       Write it as one argument instead: ${joined}`,
+      `       Write it as one argument instead: ${typeable}`,
   );
 }
 
@@ -2051,7 +2074,7 @@ function unknownOption(raw: string): string {
   return printableLines(
     `error: There is no ${flag} option.${near === null ? '' : ` Did you mean ${near}?`}\n` +
       `       If it is the name of a file, pass it after -- instead:\n` +
-      `       edf2csv -- "${flag}"`,
+      `       edf2csv -- ${survivesBare(flag) ? `"${flag}"` : singleQuoted(flag)}`,
   );
 }
 

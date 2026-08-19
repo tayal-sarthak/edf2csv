@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.19
+
+### two more hints printed commands the shell cannot carry
+
+The same defect as 0.7.18, at the command line rather than in a channel label, twice.
+
+```
+$ edf2csv rec.edf --out "-my nightly"
+error: --out was given "-my nightly", which begins with a dash and so reads as another flag rather than as its value.
+       Write it as one argument instead: --out=-my nightly
+```
+
+`--out=-my nightly` is two arguments. Typed as advised, `--out` gets `-my` and `nightly`
+becomes an input file. A quote is worse — `--out=-my"dir` does not parse at all — and the
+unknown-option hint had it too:
+
+```
+$ edf2csv rec.edf --chan"nels" EEG
+       edf2csv -- "--chan"nels"
+```
+
+Both of these are the hint that exists *because* the obvious form does not work. Answering
+"here is how to type it" with something that also does not type is the failure this class
+keeps producing: the header parser's `--channels` advice has now been fixed for an empty
+label, a comma, a control byte and a quote, and these are the same shape one layer out.
+
+A token is left exactly as it was when a shell would read it as written, so `--out=-nightly`
+and `edf2csv -- "--chanels"` are byte-for-byte what they always were and every documented
+example still reads the same. Anything else is single-quoted — the one POSIX form with no
+escapes inside it, where a single quote in the value closes, escapes and reopens:
+
+```
+       Write it as one argument instead: '--out=-my nightly'
+       Write it as one argument instead: '--out=-it'\''s'
+       edf2csv -- '--chan"nels'
+```
+
+Checked by running them. The test takes the token the tool printed, pastes it into `/bin/sh`
+the way a reader would, and asserts a conversion appears in the directory the awkward name
+asks for — a space, a double quote and an apostrophe, the last being the one that makes naive
+quoting wrong rather than merely insufficient. Matching the sentence would have passed against
+the broken form.
+
 ## 0.7.18
 
 ### a hint printed a --channels command the shell cannot carry

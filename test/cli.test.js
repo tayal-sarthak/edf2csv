@@ -189,6 +189,31 @@ describe('argument errors exit 2', () => {
     }
 
     /*
+      And values a shell would take apart, which the advised form has to survive.
+
+      `--out "-my nightly"` was answered with `Write it as one argument instead: --out=-my
+      nightly` — two arguments once typed, so `--out` gets `-my` and `nightly` becomes an
+      input file. A quote was worse: `--out=-my"dir` does not even parse. The hint exists to
+      give a command that works, so these are checked by running the advised token through a
+      shell rather than by matching the sentence.
+    */
+    for (const value of ['-my nightly', '-my"dir', "-it's"]) {
+      const refused = await cli([fixture('tiny.edf'), '--out', value], { cwd: dir });
+      assert.equal(refused.code, 2, refused.stderr);
+      const advised = /Write it as one argument instead: (.+)$/mu.exec(refused.stderr);
+      assert.ok(advised, `no advice for ${JSON.stringify(value)}:\n${refused.stderr}`);
+
+      // Exactly as printed, handed to a shell the way a reader would paste it.
+      const command = `${JSON.stringify(process.execPath)} ${JSON.stringify(CLI)} ` +
+        `${JSON.stringify(fixture('tiny.edf'))} ${advised[1].trim()} --quiet`;
+      await run('/bin/sh', ['-c', command], { cwd: dir });
+      assert.ok(
+        (await readdir(path.join(dir, value))).includes('signals.csv'),
+        `the advised command did not convert into ${JSON.stringify(value)}`,
+      );
+    }
+
+    /*
       An unknown option is this tool's sentence too, and a finished one. Node's ends
       `as in '-- "--nope"` with the quote it opened before `--` never closed, and arrived
       without the `error:` prefix every other refusal here carries.
