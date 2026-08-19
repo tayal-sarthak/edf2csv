@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.34
+
+### a window sweep that could not see a sample fall between two windows
+
+Every check behind claim 8 asks the same question: is a window a *slice* of the full
+conversion? Take the full run as the truth, ask for part of it, and require the part to be the
+part, byte for byte.
+
+A bound that drops the sample sitting exactly on it satisfies that perfectly. So does one that
+writes that sample into both halves. Each window is still a run of consecutive rows in the
+right order, and neither is ever asked about the other — the sweep has no way to notice a row
+that fell between two of them.
+
+Flip the half-open rule so `--start t` excludes the sample at `t`:
+
+```js
+- return time >= startSeconds - tolerance && time < endSeconds - tolerance;
++ return time > startSeconds + tolerance  && time < endSeconds - tolerance;
+```
+
+**Zero** of the 106 selections and 253 windows report anything. That is one sample missing from
+every windowed conversion in the tool, and the sweep whose subject is windows says it is fine.
+
+The arrangement that decides it is `--end t` and `--start t` together, which is the one place
+the rule has to be read both ways at once. **174 pairs** now, cut on a sample — the case the
+window loop deliberately avoids, because there a bound between two samples is compared against
+a rounded column and a bound on a sample asks a question neither answer is wrong about; here it
+is the question — and halfway between two, since a rule that is right at a sample can still
+lose the row after it. Under that same flip, 68 of them fail, the first on the first recording.
+
+Compared as a multiset, because an EDF+D recording may store its data records out of
+chronological order and the rows are written in file order, so cutting it by time and putting
+the halves back together reorders them, correctly. Order is what the slices already establish.
+What the pair adds is that nothing falls between two windows or lands in both.
+
+Every pair holds. The boundary arithmetic was right — including at the negative origin, the
+fractional record start and the overlapping records — and now there is something that would
+have said so.
+
 ## 0.7.33
 
 ### the layout sweep crossed every window and no selection

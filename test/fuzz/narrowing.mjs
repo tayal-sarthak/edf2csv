@@ -59,6 +59,7 @@ const problems = [];
 let columns = 0;
 let windows = 0;
 let longs = 0;
+let partitions = 0;
 
 for (const name of names) {
   const source = path.join(GEN, name);
@@ -129,6 +130,55 @@ for (const name of names) {
         }
         const bad = expected.findIndex((row, i) => row !== narrowed.rows[i]);
         if (bad >= 0) problems.push(`${name}/${fileName} [${start}, ${end}): row ${bad} differs`);
+      }
+
+      /*
+        And that two windows meeting at a bound hold the whole file between them.
+
+        Everything above asks whether a window is a slice of the full conversion. A bound that
+        dropped the sample sitting exactly on it, or wrote it into both halves, passes every
+        one of those checks — each half is still a run of consecutive rows in the right order,
+        and neither is asked about the other. What decides it is `--end t` and `--start t`
+        together, which is the one arrangement where the half-open rule has to be read both
+        ways at once.
+
+        The cut is placed ON a sample, which is the case the loop above deliberately avoids:
+        there a bound between two samples is compared against a rounded column, and a bound on
+        a sample would be asking a question neither answer is wrong about. Here it is the
+        question. A bound halfway between two samples goes in too, since a rule that is right
+        at a sample can still lose the row after it.
+
+        Compared as a multiset, because an EDF+D recording may store its records out of
+        chronological order and the rows are written in file order — so cutting it by time and
+        putting the halves back together reorders them, correctly. Order is what the loop above
+        established; what this adds is that nothing falls between two windows or lands in both.
+      */
+      for (const at of [times[Math.floor(times.length / 2)], between(0.5)]) {
+        if (!Number.isFinite(at)) continue;
+        const before = path.join(work, `part-a-${partitions}`);
+        const after = path.join(work, `part-b-${partitions}`);
+        if (!convert(source, before, [`--end=${at}`])) continue;
+        if (!convert(source, after, [`--start=${at}`])) continue;
+        const first = read(before, fileName);
+        const second = read(after, fileName);
+        if (!first || !second) continue;
+        partitions++;
+        const halves = [...first.rows, ...second.rows].sort();
+        const everything = [...whole.rows].sort();
+        if (halves.length !== everything.length) {
+          problems.push(
+            `${name}/${fileName} cut at ${at}: the whole holds ${everything.length} rows, ` +
+              `the two halves hold ${halves.length} between them`,
+          );
+          continue;
+        }
+        const missing = everything.findIndex((row, i) => row !== halves[i]);
+        if (missing >= 0) {
+          problems.push(
+            `${name}/${fileName} cut at ${at}: row ${missing} is ` +
+              `"${everything[missing]}" in the whole and "${halves[missing]}" across the halves`,
+          );
+        }
       }
     }
 
@@ -204,7 +254,9 @@ if (problems.length > 0) {
   console.log(
     `${columns.toLocaleString('en-US')} single-channel selections and ` +
       `${windows.toLocaleString('en-US')} windows checked over ${names.length} recordings,\n` +
-      `plus ${longs.toLocaleString('en-US')} single-channel selections in the long layout.`,
+      `plus ${longs.toLocaleString('en-US')} single-channel selections in the long layout\n` +
+      `and ${partitions.toLocaleString('en-US')} pairs of windows meeting at a bound.`,
   );
-  console.log('Narrowing a conversion returned exactly the part it names.');
+  console.log('Narrowing a conversion returned exactly the part it names, and two of them');
+  console.log('meeting at a bound returned the whole of it.');
 }
