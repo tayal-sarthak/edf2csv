@@ -60,6 +60,7 @@ let columns = 0;
 let windows = 0;
 let longs = 0;
 let partitions = 0;
+let annotationCuts = 0;
 
 for (const name of names) {
   const source = path.join(GEN, name);
@@ -183,6 +184,57 @@ for (const name of names) {
     }
 
     /*
+      And annotations.csv, which nothing above has ever looked at.
+
+      `signalFiles` matches `signals*.csv`, so every comparison in this sweep is about sample
+      rows. annotations.csv is narrowed by the same window under its own half-open rule — an
+      event at `--start t` is in, an event at `--end t` is out — and that rule was asserted by
+      nothing anywhere. Flipping it to drop the event sitting exactly on the start leaves all
+      387 tests green and leaves this sweep reporting that narrowing returned exactly the part
+      it names, over 253 windows.
+
+      Cut ON an onset, because that is the only place the rule can be read two ways at once,
+      and halfway between two of them, because a rule that is right at an event can still lose
+      the one after it. Compared as a multiset for the same reason the rows above are: an
+      EDF+D recording stores its events in record order, not in time order.
+    */
+    const events = read(full, 'annotations.csv');
+    if (events && events.rows.length > 0) {
+      const onsets = events.rows.map((row) => Number(row.split(',')[0]));
+      const cuts = new Set();
+      for (const [i, onset] of onsets.entries()) {
+        if (Number.isFinite(onset) && onset > 0) cuts.add(onset);
+        const next = onsets[i + 1];
+        if (Number.isFinite(next) && next > onset) cuts.add((onset + next) / 2);
+      }
+      for (const at of cuts) {
+        const before = path.join(work, `ann-a-${annotationCuts}`);
+        const after = path.join(work, `ann-b-${annotationCuts}`);
+        if (!convert(source, before, [`--end=${at}`])) continue;
+        if (!convert(source, after, [`--start=${at}`])) continue;
+        annotationCuts++;
+        const first = read(before, 'annotations.csv');
+        const second = read(after, 'annotations.csv');
+        const halves = [...(first ? first.rows : []), ...(second ? second.rows : [])].sort();
+        const everything = [...events.rows].sort();
+        if (halves.length !== everything.length) {
+          problems.push(
+            `${name}/annotations.csv cut at ${at}: the whole holds ${everything.length} events, ` +
+              `the two halves hold ${halves.length} between them`,
+          );
+          continue;
+        }
+        const missing = everything.findIndex((row, i) => row !== halves[i]);
+        if (missing >= 0) {
+          problems.push(
+            `${name}/annotations.csv cut at ${at}: "${everything[missing]}" in the whole and ` +
+              `"${halves[missing]}" across the halves`,
+          );
+        }
+      }
+    }
+
+    /*
       The same question of the long layout, where the answer is weaker and has to be.
 
       The wide layout gives every rate its own file with its own `time_s` precision, so
@@ -255,7 +307,9 @@ if (problems.length > 0) {
     `${columns.toLocaleString('en-US')} single-channel selections and ` +
       `${windows.toLocaleString('en-US')} windows checked over ${names.length} recordings,\n` +
       `plus ${longs.toLocaleString('en-US')} single-channel selections in the long layout\n` +
-      `and ${partitions.toLocaleString('en-US')} pairs of windows meeting at a bound.`,
+      `and ${partitions.toLocaleString('en-US')} pairs of windows meeting at a bound,\n` +
+      `with ${annotationCuts.toLocaleString('en-US')} more meeting on or beside an event and ` +
+      `compared as annotations.`,
   );
   console.log('Narrowing a conversion returned exactly the part it names, and two of them');
   console.log('meeting at a bound returned the whole of it.');

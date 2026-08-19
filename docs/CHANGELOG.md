@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.49
+
+### the narrowing sweep never narrowed an annotation
+
+The narrowing sweep never looked at `annotations.csv`.
+
+It picks the files it compares with `/^signals.*\.csv$/`, so all 253 windows and 106 channel
+selections it runs are about sample rows. Events are narrowed by the same window under their
+own half-open rule — an event at `--start t` is in, an event at `--end t` is out — and that
+rule was asserted by nothing anywhere in this project. Flip it so the event sitting exactly on
+the start is dropped:
+
+```
+-  annotations.filter((a) => a.onset >= window.from && a.onset < window.to)
++  annotations.filter((a) => a.onset > window.from && a.onset < window.to)
+```
+
+and all 387 tests pass, and the sweep goes on reporting that "narrowing a conversion returned
+exactly the part it names" over every one of those windows. An event has quietly stopped
+existing in both halves of a recording cut in two, and the only thing that says so is a row
+count nobody compared.
+
+This is the shape 0.7.34 found for samples, one file over. Asking whether a window is a *slice*
+cannot see a boundary rule that is wrong in the same direction on both sides of the cut: each
+half is still a correct subset. What decides it is `--end t` and `--start t` together, which is
+the one arrangement where the rule has to be read both ways at once — so the sweep now cuts on
+an event's onset, and halfway between two of them, and requires the halves to hold every event
+the whole recording holds. 41 pairs over the fixture set, as a multiset, since an EDF+D
+recording stores its events in record order rather than in time order.
+
+Restored, it is clean. Flipped, it names the recordings and the cut:
+
+```
+lost-timekeeping.edf/annotations.csv cut at 0.75: the whole holds 3 events,
+the two halves hold 2 between them
+```
+
 ## 0.7.48
 
 ### --channels changed the time column
