@@ -46,7 +46,10 @@ time_s,channel,value
 All five channels at the first instant, then the 100 Hz ones again a hundredth of a second
 later while the 10 Hz and 1 Hz channels wait their turn. Still nothing resampled, interpolated
 or padded. `long.pivot(index='time_s', columns='channel',
-values='value')` in pandas gets you back to the wide form for whichever rates you want it for.
+values='value')` in pandas gets you back to the wide form for whichever rates you want it for —
+except on a recording that samples faster than the time column can separate, or one whose data
+records overlap, where two rows share a time and a channel and pandas raises `ValueError: Index
+contains duplicate entries`. Both are shapes a conversion warns about.
 
 ## Why is my CSV so much larger than the EDF file?
 

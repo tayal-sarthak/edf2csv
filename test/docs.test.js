@@ -2711,6 +2711,103 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('says where the pivot it recommends does not work', async () => {
+    /*
+      Three pages hand the same call back for turning the long layout into a wide frame:
+
+          wide = long.pivot(index='time_s', columns='channel', values='value')
+
+      `pivot` needs the pair to name one sample, and two recordings do not manage it. A
+      channel sampling faster than the time column can separate writes consecutive rows with
+      the same `time_s`, and a recording whose data records overlap writes a later record over
+      an earlier one's span. Both then have two rows sharing a time and a channel, and pandas
+      answers with `ValueError: Index contains duplicate entries, cannot reshape` — not a wrong
+      frame, an exception, on a one-line recipe offered as "one call away".
+
+      The conversion already warns about both shapes, and the faster-than-the-column warning
+      even gives the answer: tell those rows apart by position rather than by time. What was
+      missing was any connection between the warning and the recipe, on any of the three pages
+      that print it.
+
+      The duplicate pairs are counted here rather than in pandas, which the suite does not
+      have: the check is whether `time_s` and `channel` identify a row, which is the same
+      question `pivot` asks.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-pivot-'));
+    try {
+      const names = (await readdir(path.join(ROOT, 'test/fixtures/generated'))).filter((f) =>
+        /\.(edf|bdf)$/u.test(f),
+      );
+      assert.ok(names.length > 40, 'fixtures should be generated before this runs');
+
+      const breaks = [];
+      let tables = 0;
+      for (const name of names) {
+        const out = path.join(work, name);
+        const result = await run(
+          process.execPath,
+          [CLI, path.join(ROOT, 'test/fixtures/generated', name), '--out', out, '--layout', 'long'],
+          { maxBuffer: 64 << 20 },
+        ).catch((error) => error);
+        let table;
+        try {
+          table = await readFile(path.join(out, 'signals.csv'), 'utf8');
+        } catch {
+          continue; // no signal table to reshape
+        }
+        tables++;
+
+        const seen = new Set();
+        let duplicated = false;
+        for (const row of table.trimEnd().split('\n').slice(1)) {
+          const first = row.indexOf(',');
+          const last = row.lastIndexOf(',');
+          const key = `${row.slice(0, first)} ${row.slice(first + 1, last)}`;
+          if (seen.has(key)) {
+            duplicated = true;
+            break;
+          }
+          seen.add(key);
+        }
+        if (!duplicated) continue;
+
+        breaks.push(name);
+        // A reader who cannot pivot has to be able to find out why from the run itself.
+        assert.match(
+          String(result.stderr ?? ''),
+          /^warning: /mu,
+          `${name} has two rows sharing a time and a channel and the conversion said nothing`,
+        );
+      }
+
+      assert.ok(tables > 40, `only ${tables} long tables were reshaped`);
+      assert.deepEqual(
+        breaks.sort(),
+        ['records-overlapping.edf', 'repeating-fast.edf'],
+        'the set of recordings that cannot be pivoted has changed',
+      );
+
+      // Every page that prints the recipe has to print the exception with it.
+      const pages = ['cli-reference.md', 'faq.md', 'sampling-rates.md', 'output-files.md',
+        'getting-started.md', 'recipes.md', 'edf-plus-annotations.md', 'correctness.md'];
+      let offered = 0;
+      for (const name of pages) {
+        const page = await read(`website/content/${name}`);
+        if (!page.includes('pivot(index=')) continue;
+        offered++;
+        // Whitespace-tolerant: the sentence is wrapped, and on one page the phrase spans
+        // the break.
+        assert.ok(
+          /Index\s+contains\s+duplicate\s+entries/u.test(page),
+          `${name} recommends pivot and does not say when it raises`,
+        );
+      }
+      assert.equal(offered, 3, `expected three pages to show the pivot recipe, found ${offered}`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('agrees with the CLI about what the exit codes are', async () => {
     // The reference states three codes and what each means. The meanings are prose, but the
     // set is not: a fourth code appearing with nothing said about it is the drift to catch.

@@ -119,6 +119,8 @@ wide = long.pivot(index="time_s", columns="channel", values="value")
 
 Note what that `pivot` produces for a mixed-rate file: a frame with 768 rows where the temperature column is 765 blanks. That is option 3 from the list above, arrived at deliberately, in your code, with the original file still on disk — which is the difference the whole page is about.
 
+That call needs `time_s` and `channel` together to name one sample, and two recordings break it: one whose channels sample faster than the time column can separate, and one whose data records overlap in time. Both raise `ValueError: Index contains duplicate entries, cannot reshape` rather than quietly keeping one sample of the pair. A conversion of either warns about the shape that causes it, and the warning's advice is the answer here too — those rows are told apart by their position in the file rather than by their time.
+
 Two costs. The file is larger, because every row repeats the time and the channel name rather than sharing one time across a row; two to three times, and `--gzip` recovers most of it. And `time_s` takes one precision for every rate — the finest any of them needs — because a single column cannot mean three things, so a 256 Hz and 1 Hz mix writes both at eight decimal places. That is the finest rate in the conversion rather than in the file: narrowing with `--channels` narrows the set, so the column can come back at a different width, carrying the same instants.
 
 ## Seeing the split before you convert

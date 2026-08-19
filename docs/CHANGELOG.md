@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.24
+
+### a documented one-liner raises on two recordings the tool warns about
+
+Three pages hand back the same call for turning the long layout into a wide frame, and one of
+them calls it "one call away":
+
+```python
+wide = long.pivot(index='time_s', columns='channel', values='value')
+```
+
+`pivot` needs that pair to name one sample, and two recordings do not manage it. A channel
+sampling faster than the time column can separate writes consecutive rows carrying the same
+`time_s`; a recording whose data records overlap writes a later record across an earlier one's
+span. Either way two rows share a time and a channel, and pandas answers:
+
+```
+ValueError: Index contains duplicate entries, cannot reshape
+```
+
+Not a wrong frame — an exception, on a one-line recipe, for a file the tool converted happily.
+
+Both shapes are already warned about, and the faster-than-the-column warning even gives the
+answer: *"Every sample is written, in order. Use the row number rather than time_s to tell them
+apart."* What was missing was any connection between that warning and the recipe, on any of the
+three pages that print it. Someone who converts, reads the warning, moves on, and then meets
+the `ValueError` an hour later in a notebook has no reason to connect the two.
+
+All three now say when the call raises and why, and the fullest of them — sampling rates, whose
+whole subject is what a mixed-rate file does to a wide table — says what to do instead.
+
+The guard reshapes every fixture's long conversion and requires two things: that any recording
+whose table cannot be keyed on `(time_s, channel)` had a warning printed over it, and that every
+page offering the recipe prints the exception with it. The duplicate pairs are counted in the
+test rather than in pandas, which the suite does not have — the question `pivot` asks is only
+whether the two columns identify a row.
+
 ## 0.7.23
 
 ### the eighty-column check promised what the design does not

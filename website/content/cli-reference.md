@@ -568,6 +568,8 @@ And it converts back to the wide form in one call, for the rates that share a ti
 wide = long.pivot(index='time_s', columns='channel', values='value')
 ```
 
+It needs `time_s` and `channel` together to name one sample, which two recordings do not manage: one sampling faster than the time column can separate, and one whose data records overlap in time. Both raise `ValueError: Index contains duplicate entries` rather than dropping a sample quietly, and a conversion of either says so on the way past.
+
 The cost is size. A wide row carries one time for every channel; a long row repeats the time and the channel name on every sample, so the same recording is roughly two to three times larger. `--info` reports the long figure when `--layout long` is given, so the estimate always describes the command you typed. `--gzip` recovers most of the difference, since a repeated channel name is exactly what compression is good at.
 
 The `time_s` precision is shared across rates in the long layout — the finest any of them needs — because one column cannot mean three things. A recording mixing 256 Hz and 1 Hz writes both at eight decimal places.
