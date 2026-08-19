@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.20
+
+### a padded annotation duration was read as a zero
+
+`Number('   ')` is `0` — the rule that makes `Number('')` zero, one step along. An EDF+
+annotation whose duration field held nothing but the writer's padding took that zero and
+wrote it out:
+
+```
+onset_s,duration_s,description,record_index
+0.5,0,Spaces for a duration,0
+0.6,,No duration at all,0
+1.5,0,A real zero duration,1
+```
+
+The first row and the third are byte-identical in that column. The third file really did say
+`0`; the first said `   `. An event lasting exactly no time is a claim about the recording,
+and no writer made it — the same invention `+1.0<0x15>abc<0x14>` has been caught and counted
+since the duration was first read, arriving through the one input that turns into a number
+without containing a digit. Exit 0, no warning, and nothing in the CSV to read back that
+would show the difference.
+
+The empty field beside it — `+1.0<0x15><0x14>` — has always been read as "the file stated no
+duration". Padding is that field with fill in it, so it takes the same answer and the cell is
+left empty. `trim` empties exactly the strings `Number` would otherwise have swallowed into a
+zero, so `  2.5  ` still reads as 2.5 and `abc` is still counted as unreadable.
+
+It is the rule already applied twice elsewhere in this file — a chunk of nothing but padding
+is not a lost annotation, a text segment of nothing but padding is not an event — reaching
+the one field that had been left to `Number` to decide.
+
 ## 0.7.19
 
 ### two more hints printed commands the shell cannot carry

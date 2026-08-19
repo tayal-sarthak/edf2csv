@@ -474,6 +474,53 @@ describe('EDF+ annotations', () => {
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
   });
 
+  it('never reads a padded duration field as a zero', async () => {
+    /*
+      `Number('   ')` is 0, the same rule that makes `Number('')` zero, one step along. So a
+      TAL whose duration field held nothing but the writer's padding was exported as an event
+      lasting exactly no time — `0.5,0,Spaces for a duration,0` — byte-identical in that
+      column to the event below it whose file really did say `0`. An instantaneous event is a
+      claim about the recording and no writer made it. Exit 0, no warning, nothing to read
+      back that would show the difference.
+
+      The empty field beside it has always been read as "the file stated no duration", and
+      padding is that field with fill in it, so it takes the same answer. The genuine zero is
+      asserted here too: an empty cell for every duration would satisfy the first half of this
+      and lose the events that really are instantaneous.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const bytes = (text) => new TextEncoder().encode(text);
+
+    const padded = decodeRecordAnnotations(
+      bytes(
+        `+0${T}${T}${Z}` +
+          `+0.5${D}   ${T}spaces${T}${Z}` +
+          `+0.6${D}\t${T}tab${T}${Z}` +
+          `+0.7${D}${T}nothing${T}${Z}` +
+          `+0.8${D}0${T}a real zero${T}${Z}` +
+          `+0.9${D}  2.5  ${T}padded but readable${T}${Z}`,
+      ),
+      0,
+    );
+    assert.deepEqual(
+      padded.annotations.map((a) => [a.text, a.duration]),
+      [
+        ['spaces', null],
+        ['tab', null],
+        ['nothing', null],
+        ['a real zero', 0],
+        ['padded but readable', 2.5],
+      ],
+    );
+
+    // Fill is an absent field, not an unreadable one: `abc` is a value this could not read
+    // and is counted, whitespace is the writer filling a field it left empty and is not.
+    assert.equal(padded.unreadableDurations, 0);
+  });
+
   it('says when the header has no readable start instant', async () => {
     /*
       EDF gives the start date and time eight characters each and nothing enforces what goes

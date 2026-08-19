@@ -262,9 +262,23 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
     reported. A duration is one field of an otherwise readable event, so the event is kept —
     but it is counted, and the run says so.
   */
+  /*
+    Fill in the field is an absent duration, not a zero.
+
+    `Number` reads a run of whitespace as 0 — the rule that makes `Number('')` zero, one step
+    along — so a TAL whose duration field held nothing but the writer's padding was exported
+    with a `duration_s` of `0`, byte-identical to the event beside it whose file really did
+    say `0`. An instantaneous event is a claim about the recording, and no writer made it;
+    inventing it is the one thing this tool does not do, and it did so in silence, exit 0.
+
+    The empty field this condition already declines is the same field without the fill in it,
+    so padding takes the same answer: the file stated no duration. `trim` empties exactly the
+    strings `Number` would otherwise have swallowed into a zero, so `  2.5  ` still reads as
+    2.5 and `abc` is still counted as unreadable below.
+  */
   let duration: number | null = null;
   let durationUnreadable = false;
-  if (durationText !== null && durationText !== '') {
+  if (durationText !== null && durationText.trim() !== '') {
     const d = Number(durationText);
     if (Number.isFinite(d)) duration = d;
     else durationUnreadable = true;
