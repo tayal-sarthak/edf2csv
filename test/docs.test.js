@@ -303,6 +303,55 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('crosses the layout sweep with every option that changes a value', async () => {
+    /*
+      Claim 7 is that the two layouts hold the same samples, and the sweep behind it crossed
+      six option sets: four windows, a precision, and none. `--channels` was not among them,
+      and it is the one option that changes the shape of both layouts at once — it decides how
+      many rates are in the conversion, which in the wide layout removes a file and in the long
+      layout changes what the single shared `time_s` column has to mean. 0.7.17 found that
+      second effect by reading; nothing was running it.
+
+      Derived from the CLI's option table, like the estimate sweep's, with its own list of what
+      cannot change a value and why. This sweep compares decoded cells per channel, so the
+      options that change the bytes on disk without changing a number are excluded here and
+      crossed there instead.
+    */
+    const sweep = await read('test/fuzz/layouts.mjs');
+    const crossed = new Set([...sweep.matchAll(/'(--[a-z-]+)'/gu)].map((m) => m[1]));
+
+    const cannotChangeAValue = {
+      '--info': 'converts nothing',
+      '--out': 'names the destination',
+      '--layout': 'is the axis this sweep compares along',
+      '--annotations-only': 'leaves no signal values to compare',
+      '--gzip': 'changes the bytes on disk, not the numbers in them',
+      '--bom': 'puts three bytes in front of them',
+      '--checksum': 'adds a field to metadata.json',
+      '--jobs': 'converts several recordings at once and changes none of them',
+      '--force': 'decides whether an existing directory may be written into',
+      '--quiet': 'changes what is printed',
+      '--json': 'changes the shape of what is printed',
+      '--strict': 'changes the exit code',
+      '--stdout': 'writes no directory to read back',
+      '--help': 'prints instead of converting',
+      '--version': 'prints instead of converting',
+    };
+
+    const source = await read('src/cli.ts');
+    const table = source.slice(
+      source.indexOf('const OPTIONS = {'),
+      source.indexOf('} as const;', source.indexOf('const OPTIONS = {')),
+    );
+    const declared = [...table.matchAll(/^ {2}'?([a-z-]+)'?: \{/gmu)].map((m) => `--${m[1]}`);
+    assert.ok(declared.length > 15, `read ${declared.length} options out of cli.ts, expected all`);
+
+    for (const flag of declared) {
+      if (flag in cannotChangeAValue) continue;
+      assert.ok(crossed.has(flag), `the layout sweep never crosses ${flag}`);
+    }
+  });
+
   it('describes every fixture it says it describes', async () => {
     /*
       The section is headed "The fixtures and what each one covers" and its opening sentence

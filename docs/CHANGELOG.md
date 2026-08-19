@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.33
+
+### the layout sweep crossed every window and no selection
+
+Claim 7 says the two layouts hold the same samples. The sweep behind it crossed six option
+sets: four windows, one precision, and none at all. `--channels` was not among them, and it is
+the one option that changes the shape of *both* layouts at once.
+
+In the wide layout, dropping a rate removes a file. In the long layout, the single shared
+`time_s` column takes its precision from the rates left in the conversion rather than from the
+ones in the file — which is what 0.7.17 was about, found by reading the code rather than by
+running anything, because nothing ran it. That release taught the narrowing sweep to cross the
+long layout. It did not occur to it that the layout sweep had the same hole from the other
+side: comparing the two layouts under every window there is, and never under a selection.
+
+Crossed now, twice — a bare selection and one with a window on it — taking the sweep from
+**275 conversions to 370**, over 690 channel sequences. Every sequence is still identical, so
+the layouts do agree under narrowing; what was missing was anything that had asked.
+
+The guard is the one 0.7.22 wrote for the estimate sweep, pointed at this one: every flag in
+the CLI's own option table must either be crossed here or appear in a list of options that
+cannot change a value, each with the reason. The lists differ, and the difference is the point
+— this sweep compares decoded cells per channel, so `--gzip` and `--bom` change bytes without
+changing a number and belong to the estimate sweep instead, while `--layout` is the axis being
+compared along and `--annotations-only` leaves nothing to compare.
+
+Third sweep in this shape: 0.7.16 for `--bom`, 0.7.22 for `--channels` and `--end`, this one
+for `--channels` again in the other sweep that never had it.
+
 ## 0.7.32
 
 ### the crash sweep ran four of the nine ways a file can be converted

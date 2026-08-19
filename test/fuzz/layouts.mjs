@@ -40,6 +40,8 @@ export const OPTIONS = [
   ['--end', '1.5'],
   ['--start', '1', '--end', '2'],
   ['--decimals', '2'],
+  ['--channels', '#0'],
+  ['--channels', '#0', '--start', '0.5'],
 ];
 
 /** A CSV header cell or channel cell, with the quoting csvRow put on it taken back off. */

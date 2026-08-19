@@ -17,7 +17,7 @@ and the heading still said eight, which is what the test below now counts.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **2,700 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
 5. **`--info` predicts what a conversion writes.** The row count is exact and the byte count never reads low, across every fixture crossed with thirteen option sets — the precisions, both ways of naming a window, the channel selection, both layouts, `--gzip` and `--bom`, which is every option that changes what lands on disk. Checked by `npm run estimate`: **601 predictions over 50 recordings**, sizes reading 16% high on average, which is the direction a size estimate has to err in.
 6. **The digital codes can be recovered from the CSV.** The documentation says the written decimals are always fine enough to get the original integer back, and offers the arithmetic for doing it. Checked by `npm run roundtrip`: **13,440 cells over 840 calibrations**, EDF and BDF, every one recovering the code the file holds.
-7. **The two layouts hold the same samples.** `--layout long` is a different shape, not different data, which is what makes it an honest answer to a mixed-rate recording. Checked by `npm run layouts`: **50 recordings crossed with six option sets**, converted both ways, compared per channel as an ordered sequence of value cells — every sequence identical.
+7. **The two layouts hold the same samples.** `--layout long` is a different shape, not different data, which is what makes it an honest answer to a mixed-rate recording. Checked by `npm run layouts`: **50 recordings crossed with eight option sets** — the windows, the precision, and the channel selection, which decides how many rates are in the conversion and so what the long layout's one shared time column has to mean — converted both ways, compared per channel as an ordered sequence of value cells, every sequence identical.
 8. **Asking for part of a recording returns that part unchanged.** `--channels` selects columns and `--start`/`--end` selects rows, and both are documented as selections rather than transformations. Checked by `npm run narrowing`: every fixture's full conversion is taken as the truth, then each channel is converted alone and three windows are converted from it, and the narrowed output must be the corresponding slice of the full one byte for byte — **106 single-channel selections and 253 windows over 50 recordings**. Window bounds are placed halfway between two sample times on purpose: a bound read back off the CSV is a rounded number, and a conversion filters the exact ones, so a bound sitting on a sample asks a question neither answer is wrong about. The long layout is crossed too — **54 more single-channel selections** — where the assertion is deliberately weaker: its one shared `time_s` column takes the precision the finest rate *in the conversion* needs, so narrowing can round the column to a different width while the instants stay the same. Same channel, same value, same order, and the time compared at the coarser of the two precisions, since both are roundings of one instant.
 9. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 10. **Every `error:` and `warning:` begins a line, on a terminal too.** That is what makes a batch's stderr greppable, and it is the one claim the suite structurally cannot check: the progress meter exists only when stderr is a TTY, and a captured stderr is a pipe. Checked by `npm run terminal`, which allocates a pseudo terminal and runs conversions under it — **5 runs**, asserting the meter is taken down before anything is printed over it, that nothing but text reaches the screen, and that the command the compressed-to-a-terminal refusal offers can be pasted into a shell and produces a gzip stream. It found the defect fixed in 0.7.9, where a failed conversion printed `converting… 96%error: Expected 317440 bytes …` and `grep '^error:'` came back empty.
@@ -84,7 +84,7 @@ npm run layouts
 ```
 
 ```
-275 conversions compared over 50 recordings (595 channel sequences, 25 refused by both).
+370 conversions compared over 50 recordings (690 channel sequences, 30 refused by both).
 Both layouts hold the same samples, in the same order, per channel.
 ```
 
@@ -92,7 +92,9 @@ The conversion and channel-sequence counts move with the fixture set and with wh
 
 `--layout long` writes one table of `time_s,channel,value` where the default writes a column per channel and a file per rate. Every page describing it says the same thing: a different shape, not different data. That is the claim, and until 0.5.16 nothing ran it — during which the long layout shipped four defects, three of them found by reading rather than by running.
 
-Each fixture is converted both ways, crossed with option sets that move the window and the precision, and compared per channel: the column read down its rows in the wide table against the rows for that channel in the long one, as an ordered sequence of value cells.
+Each fixture is converted both ways, crossed with option sets that move the window, the precision and the channel selection, and compared per channel: the column read down its rows in the wide table against the rows for that channel in the long one, as an ordered sequence of value cells.
+
+The selection is there because it decides how many rates are in the conversion, and the long layout's one shared `time_s` column takes its precision from that set rather than from the file's — the thing 0.7.17 found nothing checking. It changes the wide layout too, where dropping a rate removes a file. Six option sets moved only the window and the precision, so the one option that changes the shape of both layouts at once was crossed with neither.
 
 Deliberately not joined on time. The two layouts write `time_s` at different precisions by design — the long one shares the finest any rate needs, since one column cannot mean three things — so a time-keyed comparison compares the formatting rather than the data, and at nine decimal places it collapses distinct sub-nanosecond samples into one key. The first version of this harness did exactly that and reported 42 disagreements that were all its own.
 
@@ -411,20 +413,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 381
+ℹ tests 382
 ℹ suites 53
-ℹ pass 381
+ℹ pass 382
 ℹ fail 0
 ```
 
-The 381 tests are split across six files by what they exercise:
+The 382 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 48 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 105 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 151 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
-| `test/docs.test.js` | 62 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 63 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 9 | A destination that fills up, for `--stdout` and for `--out`, which needs a filesystem of a known small size and so is kept apart |
 | `test/large.test.js` | 6 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 
