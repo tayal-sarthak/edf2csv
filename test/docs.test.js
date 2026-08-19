@@ -2711,6 +2711,93 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('says where the time slice it recommends does not work', async () => {
+    /*
+      The same question as the pivot below, asked of the default layout.
+
+          signals = pd.read_csv("sleep_csv/signals_100hz.csv", index_col="time_s")
+          signals.loc[3600:3630]     # the 30 seconds starting one hour in
+
+      A label slice needs the index to increase and to name one row, and the page said
+      `time_s` "is an ordinary float index in seconds, which makes `.loc[start:stop]` a plain
+      numeric slice" with nothing after it. Records stored out of chronological order make the
+      column decrease — `KeyError: Cannot get right slice bound for non-monotonic index` — and
+      records that overlap put one instant on two rows — `Cannot get left slice bound for
+      non-unique label`. Both are recordings the conversion warns about, and the same page
+      already spells this out for the `merge_asof` three sections down, for the sorting half
+      of it only. The two slices above and below it said nothing.
+
+      Checked in the wide layout, which is what those recipes read, and on the properties
+      pandas actually requires rather than through pandas, which the suite does not have.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-slice-'));
+    try {
+      const names = (await readdir(path.join(ROOT, 'test/fixtures/generated'))).filter((f) =>
+        /\.(edf|bdf)$/u.test(f),
+      );
+      assert.ok(names.length > 40, 'fixtures should be generated before this runs');
+
+      const unsliceable = new Set();
+      let tables = 0;
+      for (const name of names) {
+        const out = path.join(work, name);
+        const result = await run(
+          process.execPath,
+          [CLI, path.join(ROOT, 'test/fixtures/generated', name), '--out', out],
+          { maxBuffer: 64 << 20 },
+        ).catch((error) => error);
+
+        let written;
+        try {
+          written = (await readdir(out)).filter((f) => /^signals.*\.csv$/u.test(f));
+        } catch {
+          continue;
+        }
+        for (const file of written) {
+          const rows = (await readFile(path.join(out, file), 'utf8')).trimEnd().split('\n');
+          if (rows.length < 3) continue;
+          tables++;
+
+          /*
+            Monotonicity, and deliberately not uniqueness. pandas slices a repeated label
+            happily as long as the index is sorted — a channel sampling faster than the column
+            can separate writes several rows at one instant and the slice returns all of them,
+            which is right. It is the decrease that leaves pandas unable to find a bound, and
+            an overlap raises the non-unique message only because it is out of order too.
+          */
+          const times = rows.slice(1).map((row) => Number(row.slice(0, row.indexOf(','))));
+          if (!times.some((t, i) => i > 0 && t < times[i - 1])) continue;
+
+          unsliceable.add(name);
+          assert.match(
+            String(result.stderr ?? ''),
+            /^warning: /mu,
+            `${name}/${file} cannot be sliced on time_s and the conversion said nothing`,
+          );
+        }
+      }
+
+      assert.ok(tables > 40, `only ${tables} signal tables were examined`);
+      assert.deepEqual(
+        [...unsliceable].sort(),
+        ['records-backwards.edf', 'records-overlapping.edf'],
+        'the set of recordings that cannot be sliced on time_s has changed',
+      );
+
+      // And the page that slices has to say when the slice raises, for both halves of it.
+      const recipes = await read('website/content/recipes.md');
+      assert.ok(recipes.includes('.loc[start:stop]'), 'the slice recipe is gone or reworded');
+      for (const phrase of ['non-monotonic index', 'non-unique label']) {
+        assert.ok(
+          new RegExp(phrase.replace(/ /gu, '\\s+'), 'u').test(recipes),
+          `recipes.md slices on time_s and does not say it can raise on a ${phrase}`,
+        );
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says where the pivot it recommends does not work', async () => {
     /*
       Three pages hand the same call back for turning the long layout into a wide frame:

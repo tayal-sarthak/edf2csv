@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.25
+
+### the page warned about an unsorted time column for the join and not for the slices
+
+The same question 0.7.24 asked of the long layout, asked of the default one. Recipes opens with:
+
+```python
+signals = pd.read_csv("sleep_csv/signals_100hz.csv", index_col="time_s")
+signals.loc[3600:3630]     # the 30 seconds starting one hour in
+```
+
+and follows it with "`time_s` is an ordinary float index in seconds, which makes
+`.loc[start:stop]` a plain numeric slice." A label slice needs the index to increase down the
+file, and two recordings do not:
+
+```
+KeyError: 'Cannot get right slice bound for non-monotonic index with a missing label'
+KeyError: 'Cannot get left slice bound for non-unique label: 0.5'
+```
+
+The first is a recording whose data records are stored out of chronological order, the second
+one whose records overlap in time. Both are warned about at conversion, and — this is what
+makes the omission awkward — **the same page already spells this out**, three sections down,
+for the `merge_asof` join: the `ValueError`, the warning, and `sort_values("time_s")` as the
+fix. The two label slices, one above that section and one below it, said nothing.
+
+Which of the two errors you get, and whether you get one at all, depends on where the bounds
+land: `.loc[0.25:0.75]` on the out-of-order file returns three rows quite happily, and
+`.loc[0.5:1.5]` on the same frame raises. A slice that worked once is not evidence the file is
+in order, which is the reason to say this next to the recipe rather than leave it to be met.
+
+A repeated time on its own is *not* a problem here, and the page now says so too. A channel
+sampling faster than the time column can separate writes several rows at one instant, in order,
+and the slice returns all of them — which is the right answer, since all of them were recorded.
+That distinction is worth stating: it is the same repeated `time_s` that does break the `pivot`
+one release back, for a different reason, and a reader who conflates the two will sort a file
+that was never out of order.
+
+The guard converts every fixture in the default layout and requires that any table whose
+`time_s` decreases came with a warning, and that the page slicing on `time_s` names both
+messages. Monotonicity and deliberately not uniqueness — checking uniqueness here would fail
+the recording that slices correctly.
+
 ## 0.7.24
 
 ### a documented one-liner raises on two recordings the tool warns about

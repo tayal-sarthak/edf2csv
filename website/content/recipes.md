@@ -43,6 +43,10 @@ signals["EEG Fpz-Cz"].describe()
 
 EDF labels routinely contain spaces and hyphens, so columns are addressed with brackets rather than attribute access: `signals["EEG Fpz-Cz"]`, not `signals.EEG`. `time_s` is an ordinary float index in seconds, which makes `.loc[start:stop]` a plain numeric slice.
 
+That slice asks for a label range, so it needs `time_s` to increase down the file. Two recordings break that, and a conversion of either warns about the shape that does it: data records stored out of chronological order, and data records that overlap in time. Both make the column decrease somewhere, and the slice then raises `KeyError: Cannot get right slice bound for non-monotonic index` — or, where the bound is one of the instants an overlap wrote twice, `Cannot get left slice bound for non-unique label`. Which of the two, and whether it raises at all, depends on where the bounds fall, so a slice that worked yesterday is not evidence that the file is in order. `df.sort_values("time_s")` is the fix for either, and the join further down needs the same.
+
+A repeated time on its own is not a problem here. A channel sampling faster than the time column can separate writes several rows at one instant, in order, and the slice returns all of them — which is the right answer, since all of them were recorded. On everything else, which is nearly every recording, the slice is the plain numeric one it looks like.
+
 If you converted a window with `--start` and `--duration`, `time_s` still counts from the beginning of the whole recording, not from the beginning of the excerpt. A conversion started at 286.5 s begins its first row at `286.500`, so the numbers keep meaning the same thing whichever slice you converted. The decimal count comes from the rate — three places at 100 Hz, eight at 256 Hz — so the same window written from a faster channel reads `286.50000000`.
 
 ## Give the rows a wall-clock timestamp
@@ -414,6 +418,8 @@ events = pd.read_csv("seizure-window/annotations.csv")
 onset = events.loc[events["description"] == "Seizure onset", "onset_s"].iloc[0]
 signals.loc[onset - 2 : onset + 2]
 ```
+
+That is the same label slice as above, so the same two recordings break it in the same two ways.
 
 ## Align two rate groups with pandas merge_asof
 
