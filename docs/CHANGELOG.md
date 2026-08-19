@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.35
+
+### the batch sweep compared directory names and called them bytes
+
+Claim 3 on the correctness page:
+
+> Random folder trees are converted serially and in parallel, and both must produce
+> **the same directories with the same bytes**.
+
+The sweep compared the directory names. Nothing read a byte out of the parallel run.
+
+That is the wrong half to leave out, because the two runs are not the same code. `--jobs 1`
+converts in this process; anything more forks a child per recording and rebuilds its command
+line by hand, out of three lists of flag names in `convertInChild`. The changelog carries three
+separate defects from exactly that rebuild — `--out ./-nightly` split into two arguments, a
+recording parsed as an option because its path began with a dash, `--strict` handed down to a
+child that is not the run. A fourth of that kind produces the right directories with the wrong
+numbers in them, which is precisely what a listing cannot see.
+
+Nor could the sweep have seen it anyway: it passed **no flags at all**. Every tree was converted
+with the defaults, so there was nothing in the rebuilt command line to lose.
+
+Both halves are fixed together, because either alone is still blind. Each tree now runs under
+one of twelve option sets, cycling — the compression, the mark, the layout, the precision, three
+windows, a selection, the checksum and two combinations — so a run covers every option and a
+different seed pairs each with a different tree. And the serial and parallel outputs are
+compared file by file, `metadata.json` aside, which carries the time of the conversion.
+
+Confirmed capable of failing, by the failure it was written for. Delete `decimals` from the
+child's flag list and:
+
+```
+12 folder trees, 49 recordings, 49 conversions (seed 1).
+11 problems:
+  round 4 [--decimals 5]: a b-0/a b-2/signals.csv differs between serial and parallel
+```
+
+Before this release, the same deletion produced "Serial and parallel agreed, and every batch
+matched converting alone."
+
 ## 0.7.34
 
 ### a window sweep that could not see a sample fall between two windows

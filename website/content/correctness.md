@@ -72,7 +72,7 @@ Serial and parallel agreed, and every batch matched converting alone.
 
 Converting a folder is the hardest part of this tool to reason about: the tree is walked, links are followed, destinations are derived from file names, and the conversions may run in any order across several processes. Rather than guess which arrangement breaks, this builds arrangements — nesting, names with spaces and non-ASCII characters, mixed-case extensions, symlinks, files that are not recordings — and checks four things that must hold whatever shape comes out:
 
-1. **Serial and parallel produce the same directories.** A difference between them is what a race looks like from outside.
+1. **Serial and parallel produce the same directories, holding the same bytes.** A difference between them is what a race looks like from outside. The bytes are a separate question from the names: `--jobs 1` converts in this process and anything more forks a child whose command line is rebuilt by hand, so the two are not the same code, and a flag lost in that rebuild leaves the directories right and the numbers in them wrong. Each tree is converted under a different option set for that reason — the sweep passed no flags at all until 0.7.35, which is the one condition under which such a loss cannot show.
 2. **Each recording's output equals converting it alone.** A batch may reorder the work; it may not change a byte of it.
 3. **The closing count matches the directories produced**, so "Converted 5 of 5" is a fact.
 4. **A non-zero exit comes with a message**, never a silent half-conversion.

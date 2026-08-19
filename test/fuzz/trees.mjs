@@ -10,9 +10,12 @@
  * arrangement breaks, this builds arrangements and checks four things that must hold
  * whatever the shape of the tree:
  *
- *   1. Serial and parallel produce the same directories. A difference between them is what
- *      a race looks like from outside, and that is how the nesting collision fixed in
- *      0.4.14 was found — one run made `<out>/rec`, another made `<out>/rec/inner`.
+ *   1. Serial and parallel produce the same directories, holding the same bytes. A difference
+ *      between them is what a race looks like from outside, and that is how the nesting
+ *      collision fixed in 0.4.14 was found — one run made `<out>/rec`, another made
+ *      `<out>/rec/inner`. The bytes matter separately: `--jobs 1` converts in this process and
+ *      anything more forks a child whose command line is rebuilt by hand, so the two runs are
+ *      not the same code and a flag lost in that rebuild changes only the contents.
  *   2. Each recording's output equals converting that recording on its own. A batch may
  *      reorder or parallelise the work; it may not change a byte of it.
  *   3. The closing count matches the directories actually produced, so "Converted 5 of 5"
@@ -51,6 +54,37 @@ const POOL = [
   'biosemi.bdf',
   'degenerate-range.edf',
 ].map((name) => path.join(FIXTURES, name));
+
+/**
+ * Option sets, one per tree, cycling.
+ *
+ * Property 2 — a batch may reorder the work but may not change it — was only ever asked with
+ * no options at all, and a batch is the one path that rebuilds the command line by hand:
+ * `convertInChild` writes the flags out again for a forked process, from three lists of flag
+ * names, and the changelog carries three separate defects from exactly that (`--out ./-nightly`
+ * split into two arguments, the recording parsed as an option because its path began with a
+ * dash, `--strict` handed to a child that is not the run). None of them could have been caught
+ * by a sweep that never passed a flag.
+ *
+ * One set per round rather than the cross product: a tree is expensive and the shapes are
+ * random, so cycling covers every option across a run and gives each one a different tree
+ * every time the seed changes. `--annotations-only` is left out because it writes no signal
+ * files, and every property here is about the directories those produce.
+ */
+const OPTIONS = [
+  [],
+  ['--gzip'],
+  ['--bom'],
+  ['--layout', 'long'],
+  ['--decimals', '5'],
+  ['--start', '1'],
+  ['--start', '0.5', '--end', '1.5'],
+  ['--duration', '1'],
+  ['--channels', '#0'],
+  ['--checksum'],
+  ['--gzip', '--layout', 'long'],
+  ['--bom', '--decimals', '2'],
+];
 
 /** Names chosen to collide with each other and with directory names. */
 const NAMES = ['rec', 'night', 'a b', 'sub.dir', 'Ünïcodé', 'UPPER', 'x'];
@@ -134,8 +168,9 @@ export function fuzzTrees(seed = 1, trees = 12) {
         }
       };
 
-      const serial = run(path.join(base, 'serial'), []);
-      const parallel = run(path.join(base, 'parallel'), ['--jobs', '3']);
+      const extra = OPTIONS[round % OPTIONS.length];
+      const serial = run(path.join(base, 'serial'), extra);
+      const parallel = run(path.join(base, 'parallel'), ['--jobs', '3', ...extra]);
 
       // 4. A failure has to say something.
       for (const [label, result] of [['serial', serial], ['parallel', parallel]]) {
@@ -156,6 +191,42 @@ export function fuzzTrees(seed = 1, trees = 12) {
         );
       }
 
+      /*
+        Nor what is in them, which this compared only the names of.
+
+        The two runs are not the same code. `--jobs 1` converts in this process; anything more
+        forks a child per recording and rebuilds its command line by hand, from three lists of
+        flag names in `convertInChild`. A flag missing from one of those lists produces a
+        parallel run with the right directories and the wrong numbers in them, and the check
+        above passes on a directory listing.
+
+        Not hypothetical: deleting `decimals` from that list leaves this sweep reporting that
+        serial and parallel agreed, over a batch converted at a precision nobody asked for.
+        Caught here on the first tree that carries the flag.
+      */
+      for (const relative of fromSerial) {
+        if (!fromParallel.includes(relative)) continue;
+        const here = path.join(base, 'serial', relative);
+        const there = path.join(base, 'parallel', relative);
+        for (const name of readdirSync(here)) {
+          // metadata.json carries the time of the conversion, which differs by design.
+          if (name === 'metadata.json') continue;
+          let other;
+          try {
+            other = readFileSync(path.join(there, name));
+          } catch {
+            problems.push(`round ${round}: ${relative}/${name} is missing from the parallel run`);
+            continue;
+          }
+          if (!readFileSync(path.join(here, name)).equals(other)) {
+            problems.push(
+              `round ${round} [${extra.join(' ') || 'no options'}]: ${relative}/${name} ` +
+                `differs between serial and parallel`,
+            );
+          }
+        }
+      }
+
       // 3. The closing count is a fact.
       const claimed = /Converted (\d+) of \d+ recordings/u.exec(serial.stderr);
       if (claimed && Number(claimed[1]) !== fromSerial.length) {
@@ -174,7 +245,9 @@ export function fuzzTrees(seed = 1, trees = 12) {
 
         const alone = path.join(base, 'alone', stem.join('_'));
         try {
-          execFileSync(process.execPath, [CLI, source, '--out', alone, '--quiet'], { stdio: 'ignore' });
+          execFileSync(process.execPath, [CLI, source, '--out', alone, '--quiet', ...extra], {
+            stdio: 'ignore',
+          });
         } catch {
           continue;
         }
@@ -183,7 +256,10 @@ export function fuzzTrees(seed = 1, trees = 12) {
           if (name === 'metadata.json') continue;
           const batched = readFileSync(path.join(base, 'serial', ...stem, name));
           if (!batched.equals(readFileSync(path.join(alone, name)))) {
-            problems.push(`round ${round}: ${relative}/${name} differs from converting it alone`);
+            problems.push(
+              `round ${round} [${extra.join(' ') || 'no options'}]: ${relative}/${name} ` +
+                `differs from converting it alone`,
+            );
           }
         }
       }
