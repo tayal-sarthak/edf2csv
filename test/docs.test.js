@@ -1851,6 +1851,14 @@ describe('documentation and source agree on their lists', () => {
       with a value it checks fails this until the reference mentions it: every long option that
       takes a value is given one nothing could mean, and the ones that answer with exit 2 are
       the ones that have to be named.
+
+      Two values, not one, and the second is asserted of every flag rather than only of the
+      ones that answer. `!!not-a-value!!` is nonsense to seven of the eight and a perfectly
+      good directory name to `--out`, so the one flag that was not checking its value was the
+      one this probe could not reach: `--out ""` went through to `mkdir('')` and came back as
+      a conversion failure. An empty string is the value a shell hands an option by accident —
+      `--out "$DEST"` with `DEST` unset — and there is no option here it could mean anything
+      to, so every one of them has to refuse it.
     */
     const reference = await read('website/content/cli-reference.md');
     const section = /\*\*Exit 2\*\* covers([\s\S]*?)\n\*\*Exit 1\*\*/u.exec(reference);
@@ -1863,19 +1871,25 @@ describe('documentation and source agree on their lists', () => {
 
     const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-exit2-'));
     const refused = [];
+    /** Flags that took an empty value for an answer. See the second value below. */
+    const emptyAccepted = [];
     try {
       for (const flag of flags) {
-        const code = await run(
-          process.execPath,
-          [CLI, path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf'), '--info', flag, '!!not-a-value!!'],
-          { cwd: work },
-        ).then(() => 0, (error) => error.code);
-        if (code === 2) refused.push(flag);
+        for (const value of ['!!not-a-value!!', '']) {
+          const code = await run(
+            process.execPath,
+            [CLI, path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf'), '--info', flag, value],
+            { cwd: work },
+          ).then(() => 0, (error) => error.code);
+          if (code === 2 && !refused.includes(flag)) refused.push(flag);
+          if (value === '' && code !== 2) emptyAccepted.push(`${flag} "" exited ${code}`);
+        }
       }
     } finally {
       await rm(work, { recursive: true, force: true });
     }
 
+    assert.deepEqual(emptyAccepted, [], 'an empty value is not a value any of these can act on');
     assert.ok(refused.length >= 6, `expected several flags to check their value: ${refused}`);
     for (const flag of refused) {
       assert.ok(

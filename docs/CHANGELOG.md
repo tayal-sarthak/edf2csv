@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.47
+
+### an empty --out was left to the filesystem to complain about
+
+`--out ""` was the one option value nothing looked at.
+
+Eight long options take a value. Seven refuse an empty one from the command line and say what
+they wanted — `--start is empty. Try a value like 30s, 5m, or 00:30:00.`, `--channels was given
+but lists no channel names.`, `--layout must be "wide" or "long", got "".` — all exit 2, all
+decided before a byte is read. `--out` was the eighth:
+
+```
+$ edf2csv rec.edf --out "$DEST"        # DEST unset
+error: Cannot create "": part of the path does not exist.
+       Check the path exists and that you have permission to write there.
+$ echo $?
+1
+```
+
+Exit 1, so a script branching on 2 for "I typed it wrong" reads it as a failed conversion.
+Advice about a path that exists and a permission to write there, for a value that is neither.
+Decided by the filesystem, so in a batch it is decided once per recording rather than once for
+the run. And with `--info` — where there is no directory to create — it exited 0 and said
+nothing at all, which is the same silence 0.4.2 removed from `--info --jobs 0`.
+
+Refused now where the other seven are, before the inputs are even expanded. Not trimmed first:
+`--out " "` is a strange directory to ask for but it is one the filesystem has, and a path is
+not a keyword.
+
+The test that enumerates these had handed every value-taking flag the string
+`!!not-a-value!!` — nonsense to seven of them and a perfectly good directory name to the
+eighth, so the one flag not checking its value was the one the probe could not reach. It now
+hands every flag an empty string as well, and asserts that all of them refuse it, rather than
+only checking that the ones which happen to refuse are documented.
+
 ## 0.7.46
 
 ### a dangling symlink in the destination came back as an errno

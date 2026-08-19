@@ -883,7 +883,7 @@ fi
 - An unparseable `--start`, `--duration` or `--end`, and passing `--duration` together with `--end`.
 - A time window that can't apply: a start at or past the end of the recording, or an end at or before the start.
 - A `--channels` term that matches no channel, a `#N` position that doesn't exist, `--channels` given with an empty list, or a term naming the annotation channel, which holds text rather than samples.
-- A value the flag cannot act on: a `--decimals` that's empty, not an integer, or outside 0 to 20; a `--jobs` that is not a plain decimal integer of 1 or more nor `auto`; a `--layout` that is not `wide` or `long`.
+- A value the flag cannot act on: a `--decimals` that's empty, not an integer, or outside 0 to 20; a `--jobs` that is not a plain decimal integer of 1 or more nor `auto`; a `--layout` that is not `wide` or `long`; an `--out` that is empty.
 - Two recordings in a batch whose output would land in one place: the same directory, because their names collide once the folder structure is dropped, or one directory sitting inside another. Both are refused before anything is written, since converting them in turn would leave one recording's data under the other's name.
 - A folder holding no recordings. "None here" is something the run can state; a folder it could not open is exit 1 instead, because "could not look" is not.
 - `--stdout` with nothing to write to it: given together with `--annotations-only`, or on a recording whose channels use more than one sampling rate in the default wide layout, which would produce more than one table. `--layout long` produces one table whatever the rates are, so it is accepted.

@@ -237,6 +237,30 @@ export async function main(argv: readonly string[]): Promise<number> {
     return EXIT_USAGE;
   }
 
+  /*
+    An empty --out, refused here rather than by the filesystem.
+
+    Every other option that takes a value refuses an empty one from the command line and says
+    what it wanted: `--start is empty`, `--channels was given but lists no channel names`,
+    `--layout must be "wide" or "long", got ""`. `--out ""` was the eighth of eight and the
+    exception — it went the whole way to `mkdir('')` and came back as a conversion failure
+    about a path:
+
+        error: Cannot create "": part of the path does not exist.
+               Check the path exists and that you have permission to write there.
+
+    Exit 1 where the other seven are exit 2, advice about a path and a permission for a value
+    that is neither, and in a batch it is decided once per recording rather than once for the
+    run. `--out "$DEST"` with `DEST` unset is how it gets written by accident, which is also
+    why the empty string alone is refused and the value is not trimmed first: a directory whose
+    name is a space is a strange thing to ask for, but it is a thing the filesystem has and a
+    path is not a keyword.
+  */
+  if (values['out'] === '') {
+    process.stderr.write('error: --out is empty. Give a directory, for example --out ./converted.\n');
+    return EXIT_USAGE;
+  }
+
   let expanded: Input[];
   let unreadable: string[];
   let namedDirectory: boolean;
