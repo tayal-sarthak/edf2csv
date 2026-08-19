@@ -40,7 +40,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
-  # The correctness page names eight sweeps as how this project knows what it claims, and
+  # The correctness page names nine sweeps as how this project knows what it claims, and
   # until 0.6.58 nothing ran any of them on a push: `npm test` covers the suite and not the
   # harnesses, so a regression in an invariant only a sweep checks shipped in silence.
   #
@@ -76,6 +76,8 @@ jobs:
         run: node test/fuzz/mutate.mjs
       - name: A batch converts each recording as converting it alone would
         run: node test/fuzz/trees.mjs
+      - name: The stream holds the bytes the directory holds
+        run: node test/fuzz/stream.mjs
       # The only one that needs something Node cannot provide: a pseudo terminal, borrowed
       # from python3, which ubuntu-latest has. It reports that it checked nothing and exits 0
       # where python3 does not, so this step can never fail for the wrong reason.

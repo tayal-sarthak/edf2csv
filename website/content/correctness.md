@@ -4,9 +4,9 @@ description: What edf2csv checks, how it is compared against pyEDFlib, why the c
 order: 7
 ---
 
-## Ten separate claims
+## Eleven separate claims
 
-Correctness here covers ten different things, verified ten different ways. The list grew
+Correctness here covers eleven different things, verified eleven different ways. The list grew
 past the "three" this section used to promise as the batch, fuzz and estimate harnesses were
 added, and the heading did not keep up until 0.4.34 — nor after it: a ninth claim was added
 and the heading still said eight, which is what the test below now counts.
@@ -23,8 +23,9 @@ and the heading still said eight, which is what the test below now counts.
    And that two windows meeting at a bound hold the whole recording between them — **174 pairs**, cut on a sample and halfway between two. Every check above asks whether a window is a *slice* of the full conversion, which a bound that drops the sample sitting exactly on it satisfies perfectly: each half is still a run of consecutive rows in the right order, and neither is asked about the other. Flipping the boundary rule to exclude that sample is reported by this and by nothing else in the sweep. The pair is compared as a multiset, because a recording whose data records are stored out of order writes its rows in file order, so cutting it by time and putting the halves back together reorders them — correctly. Order is what the slices establish; what the pair adds is that nothing falls between two windows or lands in both.
 9. **The executable behaves as documented.** Exit codes, what goes to stdout versus stderr, refusing to overwrite, failing on a mistyped channel name. Checked by running the built CLI as a subprocess.
 10. **Every `error:` and `warning:` begins a line, on a terminal too.** That is what makes a batch's stderr greppable, and it is the one claim the suite structurally cannot check: the progress meter exists only when stderr is a TTY, and a captured stderr is a pipe. Checked by `npm run terminal`, which allocates a pseudo terminal and runs conversions under it — **5 runs**, asserting the meter is taken down before anything is printed over it, that nothing but text reaches the screen, and that the command the compressed-to-a-terminal refusal offers can be pasted into a shell and produces a gzip stream. It found the defect fixed in 0.7.9, where a failed conversion printed `converting… 96%error: Expected 317440 bytes …` and `grep '^error:'` came back empty.
+11. **The stream holds the bytes the directory holds.** `--stdout` is documented as writing the signal CSV "instead of a directory", and every recipe that pipes a conversion into `duckdb`, `gunzip` or a script depends on the two being the same bytes — but they are not the same code. `--out` opens a file stream per rate group and closes it; `--stdout` writes one stream it does not own, through an audit wrapper that counts bytes so a short write can be reported, since it is the one destination with no second file after it to trip over. Nothing compared them: the estimate sweep measures files on disk, layouts, narrowing and round-trip all read directories, the batch sweep is about batches, and the terminal sweep checks the one case `--stdout` refuses. Checked by `npm run stream`: **305 streams over 50 recordings**, crossed with the modes that change what reaches one, against the single signal file the same command writes to a directory. Compressed streams are decompressed first, since gzip need not choose the same block boundaries twice.
 
-The second and eighth are what `npm test` runs; the third through seventh are the fuzz, estimate, round-trip and layout commands. The tenth needs a pseudo terminal, which Node cannot allocate, so it borrows python3's `pty` module and reports that it checked nothing when that is unavailable rather than failing a machine without it. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
+The second and eighth are what `npm test` runs; the third through seventh and the eleventh are the fuzz, estimate, round-trip, layout and stream commands. The tenth needs a pseudo terminal, which Node cannot allocate, so it borrows python3's `pty` module and reports that it checked nothing when that is unavailable rather than failing a machine without it. The first needs pyEDFlib, so it is a separate command — the package itself has no dependencies and `npm test` keeps it that way:
 
 ```bash
 pip install pyedflib

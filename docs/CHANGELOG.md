@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.37
+
+### nothing compared --stdout with the file it replaces
+
+`--stdout` is documented as writing the signal CSV "instead of a directory", and the recipes
+that pipe a conversion into `duckdb`, `gunzip` or a script all depend on the two being the same
+bytes. They are not the same code. `--out` opens a file stream per rate group and closes it;
+`--stdout` writes one stream it does not own, through an audit wrapper that counts bytes so a
+short write can be reported — it is the one destination with no second file after it to trip
+over, which is why 0.4.39 had it exiting 0 after losing its tail.
+
+Nothing compared the two. The estimate sweep measures files on disk. Layouts, narrowing and
+round-trip all read directories. The batch sweep is about batches, and the terminal sweep checks
+the one case `--stdout` refuses. A stream that dropped its last flush, or gained a mark the file
+did not have, would have been caught by none of them, and by no test in the suite either — the
+`--stdout` tests are about exit codes, disk-full reporting and what the summary line says, never
+about what the bytes are.
+
+`npm run stream` is the ninth sweep and the eleventh claim: every fixture `--stdout` accepts,
+crossed with the seven modes that change what reaches it, against the single signal file the
+same command writes to a directory. **305 streams over 50 recordings**, every one identical.
+Compressed streams are decompressed first, since gzip need not choose the same block boundaries
+twice and what is promised is the CSV inside rather than the container around it.
+
+Confirmed capable of failing. Make the byte order mark skip the stdout path:
+
+```
+annotations.edf [--bom]: the stream is 4170 bytes and signals.csv is 4173, first differing at 0
+```
+
+The mixed-rate recordings are where the crossing earns itself: `--stdout` takes one table, so
+those reach it only through `--layout long` or a selection narrow enough to leave one rate — and
+both of those are paths a single-rate recording never exercises. Forty-five of the runs are
+refused outright, which is its own answer and tested elsewhere.
+
 ## 0.7.36
 
 ### every calibration the round-trip sweep tried had a positive gain

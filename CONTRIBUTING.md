@@ -19,7 +19,7 @@ actually does.
 So a change to behaviour frequently fails a test in `test/docs.test.js` naming a page you
 did not touch. That is the test working. Update the page.
 
-The eight sweeps are separate, because they take minutes rather than seconds:
+The nine sweeps are separate, because they take minutes rather than seconds:
 
 ```bash
 npm run estimate     # --info never predicts fewer rows or bytes than get written
@@ -28,11 +28,12 @@ npm run roundtrip    # the digital code can be recovered from the CSV
 npm run narrowing    # --channels and --start return exactly the part they name
 npm run fuzz         # a damaged file is reported, never a crash
 npm run fuzz:batch   # a batch converts each recording as converting it alone would
+npm run stream       # --stdout writes the file it replaces, byte for byte
 npm run terminal     # every error: and warning: begins its own line on a terminal
 npm run crossvalidate  # values are bit-identical to pyEDFlib (needs `pip install pyedflib`)
 ```
 
-CI runs the first seven on every push, at their default seed. A weekly job runs the two that
+CI runs the first eight on every push, at their default seed. A weekly job runs the two that
 generate their own inputs at a seed taken from the date, which is where a genuinely new
 input comes from. Every one of them takes `<seed> <count>` if you want more:
 `npm run fuzz -- 42 2000`.
