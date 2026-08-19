@@ -1416,10 +1416,47 @@ describe('the time column', () => {
     const uncached = makeTimeFormatter(80, 4, 3, budget);
     assert.equal(budget.remaining, 20, 'a group that cannot fit spends nothing');
 
-    // Whether a group got the cache may not change a single cell.
-    for (const sample of [0, 1, 37, 79]) {
-      assert.equal(uncached(42, sample), fixed(42 + sample / 4, 3));
-      assert.equal(cached(42, sample), fixed(42 + sample / 8, 3));
+    /*
+      Whether a group got the cache may not change a single cell — compared against each
+      other, which is what that sentence says, rather than each against `fixed(sum)`.
+
+      That is what this used to do, at a start of 42 seconds and three decimals, where every
+      way of computing the instant agrees to the last digit. The two do part company: the
+      test two above this one is about exactly where, and calls the cached one "the more
+      accurate of the two". So a group that missed the cache got the less accurate one, and
+      which group that was depended on how many samples per record the faster groups ahead
+      of it had claimed.
+
+      Reachable from an ordinary command line, because `--channels` changes who is in the
+      queue. A recording whose fast channel takes the table leaves its slow channel adding
+      doubles; the same channel asked for on its own gets the table:
+
+          edf2csv far.edf --out whole                 ->  1000000000.00003338
+          edf2csv far.edf --out one --channels slow   ->  1000000000.00003333
+
+      Two files from one recording disagreeing about when a sample was taken, under a
+      documented promise that `--channels` selects columns and changes nothing else. The
+      narrowing sweep asserts that promise and cannot see this: a fixture small enough to run
+      in a sweep never exhausts the budget, so both of its conversions take the table.
+    */
+    for (const [rate, decimals] of [[4, 3], [8, 3], [999, 6], [30_000, 8], [1 / 3, 4]]) {
+      const withTable = makeTimeFormatter(80, rate, decimals);
+      const without = makeTimeFormatter(80, rate, decimals, { remaining: 0 });
+      for (const start of [0, 1, 42, 3600, 86_400, 1e6, 1e8, 1e9, 1e12, 1e15]) {
+        for (const sample of [0, 1, 37, 79]) {
+          assert.equal(
+            without(start, sample),
+            withTable(start, sample),
+            `${rate} Hz at ${start} s, sample ${sample}: the cache changed the cell`,
+          );
+        }
+      }
+    }
+
+    // And the cases the decomposition declines are declined the same way either side of it.
+    for (const start of [-5, 0.25, 1e21]) {
+      assert.equal(uncached(start, 2), fixed(start + 2 / 4, 3), `start ${start}`);
+      assert.equal(cached(start, 2), fixed(start + 2 / 8, 3), `start ${start}`);
     }
   });
 

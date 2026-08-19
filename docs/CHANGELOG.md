@@ -8,6 +8,56 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.48
+
+### --channels changed the time column
+
+`--channels` changed the time column.
+
+The time column has two implementations. One decomposes each instant into whole seconds plus
+the printed fraction of the sample's offset within its record, which is what makes the column
+cheap: only `samplesPerRecord` distinct fractions exist, so they are computed once and reused.
+The other adds `recordStart + sample / rate` and formats the sum. They are not the same
+answer. At a record start of 1e9 seconds and 30 kHz, the exact instant is
+1000000000.0000333333 and the sum's nearest double prints as `1000000000.00003338` — the last
+two places are the addition's rounding, not the recording's clock. The test above this one has
+said so since 0.4.1, and calls the first "the more accurate of the two".
+
+What decided which one a rate group got was the offset budget. Groups ask from one budget,
+fastest rate first, and a group that cannot fit formats directly. So the answer depended on
+the other channels — and `--channels` changes who is in the queue:
+
+```
+$ edf2csv far.edf --out whole                  # a fast channel takes the table
+$ head -3 whole/signals_30000hz.csv
+time_s,slow
+1000000000.00000000,0.000
+1000000000.00003338,0.100
+
+$ edf2csv far.edf --out one --channels slow    # the same channel, on its own
+$ head -3 one/signals.csv
+time_s,slow
+1000000000.00000000,0.000
+1000000000.00003333,0.100
+```
+
+Two files out of one recording disagreeing about when a sample was taken, under a documented
+promise — claim 8 on the correctness page — that `--channels` selects columns and changes
+nothing else. The narrowing sweep asserts that promise and structurally cannot see this: a
+fixture small enough to run in a sweep never exhausts a budget of a million offsets, so both
+of its conversions take the table.
+
+The fallback now computes the same decomposition, just without the table to read it from. The
+sum survives only where the decomposition has nothing to stand on — a record starting on a
+fraction or before zero, where whole part and fraction are not separable, and past 1e21, where
+the whole part stops printing in full.
+
+The test that should have caught it says so in its own comment: "Whether a group got the cache
+may not change a single cell." Underneath, it compared each formatter against `fixed(sum)` at
+a start of 42 seconds and three decimals, where every way of computing the instant agrees to
+the last digit. It compares the two of them against each other now, across five rates and ten
+starts out to 1e15.
+
 ## 0.7.47
 
 ### an empty --out was left to the filesystem to complain about

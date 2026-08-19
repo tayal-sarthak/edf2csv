@@ -295,15 +295,52 @@ export function makeTimeFormatter(
   decimals: number,
   budget: OffsetBudget = newOffsetBudget(),
 ): (recordStart: number, sample: number) => string {
-  const direct = (recordStart: number, sample: number): string =>
+  const usable = rate > 0 && Number.isFinite(rate);
+
+  /** The sum, formatted. Right only where the decomposition below does not apply. */
+  const summed = (recordStart: number, sample: number): string =>
     fixed(recordStart + sample / rate, decimals);
 
-  if (
-    !(rate > 0) ||
-    !Number.isFinite(rate) ||
-    samplesPerRecord <= 0 ||
-    samplesPerRecord > budget.remaining
-  ) {
+  /*
+    The same decomposition the table holds, computed on the spot.
+
+    This used to be the sum, and that made the time column two columns depending on how much
+    of the budget above was left. `recordStart + sample / rate` cannot carry the fraction once
+    the record start is large: at a start of 1e9 and 30 kHz the exact instant is
+    1000000000.0000333333, and the double nearest the sum prints as 1000000000.00003338 —
+    the last two places are the addition's rounding, not the recording's clock.
+
+    Which of the two a rate group got was decided by the groups ahead of it, since they ask
+    from one budget fastest first. So a recording whose fast channel takes the table left its
+    slow channel adding doubles, and the same channel asked for on its own got the table:
+
+        edf2csv far.edf --out whole                 ->  1000000000.00003338
+        edf2csv far.edf --out one --channels slow   ->  1000000000.00003333
+
+    Two files from one recording disagreeing about when a sample was taken, in a tool whose
+    documentation says `--channels` selects columns and changes nothing else. The narrowing
+    sweep asserts exactly that and could not see it: its fixtures are small enough that the
+    budget never runs out, so both conversions took the table.
+
+    The sum is still the answer where the decomposition has nothing to stand on — a record
+    starting on a fraction or before zero, where the whole part and the fraction are not
+    separable — and past 1e21, where the whole part stops printing in full.
+  */
+  const composed = (recordStart: number, sample: number): string => {
+    const text = fixed(sample / rate, decimals);
+    const dot = text.indexOf('.');
+    const whole = recordStart + (dot === -1 ? Number(text) : Number(text.slice(0, dot)));
+    if (whole >= 1e21) return summed(recordStart, sample);
+    return dot === -1 ? `${whole}` : `${whole}${text.slice(dot)}`;
+  };
+
+  /** What every row gets when the table is not there to be read. */
+  const direct = (recordStart: number, sample: number): string =>
+    usable && sample >= 0 && Number.isInteger(recordStart) && recordStart >= 0
+      ? composed(recordStart, sample)
+      : summed(recordStart, sample);
+
+  if (!usable || samplesPerRecord <= 0 || samplesPerRecord > budget.remaining) {
     return direct;
   }
   budget.remaining -= samplesPerRecord;
@@ -350,7 +387,7 @@ export function makeTimeFormatter(
       The slow path already expands these with BigInt. One comparison per row keeps that
       correct without giving up the cache for the other twenty million.
     */
-    if (whole >= 1e21) return direct(recordStart, sample);
+    if (whole >= 1e21) return summed(recordStart, sample);
     return `${whole}${fractionText[sample] as string}`;
   };
 }
