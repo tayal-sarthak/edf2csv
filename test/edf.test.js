@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, copyFile, mkdtemp, rm, truncate } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, readFile, rm, truncate } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -472,6 +472,78 @@ describe('EDF+ annotations', () => {
     assert.equal(quiet.unreadableDurations, 0);
     assert.equal(quiet.negativeDurations, 0);
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
+  });
+
+  it('reads a header number only where the header wrote one', async () => {
+    /*
+      `Number()` accepts a great deal more than EDF writes, and every one of those forms was a
+      field this read as a number nobody had put there. A physical maximum of `0x64` came out
+      as 100 — printed as `-100 to 100` in the channel table, written to channels.csv as
+      `physical_max,100`, and used as the gain every sample on that channel was scaled by. A
+      whole calibration invented out of four bytes that are not a decimal number, exit 0, no
+      diagnostic anywhere. `0x02` in the signal-count field is a two-channel recording.
+
+      The same mistake as `#0x2` reaching channel 2 through `--channels`, `--decimals 0o5`
+      writing five places, and `--jobs 0x10` running sixteen, each of which has its own fix.
+      Those were values somebody typed. These are the fields every number in the output is
+      computed from.
+
+      What the grammar has to keep is the exponent form: EDF gives a physical bound eight
+      characters, and a magnetometer's range does not fit any other way. `1e30` is a header
+      this tool has always read and a fixture depends on.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-grammar-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const source = path.join(scratch, 'plain.edf');
+    writeEdf({
+      path: source,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 2, gen: () => 500 },
+      ],
+    });
+    const original = await readFile(source);
+
+    // Offsets from the layout at the top of header.ts: one signal, so its physical maximum is
+    // 256 + 1 * 112, and the signal count is the last four bytes of the fixed header.
+    const patched = (at, field) => {
+      const bytes = Buffer.from(original);
+      bytes.write(field.padEnd(8).slice(0, at === 252 ? 4 : 8), at, 'latin1');
+      return bytes;
+    };
+    const PHYSICAL_MAX = 256 + 112;
+    const SIGNAL_COUNT = 252;
+
+    for (const [at, field, named] of [
+      [PHYSICAL_MAX, '0x64', 'physical maximum (signal 0)'],
+      [PHYSICAL_MAX, '0b1100100', 'physical maximum (signal 0)'],
+      [PHYSICAL_MAX, '0o144', 'physical maximum (signal 0)'],
+      [SIGNAL_COUNT, '0x02', 'number of signals'],
+      [SIGNAL_COUNT, '0b10', 'number of signals'],
+    ]) {
+      assert.throws(
+        () => parseHeader(patched(at, field), original.length),
+        (error) =>
+          error.code === 'BAD_HEADER_FIELD' &&
+          error.message.includes(named) &&
+          error.message.includes('is not a number'),
+        `"${field}" at ${at} was read as a number`,
+      );
+    }
+
+    // And the forms EDF does write are still read, exponent included.
+    for (const field of ['100', '+100', '-100', '100.0', '1e30', '1E30', '.5']) {
+      const { header } = parseHeader(patched(PHYSICAL_MAX, field), original.length);
+      assert.equal(
+        header.signals[0].physicalMax,
+        Number(field),
+        `"${field}" is a physical maximum EDF permits`,
+      );
+    }
   });
 
   it('never reads a padded duration field as a zero', async () => {

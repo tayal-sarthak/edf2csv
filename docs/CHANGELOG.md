@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.43
+
+### a hex physical maximum was read as the number it spells
+
+A physical maximum written as `0x64` was read as **100**. It printed in the channel table as
+`-100 to 100`, went into `channels.csv` as `physical_max,100`, and became the gain every sample
+on that channel was scaled by:
+
+```
+$ edf2csv shifted.edf --info
+#  COLUMN  LABEL  UNIT  RATE   RANGE        OUTPUT
+0  ch1     ch1    uV    10 Hz  -100 to 100  signals.csv
+```
+
+Exit 0. No warning. A whole calibration — and therefore every number written for that channel —
+invented out of four bytes that are not a decimal number. `0b1100100` and `0o144` are the same
+hundred; `0x02` in the signal-count field is a two-channel recording; `1e10` there is ten
+billion channels, which at least fails loudly.
+
+`Number()` accepts all of it, and this is the fourth place in this tool it has been caught doing
+so. The other three have their own comments and their own fixes: `#0x2` reached channel 2
+through `--channels`, `--decimals 0o5` wrote five places, `--jobs 0x10` ran sixteen jobs. Each
+of those was a value somebody typed and got quietly reinterpreted. These are the fields every
+number in the output is computed from, and `edf-format.md` says of them, in its second sentence,
+"all fields are ASCII", and then gives the layout digit by digit.
+
+Held to EDF's own grammar now: a sign, digits, an optional fractional part, an optional
+exponent. The exponent stays because eight characters cannot express a magnetometer's range any
+other way — `1e-16` is a physical bound real headers write, and a fixture depends on it. The
+comma decimal separator is normalised before this, as it always was, and NUL padding is trimmed
+before that. Anything else raises `BAD_HEADER_FIELD` naming the field and quoting what was
+found, which is the message this file already had for a field that is not a number:
+
+```
+error: Header field "physical maximum (signal 0)" is not a number (found "0x64").
+       The file may be truncated, byte-shifted, or not an EDF file at all.
+```
+
+Every fixture, every sweep and the whole suite read exactly as before: 2,700 corrupted files
+still exit cleanly, 20,160 round-trip cells still recover, 601 estimates still hold. Nothing
+legal was reading through this door.
+
 ## 0.7.42
 
 ### the header layout is written out four times and checked nowhere

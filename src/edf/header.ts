@@ -148,9 +148,33 @@ const trimField = (s: string): string => s.replace(/[\0\s]+$/u, '').replace(/^\s
  * real error then comes from `parseHeader`, which is the one place that decides.
  */
 export function peekSignalCount(fixed: Uint8Array): number | null {
-  const count = Number(normaliseNumberField(dec(fixed, 252, 4)).text);
+  const text = normaliseNumberField(dec(fixed, 252, 4)).text;
+  if (!DECIMAL_FIELD.test(text)) return null;
+  const count = Number(text);
   return Number.isInteger(count) && count > 0 ? count : null;
 }
+
+/**
+ * What EDF allows a numeric field to look like, which is less than `Number()` allows.
+ *
+ * A sign, digits, an optional fractional part, an optional exponent — the spec's own grammar,
+ * plus the exponent form the 8-character physical bounds need to reach a magnetometer's range
+ * and which real headers use.
+ *
+ * `Number()` accepts a great deal more, and every one of those forms is a header this tool
+ * would have read as a number nobody wrote. A physical maximum of `0x64` came out as 100: it
+ * printed as `-100 to 100` in the channel table, went into channels.csv as `physical_max,100`,
+ * and set the gain every sample on that channel was scaled by — a whole calibration invented
+ * from four bytes that are not a decimal number, exit 0, no diagnostic. `0b1100100` and `0o144`
+ * are the same hundred, and `0x02` in the signal-count field is a two-channel recording.
+ *
+ * The same mistake as `#0x2` reaching channel 2 through `--channels`, `--decimals 0o5` writing
+ * five places and `--jobs 0x10` running sixteen, all of which have their own comments and their
+ * own fixes. Those were values somebody typed. These are the fields every number in the output
+ * is computed from, and the page describing them says "all fields are ASCII" and gives the
+ * layout digit by digit.
+ */
+const DECIMAL_FIELD = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
 
 /** A numeric header field, trimmed and with a comma decimal separator turned into a dot. */
 function normaliseNumberField(raw: string): { text: string; sawComma: boolean } {
@@ -173,7 +197,7 @@ function parseNumberField(
   if (text === '') {
     throw new EdfError('BAD_HEADER_FIELD', `Header field "${field}" is empty.`);
   }
-  const n = Number(text);
+  const n = DECIMAL_FIELD.test(text) ? Number(text) : NaN;
   if (!Number.isFinite(n)) {
     throw new EdfError(
       'BAD_HEADER_FIELD',

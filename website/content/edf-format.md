@@ -473,6 +473,15 @@ decimal point, and the file raises `COMMA_DECIMAL` so you can sanity-check the a
 which ordinary whitespace trimming doesn't remove, and a parser that only trims whitespace ends up
 unable to read the signal count of a perfectly good file. Both are trimmed here.
 
+**Anything else in a numeric field.** A sign, digits, an optional fractional part and an optional
+exponent are what these fields hold — the last of those because eight characters is not enough for a
+magnetometer's range any other way, so `1e-16` is a physical bound real headers write. Nothing else
+is read as a number, and that is narrower than most languages' own conversion: JavaScript's reads
+`0x64` as 100, `0b1100100` as 100 and `0o144` as 100, which up to 0.7.43 meant a physical maximum of
+`0x64` printed as `-100 to 100`, went into `channels.csv` as `physical_max,100`, and set the gain
+every sample on that channel was scaled by. Those bytes are a byte-shifted or damaged header, and
+they now raise `BAD_HEADER_FIELD` naming the field and quoting what was found.
+
 **A header-bytes field that disagrees with the signal count.** Offset 184 should equal
 `256 * (1 + ns)`. When it doesn't, the computed value wins (it's the one the layout actually
 implies) and `HEADER_BYTES_MISMATCH` is raised.
