@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.39
+
+### the too-large-for-a-spreadsheet test used a twenty-row recording
+
+The whole of the test named *warns when a file would be too large for a spreadsheet*:
+
+```js
+it('warns when a file would be too large for a spreadsheet', async () => {
+  const plan = await planFor('tiny.edf');
+  assert.equal(plan.estimate.exceedsSpreadsheetLimit, false);
+  assert.ok(plan.estimate.rows > 0);
+});
+```
+
+A twenty-row recording, asserted not to overflow. It never warned, and nothing else did either:
+every fixture is small on purpose, so no sweep and no test in the suite ever put a `true` in
+that field or produced a `LARGE_OUTPUT` warning. The branch had been reached from one side only
+for as long as it has existed.
+
+It decides something people meet — "Can I open the output in Excel?" is a section of the FAQ,
+and 1,048,576 is a cliff rather than a round number. What decides it is the header, which is a
+row of the file and not a row of the data:
+
+```js
+if (groupRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
+```
+
+So 1,048,575 data rows fit exactly and 1,048,576 do not. An estimate off by one either way tells
+somebody to split a conversion that would have opened, or lets them open one that will not.
+
+Both sides of both boundaries are named now, and planned from a header rather than written,
+since the question is arithmetic on a record count and a gigabyte of CSV would answer it no
+better. `Temp rectal` carries one sample per record, so the row count *is* the record count and
+the edge can be stated exactly. The long layout has its own comparison — every rate in one
+table, so the file that overflows is the sum rather than the largest group — and gets its own
+boundary and a case showing the two layouts disagreeing about the same recording, which is the
+distinction the estimate exists to keep.
+
+Deleting either `+ 1` now fails this. Before, deleting both changed nothing.
+
 ## 0.7.38
 
 ### the estimate had a floor and no ceiling

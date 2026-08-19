@@ -1199,9 +1199,94 @@ describe('planning', () => {
   });
 
   it('warns when a file would be too large for a spreadsheet', async () => {
-    const plan = await planFor('tiny.edf');
-    assert.equal(plan.estimate.exceedsSpreadsheetLimit, false);
-    assert.ok(plan.estimate.rows > 0);
+    /*
+      This asserted `exceedsSpreadsheetLimit === false` on a twenty-row recording, under a
+      title saying it warns when a file is too large. It never was. Nothing in the suite or
+      in any sweep put a `true` in that field or produced a LARGE_OUTPUT warning — every
+      fixture is small on purpose, and the branch that decides it, header row included, was
+      reached from one side only.
+
+      It decides something people meet: "Can I open the output in Excel?" is a section of the
+      FAQ, and 1,048,576 is a real cliff rather than a round number. The row that decides it
+      is the header, which is a row of the file and not a row of the data:
+
+          if (groupRows + 1 > SPREADSHEET_ROW_LIMIT) exceeds = true;
+
+      So 1,048,575 data rows fit exactly and 1,048,576 do not, and an estimate off by one
+      either way tells somebody to split a conversion that would have opened, or lets them
+      open one that will not.
+
+      Planned from a header rather than written, since the point is arithmetic on a record
+      count. `Temp rectal` carries one sample per record, so the row count is the record
+      count and the boundary can be named exactly.
+    */
+    const { SPREADSHEET_ROW_LIMIT } = await import('../dist/index.js');
+    assert.equal(SPREADSHEET_ROW_LIMIT, 1_048_576, 'the limit this test is about has moved');
+
+    const file = await EdfFile.open(fixture('mixed-rates.edf'));
+    const planWith = (recordCount, options) =>
+      buildPlan(
+        {
+          signals: file.header.signals,
+          recordDuration: file.header.recordDuration,
+          recordCount,
+          hasAnnotationChannel: file.annotationSignals.length > 0,
+        },
+        options,
+      );
+
+    try {
+      const slowest = { channels: ['Temp rectal'] };
+      const fits = planWith(SPREADSHEET_ROW_LIMIT - 1, slowest);
+      assert.equal(fits.estimate.rows, SPREADSHEET_ROW_LIMIT - 1);
+      assert.equal(
+        fits.estimate.exceedsSpreadsheetLimit,
+        false,
+        'a file whose header row lands on the last line a spreadsheet holds still opens',
+      );
+      assert.ok(
+        !fits.diagnostics.some((d) => d.code === 'LARGE_OUTPUT'),
+        'and is not warned about',
+      );
+
+      const overflows = planWith(SPREADSHEET_ROW_LIMIT, slowest);
+      assert.equal(overflows.estimate.rows, SPREADSHEET_ROW_LIMIT);
+      assert.equal(
+        overflows.estimate.exceedsSpreadsheetLimit,
+        true,
+        'one row more than that does not',
+      );
+      const warned = overflows.diagnostics.find((d) => d.code === 'LARGE_OUTPUT');
+      assert.ok(warned, `the run has to say so: ${JSON.stringify(overflows.diagnostics)}`);
+      assert.match(warned.message, /1,048,576 rows/u, warned.message);
+      assert.match(warned.hint, /--start and --duration|pandas or R/u, warned.hint);
+
+      /*
+        The long layout counts differently: every rate lands in one table, so the file that
+        overflows is the sum rather than the largest group. Three channels at 256, 128 and 1
+        sample per record are 385 rows a record, so it crosses far sooner — and the wide
+        layout of the same recording does not cross at all, which is the distinction the
+        estimate has to keep.
+      */
+      // Its own arithmetic, so its own boundary: one channel of one sample a record puts
+      // the long layout on the same edge as the wide one, through the other branch.
+      const alone = { layout: 'long', channels: ['Temp rectal'] };
+      assert.equal(planWith(SPREADSHEET_ROW_LIMIT - 1, alone).estimate.exceedsSpreadsheetLimit, false);
+      assert.equal(planWith(SPREADSHEET_ROW_LIMIT, alone).estimate.exceedsSpreadsheetLimit, true);
+
+      const perRecord = 256 + 128 + 1;
+      const records = Math.ceil(SPREADSHEET_ROW_LIMIT / perRecord);
+      const long = planWith(records, { layout: 'long' });
+      assert.equal(long.estimate.exceedsSpreadsheetLimit, true, 'the one shared table overflows');
+      const wide = planWith(records, {});
+      assert.equal(
+        wide.estimate.exceedsSpreadsheetLimit,
+        false,
+        'while the largest of its three files holds a quarter of that',
+      );
+    } finally {
+      await file.close();
+    }
   });
 });
 
