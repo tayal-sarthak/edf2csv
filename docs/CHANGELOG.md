@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.45
+
+### the terminal sweep failed the build when it lost its own race
+
+`npm run terminal` failed the build when it lost its own race, and named the wrong direction
+when it did.
+
+The check it exists for needs a conversion that fails *while the meter is up*, and it arranges
+one by cutting the recording out from under the reader. That cut was a thread that slept fifty
+milliseconds. Fifty milliseconds is not a synchronisation primitive — it is longer than this
+conversion needs on an idle machine and shorter than Node takes to boot on a loaded one — and
+the second is the case that hurts: the file is cut before the reader ever opens it, leaving a
+short recording whose header overstates its records, which this tool reads happily and by
+design. Exit 0, nothing for the check to look at, and:
+
+```
+$ npm run terminal
+5 runs under a pseudo terminal.
+  the recording did not shrink in time; nothing was proven
+$ echo $?
+1
+```
+
+Which is backwards. It shrank too early, not too late. And a sweep that could not arrange its
+own conditions had turned a scheduling accident into a failed CI run — on the one harness whose
+whole job is to be run on machines this project does not own.
+
+The first bytes a conversion puts on a terminal are the meter, drawn from inside the read loop,
+so the reader is demonstrably inside the file by then. That is the event the sleep was standing
+in for, and the cut now waits for it. A run that outruns the cut anyway is retried with the file
+put back, and if it still will not fail, that is said out loud as a note and the exit code is
+left alone — the same answer this file already gives a machine with no `pty` module. Reduced to
+`time.sleep(0.0)`, the old code produces the run above; the new code exits 0 five times out of
+five under load, and still catches the 0.7.9 defect when the meter's erase is put back.
+
 ## 0.7.44
 
 ### two fatal errors nothing had ever provoked
