@@ -92,6 +92,13 @@ function run(args) {
   }
 }
 
+/**
+ * How far over the truth a byte estimate may read and still be worth having.
+ *
+ * The worst this sweep produces is 1.73x and the average is 1.16x; see where it is used.
+ */
+export const LOOSEST = 3;
+
 /** Rows and bytes actually written to the signal files in a directory. */
 function written(directory) {
   let rows = 0;
@@ -159,8 +166,30 @@ export function sweepEstimates(filter = '') {
             );
           }
           if (actual.bytes > 0) {
-            overBy += estimate.bytes / actual.bytes;
+            const ratio = estimate.bytes / actual.bytes;
+            overBy += ratio;
             sized++;
+            /*
+              And a ceiling, which the claim never had.
+
+              "Never reads low" is half a contract. People use this figure to decide whether
+              they have room, and an estimate that reads ten times high answers that question
+              wrongly in the other direction — it says no to a conversion that would have
+              fitted, and nothing here would have noticed, since every check above is
+              satisfied by any number large enough.
+
+              LOOSEST is headroom over the worst this sweep has ever produced, which is 1.73x:
+              a three-byte-per-sample BDF at `--decimals 0`, where every cell is as narrow as a
+              cell gets and the bound taken from the header is as wide as it gets. Twice that
+              again is not a target, it is a wall: the arithmetic would have to have stopped
+              describing the file to reach it.
+            */
+            if (ratio > LOOSEST) {
+              problems.push(
+                `${where}: predicted ${estimate.bytes} bytes, wrote ${actual.bytes} — ` +
+                  `${ratio.toFixed(1)}x, past the ${LOOSEST}x an estimate stays useful within`,
+              );
+            }
           }
         }
       } finally {
@@ -183,7 +212,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const margin = sized > 0 ? overBy / sized : 1;
   process.stdout.write(
-    `Every row count exact, and no byte count under the truth ` +
+    `Every row count exact, and every byte count between the truth and ${LOOSEST}x it ` +
       `(sizes read ${((margin - 1) * 100).toFixed(0)}% high on average).\n`,
   );
 }

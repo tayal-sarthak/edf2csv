@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.38
+
+### the estimate had a floor and no ceiling
+
+Claim 5 has always been careful about which direction the byte estimate may err in:
+
+> The byte count NEVER UNDER-COUNTS. It is documented as an approximation, and it is one —
+> most samples sit well inside the range their channel declares, so it reads high. Reading
+> high is the direction a size estimate must err in: people use it to decide whether they have
+> room. Reading low is a defect even though "approximate" would excuse it.
+
+That is half a contract. Somebody deciding whether they have room is answered wrongly by an
+estimate ten times too large as surely as by one too small — it says no to a conversion that
+would have fitted. And a check that only asks whether a number is large enough is satisfied by
+*any* number: multiply the estimate by five and the sweep passes 601 for 601.
+
+So there is a ceiling now, and it is the same 601 predictions that pass under it. Three times
+the truth, which is a wall and not a target — the worst figure this sweep has ever produced is
+1.73x, on a three-byte-per-sample BDF at `--decimals 0`, where every cell is as narrow as a cell
+gets and the bound taken from the header is as wide as it gets. The average is 1.16x. Reaching
+three would mean the arithmetic had stopped describing the file.
+
+```
+601 predictions over 50 recordings.
+Every row count exact, and every byte count between the truth and 3x it
+(sizes read 16% high on average).
+```
+
+With the estimate inflated fivefold, 552 of the 601 report it and name the ratio. Before this
+release the same source produced "no byte count under the truth (sizes read 480% high on
+average)" — the average was printed, and printed averages are not assertions.
+
 ## 0.7.37
 
 ### nothing compared --stdout with the file it replaces
