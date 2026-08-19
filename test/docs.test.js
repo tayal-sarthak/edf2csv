@@ -1126,6 +1126,83 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('states the accuracy figures the cross-check\'s own recordings contain', async () => {
+    /*
+      "Across the 75 generated recordings, 16,943 sample values were bit-for-bit identical"
+      is this tool's headline accuracy claim. It opens the README, it is claim 1 on the
+      correctness page, and 16,943 is one of the four figures on the landing page in large
+      type. It is also the only claim nobody can re-run without installing pyEDFlib, which
+      makes it the one most able to go stale unnoticed — and its recordings are not the
+      fixture set, so none of the counts the neighbouring test pins has any bearing on it.
+
+      What pyEDFlib is needed for is whether the values AGREE. How many there are to compare
+      is arithmetic on the headers of recordings this repository generates itself:
+      `samplesPerRecord * recordCount` summed over the data channels, and the annotations the
+      reader finds. Both come out on the nose, so all three figures can be held to the files
+      they describe on a machine with no Python at all.
+
+      The generator is deterministic and writes 300 KB in a fifth of a second.
+    */
+    const { generate, OUT_DIR } = await import(path.join(ROOT, 'test/crossvalidate/generate.mjs'));
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+    const written = generate();
+    assert.ok(written.length > 10, `the cross-check generator wrote ${written.length} recordings`);
+
+    let samples = 0;
+    let events = 0;
+    for (const name of (await readdir(OUT_DIR)).filter((n) => /\.(edf|bdf)$/iu.test(n))) {
+      const file = await EdfFile.open(path.join(OUT_DIR, name));
+      try {
+        for (const signal of file.dataSignals) {
+          samples += signal.samplesPerRecord * file.recordCount;
+        }
+        if (file.annotationSignals.length > 0) {
+          events += (await file.readAnnotations()).annotations.length;
+        }
+      } finally {
+        await file.close();
+      }
+    }
+
+    const page = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
+    const readme = (await read('README.md')).replace(/\s+/gu, ' ');
+    const jsx = await read('website/src/components/Landing.jsx');
+    const numbers = (text, pattern) =>
+      [...text.matchAll(pattern)].map((m) => Number((m[1] ?? m[2]).replaceAll(',', '')));
+
+    /*
+      Matched on the cross-check's own phrasings rather than on any "N recordings": the
+      fixture set and the batch sweep both state counts of their own on the same page, and
+      the batch sweep's is how many files a seed happened to scatter, which is nobody's
+      business to pin.
+    */
+    const counts = [
+      ...numbers(page, /([\d,]+) generated recordings/gu),
+      ...numbers(page, /bit for bit,[^.]*?across ([\d,]+) recordings/gu),
+      ...numbers(readme, /([\d,]+) generated recordings/gu),
+    ];
+    assert.ok(counts.length >= 4, `the pages state the cross-check's size ${counts.length} times`);
+    for (const count of counts) {
+      assert.equal(count, written.length, `a page says ${count} recordings; it reads ${written.length}`);
+    }
+
+    const stated = [
+      ...numbers(page, /([\d,]+) sample values|Compared ([\d,]+) sample values/gu),
+      ...numbers(readme, /([\d,]+) sample values/gu),
+      ...numbers(jsx, /value: '([\d,]+)', label: 'sample values/gu),
+    ];
+    assert.ok(stated.length >= 4, `the sample count is stated ${stated.length} times`);
+    for (const value of stated) {
+      assert.equal(value, samples, `a page says ${value} sample values; the recordings hold ${samples}`);
+    }
+
+    const annotations = numbers(page, /([\d,]+) annotations/gu);
+    assert.ok(annotations.length >= 2, 'the page no longer states the annotation count');
+    for (const value of annotations) {
+      assert.equal(value, events, `a page says ${value} annotations; the recordings hold ${events}`);
+    }
+  });
+
   it('describes the base path the site is actually built with', async () => {
     /*
       The README promised a relative base and subpath deploys. The base is absolute and

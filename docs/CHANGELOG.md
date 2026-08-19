@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.31
+
+### the headline accuracy figures were checked by nothing
+
+The tool's headline accuracy claim opens the README, is claim 1 on the correctness page, and
+puts one of its numbers on the landing page in large type:
+
+> Across the **75 generated recordings**, **16,943 sample values** were bit-for-bit identical:
+> not equal to within a tolerance, but the same 64 bits.
+
+Nothing checked any of the three figures. They are also the ones least able to be checked by
+anyone reading them, because `npm run crossvalidate` needs pyEDFlib installed — which is why
+it is a separate command and not part of `npm test`.
+
+The split that makes this fixable: pyEDFlib is needed for whether the values **agree**. How
+many there are to compare is arithmetic on the headers of recordings this repository generates
+itself, `samplesPerRecord * recordCount` summed over each file's data channels. It comes out at
+16,943 on the nose, and the annotations the reader finds come to 120, and the generator writes
+75 files. So all three can be held to the recordings they describe on a machine with no Python
+at all, in a tenth of a second.
+
+The recordings are not the fixture set — `test/crossvalidate/generate.mjs` writes its own,
+ordinary and well-formed and spread across calibrations, which is the opposite of what the
+fixtures are for — so none of the counts the neighbouring test pins had any bearing on these.
+That test exists because "192 predictions over 34 recordings" sat on the page while the sweep
+ran 216 over 39; this is the same exposure on the claim with the most eyes on it and the
+fewest ways to re-run it.
+
+The figures are right today, which is the outcome these coverage releases keep having and the
+reason to write the check while they are: a number nobody can reproduce is one nobody can
+correct either. Change the count in the generator, or a digit on any of the three pages, and
+the suite says which file disagrees with which.
+
 ## 0.7.30
 
 ### two more labels offered back in a form a shell rewrites
