@@ -1271,6 +1271,101 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('lays the header out the way the parser reads it', async () => {
+    /*
+      `edf-format.md` prints the byte layout twice — a table for the fixed header and a fence
+      for the field-major signal headers — and it is the page somebody uses to check a file by
+      hand or to write a reader of their own. The parser prints it a third time, in the comment
+      at the top of `header.ts`, and reads it a fourth, in the offsets passed to `dec` and
+      `readField`. Four copies of one table, and nothing joining any of them.
+
+      That is the failure `OPTIONS` in cli.ts carries a comment about — "a second copy of twenty
+      flag names is a copy that will be missing the next one" — with the difference that a wrong
+      offset here is not a missing entry but a wrong instruction: a reader following the page
+      would take a label where a transducer string is, which is the exact mistake the page's own
+      last paragraph warns about.
+
+      Matched as sets of (offset, width) rather than field by field, since the names are prose
+      on one side and identifiers on the other. A pair that appears in one and not the other is
+      what there is to catch.
+    */
+    const FIXED_HEADER_BYTES = 256;
+    const source = await read('src/edf/header.ts');
+    const page = await read('website/content/edf-format.md');
+
+    // What the parser actually reads: `dec(buf, 168, 8)` for the fixed header.
+    const reads = new Set(
+      [...source.matchAll(/\bdec\(buf, (\d+), (\d+)\)/gu)].map((m) => `${m[1]}:${m[2]}`),
+    );
+    assert.ok(reads.size >= 9, `found ${reads.size} fixed-header reads, expected the whole table`);
+
+    /*
+      Compared by containment rather than by equality, because one row is read twice: the
+      version field is eight bytes on the page, and the parser reads bytes 1 to 7 of it again
+      on their own, to recognise BDF's `BIOSEMI` magic. So every read has to fall inside a row
+      the page documents, and every row has to have a read starting at it — which says both
+      of the things worth saying, and lets a field be read in parts.
+    */
+    const rows = [...page.matchAll(/^\| (\d+) \| (\d+) \| ([^|]+)\|/gmu)]
+      .map((m) => ({ at: Number(m[1]), width: Number(m[2]), name: m[3].trim() }))
+      // The section below breaks the version field into its own bytes; its rows have the
+      // same shape, and every one of them sits inside the version row above.
+      .filter((row) => row.at + row.width <= FIXED_HEADER_BYTES);
+    assert.ok(rows.length >= 10, `the fixed-header table has ${rows.length} rows`);
+
+    for (const read of reads) {
+      const [at, width] = read.split(':').map(Number);
+      assert.ok(
+        rows.some((row) => row.at <= at && at + width <= row.at + row.width),
+        `the parser reads ${width} bytes at ${at}, which the page's table does not cover`,
+      );
+    }
+    for (const row of rows) {
+      assert.ok(
+        [...reads].some((read) => Number(read.split(':')[0]) === row.at),
+        `the page documents "${row.name}" at ${row.at} and nothing reads it`,
+      );
+    }
+
+    // And the comment at the top of the parser, which prints the same table a third time.
+    const comment = source.slice(0, source.indexOf('*/'));
+    const commented = [...comment.matchAll(/^ \*\s+(\d+)\s+(\d+)\s{2,}\S/gmu)].map(
+      (m) => `${m[1]}:${m[2]}`,
+    );
+    assert.deepEqual(
+      [...new Set(commented)].sort(),
+      rows.map((row) => `${row.at}:${row.width}`).sort(),
+      "header.ts's own layout comment and the page's table are different layouts",
+    );
+
+    /*
+      The signal headers, which are the half people get wrong: field-major, so the label of
+      signal i is at `256 + i * 16` and its physical minimum at `256 + ns * 104 + i * 8`.
+      `readField(104, 8, i)` is that second one.
+    */
+    const perSignal = new Set(
+      [...source.matchAll(/\breadField\((\d+), (\d+), i\)/gu)].map((m) => `${m[1]}:${m[2]}`),
+    );
+    assert.ok(perSignal.size >= 9, `found ${perSignal.size} signal-header reads`);
+
+    const fence = /```\noffset 256([\s\S]*?)```/u.exec(page);
+    assert.ok(fence, 'the signal-header layout is gone from the page');
+    const drawn = ['0:16'];
+    for (const line of fence[1].split('\n')) {
+      const at = /\+ns\*(\d+)\s+ns \*\s*(\d+) bytes/u.exec(line);
+      if (at) drawn.push(`${at[1]}:${at[2]}`);
+    }
+    // The last row closes the record, and the ten of them have to add up to the 256 bytes a
+    // signal header takes — which is the arithmetic that makes field-major work at all.
+    const last = drawn[drawn.length - 1].split(':').map(Number);
+    assert.equal(last[0] + last[1], 256, `the signal header runs to ${last[0] + last[1]} bytes`);
+    assert.deepEqual(
+      drawn.sort(),
+      [...perSignal].sort(),
+      'the signal-header layout and the fields the parser reads are different layouts',
+    );
+  });
+
   it('describes the base path the site is actually built with', async () => {
     /*
       The README promised a relative base and subpath deploys. The base is absolute and

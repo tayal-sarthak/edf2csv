@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.42
+
+### the header layout is written out four times and checked nowhere
+
+The EDF header's byte layout is written out four times in this repository. Twice on
+`edf-format.md` — a table for the fixed 256 bytes, a fence for the field-major signal headers —
+once in the comment at the top of `header.ts`, and once more in the offsets passed to `dec` and
+`readField` just below that comment. Nothing joined any of them.
+
+That is the failure `OPTIONS` in `cli.ts` already carries a comment about — "a second copy of
+twenty flag names is a copy that will be missing the next one" — with a sharper consequence. An
+out-of-date list is missing an entry. An out-of-date offset is a wrong instruction, on the page
+somebody reads to check a file by hand or to write a reader of their own, and the mistake it
+would produce is the one the page's own last paragraph warns about:
+
+> A hand-written parser tested on a single-channel file passes, then reads a two-channel file
+> and gets a label where it expected a transducer string.
+
+All four are held to each other now. The fixed header is compared by containment rather than by
+equality, because one row is genuinely read twice — the version field is eight bytes on the
+page, and the parser reads bytes 1 to 7 of it again on their own to recognise BDF's `BIOSEMI`
+magic. So every read has to fall inside a documented row, and every documented row has to have a
+read starting at it. The ten signal fields are compared exactly, and their last offset plus its
+width has to come to 256, which is the arithmetic that makes field-major work at all.
+
+Every copy agrees today. Change `| 192 | 44 | reserved` to 40, or `+ns*104` to `+ns*100`, and
+the suite names which two disagree.
+
 ## 0.7.41
 
 ### the batch sweep never asked where the output went
