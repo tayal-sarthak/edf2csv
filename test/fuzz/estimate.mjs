@@ -42,6 +42,10 @@ const OPTIONS = [
   ['--decimals', '12'],
   ['--start', '1'],
   ['--start', '1', '--duration', '1'],
+  // --end names the same far bound by a different route, and resolves it by different
+  // arithmetic: `--duration` is measured from wherever the conversion starts, `--end` is read
+  // on the recording's own clock. Only one of the two was ever crossed.
+  ['--start', '1', '--end', '2'],
   ['--gzip'],
   // The long layout has its own row and byte arithmetic; the promise is the same.
   ['--layout', 'long'],
@@ -55,6 +59,22 @@ const OPTIONS = [
   */
   ['--bom'],
   ['--bom', '--layout', 'long'],
+  /*
+    The selector that decides which files exist at all, and it was the one never crossed.
+
+    `--channels` does more to the output than any flag here: it changes the columns, the row
+    counts, and — by removing rates from the conversion — which signal files get written and
+    what they are named. A mixed-rate recording narrowed to one channel stops producing
+    `signals_256hz.csv` and produces `signals.csv`. The estimate re-plans all of that and
+    promises the row count exactly, and nothing measured it.
+
+    `#0` because it is the one selection every fixture can answer: a label is per-file, and a
+    higher position does not exist on a single-channel recording. Crossed with the long
+    layout too, where the shared time column takes its precision from the rates left in the
+    conversion rather than from the file's — the arithmetic 0.7.17 found nothing checking.
+  */
+  ['--channels', '#0'],
+  ['--channels', '#0', '--layout', 'long'],
 ];
 
 function run(args) {

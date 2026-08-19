@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.22
+
+### the guard against an uncrossed option was missing two
+
+0.7.16 added a test to stop claim 5's coverage from drifting again. It read:
+
+```js
+for (const flag of ['--decimals', '--start', '--duration', '--gzip', '--layout', '--bom']) {
+  assert.ok(crossed.has(flag), `the estimate sweep never crosses ${flag}`);
+}
+```
+
+Six flag names, written out by hand, under a claim that the sweep crosses "every option that
+changes what lands on disk". `--channels` is not among them, and `--channels` changes more of
+what lands on disk than anything else there: it decides which columns are written, how many
+rows each file gets, and — by taking a rate out of the conversion — which signal files exist
+and what they are called. A mixed-rate recording narrowed to one channel stops writing
+`signals_256hz.csv` and writes `signals.csv` instead. The estimate re-plans all of that and
+promises the row count *exactly*, and the test that exists to notice an uncrossed option passed
+over the largest one.
+
+`--end` was missing too, beside the `--duration` that is crossed. They name the same far bound
+by different arithmetic: `--duration` is measured from wherever the conversion starts, `--end`
+is read on the recording's own clock, and only one of the two was ever exercised here.
+
+This is the mistake `OPTIONS` in `cli.ts` already carries a comment about — "a second copy of
+twenty flag names is a copy that will be missing the next one" — and the test written to
+prevent a coverage gap was itself a second copy with two names missing. It reads the CLI's
+option table now, and every flag in it must either be crossed or appear in a list of options
+that cannot change a signal file's bytes, each with the reason it cannot. A flag added
+tomorrow fails this until somebody classifies it, which is what the hand-written list could
+never do.
+
+The sweep goes from 466 predictions to **601**. Every row count is still exact and no byte
+count reads under, so the arithmetic was right — what was missing was anything that could have
+said so, for the third release in this shape and for the same reason each time.
+
 ## 0.7.21
 
 ### two lines named a clock in a notation the clock refuses

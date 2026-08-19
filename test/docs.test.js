@@ -250,12 +250,45 @@ describe('documentation and source agree on their lists', () => {
       reads under, which is the single direction this claim promises it never goes.
 
       Checked against the flags rather than against a number, since the point is coverage.
-      `--annotations-only` is excluded deliberately and says so in the sweep: it leaves no
-      signal files, and signal bytes are what the estimate is about.
+
+      Read from the CLI's own option table rather than from a list written out here, which is
+      the correction this test needed itself. It named six flags and passed while `--channels`
+      went uncrossed — the option that decides which signal files exist at all, since removing
+      a rate from the conversion removes its file — and `--end`, which resolves its bound by
+      different arithmetic from the `--duration` beside it. A hand-kept list of flag names is
+      the thing `OPTIONS` in cli.ts already has a comment about: it is a copy, and it will be
+      missing the next one. Derived, a new flag fails this until somebody classifies it.
     */
     const sweep = await read('test/fuzz/estimate.mjs');
     const crossed = new Set([...sweep.matchAll(/'(--[a-z-]+)'/gu)].map((m) => m[1]));
-    for (const flag of ['--decimals', '--start', '--duration', '--gzip', '--layout', '--bom']) {
+
+    // Every option that cannot change a signal file's bytes, and why it cannot. Anything not
+    // here has to be crossed.
+    const notAboutSignalBytes = {
+      '--info': 'is the estimate itself',
+      '--out': 'names the destination, not what goes in it',
+      '--annotations-only': 'leaves no signal files, and signal bytes are what this is about',
+      '--checksum': 'adds a field to metadata.json, which the estimate does not cover',
+      '--jobs': 'converts several recordings at once and changes none of them',
+      '--force': 'decides whether an existing directory may be written into',
+      '--quiet': 'changes what is printed',
+      '--json': 'changes the shape of what is printed',
+      '--strict': 'changes the exit code',
+      '--stdout': 'writes no directory to measure',
+      '--help': 'prints instead of converting',
+      '--version': 'prints instead of converting',
+    };
+
+    const source = await read('src/cli.ts');
+    const table = source.slice(
+      source.indexOf('const OPTIONS = {'),
+      source.indexOf('} as const;', source.indexOf('const OPTIONS = {')),
+    );
+    const declared = [...table.matchAll(/^ {2}'?([a-z-]+)'?: \{/gmu)].map((m) => `--${m[1]}`);
+    assert.ok(declared.length > 15, `read ${declared.length} options out of cli.ts, expected all`);
+
+    for (const flag of declared) {
+      if (flag in notAboutSignalBytes) continue;
       assert.ok(crossed.has(flag), `the estimate sweep never crosses ${flag}`);
     }
 
