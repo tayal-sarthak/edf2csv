@@ -4146,8 +4146,48 @@ describe('conversion', () => {
   });
 
   it('accepts a time window in human units', async () => {
-    const dir = await outDir();
-    const { code } = await cli([fixture('fractional-recdur.edf'), '--out', dir, '--start', '0.5s', '--duration', '500ms', '--json']);
-    assert.equal(code, 0);
+    /*
+      This asserted the exit code and nothing else. A build that ignored `--start` and
+      `--duration` outright converts the whole recording and exits 0, and so did one that read
+      `500ms` as five hundred seconds — the flags this test is named for could have meant
+      anything, or nothing, and it would still have gone green.
+
+      What a unit is worth is checked instead: `0.5s` and `500ms` have to select exactly the
+      rows `0.5` and `0.5` select, byte for byte, and `500ms` has to differ from `500`, which is
+      the whole of what "ms" means. The recording is 2 seconds at 250 Hz in 0.1 s records, so
+      half a second is 125 rows and the boundary lands inside a record rather than on one.
+    */
+    const recording = fixture('fractional-recdur.edf');
+    const convert = async (start, duration) => {
+      const dir = await outDir();
+      const result = await cli([recording, '--out', dir, '--start', start, '--duration', duration,
+        '--quiet']);
+      assert.equal(result.code, 0, `--start ${start} --duration ${duration}: ${result.stderr}`);
+      return (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    };
+
+    const spelled = await convert('0.5s', '500ms');
+    const plain = await convert('0.5', '0.5');
+    assert.deepEqual(spelled, plain, 'the units name the same window as the bare seconds do');
+
+    // Not vacuous: it is a window, and it is the right one.
+    assert.equal(spelled.length - 1, 125, spelled.slice(0, 3).join(' | '));
+    assert.equal(spelled[1], '0.500,12.500');
+    assert.equal(spelled[spelled.length - 1], '0.996,24.900');
+
+    // And a unit that is ignored is a unit that means nothing: 500 seconds is the rest of the
+    // recording, which is a different answer to the same digits.
+    const seconds = await convert('0.5s', '500');
+    assert.notDeepEqual(seconds, spelled, '"500ms" and "500" cannot name the same length');
+    assert.equal(seconds.length - 1, 375, 'a duration past the end takes what is there');
+
+    // The clock and the compound forms reach the same arithmetic, on a longer recording.
+    const clock = await cli([fixture('annotations.edf'), '--out', await outDir(), '--quiet',
+      '--start', '00:00:01', '--duration', '1s']);
+    assert.equal(clock.code, 0, clock.stderr);
+    const compound = await cli([fixture('annotations.edf'), '--info', '--json',
+      '--start', '0h0m1s', '--end', '2s']);
+    assert.equal(compound.code, 0, compound.stderr);
+    assert.equal(JSON.parse(compound.stdout).estimate.rows, 100);
   });
 });

@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.40
+
+### a test named for time units asserted only the exit code
+
+The whole of the test named *accepts a time window in human units*:
+
+```js
+it('accepts a time window in human units', async () => {
+  const dir = await outDir();
+  const { code } = await cli([fixture('fractional-recdur.edf'), '--out', dir,
+    '--start', '0.5s', '--duration', '500ms', '--json']);
+  assert.equal(code, 0);
+});
+```
+
+The exit code, and nothing else. A build that ignored both flags converts the whole recording
+and exits 0. So does one that reads `500ms` as five hundred seconds — change one digit in the
+unit table:
+
+```
+old test's only assertion, exit=0
+rows written: 375 (should be 125)
+```
+
+Three times the window it was asked for, and the test that exists for the units says fine.
+
+What a unit is worth is checked now instead. `--start 0.5s --duration 500ms` has to select
+exactly the rows `--start 0.5 --duration 0.5` selects, byte for byte, and `500ms` has to differ
+from `500` — which is the whole of what "ms" means, and the assertion the old test could not
+have made without converting twice. The recording is 2 seconds at 250 Hz in 0.1 s records, so
+the window is 125 rows and its bounds land inside a record rather than on one: `0.500,12.500`
+first and `0.996,24.900` last, both named.
+
+The clock form and the compound form get a line each on a longer recording, since `00:00:01`
+and `0h0m1s` are separate branches of the same parser and neither had ever been run through a
+conversion.
+
+The `ms: 1` edit fails this on the first assertion after the two conversions are compared.
+
 ## 0.7.39
 
 ### the too-large-for-a-spreadsheet test used a twenty-row recording
