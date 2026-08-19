@@ -408,8 +408,9 @@ Sample times are written to at most fifteen decimal places, which separates ever
 warning: Channels at 3000000000000000 Hz sample faster than the time column can distinguish, so
          consecutive rows in signals.csv carry the same time_s value.
          Every sample is written, in order. Use the row number rather than
-         time_s to tell them apart, or convert one rate at a time with
-         --channels.
+         time_s to tell them apart: the column already carries the fifteen
+         places a double can hold exactly, so no option or selection separates
+         them.
 ```
 
 The same code covers the limit of that, where the rate is not a number at all. A sampling rate is samples per record divided by the record duration, and the record-duration field accepts values small enough that the quotient overflows a double: four samples in a 1e-308 second record is `Infinity`. Those samples cannot be placed in time, so none is written, and the warning says which of the two happened:

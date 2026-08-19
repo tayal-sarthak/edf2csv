@@ -833,6 +833,61 @@ describe('column naming', () => {
     ]);
   });
 
+  it('does not offer a selection that leaves the time column exactly as it was', async () => {
+    /*
+      TIME_RESOLUTION ended on "or convert one rate at a time with --channels". Following it
+      parses, runs, exits 0 and prints the same warning back, so the only thing it changes is
+      whether the reader believes the column is fixed.
+
+      It cannot work in either layout. `timeDecimals` is a function of the rate alone, and in
+      the wide layout each rate already has its own file and its own precision — a narrowed
+      conversion writes the same column. In the long layout the shared column takes the finest
+      precision in the conversion, so dropping rates can only coarsen it.
+
+      Checked by taking the advice: the same recording narrowed to the rate that raised the
+      warning, in both layouts, and the warning has to come back with the same rate in it every
+      time. If some future selection did fix the column, this is what would notice.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-timeres-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const input = path.join(scratch, 'two-fast.edf');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000 };
+    // 1e-15 s records: three samples in one is 3e15 Hz, whose reciprocal never terminates and
+    // whose interval is finer than the fifteen places that are the ceiling. One sample in the
+    // same record is 1e15 Hz, which lands exactly on the ceiling and does not raise.
+    writeEdf({
+      path: input,
+      numRecords: 2,
+      recordDuration: 1e-15,
+      signals: [
+        { label: 'fast', ...base, samplesPerRecord: 3, gen: (r, s) => r * 3 + s },
+        { label: 'slower', ...base, samplesPerRecord: 1, gen: (r) => r },
+      ],
+    });
+
+    const raised = async (options) => {
+      const result = await convert(input, { outputDir: await outDir(), quiet: true, ...options });
+      return result.diagnostics.filter((d) => d.code === 'TIME_RESOLUTION');
+    };
+
+    for (const options of [
+      {},
+      { channels: ['fast'] },
+      { layout: 'long' },
+      { layout: 'long', channels: ['fast'] },
+    ]) {
+      const found = await raised(options);
+      assert.equal(found.length, 1, `${JSON.stringify(options)}: ${JSON.stringify(found)}`);
+      assert.match(found[0].message, /3000000000000000 Hz sample faster/u);
+      assert.doesNotMatch(
+        found[0].hint,
+        /--channels/u,
+        'the hint offers a selection that leaves the column exactly as it was',
+      );
+    }
+  });
+
   it('does not tell a long-layout run that a column was renamed', async () => {
     /*
       The warning above was written for the wide layout and printed in both:

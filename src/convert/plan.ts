@@ -293,9 +293,26 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         message:
           `Channels at ${formatRate(group.rate)} Hz sample faster than the time column can ` +
           `distinguish, so consecutive rows in ${group.fileName} carry the same time_s value.`,
+        /*
+          "or convert one rate at a time with --channels" was advice that does nothing.
+
+          It parses, it runs, it exits 0, and the warning comes back word for word — so
+          somebody who followed it had every reason to think the column had been fixed. In
+          the wide layout each rate already has its own file and its own precision, and
+          `timeDecimals` is a function of the rate alone, so a narrowed conversion writes the
+          same column it wrote before. In the long layout the shared column takes the finest
+          precision *in the conversion*, and dropping rates can only make it coarser — never
+          fine enough to separate samples that were already inseparable.
+
+          Nor is there another option that would: --decimals sets the value precision and
+          says so, and every rate that reaches this warning has already been given the
+          fifteen places that are the ceiling. The first sentence was the whole of the
+          answer, so it is the whole of the hint.
+        */
         hint:
           'Every sample is written, in order. Use the row number rather than time_s to tell ' +
-          'them apart, or convert one rate at a time with --channels.',
+          'them apart: the column already carries the fifteen places a double can hold ' +
+          'exactly, so no option or selection separates them.',
       });
     }
   }

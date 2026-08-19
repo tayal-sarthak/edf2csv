@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.28
+
+### a hint suggested a conversion that changes nothing it describes
+
+`TIME_RESOLUTION` ended on a suggestion:
+
+```
+warning: Channels at 3000000000000000 Hz sample faster than the time column can distinguish,
+         so consecutive rows in signals.csv carry the same time_s value.
+         Every sample is written, in order. Use the row number rather than
+         time_s to tell them apart, or convert one rate at a time with
+         --channels.
+```
+
+Take it — narrow that recording to the one rate the warning names — and the run exits 0 and
+prints the identical warning back. So does the long layout. So does the long layout narrowed.
+Four conversions, one sentence, no change to a single cell of the column it is about.
+
+This is worse than a command that will not parse, which the last few releases have been about.
+That kind fails loudly. This one succeeds, and the only thing it moves is whether the reader
+believes the problem is behind them.
+
+It cannot work in either layout, and for opposite reasons. `timeDecimals` is a function of the
+rate alone, so in the wide layout — where each rate already has its own file and its own
+precision — a narrowed conversion writes the column it was always going to write. In the long
+layout the one shared column takes the finest precision *in the conversion*, so dropping rates
+can only coarsen it: narrowing to the offending rate gives exactly what the wide layout had
+already been giving it. Nor is there another flag: `--decimals` sets the value precision and
+says so on the page, and every rate that reaches this warning has already been given the
+fifteen places that are the ceiling — fifteen because 10^16 is past 2^53, where the test for a
+terminating expansion stops being exact.
+
+So the first sentence was the whole of the answer, and it is now the whole of the hint, with
+the reason attached: the column already carries the fifteen places a double can hold exactly,
+so no option or selection separates them.
+
+The guard takes the advice rather than reading it. It converts a two-rate recording four ways
+— as given, narrowed, long, and long narrowed — and requires the same warning about the same
+rate each time, which is the fact that made the suggestion false, and requires the hint not to
+name `--channels`. If some future selection ever does fix the column, that is what notices.
+
 ## 0.7.27
 
 ### a rename warning named a column the long layout does not have
