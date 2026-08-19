@@ -133,6 +133,21 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   // that collided, this is about the channel that lost its name to them. The other way is a
   // channel labelled `time_s`, where what took the name is the time column itself, which every
   // signals.csv begins with and no file supplies.
+  /*
+    "so its column is" was a sentence about the wide layout, printed in both.
+
+    A long signals.csv has three columns — time_s, channel, value — and none of them is a
+    label: a channel appears there as a value in the `channel` column. So a `--layout long`
+    run was told that a column had been renamed to avoid colliding with a column neither of
+    them has, under a hint promising that "column names are unique" about a set of three
+    fixed strings the file never got from the header.
+
+    The rename is right in both layouts, which is why only the noun moves. The names have to
+    agree between the `channel` cells and channels.csv and across runs, and the `pivot` the
+    documentation gives for turning a long table back into a wide one would otherwise put a
+    `time_s` column against a `time_s` index — the collision one step later.
+  */
+  const inLongLayout = (options.layout ?? 'wide') === 'long';
   for (const signal of renamedByCollision(input.signals, columnNames)) {
     const taker =
       signal.label === TIME_COLUMN
@@ -143,8 +158,11 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       severity: 'warning',
       message:
         `Signal ${signal.index} is labelled "${signal.label}", which is ${taker}, ` +
-        `so its column is "${columnNames.get(signal.index)}".`,
-      hint: 'Column names are unique; look this channel up in channels.csv by its signal_index.',
+        `so ${inLongLayout ? 'it is named' : 'its column is'} "${columnNames.get(signal.index)}"` +
+        `${inLongLayout ? ' in the channel column' : ''}.`,
+      hint: inLongLayout
+        ? 'Channel names are unique; look this channel up in channels.csv by its signal_index.'
+        : 'Column names are unique; look this channel up in channels.csv by its signal_index.',
     });
   }
 

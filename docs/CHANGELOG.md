@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.27
+
+### a rename warning named a column the long layout does not have
+
+A recording with a channel labelled `time_s` — legal, since EDF labels are free text, and what
+a montage exported from a tool that already had a time column looks like — converted with
+`--layout long`:
+
+```
+warning: Signal 0 is labelled "time_s", which is the name of the time column every
+         signals.csv starts with, so its column is "time_s_ch0".
+         Column names are unique; look this channel up in channels.csv by its
+         signal_index.
+```
+
+A long `signals.csv` has three columns, `time_s`, `channel` and `value`, and none of them comes
+from a label — a channel appears there as a *value* in the `channel` column. So the sentence
+named a column the file does not have, to head off a collision it cannot have, and the hint
+promised uniqueness about three fixed strings the header never supplied.
+
+The rename itself is right in both layouts, so only the noun moves:
+
+```
+warning: Signal 0 is labelled "time_s", which is the name of the time column every
+         signals.csv starts with, so it is named "time_s_ch0" in the channel column.
+         Channel names are unique; look this channel up in channels.csv by its
+         signal_index.
+```
+
+Why it is still right there is worth saying, since the message no longer implies it: the names
+have to agree between the `channel` cells, `channels.csv` and other runs of the same file, and
+the `pivot` the documentation gives for turning a long table back into a wide one would
+otherwise put a `time_s` column against a `time_s` index — the same collision, one step later.
+
+The wide sentence is byte-for-byte what it was, which is what the two pages quoting it show.
+`buildPlan` already knows which layout it is planning; this warning was the one place that did
+not ask. The header parser's own duplicate-label warning keeps its wording, because it is
+raised before there is a layout to be wrong about.
+
 ## 0.7.26
 
 ### three JSON fields the reference said matched metadata.json by name

@@ -832,6 +832,61 @@ describe('column naming', () => {
       'time_s_ch0',
     ]);
   });
+
+  it('does not tell a long-layout run that a column was renamed', async () => {
+    /*
+      The warning above was written for the wide layout and printed in both:
+
+          warning: Signal 0 is labelled "time_s", which is the name of the time column every
+                   signals.csv starts with, so its column is "time_s_ch0".
+                   Column names are unique; look this channel up in channels.csv by its
+                   signal_index.
+
+      A long signals.csv has three columns — `time_s`, `channel`, `value` — and none of them
+      comes from a label: a channel appears there as a value in the `channel` column. So the
+      sentence named a column the file does not have, to avoid a collision it cannot have, and
+      the hint promised uniqueness about three fixed strings.
+
+      The rename is right either way, so only the noun moves. Asserted against the header the
+      run actually wrote, since "there is no such column" is the whole of the claim.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-longname-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const input = path.join(scratch, 'time-s-label.edf');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000 };
+    writeEdf({
+      path: input,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        { label: 'time_s', ...base, samplesPerRecord: 2, gen: () => 500 },
+        { label: 'ECG', ...base, samplesPerRecord: 2, gen: (r, s) => s },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(input, { outputDir: dir, layout: 'long' });
+    const rows = await readCsv(dir, 'signals.csv');
+    assert.deepEqual(rows[0].split(','), ['time_s', 'channel', 'value']);
+    assert.ok(
+      rows.slice(1).some((row) => row.split(',')[1] === 'time_s_ch0'),
+      'the renamed channel still appears under its new name, as a value',
+    );
+
+    const notice = result.diagnostics.find((d) => /time column/u.test(d.message));
+    assert.ok(notice, `the renamed channel must be reported: ${JSON.stringify(result.diagnostics)}`);
+    assert.match(notice.message, /so it is named "time_s_ch0" in the channel column\.$/u);
+    assert.doesNotMatch(notice.message, /its column is/u);
+    assert.match(notice.hint, /^Channel names are unique/u);
+
+    // And the wide layout keeps the sentence that is true of it, unchanged.
+    const wide = await outDir();
+    const asWide = await convert(input, { outputDir: wide });
+    const wideNotice = asWide.diagnostics.find((d) => /time column/u.test(d.message));
+    assert.match(wideNotice.message, /so its column is "time_s_ch0"\.$/u);
+    assert.match(wideNotice.hint, /^Column names are unique/u);
+  });
 });
 
 describe('an empty result', () => {
