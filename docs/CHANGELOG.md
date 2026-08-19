@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.41
+
+### the batch sweep never asked where the output went
+
+A batch derives one destination per recording from the path it was found at, relative to the
+folder the caller pointed at, joined onto `--out`. Whether that relative path can ever begin
+with `..` is a question about the walk — a symlink leading out of the tree, a name that
+normalises oddly, a root and a recording that share no prefix — and the answer decides whether
+`--out` is a destination or a suggestion.
+
+Nothing had looked, and nothing could have. Every property the batch sweep checks reads the
+output roots: which directories appeared under them, whether their bytes match, whether the
+closing count matches what is in them. A conversion that landed *beside* them is somewhere none
+of those is looking. Put a `..` into the join:
+
+```
+6 folder trees, 23 recordings, 0 conversions (seed 1).
+Serial and parallel agreed, and every batch matched converting alone.
+```
+
+Twenty-three recordings converted, none of them where the caller said, and the sweep whose
+subject is batches calls it agreement. It found nothing under `serial/` and nothing under
+`parallel/`, compared the two empty sets, and reported that they matched.
+
+Property 5 asks of the whole round instead: every file that looks like a conversion — a
+`signals`, `channels` or `annotations` CSV, or a `metadata.json` — has to be under one of the
+three roots the round created, and the folder of recordings has to come back holding only the
+recordings that were put in it. Under the same `..` it fails on the first tree and names the
+files:
+
+```
+round 0 [no options]: written outside every destination named:
+  UPPER-1/annotations.csv, UPPER-1/channels.csv, UPPER-1/metadata.json, ...
+```
+
+The trees this runs on are the right ones to ask: they already build nesting, names with spaces
+and non-ASCII characters, mixed-case extensions, symlinks and files that are not recordings.
+What they had never been asked is where the output went.
+
 ## 0.7.40
 
 ### a test named for time units asserted only the exit code

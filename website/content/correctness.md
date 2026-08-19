@@ -71,12 +71,13 @@ npm run fuzz:batch -- 42 40     # a different seed, more trees
 Serial and parallel agreed, and every batch matched converting alone.
 ```
 
-Converting a folder is the hardest part of this tool to reason about: the tree is walked, links are followed, destinations are derived from file names, and the conversions may run in any order across several processes. Rather than guess which arrangement breaks, this builds arrangements — nesting, names with spaces and non-ASCII characters, mixed-case extensions, symlinks, files that are not recordings — and checks four things that must hold whatever shape comes out:
+Converting a folder is the hardest part of this tool to reason about: the tree is walked, links are followed, destinations are derived from file names, and the conversions may run in any order across several processes. Rather than guess which arrangement breaks, this builds arrangements — nesting, names with spaces and non-ASCII characters, mixed-case extensions, symlinks, files that are not recordings — and checks five things that must hold whatever shape comes out:
 
 1. **Serial and parallel produce the same directories, holding the same bytes.** A difference between them is what a race looks like from outside. The bytes are a separate question from the names: `--jobs 1` converts in this process and anything more forks a child whose command line is rebuilt by hand, so the two are not the same code, and a flag lost in that rebuild leaves the directories right and the numbers in them wrong. Each tree is converted under a different option set for that reason — the sweep passed no flags at all until 0.7.35, which is the one condition under which such a loss cannot show.
 2. **Each recording's output equals converting it alone.** A batch may reorder the work; it may not change a byte of it.
 3. **The closing count matches the directories produced**, so "Converted 5 of 5" is a fact.
 4. **A non-zero exit comes with a message**, never a silent half-conversion.
+5. **Nothing is written outside the directory that was named.** A destination is the input's path relative to the folder the caller pointed at, joined onto `--out`, so whether it can begin with `..` is a question about the walk — a symlink leading out of the tree, a name that normalises oddly — and the answer decides whether `--out` is a destination or a suggestion. Every check above reads the output roots, so a conversion that landed beside them was somewhere none of them was looking: joining `..` into the destination leaves this sweep reporting that serial and parallel agreed over a run whose every file went elsewhere.
 
 The first of those is how the collision fixed in 0.4.14 was found: one run produced `<out>/rec`, another `<out>/rec/inner`, from the same command over the same files. Putting that bug back makes this fail in two independent rounds and exit 1.
 

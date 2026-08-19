@@ -22,6 +22,9 @@
  *      is a fact rather than a hope.
  *   4. Whatever the run reports, it never half-converts in silence: a non-zero exit has to
  *      come with a message.
+ *   5. Nothing is written outside the directory that was named. Every check above reads the
+ *      output roots, so a conversion that landed beside them was somewhere none of them was
+ *      looking.
  *
  * The trees mix nesting, names with spaces and non-ASCII characters, mixed-case extensions,
  * symlinks, and files that are not recordings at all. Runs are deterministic: the same seed
@@ -262,6 +265,49 @@ export function fuzzTrees(seed = 1, trees = 12) {
             );
           }
         }
+      }
+      /*
+        5. Nothing was written outside the directory that was named.
+
+        A batch derives one destination per recording from the path each was found at,
+        relative to the folder the caller pointed at, and joins that onto `--out`. Whether
+        that relative path can begin with `..` is a question about the walk — a symlink
+        pointing out of the tree, a name that normalises oddly, a root and a recording on
+        different volumes — and the answer decides whether `--out` is a destination or a
+        suggestion. Nothing had ever looked. Every check here reads the output roots, so a
+        conversion that landed beside them, or back inside the recordings, was somewhere
+        none of them was looking.
+
+        Asked of the whole round: every file that looks like a conversion has to be under
+        one of the three roots this round created, and `study/` has to come back holding
+        only the recordings that were put in it.
+      */
+      const roots = ['serial', 'parallel', 'alone'].map((name) => path.join(base, name));
+      const strays = [];
+      const sweep = (dir) => {
+        let entries;
+        try {
+          entries = readdirSync(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            sweep(full);
+          } else if (/^(?:signals|channels|annotations)\..*csv|^metadata\.json$/u.test(entry.name)) {
+            if (!roots.some((root) => full === root || full.startsWith(root + path.sep))) {
+              strays.push(path.relative(base, full));
+            }
+          }
+        }
+      };
+      sweep(base);
+      if (strays.length > 0) {
+        problems.push(
+          `round ${round} [${extra.join(' ') || 'no options'}]: written outside every ` +
+            `destination named: ${strays.slice(0, 5).join(', ')}`,
+        );
       }
     } finally {
       rmSync(base, { recursive: true, force: true });
