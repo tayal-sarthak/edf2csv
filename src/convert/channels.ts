@@ -212,8 +212,11 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
               `Use "#${owner.index}" — a channel with no label can only be addressed by position.`
             : `"${term}" is a column name, not a channel name: --channels matches the label, ` +
               `which for this channel is "${owner.label}".\n` +
-              `Use "#${owner.index}" to select just this one, or "${owner.label}" for every ` +
-              `channel sharing that label.`,
+              (typeable(owner.label) === null
+                ? `Use "#${owner.index}" — ${untypeableBecause(owner.label)}, so position is ` +
+                  `the only way to reach it.`
+                : `Use "#${owner.index}" to select just this one, or ${typeable(owner.label)} ` +
+                  `for every channel sharing that label.`),
         );
       }
       /*
@@ -264,7 +267,55 @@ function suggest(term: string, candidates: readonly EdfSignal[]): string {
     .sort((a, b) => a.distance - b.distance)
     .slice(0, 3);
   if (scored.length === 0) return '';
-  return ` Did you mean ${scored.map((c) => `"${c.label}"`).join(', ')}?`;
+  /*
+    A suggestion is something to retype, so it has to be retypeable.
+
+    `Did you mean "EEG "A1""?` collapses in a shell to `EEG A1`, which this then rejects with
+    the same sentence and the same suggestion — a loop the reader cannot get out of by doing
+    what it says. Same failure the header parser's `--channels` advice was fixed for in
+    0.7.18, and the branch above it here; a label carrying `$` or a backtick is the same thing
+    again, since a shell expands both inside double quotes.
+
+    Where nothing can be typed — a label with a comma, which --channels splits after the shell
+    has finished with it, or one with a control byte in it — the position is offered instead.
+    It is not the name they asked about, but it is the answer to what they wanted.
+  */
+  return ` Did you mean ${scored
+    .map((c) => typeable(c.label) ?? `"#${positionOf(c.label, candidates)}"`)
+    .join(', ')}?`;
+}
+
+/** The first channel carrying this label, for a suggestion that cannot be made by name. */
+function positionOf(label: string, candidates: readonly EdfSignal[]): number {
+  return candidates.find((signal) => signal.label === label)?.index ?? 0;
+}
+
+/**
+ * The label written so that typing it back selects this channel, or null when nothing does.
+ *
+ * Double quotes wherever they survive, since they also show where the label begins and ends
+ * and every documented example is written that way. They do not survive a label containing a
+ * quote of their own, and — less obviously — a shell still expands `$`, a backtick and a
+ * backslash inside them, so `EEG $ref` would arrive as `EEG ` with nothing said. Those go in
+ * single quotes, the one POSIX form with no escapes inside it, where a single quote in the
+ * label closes, escapes and reopens.
+ *
+ * Two labels have no form at all. `--channels` splits its list on commas after the shell has
+ * finished quoting, so no quoting reaches a label with one in it; and a control character
+ * cannot be typed. Both take a position instead, which is what NONPRINTABLE_LABEL already
+ * says for the same two reasons.
+ */
+function typeable(label: string): string | null {
+  if (label === '' || label.includes(',')) return null;
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(label)) return null;
+  if (!/["$`\\]/u.test(label)) return `"${label}"`;
+  return `'${label.replaceAll("'", "'\\''")}'`;
+}
+
+/** Why a label has no typeable form, for the sentence that offers a position instead. */
+function untypeableBecause(label: string): string {
+  if (label.includes(',')) return 'a comma in the label would read as two names';
+  return 'the label cannot be typed';
 }
 
 /** Levenshtein distance, two-row variant. */

@@ -1043,6 +1043,91 @@ describe('--info', () => {
     t.diagnostic(`origin reported as ${asJson.first_sample_seconds}s`);
   });
 
+  it('suggests and offers only labels a shell hands back unchanged', async () => {
+    /*
+      The two places a label is printed as something to retype, both of which 0.7.18 left:
+
+          error: "EEG "A1"_ch0" is a column name, not a channel name: ...
+                 Use "#0" to select just this one, or "EEG "A1"" for every channel sharing
+                 that label.
+
+          error: No channel named "EEG "A2"". Did you mean "EEG "A1""?
+
+      A shell collapses `"EEG "A1""` to `EEG A1`, which this rejects with the same suggestion,
+      which collapses the same way. Following the advice is a loop.
+
+      `$` and a backtick are the same failure without the visual warning: a shell expands both
+      inside double quotes, so `--channels "EEG $ref"` arrives as `EEG ` and the label the
+      message was about never reaches the tool at all.
+
+      Double quotes stay wherever they survive, because they also show where the label begins
+      and ends and every documented example is written that way — `"T8-P8"` and
+      `"EEG Fpz-Cz"` are byte-for-byte what they were. What changes is the labels those
+      quotes were never going to carry.
+
+      Checked by pasting: each suggestion goes to /bin/sh exactly as printed, and a conversion
+      of that channel has to come back. Matching the sentence would pass against the old form.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-typeable-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+      samplesPerRecord: 2 };
+
+    // Two channels sharing the label, so the column gains its `_ch` suffix and asking for the
+    // column name reaches the branch that offers the label back.
+    const labels = ['T8-P8', 'EEG Fpz-Cz', 'EEG "A1"', 'EEG $ref', "EEG 'A1'", 'EEG `ref`'];
+    for (const [index, label] of labels.entries()) {
+      const file = path.join(scratch, `label-${index}.edf`);
+      writeEdf({
+        path: file,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [
+          { label, ...base, gen: () => 100 },
+          { label, ...base, gen: () => 200 },
+        ],
+      });
+
+      const refused = await cli([file, '--out', await outDir(), '--channels', `${label}_ch0`]);
+      assert.equal(refused.code, 2, `${label}: asking for the column name has to be refused`);
+      // Flattened first: the message is wrapped, so a long label can be split over two
+      // lines. Anchored on ", or " because "for this channel" earlier in the sentence
+      // contains one.
+      const flat = refused.stderr.replace(/\s+/gu, ' ');
+      const offered = /, or (.+?) for every channel sharing/u.exec(flat);
+      assert.ok(offered, `${label}: no label was offered back:\n${refused.stderr}`);
+
+      // Paste it. The label reaching the tool has to be the one the message was about.
+      const destination = path.join(scratch, `out-${index}`);
+      const command =
+        `${JSON.stringify(process.execPath)} ${JSON.stringify(CLI)} ${JSON.stringify(file)} ` +
+        `--channels ${offered[1]} ` +
+        `--out ${JSON.stringify(destination)} --quiet`;
+      const pasted = await run('/bin/sh', ['-c', command]).then(() => 0, (error) => error.code);
+      assert.equal(pasted, 0, `${label}: the offered command failed:\n  ${command}`);
+      const header = (await readFile(path.join(destination, 'signals.csv'), 'utf8')).split('\n')[0];
+      assert.ok(
+        header.includes(label.replaceAll('"', '""')),
+        `${label}: the offered command converted something else — ${header}`,
+      );
+    }
+
+    // And the two that survive unchanged, so no documented example moved.
+    for (const [label, quoted] of [['T8-P8', '"T8-P8"'], ['EEG Fpz-Cz', '"EEG Fpz-Cz"']]) {
+      const file = path.join(scratch, `plain-${label.replace(/\W/gu, '')}.edf`);
+      writeEdf({
+        path: file, numRecords: 1, recordDuration: 1,
+        signals: [{ label, ...base, gen: () => 1 }, { label, ...base, gen: () => 2 }],
+      });
+      const refused = await cli([file, '--out', await outDir(), '--channels', `${label}_ch0`]);
+      assert.ok(
+        refused.stderr.replace(/\s+/gu, ' ').includes(`, or ${quoted} for every channel`),
+        refused.stderr,
+      );
+    }
+  });
+
   it('takes a window on a clock that begins before zero, which is where that file sits', async (t) => {
     /*
       "Timed from -100.000s  (first sample; --start and --end use this clock)" is what --info

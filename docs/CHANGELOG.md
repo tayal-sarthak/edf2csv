@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.30
+
+### two more labels offered back in a form a shell rewrites
+
+Two more places a label is printed as something to retype, both of which 0.7.18 walked past:
+
+```
+$ edf2csv rec.edf --channels 'EEG "A1"_ch0'
+error: "EEG "A1"_ch0" is a column name, not a channel name: --channels matches the
+       label, which for this channel is "EEG "A1"".
+       Use "#0" to select just this one, or "EEG "A1"" for every channel sharing that label.
+
+$ edf2csv rec.edf --channels 'EEG "A2"'
+error: No channel named "EEG "A2"". Did you mean "EEG "A1""?
+```
+
+A shell collapses `"EEG "A1""` to `EEG A1`. Do that and the tool answers `No channel named
+"EEG A1". Did you mean "EEG "A1""?` — the same suggestion, which collapses the same way.
+Following the advice is a loop, and the only way out is to stop following it.
+
+`$` and a backtick are the same failure without the visual warning. A shell expands both
+inside double quotes, so `--channels "EEG $ref"` arrives as `EEG ` — the label the message
+was about never reaches the tool, and nothing says a word about the difference.
+
+Both now go through one rule. Double quotes stay wherever they survive, since they also show
+where a label begins and ends and every documented example is written that way — `"T8-P8"` and
+`"EEG Fpz-Cz"` are byte-for-byte what they were. A label carrying a quote, a `$`, a backtick or
+a backslash goes in single quotes instead, the one POSIX form with no escapes inside it. A
+label with a comma or a control byte has no form at all — `--channels` splits on commas after
+the shell has finished, and a control byte cannot be typed — so those are offered as a position,
+which is the answer NONPRINTABLE_LABEL already gives for the same two reasons:
+
+```
+       Use "#0" to select just this one, or 'EEG "A1"' for every channel sharing that label.
+       No channel named "EEG $rff". Did you mean 'EEG $ref'?
+       No channel named "EEGA1". Did you mean "#0"?
+```
+
+Checked by pasting. Each offered label goes to `/bin/sh` exactly as printed, and the CSV header
+that comes back has to carry the label the message was about — six of them, covering the plain
+case that must not move, a space, a double quote, a `$`, an apostrophe and a backtick. Matching
+the sentence would have passed against every broken form.
+
 ## 0.7.29
 
 ### the last hint that printed a command a shell reads as a redirect
