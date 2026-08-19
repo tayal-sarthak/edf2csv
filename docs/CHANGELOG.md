@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.23
+
+### the eighty-column check promised what the design does not
+
+A test titled *prints nothing that needs a terminal wider than eighty columns*, which ran six
+refusals against one recording. The tool prints thirty-six distinct lines longer than that:
+
+```
+warning: Channels use 40 different sampling rates (40 Hz, 39 Hz, 38 Hz, 37 Hz, 36 Hz, ...
+warning: The header declares 10 data records but the file contains 4. Converting the 4 ...
+error: --start "abc" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plai...
+```
+
+Every one of the thirty-six is a first line — the one following `error: ` or `warning: ` —
+and `printableLines` leaves those whole on purpose, because that is the line a log gets
+grepped for and a break in the middle of it costs more than the overrun does. So the title
+described a promise the design deliberately declines to make, and the test passed only
+because the six messages it happened to sample begin short.
+
+The promise that is real is about the lines that *are* wrapped: `--help`, and every
+continuation under a diagnostic or an error. Those go through `wrap`, nothing enforces the
+width but reading the output back, and six samples is not much reading.
+
+So it checks that instead, and checks it over the corpus rather than a handful: every fixture
+converted, plus every refusal the command line has, is **376 wrapped lines** against the six
+it was looking at. All 376 hold at eighty — the wrapping was right, and the sentence above it
+was describing something else. Widen `WRAP_COLUMNS` and it fails on a discontinuity hint at 96.
+
+Same shape as 0.7.22 one release earlier, and the same lesson as the three before it: the
+thing that goes stale is not the code but the sentence saying what has been checked.
+
 ## 0.7.22
 
 ### the guard against an uncrossed option was missing two

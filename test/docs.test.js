@@ -19,7 +19,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -2633,7 +2633,7 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
-  it('prints nothing that needs a terminal wider than eighty columns', async () => {
+  it('wraps every line it wraps at all to eighty columns', async () => {
     /*
       Eighty is what a terminal is unless someone has changed it, and `--help` had six lines
       of 81 to 86. What those lines cost is not aesthetic: the option list is three aligned
@@ -2641,34 +2641,74 @@ describe('documentation and source agree on their lists', () => {
       makes the table readable is exactly what breaks first. The longest line the tool printed
       was worse and newer — the unknown-option hint added in 0.6.115 ran to 95.
 
-      Every message here is either written or wrapped by hand, so nothing enforces this but a
-      check that reads the output back.
+      What this checks is narrower than what it used to say it checked, and wider than what it
+      actually did. It was titled "prints nothing that needs a terminal wider than eighty
+      columns" and ran six refusals against one fixture. The tool prints thirty-six distinct
+      lines longer than that, and every one of them is a first line — the one following
+      `error: ` or `warning: `, which `printableLines` leaves whole on purpose, because it is
+      the line a log gets grepped for and a break in the middle of it costs more than the
+      overrun. So the old title described a promise the design deliberately does not make, and
+      passed only because the six messages it sampled happened to begin short.
+
+      The promise that is real is about the lines that are wrapped: `--help`, and every
+      continuation under a diagnostic or an error. Those go through `wrap`, nothing enforces
+      the width but reading the output back, and six samples of it was not reading much. Every
+      fixture converted, plus every refusal the command line has, is a few hundred of them.
     */
     const WIDTH = 80;
-    const over = (text, what) =>
-      text
-        .split('\n')
-        .filter((line) => line.length > WIDTH)
-        .map((line) => `${what}: ${line.length} columns: ${line}`);
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-width-'));
+    try {
+      await cp(path.join(ROOT, 'test/fixtures/generated'), work, { recursive: true });
+      const recordings = (await readdir(work)).filter((f) => /\.(edf|bdf)$/u.test(f));
+      assert.ok(recordings.length > 40, 'fixtures should be generated before this runs');
 
-    const problems = [];
-    const { stdout: help } = await run(process.execPath, [CLI, '--help']);
-    problems.push(...over(help, '--help'));
+      const refusals = [
+        ['--chanels'], ['--decimals', '21'], ['--decimals', 'abc'], ['--layout', 'tall'],
+        ['--jobs', '0'], ['--jobs', 'abc'], ['--channels', 'nope'], ['--channels', '#x'],
+        ['--channels', '#99'], ['--channels', ''], ['--channels', 'signal_0'],
+        ['--stdout', '--checksum'], ['--stdout', '--annotations-only'], ['--start', 'abc'],
+        ['--start', '1h1h'], ['--start', '99999'], ['--start', '5x'], ['--duration', '-5'],
+        ['--start', '1', '--end', '0'], ['--end', '00:99:00'], ['--info', '--stdout'],
+      ];
 
-    const fixtureFile = path.join(ROOT, 'test/fixtures/generated/tiny.edf');
-    const refusals = [
-      ['--chanels'],
-      ['--decimals', '21'],
-      ['--layout', 'tall'],
-      ['--jobs', '0'],
-      ['--channels', 'nope'],
-      ['--stdout', '--checksum'],
-    ];
-    for (const args of refusals) {
-      const { stderr } = await run(process.execPath, [CLI, fixtureFile, ...args]).catch((e) => e);
-      problems.push(...over(String(stderr ?? ''), args.join(' ')));
+      const problems = [];
+      let continuations = 0;
+      const measure = (text, what) => {
+        for (const line of text.split('\n')) {
+          // A first line is exempt by design; see printableLines. Everything else was wrapped.
+          if (line === '' || /^(?:error|warning|note): /u.test(line)) continue;
+          continuations++;
+          // A word wider than the column is left to overrun rather than broken, and the long
+          // words here are paths — the point of printing one is that it can be copied back
+          // out. The recordings are named bare from `work` so only a destination reaches this.
+          if (line.length > WIDTH && !line.includes(work)) {
+            problems.push(`${what}: ${line.length} columns: ${line}`);
+          }
+        }
+      };
+
+      const { stdout: help } = await run(process.execPath, [CLI, '--help']);
+      measure(help, '--help');
+
+      const printed = async (args) => {
+        const result = await run(process.execPath, [CLI, ...args, '--out', 'o'], {
+          cwd: work,
+          maxBuffer: 64 << 20,
+        }).catch((error) => error);
+        await rm(path.join(work, 'o'), { recursive: true, force: true });
+        return String(result.stderr ?? '');
+      };
+
+      // Every fixture, for the diagnostics: the hints are where the prose is.
+      for (const name of recordings) measure(await printed([name]), name);
+      // Every refusal the command line has, for the advice under each one.
+      for (const args of refusals) measure(await printed(['tiny.edf', ...args]), args.join(' '));
+
+      assert.deepEqual(problems, [], problems.join('\n'));
+      assert.ok(continuations > 200, `only ${continuations} wrapped lines were measured`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
     }
-    assert.deepEqual(problems, [], problems.join('\n'));
   });
 
   it('agrees with the CLI about what the exit codes are', async () => {
