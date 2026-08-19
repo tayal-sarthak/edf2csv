@@ -841,7 +841,7 @@ The `code` values are stable identifiers meant for programmatic checks: `MIXED_S
 | `estimate` | `rows`, `bytes` and `exceeds_spreadsheet_limit`, as above |
 | `warnings` | Same shape as the conversion summary's |
 
-Field names match `metadata.json` wherever the two describe the same thing, so a survey and a conversion can be read by the same code. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
+Field names match `metadata.json` for everything describing the recording — `data_records`, `record_duration_seconds`, `patient_id`, `start_datetime_local` and the rest — so a survey and an archived conversion can be read by the same code, and the channel objects use the column names of `channels.csv`. Three fields carry the same value under a different name, and all three are about the run rather than the recording: the summary's `records` is `metadata.json`'s `recording.data_records`, its `annotations` is `conversion.annotations_written`, and the `warnings` both documents here carry is `notes` there. In both cases warnings travel inside the document and stderr stays empty. On failure, nothing is printed to stdout for that recording, so a parse failure and a non-zero exit code always coincide. Over a folder, both are JSON Lines: one object per recording, and a recording that failed contributes no line.
 
 To fail a batch job on any warning, use `--strict`:
 

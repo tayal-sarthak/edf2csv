@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.26
+
+### three JSON fields the reference said matched metadata.json by name
+
+The reference, at the end of the `--json` section:
+
+> Field names match `metadata.json` wherever the two describe the same thing, so a survey and a
+> conversion can be read by the same code.
+
+Three of them do not:
+
+| `--json` summary | `metadata.json` |
+| --- | --- |
+| `records` | `recording.data_records` |
+| `annotations` | `conversion.annotations_written` |
+| `warnings` | `notes` |
+
+Every pair carries the same value, checked on four recordings including one whose declared and
+actual record counts differ. So somebody who took the sentence at its word — read a summary,
+then reached for `doc["notes"]`, or archived a `metadata.json` and reached for
+`data_records` — gets nothing back from a document that holds the number under another name.
+The sentence sits two paragraphs below one that says *"neither is it in `metadata.json`'s
+`notes`"*, which is where the contradiction is easiest to see and easiest to miss.
+
+The sentence is the half that was wrong. Every one of these names is published in a table on
+this page, and moving one would break every reader that already has it. So the page prints the
+mapping instead: what does match, which is everything describing the recording, and the three
+that do not, which are all about the run rather than the recording.
+
+The guard has two halves. The three pairs have to keep carrying the same value, because a
+mapping is only useful while both sides mean one thing. And any field in either JSON document
+that `metadata.json` has no name for at all must be one of the handful that genuinely has no
+counterpart — the channel table, which belongs to `channels.csv` and uses its column names, the
+estimate, which describes a conversion that has not happened, and the elapsed time and output
+directory of one that has. A new field cannot become a fourth mismatch without failing this.
+
 ## 0.7.25
 
 ### the page warned about an unsorted time column for the join and not for the slices

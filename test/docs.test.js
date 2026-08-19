@@ -2711,6 +2711,103 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('names every field the JSON calls something metadata.json calls something else', async () => {
+    /*
+      "Field names match `metadata.json` wherever the two describe the same thing, so a survey
+      and a conversion can be read by the same code." Three of them do not:
+
+          --json summary        metadata.json
+          records               recording.data_records
+          annotations           conversion.annotations_written
+          warnings              notes
+
+      Every one carries the same value — checked below rather than asserted — so somebody who
+      took the sentence at its word and reached for `doc["notes"]` after reading a summary, or
+      for `data_records` after reading one, gets a KeyError from a document that has the number
+      under another name. The sentence is what was wrong, since the field names are published
+      in tables on this page and moving one would break every reader that has them.
+
+      The guard is in two halves. The values of the three pairs have to stay equal, because the
+      mapping the page now prints is only useful while they describe the same thing. And a
+      field appearing in the JSON that `metadata.json` has no name for at all must be one of
+      the handful that genuinely has no counterpart — so a new field cannot slip in and quietly
+      become a fourth mismatch.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-fields-'));
+    try {
+      const recordings = ['truncated.edf', 'annotations.edf', 'discontinuous.edf', 'records-backwards.edf'];
+      const surveyOnly = new Set();
+      const summaryOnly = new Set();
+
+      const leaves = (value, into) => {
+        if (Array.isArray(value)) for (const item of value) leaves(item, into);
+        else if (value && typeof value === 'object') {
+          for (const [key, item] of Object.entries(value)) {
+            into.add(key);
+            leaves(item, into);
+          }
+        }
+        return into;
+      };
+
+      for (const name of recordings) {
+        const source = path.join(ROOT, 'test/fixtures/generated', name);
+        const out = path.join(work, name);
+        const survey = JSON.parse((await run(process.execPath, [CLI, source, '--info', '--json'])).stdout);
+        const summary = JSON.parse(
+          (await run(process.execPath, [CLI, source, '--out', out, '--json'], { maxBuffer: 64 << 20 })).stdout,
+        );
+        const metadata = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+
+        // The pairs the page now prints as a mapping, and the reason it can.
+        assert.equal(summary.records, metadata.recording.data_records, `${name}: records`);
+        assert.equal(
+          summary.annotations,
+          metadata.conversion.annotations_written,
+          `${name}: annotations`,
+        );
+        assert.deepEqual(
+          summary.warnings.map((w) => w.code),
+          metadata.notes.map((n) => n.code),
+          `${name}: warnings against notes`,
+        );
+
+        const named = leaves(metadata, new Set());
+        for (const key of leaves(survey, new Set())) if (!named.has(key)) surveyOnly.add(key);
+        for (const key of leaves(summary, new Set())) if (!named.has(key)) summaryOnly.add(key);
+      }
+
+      // What metadata.json genuinely has no name for: the channel table, which belongs to
+      // channels.csv and uses its column names; the estimate, which describes a conversion
+      // that has not happened; and the three facts about a run that has.
+      assert.deepEqual(
+        [...surveyOnly].sort(),
+        ['column', 'digital_max', 'digital_min', 'estimate', 'exceeds_spreadsheet_limit',
+          'first_sample_seconds', 'label', 'output_file', 'physical_max', 'physical_min',
+          'prefiltering', 'samples_per_record', 'signal_index', 'time_span_seconds',
+          'transducer', 'unit', 'warnings'].sort(),
+        'a survey field has appeared that metadata.json has no name for',
+      );
+      assert.deepEqual(
+        [...summaryOnly].sort(),
+        ['annotations', 'elapsed_ms', 'output_dir', 'records', 'warnings'].sort(),
+        'a summary field has appeared that metadata.json has no name for',
+      );
+
+      // And the page has to print the mapping, not a promise that there is none to print.
+      const page = await read('website/content/cli-reference.md');
+      assert.ok(
+        !/Field names match `metadata\.json` wherever the two describe the same thing/u.test(page),
+        'the page is back to claiming the names always match',
+      );
+      for (const phrase of ['recording.data_records', 'conversion.annotations_written', '`notes`']) {
+        assert.ok(page.includes(phrase), `the JSON section does not map ${phrase}`);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says where the time slice it recommends does not work', async () => {
     /*
       The same question as the pivot below, asked of the default layout.
