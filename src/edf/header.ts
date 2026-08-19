@@ -467,14 +467,16 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
               are free text, and the CSV header quotes them; only this one hint claimed
               something about them that isn't so.
             */
-            (inLabel || label === '' || label.includes(',')
+            (inLabel || label === '' || label.includes(',') || label.includes('"')
               ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
                 `since ${
                   inLabel
                     ? 'the name cannot be typed'
                     : label === ''
                       ? 'it has no label'
-                      : 'a comma in the label would read as two names'
+                      : label.includes(',')
+                        ? 'a comma in the label would read as two names'
+                        : 'a quote in the label cannot survive being quoted back'
                 }. `
               : `The column name is unaffected, so --channels "${label}" still selects it. `) +
             'Printing the CSV to a terminal may do more than print it.',

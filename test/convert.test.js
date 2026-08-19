@@ -171,6 +171,55 @@ describe('column naming', () => {
     assert.ok(header.includes('plain'));
   });
 
+  it('never advises a --channels command the shell cannot carry', async () => {
+    /*
+      This hint's whole job is telling you how to reach a channel whose header text you
+      cannot type, so a command that fails is worse than no command. Three ways of failing
+      were already closed: an empty label produced `--channels ""`, which exits 2; a comma in
+      the label produced `--channels "EEG Fpz-Cz, ref"`, which splits into two names and exits
+      2 on the first; and a label carrying the control byte itself cannot be typed at all.
+
+      A double quote is the fourth, and it is worse than the others because the advice is not
+      even well formed. With the control byte in the unit rather than the label, the hint took
+      the "the column name is unaffected" branch and quoted the label back:
+
+          The column name is unaffected, so --channels "EEG "A1"" still selects it.
+
+      A shell collapses that to `--channels "EEG A1"`, and the tool then refuses with
+      `No channel named "EEG A1". Did you mean "EEG "A1""?` — pointing back at the label the
+      hint had just told the reader to type.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-quoted-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const file = path.join(scratch, 'quoted-label.edf');
+    writeEdf({
+      path: file,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        {
+          // The control byte is in the UNIT, so the label itself is typeable — which is what
+          // sends this down the branch that quotes the label back.
+          label: 'EEG "A1"',
+          dimension: `u${String.fromCharCode(7)}V`,
+          physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+          samplesPerRecord: 2, gen: () => 100,
+        },
+      ],
+    });
+
+    const { diagnostics } = await convert(file, { outputDir: await outDir(), quiet: true });
+    const raised = diagnostics.find((d) => d.code === 'NONPRINTABLE_LABEL');
+    assert.ok(raised, 'the control byte in the unit must still be reported');
+    assert.match(raised.hint, /--channels "#0"/u, 'a quoted label has to be addressed by position');
+    assert.doesNotMatch(
+      raised.hint,
+      /--channels "EEG "A1""/u,
+      'the hint must not print a command the shell cannot carry',
+    );
+  });
+
   it('reports records stored out of chronological order, in the singular too', async () => {
     /*
       An EDF+D recording may store its records in any order, and the rows are written in file

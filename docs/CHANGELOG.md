@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.18
+
+### a hint printed a --channels command the shell cannot carry
+
+```
+warning: Signal 0's unit contains 1 control character (\x07), which will appear in channels.csv's unit cell exactly as the header has it.
+         The column name is unaffected, so --channels "EEG "A1"" still selects it.
+```
+
+`--channels "EEG "A1""` is not a command. A shell collapses the adjacent quotes and hands over
+`--channels "EEG A1"`, and the tool refuses it:
+
+```
+error: No channel named "EEG A1". Did you mean "EEG "A1""?
+```
+
+The suggester points back at the label the hint had just told the reader to type, which is the
+loop closing on itself.
+
+This hint exists to say how to reach a channel whose header text you cannot type, so a command
+that fails is worse than none, and the comment above it already records three ways it had
+failed before: an empty label produced `--channels ""`, which exits 2 saying no names were
+given; a comma produced `--channels "EEG Fpz-Cz, ref"`, which splits on the comma and exits 2
+naming half a channel; and a control byte in the label means the name cannot be typed at all.
+Each of those routes to the by-position form instead. A double quote is the fourth, and the
+only one where the advice is not even well formed before the tool sees it.
+
+Reachable because the branch that quotes the label back is the one for a control byte
+*somewhere else* — in the unit, the transducer or the prefiltering. The label is then perfectly
+typeable in every respect except the quotes in it, which is exactly the case the "the column
+name is unaffected" sentence was written for.
+
+So a label containing a `"` takes the same route as the other three, and says which of the four
+it is: *a quote in the label cannot survive being quoted back*.
+
+EDF labels are free text, and a quoted montage reference is not a strange thing for an exporter
+to write.
+
 ## 0.7.17
 
 ### narrowing was only ever checked in the wide layout
