@@ -186,7 +186,13 @@ version of this file would have been rejected as starting past the end.
 `Duration 3s (3 records of 1s)`, because that's how many seconds of signal exist, and
 `Time span 11s (includes discontinuities)` on the line under it, because that's how
 long the recording covers. The gap is the difference between them, and is reported
-again by the EDF+D warning.
+again by the EDF+D warning. A span *shorter* than the duration is the other way the two
+can disagree — records that overlap, which is what a device does when it re-sends a
+buffer — and the line says `(records overlap in time)` instead, since a recording
+covering less time than its own records account for has no gaps in it at all. A span *shorter* than the duration is the other way the two
+can disagree — records that overlap, which is what a device does when it re-sends a
+buffer — and the line says `(records overlap in time)` instead, since a recording
+covering less time than its own records account for has no gaps in it at all.
 
 **Rows are written in file order.** If a file's timekeeping TALs are themselves out
 of order, so that a record claims to start before the one preceding it, edf2csv

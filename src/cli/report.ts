@@ -167,7 +167,29 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
   );
   const elapsedSpan = plan.range.recordingEndSeconds - plan.range.recordingStartSeconds;
   if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {
-    lines.push(`Time span  ${formatDuration(elapsedSpan)}  (includes discontinuities)`);
+    /*
+      Which way the two differ decides what to call it, and the parenthetical used to say
+      "includes discontinuities" both ways round.
+
+      A span LONGER than the duration is the gap case this line was written for: 3 records of
+      1s covering 11 seconds. A span SHORTER than the duration cannot be a gap — it is records
+      that overlap, which an EDF+D file gets when a device re-sends a buffer. Three records of
+      1s starting at 0, 0.5 and 1 print:
+
+          Duration   3s  (3 records of 1s)
+          Time span  2s  (includes discontinuities)
+
+      A recording covering less time than its own records account for, blamed on gaps it does
+      not have — while the warning below it says, correctly, that two records overlap.
+
+      A file holding both is described by whichever wins the subtraction, and the overlap
+      warning is printed either way.
+    */
+    const overlapping = elapsedSpan < file.durationSeconds;
+    lines.push(
+      `Time span  ${formatDuration(elapsedSpan)}  ` +
+        `(${overlapping ? 'records overlap in time' : 'includes discontinuities'})`,
+    );
   }
   /*
     Where the samples begin, when that is not zero.

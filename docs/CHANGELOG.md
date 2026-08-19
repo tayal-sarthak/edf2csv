@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.50
+
+### a span shorter than the duration was blamed on gaps
+
+`--info` blamed gaps for a span that records overlap into.
+
+The `Time span` line is printed whenever the elapsed span and the recording's duration
+disagree, and the parenthetical said "includes discontinuities" whichever way they disagreed. A
+span *longer* than the duration is the gap case the line was written for — three records of one
+second covering eleven. A span *shorter* than it cannot be a gap at all: it is records that
+overlap, which is what a device does when it re-sends a buffer. Three records of 1s starting at
+0, 0.5 and 1 printed:
+
+```
+$ edf2csv overlapping.edf --info
+Duration   3s  (3 records of 1s)
+Time span  2s  (includes discontinuities)
+...
+warning: 2 data records start before the record before them ends, so their samples
+         overlap in time.
+```
+
+A recording covering less time than its own records account for, blamed on gaps it does not
+have, four lines above the warning saying what it really has. The fixture that produces it has
+been in the tree since the overlap warning was written; the only assertion on this line was
+against the gap case, and the sentence on the annotations page quotes the gap case too.
+
+Which way the subtraction goes now decides the words: `(records overlap in time)` below the
+duration, `(includes discontinuities)` above it. A file holding both is described by whichever
+wins, and the overlap warning is printed either way.
+
 ## 0.7.49
 
 ### the narrowing sweep never narrowed an annotation

@@ -680,6 +680,36 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
+  it('does not blame gaps for a span its records overlap into', async () => {
+    /*
+      `Time span` is printed whenever the span and the duration disagree, and the parenthetical
+      said "includes discontinuities" whichever way they disagreed. A span LONGER than the
+      duration is the gap case the line was written for. A span SHORTER than it cannot be a
+      gap at all — it is records that overlap, which is what a device does when it re-sends a
+      buffer, and which this tool warns about two lines further down:
+
+          Duration   3s  (3 records of 1s)
+          Time span  2s  (includes discontinuities)
+          warning: 2 data records start before the record before them ends...
+
+      A recording covering less time than its own records account for, blamed on gaps it does
+      not have, directly above the warning saying what it really has.
+    */
+    const overlapping = await cli([fixture('records-overlapping.edf'), '--info']);
+    assert.equal(overlapping.code, 0, overlapping.stderr);
+    assert.match(overlapping.stdout, /Duration\s+3s/u);
+    assert.match(overlapping.stdout, /Time span\s+2s\s+\(records overlap in time\)/u);
+    assert.ok(
+      !/Time span[^\n]*discontinuities/u.test(overlapping.stdout),
+      'a span shorter than the duration is not a gap',
+    );
+    assert.match(overlapping.stderr, /records start before the record before them ends/u);
+
+    // And the gap case keeps the words it had, on the file the documentation quotes.
+    const gapped = await cli([fixture('discontinuous.edf'), '--info']);
+    assert.match(gapped.stdout, /Time span\s+11s\s+\(includes discontinuities\)/u);
+  });
+
   it('refuses a start at the end, whatever the record duration multiplies out to', async () => {
     /*
       The guard compares `--start` against `recordCount * recordDuration`, and with a
