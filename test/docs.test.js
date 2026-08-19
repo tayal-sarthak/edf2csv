@@ -2760,6 +2760,42 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('lists every filesystem failure it says it translates', async () => {
+    /*
+      "Filesystem failures are translated into plain language rather than passed through as
+      system codes", says the OUTPUT_UNWRITABLE section, and then names them. `describeFsError`
+      knew six codes and fell through to Node's own text for everything else — so the sentence
+      was a claim about a list nobody was comparing, and the code it missed was ENOENT, which a
+      destination under a dangling symbolic link produces. The page also reworded one of the
+      six ("a file rather than a directory" for "a file, not a directory"), which is how a list
+      copied by hand drifts from the thing it copies.
+
+      Both directions, since either is a way of being wrong: a phrase the tool can print that
+      the page does not name, and a phrase the page names that nothing prints.
+    */
+    const source = await read('src/convert/run.ts');
+    const body = /function describeFsError[\s\S]*?\n\}/u.exec(source);
+    assert.ok(body, 'describeFsError is gone or renamed');
+    const spoken = [...body[0].matchAll(/return '([^']+)'/gu)].map((m) => m[1]);
+    assert.ok(spoken.length >= 6, `expected the translations, found ${spoken.length}`);
+
+    const page = await read('website/content/warnings-and-errors.md');
+    const sentence = /in the words the message uses: ([^\n]*?)\.\n/u.exec(page);
+    assert.ok(sentence, 'the translated-failures list is gone from the page');
+    const listed = sentence[1].split('; ');
+
+    assert.deepEqual(
+      listed.filter((phrase) => !spoken.includes(phrase)),
+      [],
+      'the page names a translation nothing produces',
+    );
+    assert.deepEqual(
+      spoken.filter((phrase) => !listed.includes(phrase)),
+      [],
+      'the tool prints a translation the page does not list',
+    );
+  });
+
   it('documents the columns channels.csv and annotations.csv actually have', async () => {
     /*
       The same argument the metadata.json guard above is written on, applied to the two output

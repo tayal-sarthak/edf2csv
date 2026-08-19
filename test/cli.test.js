@@ -3848,6 +3848,36 @@ describe('documented flags', () => {
 });
 
 describe('write failures', () => {
+  it('names the obstacle in words rather than handing back an errno', async () => {
+    /*
+      `describeFsError` turns a filesystem failure into a sentence, and it knew six codes.
+      The seventh reaches it through the destination that a recursive mkdir cannot create: a
+      parent that exists and leads nowhere. A symbolic link with no target is one, and
+      `--out ""` is the other, since `mkdir('')` is ENOENT too.
+
+      What came back was Node's own message, including the call that raised it:
+
+          error: Cannot create "dangle/x": ENOENT: no such file or directory, mkdir 'dangle'.
+
+      An errno, an internal function name, and a quoted argument, on the line this tool puts
+      its plainest sentences on. The advice underneath it said to check the path exists.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-enoent-'));
+    temporaries.push(dir);
+    await writeFile(path.join(dir, 'a.edf'), await readFile(fixture('tiny.edf')));
+    await symlink(path.join(dir, 'no-such-target'), path.join(dir, 'dangling'));
+
+    const through = await cli([
+      path.join(dir, 'a.edf'), '--out', path.join(dir, 'dangling', 'inner'),
+    ]);
+    assert.equal(through.code, 1, through.stderr);
+    const flat = through.stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /part of the path does not exist/u);
+    for (const leak of ['ENOENT', 'mkdir', 'no such file or directory']) {
+      assert.ok(!flat.includes(leak), `the message carries "${leak}": ${flat}`);
+    }
+  });
+
   it('advises on what actually failed, not on disk space every time', async () => {
     // Every write failure carried the same hint — "Free up space or choose another
     // destination with --out" — which fits exactly one errno. A directory sitting where

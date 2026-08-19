@@ -537,6 +537,22 @@ function describeFsError(cause: unknown): string {
   if (code === 'ENOTDIR') return 'part of the path is a file, not a directory';
   if (code === 'EROFS') return 'the filesystem is read-only';
   if (code === 'ENAMETOOLONG') return 'the path is too long';
+  /*
+    The one this list could not describe, and the recursive mkdir above is what makes it
+    surprising: every parent is created on the way, so "no such file or directory" is not a
+    parent that was missing. It is a component that exists and leads nowhere — a symbolic
+    link with no target is the way to get one — or a directory removed by something else
+    between the two calls.
+
+    Missing it meant the fallback ran, which is Node's own text, complete with the internal
+    call that raised it:
+
+        error: Cannot create "dangle/x": ENOENT: no such file or directory, mkdir 'dangle'.
+               Check the path exists and that you have permission to write there.
+
+    Keeping that off the screen is the whole purpose of the six lines above it.
+  */
+  if (code === 'ENOENT') return 'part of the path does not exist';
   return cause instanceof Error ? cause.message : String(cause);
 }
 

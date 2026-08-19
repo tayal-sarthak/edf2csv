@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.46
+
+### a dangling symlink in the destination came back as an errno
+
+A destination under a symbolic link that points nowhere came back as an errno.
+
+`describeFsError` exists to keep system codes off the screen, and it knew six: permission
+denied, the disk is full, over quota, part of the path is a file, read-only, too long.
+Everything else fell through to `cause.message`, which is Node's own text — the code, the
+internal call that raised it, and the argument that call was given:
+
+```
+$ ln -s /nowhere dangling
+$ edf2csv rec.edf --out dangling/inner
+error: Cannot create "dangling/inner": ENOENT: no such file or directory, mkdir 'dangling'.
+       Check the path exists and that you have permission to write there.
+```
+
+ENOENT is the surprising one to be missing, because the parents of a destination are created
+recursively. "No such file or directory" therefore never means a parent that was not there —
+it means a component that exists and leads nowhere, which is what a dangling link is, or a
+directory something else removed between the two calls. `--out ""` reaches it too, since
+`mkdir('')` is ENOENT.
+
+The page said so as well. Its OUTPUT_UNWRITABLE section promises that "filesystem failures are
+translated into plain language rather than passed through as system codes" and then lists them,
+and the list was copied by hand: six entries, one of them reworded from what the code actually
+says ("a file rather than a directory" for "a file, not a directory"), and nothing comparing
+the two. It is now read out of `describeFsError` and checked both ways — a phrase the page
+names that nothing prints, and a phrase the tool prints that the page does not name, are each
+a way of being wrong.
+
 ## 0.7.45
 
 ### the terminal sweep failed the build when it lost its own race
