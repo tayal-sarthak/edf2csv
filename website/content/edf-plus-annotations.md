@@ -293,9 +293,10 @@ warning: 1 of 3 data records carries no readable timekeeping annotation (record 
          unreliable.
 ```
 
-Up to five record indices are listed, with an ellipsis when there are more. The
-same warning appears in `metadata.json` under `notes`, and in the `warnings` array
-of `--json` output, so a scripted pipeline can detect it without parsing stderr.
+Up to eight record indices are listed, and the rest are counted rather than dropped:
+`... 8, 9 and 2 more`. The same warning appears in `metadata.json` under `notes`,
+and in the `warnings` array of `--json` output, so a scripted pipeline can detect
+it without parsing stderr.
 
 Two related cases get their own warnings.
 

@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.85
+
+### two pages described a list that no longer trails off
+
+Two pages still described a list that stopped trailing off four releases ago.
+
+0.7.73 replaced the timekeeping warning's hand-rolled cut — five record indices and a bare `…`
+— with `listed`, the function every other enumeration in a message goes through: it shows
+eight and counts what it leaves, because the count is the honest half.
+
+The prose describing it was not touched, on either of the two pages that carry it:
+
+```
+warnings-and-errors.md:  Up to five record indices are listed by number, with the rest elided.
+edf-plus-annotations.md: Up to five record indices are listed, with an ellipsis when there
+                         are more.
+```
+
+Both numbers wrong and both tails wrong, about a warning whose actual output is
+`(records 2, 3, 4, 5, 6, 7, 8, 9 and 2 more)`. A reader counting five names and looking for an
+ellipsis finds neither.
+
+Both now say eight, and show the counted tail rather than describing it. The cap lives in one
+constant, `DEFAULT_LIMIT` in `format/list.ts`, so both sentences are read back against it: a
+limit changed there fails the suite instead of leaving two pages describing a cut that no
+longer happens. That check is the thing neither page had — the fix in 0.7.73 pinned the
+message and nothing pinned the prose about it.
+
 ## 0.7.84
 
 ### --info never predicted the warning about the file it would not write

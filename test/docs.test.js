@@ -96,6 +96,41 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('states the list cap the shared cutter actually uses', async () => {
+    /*
+      0.7.73 replaced the timekeeping warning's hand-rolled cut — five items and a bare `…` —
+      with `listed`, which shows eight and counts what it leaves. Two pages went on describing
+      the old one, on two different pages, for four releases:
+
+          Up to five record indices are listed by number, with the rest elided.
+          Up to five record indices are listed, with an ellipsis when there are more.
+
+      Both numbers and both tails were wrong, and neither page was reading anything. The cap
+      lives in one constant, so both sentences are now checked against it — a limit changed in
+      `list.ts` fails here rather than leaving the pages describing a cut that no longer
+      happens.
+    */
+    const words = { five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
+    const source = await read('src/format/list.ts');
+    const declared = /const DEFAULT_LIMIT = (\d+);/u.exec(source);
+    assert.ok(declared, 'list.ts no longer declares a default limit');
+    const limit = Number(declared[1]);
+
+    for (const page of [
+      'website/content/warnings-and-errors.md',
+      'website/content/edf-plus-annotations.md',
+    ]) {
+      const text = await read(page);
+      const stated = /Up to (\w+) record indices are listed/u.exec(text);
+      assert.ok(stated, `${page} no longer states the cap, or reworded it`);
+      assert.equal(words[stated[1]], limit, `${page} says ${stated[1]}, the cutter uses ${limit}`);
+      // And that the tail is counted, which is the half a bare `…` got wrong. Shown in the
+      // same paragraph, so the sentence carries the form rather than describing it.
+      const paragraph = text.slice(text.indexOf(stated[0]), text.indexOf(stated[0]) + 300);
+      assert.match(paragraph, /and 2 more/u, `${page} does not show the counted tail`);
+    }
+  });
+
   it('names every conversion error code in the API reference', async () => {
     const codes = await unionMembers('src/convert/run.ts', 'ConversionErrorCode');
     const api = await read('website/content/api.md');
