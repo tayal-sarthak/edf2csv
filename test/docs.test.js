@@ -2849,6 +2849,66 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('reads the dates its own table says it reads', async () => {
+    /*
+      "85 to 99 mean 1985 to 1999, and 00 to 84 mean 2000 to 2084" is the most-quoted rule about
+      this format, and edf-format prints a table of three worked examples under it. Nothing ran
+      them.
+
+      Half the rule was exercised by nothing at all. Every assertion on a parsed year was on a
+      date below 85 — `05.06.09` is 2009 — so moving the pivot to 86, or the base to 1901,
+      leaves the whole suite green while `01.01.85` reads as 1986-01-01 against a page that says
+      1985. The 1900s branch is the one that only fires on the oldest recordings there are,
+      which are exactly the files nobody has to hand to notice.
+
+      Read out of the page rather than written here, so a worked example added to it is run.
+    */
+    const { parseHeader } = await import(path.join(ROOT, 'dist/index.js'));
+    const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-century-'));
+
+    // A plain EDF, so the rule alone decides: an EDF+ Startdate would settle it instead.
+    const parsed = async (raw) => {
+      const at = path.join(work, `${raw.replaceAll('.', '')}.edf`);
+      writeEdf({
+        path: at, startDate: raw, startTime: '00.00.00', numRecords: 1, recordDuration: 1,
+        signals: [
+          { label: 'ch', dimension: 'uV', physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+            samplesPerRecord: 2, gen: () => 0 },
+        ],
+      });
+      const { header } = parseHeader(await readFile(at), 1024);
+      return header.startDateTime;
+    };
+
+    try {
+      const page = await read('website/content/edf-format.md');
+      const worked = [...page.matchAll(/^(\d{2}\.\d{2}\.\d{2}) {2}-> {2}(\d{4}-\d{2}-\d{2})$/gmu)];
+      assert.ok(worked.length >= 3, `expected the worked dates, found ${worked.length}`);
+      for (const [, raw, expected] of worked) {
+        const read1 = await parsed(raw);
+        assert.equal(read1?.toISOString().slice(0, 10), expected, `the page says ${raw} is ${expected}`);
+      }
+
+      // And the pivot itself, from the sentence above the table.
+      const rule = /\*\*(\d+) to (\d+) mean (\d{4}) to (\d{4}), and (\d+) to (\d+) mean (\d{4}) to (\d{4})\*\*/u.exec(page);
+      assert.ok(rule, 'the page no longer states the century rule');
+      const [, lowFrom, , lowYear, , , highTo, , highYear] = rule;
+      assert.equal(
+        (await parsed(`01.01.${lowFrom}`))?.getUTCFullYear(),
+        Number(lowYear),
+        `the page says ${lowFrom} is ${lowYear}`,
+      );
+      assert.equal(
+        (await parsed(`01.01.${highTo}`))?.getUTCFullYear(),
+        Number(highYear),
+        `the page says ${highTo} is ${highYear}`,
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('accepts exactly the time units it says it accepts, each worth what it is called', async () => {
     /*
       Sixteen spellings of four units, and the reference lists all sixteen. The tool's own

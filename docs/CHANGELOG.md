@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.72
+
+### the 1900s half of the century rule had no test
+
+Half the century rule was exercised by nothing.
+
+"85 to 99 mean 1985 to 1999, and 00 to 84 mean 2000 to 2084" is the most-quoted sentence about
+this format, and edf-format prints three worked examples under it:
+
+```
+05.06.09  ->  2009-06-05
+02.03.02  ->  2002-03-02
+01.01.85  ->  1985-01-01
+```
+
+Nothing ran them. Every assertion anywhere on a parsed year was on a date below 85 — `05.06.09`
+is 2009 — so the 1900s branch had no test at all. Move the pivot to 86, or the base from 1900 to
+1901, and the whole suite passes while `01.01.85` reads as 2085 or 1986 against a page that says
+1985.
+
+The half with no coverage is the half that only fires on the oldest recordings there are, which
+are exactly the files nobody has to hand to notice. 0.7.63 gave EDF+ files a way to state the
+year in full for that reason; a plain EDF has nothing but this rule.
+
+The worked examples are read out of the page and run, so one added to it is checked, and the two
+sides of the pivot are taken from the sentence itself: whatever it says 85 and 84 mean, the
+parser has to agree. Written against a plain EDF, since an EDF+ `Startdate` would settle the
+century instead and the rule would go untested again.
+
 ## 0.7.71
 
 ### a minute of sixty was refused only at the hour that rolls the date
