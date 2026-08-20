@@ -1697,6 +1697,45 @@ describe('converting several recordings at once', () => {
     assert.match(stderr, /cannot sit inside another/u);
   });
 
+  it('keeps all four paths of that refusal on the lines they belong to', async () => {
+    /*
+      This message names four paths, and two of them went out raw while the two nearest the
+      front went through `printable`. A file name may hold a newline on every platform this
+      runs on, and `printableLines` splits a message on newlines to indent its continuations,
+      so the raw pair broke the sentence into three lines with half a path on each:
+
+          error: "study/re\x0ac/inner.edf" would be converted into "o/re\x0ac/inner",
+                 which is inside "o/re
+                 c" — where "study/re
+                 c.edf" is converted.
+
+      Two of the four names reading as one thing and two as two, in one sentence, about one
+      pair of paths. Same defect 0.5.67 fixed for the `Wrote` line.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-nlpath-'));
+    temporaries.push(dir);
+    const name = 're\nc';
+    await mkdir(path.join(dir, 'study', name), { recursive: true });
+    const source = await readFile(fixture('mixed-rates.edf'));
+    await writeFile(path.join(dir, 'study', `${name}.edf`), source);
+    await writeFile(path.join(dir, 'study', name, 'inner.edf'), source);
+
+    const { code, stderr } = await cli([path.join(dir, 'study'), '--out', path.join(dir, 'out')]);
+    assert.equal(code, 2, stderr);
+    assert.match(stderr, /cannot sit inside another/u, stderr);
+
+    // The whole refusal, up to the advice on the line after it, has to be one line.
+    const head = stderr.split('\n').find((line) => line.startsWith('error: '));
+    assert.ok(head, stderr);
+    assert.match(head, /is converted\.$/u, `the sentence was split across lines:\n${stderr}`);
+    // And every one of the four names carries the escape rather than a real break.
+    assert.equal(
+      (head.match(/re\\x0ac/gu) ?? []).length,
+      4,
+      `all four paths must be escaped:\n${stderr}`,
+    );
+  });
+
   it('converts a recording whose name begins with a dash, however many jobs', async () => {
     // The child received the recording as its first argument, so a path beginning with a
     // dash parsed as an option — which `path.join` produces from a folder given as `.`,

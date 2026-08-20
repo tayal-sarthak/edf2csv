@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.90
+
+### half the paths in one refusal went unescaped
+
+Half the paths in one refusal went out unescaped, and split the sentence they were in.
+
+The guard that refuses a batch where one recording's output would sit inside another's names
+four paths: the recording being placed, where it would go, the directory that already claims
+that place, and the recording claiming it. Two of the four went through `printable` and two
+did not.
+
+A file name may hold a newline on every platform this runs on, and `printableLines` splits a
+message on newlines to indent its continuations. So the raw pair broke the sentence into three
+lines, with half a path on each:
+
+```
+error: "study/re\x0ac/inner.edf" would be converted into "o/re\x0ac/inner", which is inside "o/re
+       c" — where "study/re
+       c.edf" is converted.
+```
+
+Two of the four names reading as one thing and two as two, in one sentence, about one pair of
+paths — and a reader sees `"o/re` and `c"` as if the tool were talking about something else.
+That is 0.5.67's defect, where a name holding a newline split `Wrote` across two lines and the
+summary reported a path that reads as two, arriving in the one message that names four paths
+at once.
+
+All four are escaped now, so the refusal is one line and every path in it can be copied back
+out whole.
+
 ## 0.7.89
 
 ### a doc comment naming two formats the function cannot return

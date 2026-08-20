@@ -1670,9 +1670,25 @@ function assertDistinct(inputs: readonly string[], destinations: readonly string
       parent = ancestor;
       const owner = byDestination.get(identity(ancestor));
       if (owner === undefined || owner === index) continue;
+      /*
+        All four paths escaped, not the two nearest the front of the sentence.
+
+        A file name may hold a newline on every platform this runs on, and `printableLines`
+        splits a message on newlines to indent its continuations — so the two raw paths broke
+        the sentence into three lines and printed half a path on each:
+
+            error: "study/re\x0ac/inner.edf" would be converted into "o/re\x0ac/inner",
+                   which is inside "o/re
+                   c" — where "study/re
+                   c.edf" is converted.
+
+        Two of the four names read as one thing and two as two, in the same sentence, about
+        the same pair of paths. That is 0.5.67's defect — a name holding a newline splitting
+        `Wrote` across two lines — in the one message that names four paths at once.
+      */
       throw new OptionError(
         `"${printable(inputs[index] as string)}" would be converted into "${printable(destination)}", which is inside ` +
-          `"${destinations[owner]}" — where "${inputs[owner]}" is converted.\n` +
+          `"${printable(destinations[owner] as string)}" — where "${printable(inputs[owner] as string)}" is converted.\n` +
           `One recording's output cannot sit inside another's. Convert them separately, or ` +
           `rename one of them.`,
       );
