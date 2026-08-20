@@ -58,7 +58,7 @@ async function oneHugeRecord(channels, samplesPerRecord) {
 describe('a record with a great many samples in it', () => {
   it('holds to its buffer rather than to the record', async (t) => {
     if (totalmem() < 8 * 1024 ** 3) {
-      t.skip('needs room to build two 32 MB recordings');
+      t.skip('needs room to build a 32 MB recording and write the 283 MB CSV it becomes');
       return;
     }
 
@@ -81,7 +81,7 @@ describe('a record with a great many samples in it', () => {
     // The cap is what makes this a test rather than a demonstration: without a limit the
     // machine's own memory would let the old code through.
     const out = path.join(dir, 'out');
-    await run(
+    const converted = await run(
       process.execPath,
       ['--max-old-space-size=256', CLI, one, '--out', out, '--json', '--quiet'],
       { maxBuffer: 1 << 22 },
@@ -91,6 +91,26 @@ describe('a record with a great many samples in it', () => {
       (await run(process.execPath, [CLI, one, '--info', '--json'], { maxBuffer: 1 << 22 })).stdout,
     ).estimate.rows;
     assert.equal(rows, 16_000_000, 'the recording really does hold that many samples');
+
+    /*
+      And what the conversion did with them, which nothing here asked.
+
+      The only assertion used to be the one above — a second `--info` on the same file, which
+      describes the fixture and not the run. Everything the test is named for rested on `run`
+      throwing, so deleting the conversion outright left it passing in under a second. A
+      conversion that exits 0 having written a header and no rows passed it too.
+    */
+    const written = JSON.parse(converted.stdout);
+    const signals = written.files.find((file) => file.name === 'signals.csv');
+    assert.ok(signals, `no signals.csv was written: ${converted.stdout}`);
+    assert.equal(signals.rows, rows, 'every sample of the one record has to reach the file');
+    const onDisk = await stat(path.join(out, 'signals.csv'));
+    // Sixteen million rows of `time_s,A`, so a couple of hundred megabytes. The bound is
+    // loose on purpose: what it refuses is a file that holds a header and little else.
+    assert.ok(
+      onDisk.size > 100 * 1024 ** 2,
+      `signals.csv is ${onDisk.size} bytes for ${rows} rows`,
+    );
   });
 });
 

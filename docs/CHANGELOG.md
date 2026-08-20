@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.68
+
+### the one-record test asserted the fixture, not the conversion
+
+The test for a record with sixteen million samples in it passed without converting one.
+
+It builds a 32 MB recording holding all of them in a single data record, converts it under
+`--max-old-space-size=256`, and then asserts:
+
+```js
+assert.equal(rows, 16_000_000, 'the recording really does hold that many samples');
+```
+
+where `rows` comes from a *second* `--info` on the same file. That describes the fixture. It
+says nothing whatever about the conversion, which contributed only the possibility of `run`
+throwing — so deleting the conversion outright leaves the test passing, in under a second
+against the nineteen it takes when it does the work. A conversion that exited 0 having written
+a header and no rows passed it too, which is the shape of failure a memory limit produces once
+somebody makes the writer give up quietly.
+
+The memory cap is still what makes it a test rather than a demonstration. What it now also
+checks is that the run got to the end: the conversion's own `--json` summary has to report
+`signals.csv` with sixteen million rows, and the file on disk has to be over a hundred
+megabytes, which sixteen million rows of `time_s,A` comfortably are and a header alone is not.
+
+Its skip message said "needs room to build two 32 MB recordings" while the body builds one.
+
 ## 0.7.67
 
 ### one formula written twice, and never compared
