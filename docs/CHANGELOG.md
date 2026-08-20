@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.77
+
+### an interrupt test that could not pass on Linux
+
+A test asserted on a sentence the tool had wrapped, and could not pass on Linux.
+
+`does not warn about files in a directory it never created` interrupts a conversion before
+anything is written and checks the message that comes back. `detail` wraps prose at eighty
+columns, and the wrap point moves with the length of the temp path:
+
+```
+       Nothing was written: "/tmp/edf2csv-preint-rbFqNL/out-0" was never
+       created.
+```
+
+`assert.match(stderr, /was never created/u)` finds nothing there. On macOS the same path is
+`/var/folders/…`, too long for the line, so it overruns onto its own and leaves the phrase
+whole — which is why the suite was green on the machine it was written on and red on CI.
+
+It had been quiet for a different reason since 0.5.56: the test skipped itself when it lost
+its timing race, and a skip prints as green. 0.7.56 replaced the skip with a ladder that tunes
+the wait until the interrupt lands, so the assertions finally ran — and failed, on every CI run
+from 0.7.57 to 0.7.76.
+
+The message is correct and always was; only the assertion was wrong. It now matches against a
+whitespace-flattened copy, the way `cli.test.js` already reads a wrapped `Did you mean` list.
+The whole suite passes with the temp directory forced to `/tmp`, which is the length CI uses.
+
 ## 0.7.76
 
 ### three channel suggestions out of five, silently

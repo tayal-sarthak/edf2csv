@@ -2859,11 +2859,19 @@ describe('converting several recordings at once', () => {
     }
     const { code } = outcome;
 
+    /*
+      Flattened before matching, because `detail` wraps at 80 columns and the wrap point
+      moves with the length of the temp path. On Linux the directory is `/tmp/...` and the
+      line breaks between "never" and "created"; on macOS it is `/var/folders/...`, long
+      enough to overrun onto its own line, which leaves the phrase intact. Asserting on the
+      raw text passed here and failed on CI for twenty releases.
+    */
+    const flat = stderr.replace(/\s+/gu, ' ');
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
-    assert.match(stderr, /interrupted \(SIGINT\)/u);
-    assert.match(stderr, /Nothing was written/u, stderr);
-    assert.match(stderr, /was never created/u, stderr);
-    assert.doesNotMatch(stderr, /Files already written/u, stderr);
+    assert.match(flat, /interrupted \(SIGINT\)/u);
+    assert.match(flat, /Nothing was written/u, stderr);
+    assert.match(flat, /was never created/u, stderr);
+    assert.doesNotMatch(flat, /Files already written/u, stderr);
     assert.equal(existsSync(out), false, 'and the directory really is not there');
   });
 
