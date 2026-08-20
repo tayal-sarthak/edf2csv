@@ -1371,6 +1371,54 @@ describe('planning', () => {
   });
 });
 
+describe('formatting a byte size', () => {
+  it('carries a rounded-up size into the next unit', async () => {
+    /*
+      The unit is chosen before the number is rounded, and rounding can cross it: 1,048,575
+      bytes is 1023.999 KB, which `Math.round` makes 1024, and 1024 KB is a size no reader
+      should be shown when the word for it is 1 MB. The carry that fixes it has been in
+      `formatBytes` since the defect was found and nothing in the suite ever called the
+      function — deleting the branch outright left all 414 tests green, so the one line
+      standing between `--info` and "1024 KB" was held up by nothing.
+
+      `formatBytes` feeds the `Size` line of `--info` and the "roughly N" estimate beside it,
+      which are two of the four numbers that report reads first.
+    */
+    const { formatBytes } = await import('../dist/format/number.js');
+
+    const KB = 1024;
+    assert.equal(formatBytes(KB * KB - 1), '1 MB', 'the KB->MB carry');
+    assert.equal(formatBytes(KB ** 3 - 1), '1 GB', 'and the MB->GB one');
+    assert.equal(formatBytes(KB ** 4 - 1), '1 TB', 'and the GB->TB one');
+
+    // Nothing else moves: the units either side of each carry read as they always have.
+    assert.equal(formatBytes(0), '0 B');
+    assert.equal(formatBytes(1), '1 B');
+    assert.equal(formatBytes(KB - 1), '1023 B');
+    assert.equal(formatBytes(KB), '1 KB');
+    assert.equal(formatBytes(KB * 1.5), '1.5 KB');
+    assert.equal(formatBytes(KB * KB), '1 MB');
+    assert.equal(formatBytes(KB * KB * 1.5), '1.5 MB');
+
+    /*
+      And no size at all prints a figure that belongs to the unit above it, except at the top
+      of the table, where there is no unit above to carry into.
+    */
+    for (let unit = 0; unit < 5; unit++) {
+      for (const bytes of [KB ** unit - 1, KB ** unit, KB ** unit + 1, KB ** (unit + 1) - 1]) {
+        if (bytes < 0) continue;
+        const text = formatBytes(bytes);
+        const [figure, name] = text.split(' ');
+        if (name === 'TB') continue;
+        assert.ok(
+          Number(figure) < 1024,
+          `${bytes} bytes printed as ${text}, which belongs to the next unit up`,
+        );
+      }
+    }
+  });
+});
+
 describe('formatting a duration', () => {
   it('never prints a component that cannot exist', async () => {
     const { formatDuration } = await import('../dist/format/number.js');

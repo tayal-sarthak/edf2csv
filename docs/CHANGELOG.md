@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.91
+
+### the byte-size carry had no test
+
+The byte-size carry was held up by nothing.
+
+`formatBytes` picks a unit by dividing until the value drops under 1024, and then rounds to
+what will be printed. The unit is chosen before the rounding, and the rounding can cross it:
+1,048,575 bytes is 1023.999 KB, which `Math.round` makes 1024, and `1024 KB` is a size nobody
+should be shown when the word for it is `1 MB`. The carry that fixes it — bump the unit, set
+the figure to 1 — has been there since that was found.
+
+Nothing in the suite ever called `formatBytes`. `fixed`, `timeDecimals`, `formatDuration` and
+`makeTimeFormatter` all have their own tests in `format/number.js`; this one was never
+imported, and no fixture is within six orders of magnitude of a size that would reach the
+branch through `--info`.
+
+Deleting the carry outright leaves all 414 tests green. So the one line standing between the
+`Size` line of `--info` — and the "roughly N" estimate beside it, two of the first numbers a
+reader looks at — and `1024 KB` was guarded by nothing at all.
+
+It has a test now: the three carries, KB into MB, MB into GB and GB into TB; the values either
+side of each, which must not move; and the general rule, that no size prints a figure
+belonging to the unit above it, except at the top of the table where there is no unit above to
+carry into. Removing the branch fails it with `1024 KB`.
+
 ## 0.7.90
 
 ### half the paths in one refusal went unescaped
