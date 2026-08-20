@@ -273,12 +273,34 @@ describe('diagnostics', () => {
     );
     assert.equal(ordinary.header.startDateTime?.toISOString(), '2020-01-01T23:59:59.000Z');
 
-    // And the fields that are refused rather than moved keep being refused.
-    for (const time of ['24.00.00', '23.60.00']) {
+    /*
+      And the fields that are refused rather than moved keep being refused — at an hour where
+      the refusal is the only thing refusing them.
+
+      The parser bounds every field and then builds the date and checks it did not roll over,
+      which is a second guard for anything that changes the day: hour 24, month 13, the
+      thirty-second of a month. Minutes and seconds do not change the day. `10.60.00` rolls to
+      11:00 on the same date and passes the round-trip check completely, so the bound is the
+      only thing between the file and a start time an hour later than it says — and the bound
+      was tested at `23.60.00`, which rolls midnight and would have been caught either way.
+      Widen `mi > 59` to `mi > 60` and every test still passes while a header saying 10:60
+      reports 11:00.
+    */
+    for (const time of ['24.00.00', '23.60.00', '10.60.00', '10.59.61', '10.60.61']) {
       const refused = parseHeader(await readFile(at(time)), 1024);
       assert.equal(refused.header.startDateTime, null, `${time} is not a time`);
       assert.ok(refused.diagnostics.some((d) => d.code === 'START_TIME_UNREADABLE'), time);
       assert.ok(!refused.diagnostics.some((d) => d.code === 'LEAP_SECOND_START'), time);
+    }
+
+    // The neighbours of both, which are times and stay times.
+    for (const [time, instant] of [
+      ['10.59.59', '2020-01-01T10:59:59.000Z'],
+      ['23.59.59', '2020-01-01T23:59:59.000Z'],
+      ['00.00.00', '2020-01-01T00:00:00.000Z'],
+    ]) {
+      const read = parseHeader(await readFile(at(time)), 1024);
+      assert.equal(read.header.startDateTime?.toISOString(), instant, time);
     }
   });
 

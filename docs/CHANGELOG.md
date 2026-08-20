@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.71
+
+### a minute of sixty was refused only at the hour that rolls the date
+
+The minute and second bounds were tested only where something else would have caught them.
+
+The header's start time is parsed by bounding each field and then building the date and
+checking it did not roll over. That round trip is a second guard for anything that changes the
+day: hour 24, month 13, the thirty-second of a month, the twenty-ninth of a short February. Each
+of those is refused twice over, and each is tested.
+
+Minutes and seconds do not change the day. `10.60.00` rolls to 11:00 on the same date and
+passes the round-trip check completely, so the bound is the only thing standing between the file
+and a start instant an hour later than it says. It was tested at `23.60.00` — which rolls
+midnight, and would have been refused with no bound at all.
+
+So widening one character:
+
+```
+-  if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || hh > 23 || mi > 59 || ss > 60) return null;
++  if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || hh > 23 || mi > 60 || ss > 60) return null;
+```
+
+leaves all 400 tests passing while a header saying `10.60.00` is reported as `11:00:00`. The
+seconds field is the same shape one place over: `10.59.61` becomes 11:00:01, and the sixty-first
+second was tested at no hour at all.
+
+Both are now refused at an hour that does not roll the date, alongside the two that do, and the
+times either side of each — `10.59.59`, `23.59.59`, `00.00.00` — have to still be times.
+
 ## 0.7.70
 
 ### the terminal sweep's recording was too small to draw a meter
