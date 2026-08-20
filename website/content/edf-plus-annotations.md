@@ -18,7 +18,14 @@ An EDF+ file declares one or more channels with the reserved label
 `BDF Annotations`. edf2csv recognises both.
 
 These channels occupy space in every data record exactly like a signal does, but
-the bytes are UTF-8 text rather than samples. That's why the annotations channel
+the bytes are UTF-8 text rather than samples — where the writer managed UTF-8. Where
+it did not, they are read as latin1 instead, one character per byte, which is how
+this parser reads every other text field in the file. Decoding them strictly as
+UTF-8 and taking what comes back means a description written `café` by an older
+recorder arrives as `caf�`: a character the file does not contain, in a text
+column. Bytes that decode as UTF-8 are UTF-8, including a replacement character the
+file really holds; bytes that do not decode are not UTF-8, and nothing is invented
+either way. That's why the annotations channel
 never appears in the channel table, never gets a column in `signals.csv`, and is
 never listed in `channels.csv`. `--info` reports it separately:
 

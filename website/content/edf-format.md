@@ -352,7 +352,8 @@ EDF+ needed somewhere to put text events without changing the file layout, so it
 signal. A channel labelled `EDF Annotations` occupies the same slot in every data record as any
 other channel, has a `samplesPerRecord` like any other channel, and reserves
 `samplesPerRecord * bytesPerSample` bytes per record. Those bytes aren't samples. They are UTF-8
-text.
+text — or latin1, when the writer's idea of text was not UTF-8, which
+[the annotations page](/docs/edf-plus-annotations#the-annotations-channel) goes into.
 
 The text is a run of **Time-stamped Annotation Lists**, each terminated by a NUL byte, with the
 remainder of the channel NUL-padded to fill the slot. One TAL looks like this:

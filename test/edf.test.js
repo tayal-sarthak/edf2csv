@@ -557,6 +557,56 @@ describe('EDF+ annotations', () => {
     );
   });
 
+  it('keeps the bytes an annotation holds, whichever encoding wrote them', async () => {
+    /*
+      EDF+ says the annotation channel holds UTF-8, and this decoded it as UTF-8 and took what
+      came back. What comes back for bytes that are not UTF-8 is U+FFFD, one per malformed
+      sequence — so an event a recorder described `café` in latin1, which most of the older
+      ones write, was exported as `caf\uFFFD`: a character the file does not contain, in a text
+      column of a tool whose whole claim is that it does not invent one. Exit 0, no warning.
+
+      The same byte in a channel label comes out `é`, because header text goes through
+      `decodeLatin1`, whose point is that every byte becomes the code point of the same value.
+      Two encodings for free text out of one file, differing only on the side that can invent.
+
+      Decided rather than guessed: bytes that decode as UTF-8 are UTF-8 — including a genuine
+      U+FFFD, which is `EF BF BD` and valid — and bytes that do not are read the way the rest
+      of the parser reads bytes.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(20);
+    const Z = String.fromCharCode(0);
+    const tal = (textBytes) =>
+      Buffer.concat([
+        Buffer.from(`+0${T}${T}${Z}+1${T}`, 'latin1'),
+        Buffer.from(textBytes),
+        Buffer.from(`${T}${Z}`, 'latin1'),
+      ]);
+    const only = (bytes) => decodeRecordAnnotations(tal(bytes), 0).annotations[0];
+
+    // latin1: one byte per character, and 0xE9 is é.
+    assert.equal(only(Buffer.from('café', 'latin1')).text, 'café');
+    assert.equal(only(Buffer.from([0x53, 0xf6, 0x76, 0x6e])).text, 'Sövn');
+
+    // utf-8 still decodes as utf-8, which is what the specification asks for.
+    assert.equal(only(Buffer.from('café', 'utf8')).text, 'café');
+    assert.equal(only(Buffer.from('δείγμα', 'utf8')).text, 'δείγμα');
+    assert.equal(only(Buffer.from('スリープ', 'utf8')).text, 'スリープ');
+
+    // And a replacement character the file really holds is left where it is.
+    assert.equal(only(Buffer.from('a\uFFFDb', 'utf8')).text, 'a\uFFFDb');
+
+    // Nothing anywhere comes back as a replacement character the file did not write.
+    for (const bytes of [
+      Buffer.from([0xe9]), Buffer.from([0x80]), Buffer.from([0xff, 0xfe]),
+      Buffer.from([0x41, 0xc3]), Buffer.from([0xed, 0xa0, 0x80]),
+    ]) {
+      const text = only(bytes).text;
+      assert.ok(!text.includes('\uFFFD'), `${[...bytes].join(' ')} decoded to ${JSON.stringify(text)}`);
+      assert.equal(text.length, bytes.length, 'latin1 is one character per byte');
+    }
+  });
+
   it('leaves duration null when the annotation did not specify one', async () => {
     const file = await load('annotations.edf');
     const { annotations } = await file.readAnnotations();

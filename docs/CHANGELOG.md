@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.54
+
+### a latin1 annotation was exported with a character the file does not hold
+
+An annotation written in latin1 came out holding a character the file does not.
+
+EDF+ says the annotation channel holds UTF-8, so this decoded it as UTF-8 and took what came
+back. What comes back for bytes that are not UTF-8 is U+FFFD, one per malformed sequence. A
+recorder that wrote `café` the way most of the older ones do — one byte per character, `0xE9`
+for the é — produced:
+
+```
+onset_s,duration_s,description,record_index
+0.5,,caf<?>,0
+```
+
+A character nobody wrote, in a text column, in a tool whose one claim is that it does not
+invent a value. Exit 0, no warning, nothing to read back.
+
+The same byte in a channel label comes out `é`. Header text goes through `decodeLatin1`, whose
+whole point is that every byte becomes the code point of the same value; the annotation channel
+was the one place free text out of the same file went through a decoder that can substitute.
+It is also the only place in this parser where a byte the file contains could be replaced by
+one it does not.
+
+Decided rather than guessed. The decoder is strict now, so bytes that decode as UTF-8 are
+UTF-8 — including a genuine U+FFFD, which is `EF BF BD` and perfectly valid, and is left where
+it is — and bytes that throw are not UTF-8 and are read as latin1, which cannot fail and is
+the identity map the rest of the parser already uses. Greek, Japanese and accented UTF-8 all
+decode exactly as before.
+
 ## 0.7.53
 
 ### --info skipped the annotation channel of the files that needed it read

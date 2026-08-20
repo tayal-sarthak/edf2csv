@@ -13,7 +13,7 @@
  *   +1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
  */
 
-import { decodeUtf8 } from './bytes.js';
+import { decodeText } from './bytes.js';
 
 const SEP_TEXT = 0x14; // separates onset/duration from text, and text from text
 const SEP_DURATION = 0x15; // separates onset from duration
@@ -236,7 +236,7 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   const first = chunk[0];
   if (first !== 0x2b /* + */ && first !== 0x2d /* - */) return null;
 
-  const text = decodeUtf8(chunk);
+  const text = decodeText(chunk);
   const parts = text.split(TEXT_SEP_CHAR);
   const head = parts[0] ?? '';
 
