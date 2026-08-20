@@ -145,7 +145,7 @@ interface EdfHeader {
 }
 ```
 
-`startDateTime` is a `Date` built with `Date.UTC`, which makes it a carrier for the file's wall-clock digits rather than a real instant — EDF records no timezone at all. Do not serialise it with `toISOString()`: the `Z` asserts UTC, and a reader converting to local time then shifts the recording by their own offset. Use [`formatWallClock`](#smaller-exports), which writes the digits without a zone. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
+`startDateTime` is a `Date` built with `Date.UTC`, which makes it a carrier for the file's wall-clock digits rather than a real instant — EDF records no timezone at all. Do not serialise it with `toISOString()`: the `Z` asserts UTC, and a reader converting to local time then shifts the recording by their own offset. Use [`formatWallClock`](#smaller-exports), which writes the digits without a zone. EDF stores a two-digit year, and the spec pins the century: 85 to 99 mean 1985 to 1999, 00 to 84 mean 2000 to 2084 — except on an EDF+ file whose recording identification field begins `Startdate dd-MMM-yyyy` and agrees with the date field, where the four-digit year there is used and a 1984 recording reads as 1984. Dates that can't be parsed, or that roll over (31.02, say), give `null` rather than a wrong instant, and `startDateRaw` and `startTimeRaw` still hold whatever the file wrote.
 
 `continuity` normalises the BDF+ spelling: a file reserving `BDF+D` reports `'EDF+D'`, because the two mean the same thing.
 

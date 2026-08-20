@@ -49,6 +49,58 @@ describe('header parsing', () => {
     assert.equal(file.header.startDateTime.toISOString(), '2009-06-05T12:34:56.000Z');
   });
 
+  it('takes the century from the year an EDF+ file writes in full', async () => {
+    /*
+      The date field is `dd.mm.yy`, so the rule above is the only thing that can decide the
+      century — on a plain EDF file. An EDF+ one writes the year again, in four digits, in the
+      recording identification field, which the specification requires to agree with the date
+      field. Nothing here read it.
+
+      So a 1984 sleep study digitised into EDF+ was reported as recorded in 2084, and a
+      recording made in 2085 as 1985, each on a file that states the year plainly four fields
+      earlier. A century is not a rounding: `start_datetime_local` is what output-files points
+      at for turning `time_s` into an absolute instant, and it is what every citation of when
+      the data was taken comes from.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-century-'));
+    temporaries.push(scratch);
+    const dated = (name, startDate, recording) => {
+      const at = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: at,
+        reserved: 'EDF+C',
+        startDate,
+        startTime: '10.20.30',
+        recording,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [
+          { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 2, gen: () => 1 },
+        ],
+      });
+      return at;
+    };
+    const year = async (file) =>
+      parseHeader(await readFile(file), 1024).header.startDateTime?.getUTCFullYear() ?? null;
+
+    // Both centuries the rule gets wrong, and both are stated in full by the file.
+    assert.equal(await year(dated('old', '02.03.84', 'Startdate 02-MAR-1984 X X X')), 1984);
+    assert.equal(await year(dated('new', '02.03.85', 'Startdate 02-MAR-2085 X X X')), 2085);
+
+    // The rule still decides everything else: no Startdate, a Startdate that contradicts the
+    // date field, and one whose year does not end in the digits the header wrote.
+    assert.equal(await year(dated('bare', '02.03.84', 'X X X X')), 2084);
+    assert.equal(await year(dated('other-day', '02.03.84', 'Startdate 05-MAR-1984 X X X')), 2084);
+    assert.equal(await year(dated('other-year', '02.03.84', 'Startdate 02-MAR-1998 X X X')), 2084);
+    assert.equal(await year(dated('junk', '02.03.84', 'Startdate 02-XXX-1984 X X X')), 2084);
+
+    // And an agreeing Startdate on a date the rule already gets right changes nothing.
+    assert.equal(await year(dated('agree', '02.03.02', 'Startdate 02-MAR-2002 X X X')), 2002);
+  });
+
   it('derives per-channel sampling rates, including from fractional record durations', async () => {
     const file = await load('fractional-recdur.edf');
     assert.equal(file.header.recordDuration, 0.1);

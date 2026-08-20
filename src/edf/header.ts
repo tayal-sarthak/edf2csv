@@ -241,11 +241,42 @@ function namesLeapSecond(timeRaw: string): boolean {
   return t !== null && Number(t[3]) === 60;
 }
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/**
+ * The date an EDF+ recording ID states, which is the only place the file writes a full year.
+ *
+ * EDF+ requires the recording identification field to begin `Startdate dd-MMM-yyyy`, and
+ * requires it to agree with the header's own date field. It is a four-digit year, so it says
+ * something the eight-character date field physically cannot.
+ */
+function recordingIdStartdate(
+  recordingId: string,
+): { day: number; month: number; year: number } | null {
+  const stated = /^Startdate\s+(\d{2})-([A-Za-z]{3})-(\d{4})(?:\s|$)/u.exec(recordingId.trim());
+  if (!stated) return null;
+  const month = MONTHS.indexOf((stated[2] as string).toUpperCase()) + 1;
+  if (month === 0) return null;
+  return { day: Number(stated[1]), month, year: Number(stated[3]) };
+}
+
 /**
  * EDF stores a two-digit year. The spec pins the century: 85-99 mean 1985-1999
  * and 00-84 mean 2000-2084. Files outside 1985-2084 cannot express their date.
+ *
+ * Which is why EDF+ writes it again in full, in the recording identification field, and why
+ * that is used here when it is there. The rule alone reports a recording made in 1984 as 2084
+ * and one made in 2085 as 1985 — a hundred years out, on a file that states the year plainly
+ * four fields earlier. Taken only where the two agree about everything the header can express:
+ * the same day, the same month, and a four-digit year ending in the two digits the header
+ * wrote. A recording ID that contradicts the header is a different problem and is left to the
+ * spec's rule, which is at least the one the format defines.
  */
-function resolveStartDateTime(dateRaw: string, timeRaw: string): Date | null {
+function resolveStartDateTime(
+  dateRaw: string,
+  timeRaw: string,
+  recordingId = '',
+): Date | null {
   const d = /^(\d{2})[.\-/](\d{2})[.\-/](\d{2})$/u.exec(trimField(dateRaw));
   const t = /^(\d{2})[.:\-](\d{2})[.:\-](\d{2})$/u.exec(trimField(timeRaw));
   if (!d || !t) return null;
@@ -259,7 +290,13 @@ function resolveStartDateTime(dateRaw: string, timeRaw: string): Date | null {
 
   if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || hh > 23 || mi > 59 || ss > 60) return null;
 
-  const year = yy >= 85 ? 1900 + yy : 2000 + yy;
+  const stated = recordingIdStartdate(recordingId);
+  const year =
+    stated !== null && stated.day === dd && stated.month === mm && stated.year % 100 === yy
+      ? stated.year
+      : yy >= 85
+        ? 1900 + yy
+        : 2000 + yy;
   const date = new Date(Date.UTC(year, mm - 1, dd, hh, mi, Math.min(ss, 59)));
   // Reject dates that rolled over, e.g. 31.02.
   if (date.getUTCMonth() !== mm - 1 || date.getUTCDate() !== dd) return null;
@@ -729,7 +766,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     record count that disagrees with the file — and this is the field `time_s` is documented as
     being added to.
   */
-  if (namesLeapSecond(startTimeRaw) && resolveStartDateTime(startDateRaw, startTimeRaw) !== null) {
+  if (
+    namesLeapSecond(startTimeRaw) &&
+    resolveStartDateTime(startDateRaw, startTimeRaw, recordingId) !== null
+  ) {
     diagnostics.push({
       code: 'LEAP_SECOND_START',
       severity: 'warning',
@@ -743,7 +783,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     });
   }
 
-  if (resolveStartDateTime(startDateRaw, startTimeRaw) === null) {
+  if (resolveStartDateTime(startDateRaw, startTimeRaw, recordingId) === null) {
     diagnostics.push({
       code: 'START_TIME_UNREADABLE',
       severity: 'warning',
@@ -895,7 +935,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       recordingId,
       startDateRaw,
       startTimeRaw,
-      startDateTime: resolveStartDateTime(startDateRaw, startTimeRaw),
+      startDateTime: resolveStartDateTime(startDateRaw, startTimeRaw, recordingId),
       headerBytes: expectedHeaderBytes,
       declaredHeaderBytes: headerBytes,
       reserved,

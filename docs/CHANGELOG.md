@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.63
+
+### the century came from a rule while the file stated the year
+
+A 1984 recording was reported as made in 2084, on a file that says 1984 four fields earlier.
+
+EDF gives the start date eight characters, `dd.mm.yy`, and the specification pins the century
+because two digits cannot: 85 to 99 are 1985 to 1999, 00 to 84 are 2000 to 2084. That is the
+only rule available — on a plain EDF file.
+
+EDF+ writes the year again, in full. Its recording identification field begins
+`Startdate dd-MMM-yyyy`, and the specification requires it to agree with the date field. Nothing
+here read it:
+
+```
+$ edf2csv archive.edf --info
+Recorded   2084-03-02 10:20:30
+Recording  Startdate 02-MAR-1984 PSG-8 NN Grass-Model-8
+```
+
+A sleep study digitised from 1984 tape, reported as a hundred years in the future, beside the
+line that says otherwise. The same rule sends a recording made in 2085 back to 1985. A century
+is not a rounding: `start_datetime_local` is the field output-files points at for turning
+`time_s` into an absolute instant, and it is where every citation of when the data was taken
+comes from.
+
+The full year is used where the file gives one and it agrees about everything the date field
+can express — the same day, the same month, and a four-digit year ending in the two digits the
+header wrote. Everything else is unchanged: a plain EDF file, a `Startdate` that contradicts the
+date field, one whose month is not a month, and one that agrees on a date the rule already gets
+right all resolve exactly as before.
+
 ## 0.7.62
 
 ### a minus sign that starts a formula was the one nothing looked at
