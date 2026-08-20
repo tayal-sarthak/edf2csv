@@ -264,8 +264,7 @@ function suggest(term: string, candidates: readonly EdfSignal[]): string {
   const scored = unique
     .map((label) => ({ label, distance: editDistance(term.toLowerCase(), label.toLowerCase()) }))
     .filter((c) => c.label !== '' && c.distance <= Math.max(2, Math.floor(term.length / 3)))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 3);
+    .sort((a, b) => a.distance - b.distance);
   if (scored.length === 0) return '';
   /*
     A suggestion is something to retype, so it has to be retypeable.
@@ -280,9 +279,20 @@ function suggest(term: string, candidates: readonly EdfSignal[]): string {
     has finished with it, or one with a control byte in it — the position is offered instead.
     It is not the name they asked about, but it is the answer to what they wanted.
   */
-  return ` Did you mean ${scored
-    .map((c) => typeable(c.label) ?? `"#${positionOf(c.label, candidates)}"`)
-    .join(', ')}?`;
+  /*
+    Cut to three, and the rest counted rather than dropped.
+
+    `.slice(0, 3)` said nothing about what it left. On a recording with channels ECG1 to ECG5,
+    `--channels ECG` is one edit from all five and the answer was `Did you mean "ECG1", "ECG2",
+    "ECG3"?` — three of five equally good answers, with nothing to say the list was cut. A
+    reader has no way to tell ECG4 from a channel that does not exist, and this sentence is the
+    only place the tool offers to tell them what does.
+
+    Through `listed`, which every other list in a sentence goes through: it counts what it
+    leaves, and shows a fourth item rather than hiding it behind a phrase longer than the item.
+  */
+  const offered = scored.map((c) => typeable(c.label) ?? `"#${positionOf(c.label, candidates)}"`);
+  return ` Did you mean ${listed(offered, 3)}?`;
 }
 
 /** The first channel carrying this label, for a suggestion that cannot be made by name. */

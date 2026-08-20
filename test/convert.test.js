@@ -1177,7 +1177,65 @@ describe('channel selection', () => {
     );
     await file.close();
   });
+
+  it('counts the channels it did not name rather than stopping at three', async () => {
+    /*
+      `.slice(0, 3)` said nothing about what it left. On a recording with ECG1 through ECG5,
+      `--channels ECG` is one edit from all five and the answer was
+
+          error: No channel named "ECG". Did you mean "ECG1", "ECG2", "ECG3"?
+
+      three of five equally good answers, with nothing to say the list had been cut. A reader
+      has no way to tell ECG4 from a channel that is not there, and this sentence is the only
+      place the tool offers to tell them what is.
+
+      Every other list in a sentence goes through `listed`, which counts what it leaves and
+      shows a fourth item rather than hiding it behind a phrase longer than the item.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-suggest-'));
+    temporaries.push(scratch);
+    const withChannels = (count) => {
+      const at = path.join(scratch, `ecg-${count}.edf`);
+      writeEdf({
+        path: at,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: Array.from({ length: count }, (unused, i) => ({
+          label: `ECG${i + 1}`, dimension: 'uV', physMin: -100, physMax: 100,
+          digMin: -1000, digMax: 1000, samplesPerRecord: 4, gen: () => 1,
+        })),
+      });
+      return at;
+    };
+    const refusal = async (count, term) => {
+      const file = await EdfFile.open(withChannels(count));
+      try {
+        selectChannels(file.header.signals, [term]);
+      } catch (error) {
+        return error.message;
+      } finally {
+        await file.close();
+      }
+      throw new Error(`"${term}" was not refused`);
+    };
+
+    // Five candidates, three named, and the other two counted.
+    const five = await refusal(5, 'ECG');
+    assert.match(five, /Did you mean "ECG1", "ECG2", "ECG3" and 2 more\?/u, five);
+
+    // Four is one over the cap, so all four are named — counting one costs more than naming it.
+    assert.match(await refusal(4, 'ECG'), /Did you mean "ECG1", "ECG2", "ECG3", "ECG4"\?/u);
+
+    // Three and one are unchanged, and neither says anything about a remainder.
+    const three = await refusal(3, 'ECG');
+    assert.match(three, /Did you mean "ECG1", "ECG2", "ECG3"\?/u, three);
+    assert.ok(!/more/u.test(three), three);
+    const one = await refusal(1, 'ECG');
+    assert.match(one, /Did you mean "ECG1"\?/u, one);
+  });
 });
+
 
 describe('planning', () => {
   it('puts every channel in one file when they share a sampling rate', async () => {

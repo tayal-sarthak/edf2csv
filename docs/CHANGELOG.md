@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.76
+
+### three channel suggestions out of five, silently
+
+A mistyped channel name got three answers out of five, with nothing to say so.
+
+`suggest` scores every label by edit distance, keeps the ones close enough, and took the first
+three with `.slice(0, 3)`. On a recording with channels ECG1 to ECG5, `--channels ECG` is one
+edit from all five:
+
+```
+$ edf2csv rec.edf --channels ECG
+error: No channel named "ECG". Did you mean "ECG1", "ECG2", "ECG3"?
+```
+
+Three of five equally good answers, and no way to tell that from the sentence. A reader takes
+it as the list of near matches, so ECG4 reads as a channel that is not in the file — and this
+message is the only place the tool offers to say what is.
+
+Every other list inside a sentence here goes through `listed`, which counts what it leaves and,
+since 0.7.58, names a fourth item rather than hiding it behind a phrase longer than the item.
+This one did not, which is the same omission 0.7.73 fixed in the timekeeping warning one file
+over — except that one had the total in its opening clause and this had nothing at all.
+
+Five candidates now read `"ECG1", "ECG2", "ECG3" and 2 more`; four are all named; three and one
+are byte-for-byte what they were, including the `Did you mean "ECG"?` the pages quote.
+
 ## 0.7.75
 
 ### the SIGTERM exit code was written twice and run never
