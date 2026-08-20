@@ -224,6 +224,39 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('asks the registry before it claims to have written to it', async () => {
+    /*
+      The publish step retries, because two failures so far were the registry's and Sigstore's
+      rather than the tarball's. Before retrying it asks whether the version is there, so a
+      write that landed and then failed to sign is not attempted twice — and if it finds one,
+      it says:
+
+          edf2csv@X is on the registry ...; the write landed and the failure came after it.
+
+      True of the case it was written for, and invented for the other way to reach it. A
+      version published by an earlier run fails with `E403 - You cannot publish over the
+      previously published versions`, the check finds it, and the job announced a write that
+      never happened. Reachable by the ordinary route: this project publishes a batch by
+      dispatch tag by tag, and the Release cut for that batch fires the workflow again on a
+      version already up.
+
+      The fix is an ordering — ask once before the first attempt — so an ordering is what is
+      checked. A `run:` block cannot be executed from here; what can be read is that the
+      question is asked before anything is published.
+    */
+    const yaml = await read('.github/workflows/publish.yml');
+    const step = yaml.slice(yaml.indexOf('- name: Publish'));
+    const asks = step.indexOf('npm view');
+    const publishes = step.indexOf('npm publish');
+    assert.ok(asks !== -1, 'the publish step no longer asks the registry anything');
+    assert.ok(publishes !== -1, 'the publish step no longer publishes');
+    assert.ok(
+      asks < publishes,
+      'the registry is asked only after the first publish attempt, so a version that was ' +
+        'already there is reported as a write this run made',
+    );
+  });
+
   it('names every conversion error code in the API reference', async () => {
     const codes = await unionMembers('src/convert/run.ts', 'ConversionErrorCode');
     const api = await read('website/content/api.md');

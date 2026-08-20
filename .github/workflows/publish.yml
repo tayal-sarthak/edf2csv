@@ -95,9 +95,22 @@ jobs:
       #
       # The registry is asked before retrying, so this can never publish twice: if the version is
       # already there, the write succeeded and whatever failed came after it.
+      #
+      # And asked once before the first attempt, because that sentence is only true of a version
+      # this job put there. A version published by an earlier run fails with `E403 - You cannot
+      # publish over the previously published versions`, the check after it finds the version,
+      # and the job announced that "the write landed and the failure came after it" over a run
+      # that wrote nothing at all. Exiting 0 was right — the version is published, which is what
+      # was asked for — and the account of why was invented. It is reachable by the ordinary
+      # route: a batch is published by dispatch tag by tag, and the Release cut for that batch
+      # then fires this workflow again on a version that is already up.
       - name: Publish
         run: |
           version="$(node -p "require('./package.json').version")"
+          if npm view "edf2csv@${version}" version >/dev/null 2>&1; then
+            echo "edf2csv@${version} was already on the registry before this run; nothing to publish."
+            exit 0
+          fi
           # prepublishOnly reruns the unfiltered suite, which would undo the exclusion above, so a
           # filtered run publishes the tree this job already built and checked instead.
           scripts=""
@@ -105,7 +118,7 @@ jobs:
           for attempt in 1 2 3; do
             if npm publish --provenance --access public ${scripts}; then exit 0; fi
             if npm view "edf2csv@${version}" version >/dev/null 2>&1; then
-              echo "edf2csv@${version} is on the registry; the write landed and the failure came after it."
+              echo "edf2csv@${version} is on the registry and was not before this job started; the write landed and the failure came after it."
               exit 0
             fi
             echo "Attempt ${attempt} failed with nothing published; retrying in $((attempt * 20))s."

@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.92
+
+### a publish that wrote nothing said the write had landed
+
+A publish that wrote nothing reported that the write had landed.
+
+The publish step retries, because both failures seen so far were the registry's and Sigstore's
+rather than the tarball's: an `E409 Conflict - Failed to save packument` from a write arriving
+while another was in flight, and a `CA_CREATE_SIGNING_CERTIFICATE_ERROR` from Sigstore
+declining to mint the provenance certificate. Before retrying it asks whether the version is
+already there, so a write that landed and then failed to sign is never attempted twice. When
+it finds one, it says:
+
+```
+edf2csv@0.7.78 is on the registry; the write landed and the failure came after it.
+```
+
+True of the case it was written for. Invented for the other way to reach the same check: a
+version published by an earlier run fails with `E403 - You cannot publish over the previously
+published versions`, the query finds it, and the job announced a write it had not made.
+
+That is not hypothetical — it is the ordinary route here. Versions are published by dispatch,
+one tag at a time, and the single Release cut for the batch then fires this workflow again on
+a version that is already up. Exiting 0 was correct, since the version is published, which is
+what was asked for. The account of why was fiction.
+
+The registry is asked once before the first attempt now. A version that is already there ends
+the job before `npm publish` runs at all, with a sentence that says so; the message inside the
+loop keeps its meaning, because reaching it means the version was demonstrably not there when
+the job started.
+
+The four paths through that script — already published, clean publish, landed-then-failed, and
+three failures with nothing published — were run against stub `npm` and `node` to check they
+still behave, and the ordering the fix rests on is pinned by a test, since a `run:` block is
+the one part of this repository the suite cannot execute.
+
 ## 0.7.91
 
 ### the byte-size carry had no test
