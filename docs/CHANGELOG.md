@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.83
+
+### a window error named a length the parser would refuse
+
+A window error named the recording's length in a notation the time parser refuses.
+
+`formatDuration` breaks a number of seconds into hours and minutes, and stops doing so past
+2^53, where `total - h * 3600 - m * 60` can no longer be exact and the error lands in the
+seconds field. Beyond that it prints the figure in seconds — by interpolation, which switches
+to exponent notation at 1e21 exactly as `toFixed` does.
+
+That figure is what the past-the-end error calls the recording. A header may state a record
+duration of `1e21` in its eight-character field, so three records are enough to reach it:
+
+```
+$ edf2csv far.edf --start 4000000000000000000000
+error: --start "4000000000000000000000" is at or past the end of this 3e+21s recording.
+```
+
+The user typed plain digits, because plain digits are the only form `--start` takes: `3e+21s`
+comes back as `--start "3e+21s" uses an unknown unit "e"`. A sentence whose whole job is to say
+what window there is to ask for ended in a length the tool will not accept.
+
+`formatSeconds` in time-range.ts was fixed for this in the other half of the same message — the
+"which runs from … to …" clause — and its comment quotes this half as part of what was wrong.
+It was the half that was left. Both go through `fixed` now, which expands with BigInt: exact
+past 2^53, where a double carries no fractional part anyway.
+
+```
+error: --start "4000000000000000000000" is at or past the end of this
+       3000000000000000000000s recording.
+```
+
+Nothing below the cliff moves — `9e15` still reads `2500000000000h 00m 0s` and `1e20` still
+prints in full — and `--info`'s `Duration` line, which is fed by the same function, gains the
+same property.
+
 ## 0.7.82
 
 ### an interrupted batch named directories that were never created

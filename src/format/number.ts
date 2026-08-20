@@ -223,8 +223,21 @@ export function formatDuration(seconds: number): string {
     notation. The seconds are the honest form for a figure this size — nobody reads
     285 million years as hours — and the record count and duration are printed beside it
     anyway, so a corrupt header stays just as visible.
+
+    Written through `fixed` rather than by interpolation, which is the same 1e21 cliff again:
+    `${seconds}` switches to exponent notation exactly where `toFixed` does, so the fallback
+    put a token back that this tool's own parser refuses. `--start 4000000000000000000000` on
+    a recording of three 1e21-second records was answered with
+
+        --start "4000000000000000000000" is at or past the end of this 3e+21s recording.
+
+    a sentence whose whole job is to say what window there is to ask for, ending in a length
+    `--start` and `--duration` reject with "uses an unknown unit \"e\"". `formatSeconds` in
+    time-range.ts was fixed for this in the other half of that same message, and its comment
+    quotes this half as part of what was wrong. `fixed` expands these with BigInt, which is
+    exact past 2^53 where a double carries no fraction anyway.
   */
-  if (seconds < 0 || seconds >= Number.MAX_SAFE_INTEGER) return `${seconds}s`;
+  if (seconds < 0 || seconds >= Number.MAX_SAFE_INTEGER) return `${fixed(seconds, 0)}s`;
 
   // Round to the precision that will actually be printed BEFORE splitting into units.
   // Splitting first left the remainder to be rounded on its own, so 3599.9996 s decomposed

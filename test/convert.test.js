@@ -1389,6 +1389,53 @@ describe('formatting a duration', () => {
     }
   });
 
+  it('writes a length the time parser would accept back', async () => {
+    /*
+      Past 2^53 the decomposition into hours and minutes stops being arithmetic, so the
+      fallback prints the figure in seconds — and printed it by interpolation, which switches
+      to exponent notation at 1e21 exactly as `toFixed` does. `--info` then read
+
+          Duration   3e+21s
+
+      and, more to the point, the window error built from the same function read
+
+          --start "4000000000000000000000" is at or past the end of this 3e+21s recording.
+
+      a sentence whose whole job is to say what window there is to ask for, ending in a token
+      `--start` and `--duration` refuse: "uses an unknown unit \"e\"". `formatSeconds` in
+      time-range.ts was fixed for this in the other half of that same message.
+    */
+    const { formatDuration } = await import('../dist/format/number.js');
+    for (const seconds of [3e21, 1e22, -3e21, 1e30]) {
+      const text = formatDuration(seconds);
+      assert.doesNotMatch(text, /e[+-]/u, `${seconds} came back in exponent form: ${text}`);
+      assert.match(text, /^-?\d+s$/u, `${seconds} -> ${text}`);
+    }
+
+    // And the digits are the number, not an approximation of it.
+    assert.equal(formatDuration(3e21), '3000000000000000000000s');
+    // Below the cliff nothing moves: these already printed in full.
+    assert.equal(formatDuration(9e15), '2500000000000h 00m 0s');
+    assert.equal(formatDuration(1e20), '100000000000000000000s');
+  });
+
+  it('names a length the window error can hand back', async () => {
+    // The message the fallback above feeds, since that is where a token nobody can type
+    // actually reached a reader: this sentence exists to say what window there is to ask for.
+    await assert.rejects(
+      convert(fixture('exponent-time.edf'), {
+        outputDir: await outDir(),
+        start: 4e21,
+        quiet: true,
+      }),
+      (error) => {
+        assert.match(error.message, /is at or past the end of this 3000000000000000000000s/u);
+        assert.doesNotMatch(error.message, /e\+21/u, error.message);
+        return true;
+      },
+    );
+  });
+
   it('says so rather than inventing a number it does not have', async () => {
     const { formatDuration } = await import('../dist/format/number.js');
     // These rendered as "NaNs" and "Infinitys".
