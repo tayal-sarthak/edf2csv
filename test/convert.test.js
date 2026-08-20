@@ -2962,6 +2962,63 @@ describe('converting', () => {
     assert.match(notice.hint, /No checksum was recorded/u);
   });
 
+  it('writes the description bytes the annotation holds, not a stand-in for them', async () => {
+    /*
+      0.7.54 stopped the decoder turning a latin1 annotation into U+FFFD, and checked it at
+      `decodeRecordAnnotations` — one function in from the file. Between there and the cell lie
+      the window filter, the sort, the CSV escaper and the stream's own encoding, and
+      output-files documents the column as "copied verbatim". This asks the question where the
+      reader asks it: of annotations.csv.
+
+      The bytes are laid into the record by hand. The fixture writer encodes a TAL as UTF-8,
+      so a string with an é in it produces `c3 a9` and exercises the path that was never
+      broken — the first version of this test did exactly that and passed against a decoder
+      that had no fallback at all. The assertion below that the file holds `0xE9` is there so
+      it cannot quietly become a UTF-8 test again.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-desc-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0);
+    const source = path.join(scratch, 'latin1-events.edf');
+    const PER_RECORD = 30;
+    writeEdf({
+      path: source,
+      reserved: 'EDF+C',
+      numRecords: 2,
+      recordDuration: 1,
+      talsForRecord: (record) => `+${record}${T}${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: PER_RECORD, annotations: true },
+      ],
+    });
+
+    // One byte per character, which is what an older recorder writes: é is 0xE9, ö is 0xF6.
+    const bytes = await readFile(source);
+    const headerBytes = 256 * (1 + 2);
+    const recordBytes = (4 + PER_RECORD) * 2;
+    const slot = Buffer.alloc(PER_RECORD * 2, 0);
+    Buffer.from(`+0${T}${T}${Z}+0.5${T}café Sövn${T}${Z}`, 'latin1').copy(slot);
+    slot.copy(bytes, headerBytes + 4 * 2);
+    await writeFile(source, bytes);
+    assert.ok(
+      (await readFile(source)).includes(0xe9),
+      'the recording must hold the latin1 byte, or this tests the path that was never broken',
+    );
+
+    const out = await outDir();
+    await convert(source, { outputDir: out, quiet: true });
+    const written = await readFile(path.join(out, 'annotations.csv'), 'utf8');
+    const row = written.trimEnd().split('\n')[1];
+    assert.ok(row, `no event was written:\n${written}`);
+    assert.equal(row, '0.5,,café Sövn,0');
+    assert.ok(!written.includes('\uFFFD'), `a replacement character reached the file: ${row}`);
+  });
+
   it('notices a change of either kind, not only of both at once', async () => {
     /*
       "Whether the file has changed since it was opened, by size or by modification time" —

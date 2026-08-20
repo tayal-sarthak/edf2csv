@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.59
+
+### the output page still described the old annotation decoding
+
+The page describing what lands on disk still said the annotation text is decoded as UTF-8.
+
+0.7.54 stopped that being true — a description whose bytes are not UTF-8 is read as latin1 now,
+because the alternative was writing a character the file does not hold — and updated the two
+pages about the format. output-files.md is the page about the *output*, and its column table
+went on saying "decoded as UTF-8 and copied verbatim", which are two claims that had stopped
+agreeing with each other.
+
+The check was in the wrong place too. It asked `decodeRecordAnnotations`, one function in from
+the file, and between there and the cell lie the window filter, the sort, the CSV escaper and
+the stream's own encoding. The claim on the page is about `annotations.csv`, so that is where
+this asks it now: a recording with `café Sövn` written one byte per character converts, and the
+row read back has to be
+
+```
+0.5,,café Sövn,0
+```
+
+with no replacement character anywhere in the file.
+
+The bytes are laid into the data record by hand, which is the part worth saying out loud. The
+fixture writer encodes a TAL as UTF-8, so a string with an é in it produces `c3 a9` — valid
+UTF-8, the path that was never broken. The first version of this test did exactly that and
+passed against a decoder with no fallback at all. It now asserts that the recording holds the
+byte `0xE9` before converting it, so it cannot quietly become a UTF-8 test again.
+
 ## 0.7.58
 
 ### a list cap that hid one item behind a longer phrase
