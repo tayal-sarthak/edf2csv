@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.78
+
+### a dispatched publish would have shipped main under another version's number
+
+A manual publish would have shipped `main` under whatever version it was asked for.
+
+`publish.yml` runs on a published Release or on `workflow_dispatch`. The Release path checks out
+the tag it names and refuses to go on unless `package.json` agrees with it. The dispatch path
+took neither step: `actions/checkout` with no `ref` takes the default branch, so dispatching a
+publish built the tip of `main` and put it on the registry — correct only while the tip happens
+to be the version you wanted.
+
+That is not a hypothetical here. Versions are marked by tags and a whole batch gets one Release,
+so most versions never have a Release of their own, and a dispatch is the only way they reach
+npm. Every one of them would have published the same tarball under a different number.
+
+A dispatch now takes a tag, checks it out, and goes through the same version check the Release
+path does. It also takes a pattern of test names to exclude, for the tags from 0.7.56 to 0.7.76,
+whose copy of the test 0.7.77 fixed cannot pass on Linux and cannot be corrected without
+rewriting the commit under the tag. A filtered run publishes with `--ignore-scripts`, because
+`prepublishOnly` would otherwise rerun the unfiltered suite and undo the exclusion. The tarball
+is `dist`, the README and the licence — the tests are not in it either way.
+
 ## 0.7.77
 
 ### an interrupt test that could not pass on Linux

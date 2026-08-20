@@ -2,10 +2,24 @@ name: Publish to npm
 
 # Publishing is deliberately manual: it fires when a GitHub Release is published,
 # not on every push to main. Releasing is irreversible, so it should be a decision.
+#
+# A dispatch may name a tag, which is how a version that never got its own Release reaches the
+# registry. Versions are marked by tags and Releases are cut per batch, so most published
+# versions have no Release of their own; without this the dispatch would rebuild whatever main
+# happens to be and publish that under its number instead.
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish, e.g. v0.6.62. Defaults to the ref this is run from.'
+        required: false
+        type: string
+      skip_tests_matching:
+        description: 'Exclude tests whose name matches this, for a tag whose own suite is known broken.'
+        required: false
+        type: string
 
 jobs:
   publish:
@@ -26,6 +40,8 @@ jobs:
     # SHA when there is something to move to.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -38,11 +54,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # A published tarball is `dist`, the README and the licence — never the tests — so excluding
+      # one named test changes what is checked, not what ships. It exists for the tags between
+      # 0.7.56 and 0.7.76, whose copy of `does not warn about files in a directory it never
+      # created` asserts on an unwrapped sentence and cannot pass on Linux; 0.7.77 fixed it, and a
+      # tag cannot be corrected without rewriting the commit under it. Everything else still gates.
       - name: Test
-        run: npm test
+        env:
+          SKIP: ${{ inputs.skip_tests_matching }}
+        run: |
+          if [ -z "$SKIP" ]; then
+            npm test
+          else
+            echo "Excluding tests matching: $SKIP"
+            npm run build
+            npm run fixtures
+            node --test --test-skip-pattern="$SKIP" test/*.test.js
+          fi
 
+      # Guards both entry points: a Release publishing something other than what it names, and a
+      # dispatch whose tag and package.json have drifted apart.
       - name: Verify release tag matches package version
-        if: github.event_name == 'release'
+        if: github.event.release.tag_name != '' || inputs.tag != ''
         run: |
           expected="v$(node -p "require('./package.json').version")"
           if [ "${RELEASE_TAG}" != "${expected}" ]; then
@@ -50,7 +83,7 @@ jobs:
             exit 1
           fi
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
       # prepublishOnly reruns the build and the suite, so a broken commit cannot ship.
       #
@@ -65,8 +98,12 @@ jobs:
       - name: Publish
         run: |
           version="$(node -p "require('./package.json').version")"
+          # prepublishOnly reruns the unfiltered suite, which would undo the exclusion above, so a
+          # filtered run publishes the tree this job already built and checked instead.
+          scripts=""
+          if [ -n "${SKIP}" ]; then scripts="--ignore-scripts"; fi
           for attempt in 1 2 3; do
-            if npm publish --provenance --access public; then exit 0; fi
+            if npm publish --provenance --access public ${scripts}; then exit 0; fi
             if npm view "edf2csv@${version}" version >/dev/null 2>&1; then
               echo "edf2csv@${version} is on the registry; the write landed and the failure came after it."
               exit 0
@@ -78,3 +115,4 @@ jobs:
           exit 1
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SKIP: ${{ inputs.skip_tests_matching }}
