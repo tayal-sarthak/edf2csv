@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.74
+
+### the batch sizes the API page explains a defect with
+
+Three numbers about a specific recording, produced by nothing.
+
+api.md calls the reused batch buffer "the one contract in the API that fails silently if you get
+it wrong", and the sentence that makes the failure comprehensible is this one:
+
+> The final batch is usually short — the 18.7 MB recording this page reads gives two 8 MB
+> batches and a 2.7 MB one — so after the loop `kept[0]` shows the last batch's bytes for as far
+> as they go and the *previous* batch's bytes beyond that.
+
+That is why a stale view ends up a seam between two batches rather than simply the last one,
+which is the whole point of the section. It is also a file size, a batch count and two batch
+sizes, at the default read budget, and none of them was checked.
+
+The test that pins the contract uses a different recording at `chunkBytes: 5000`, deliberately —
+it wants a short tail and does not care where. So raising `DEFAULT_CHUNK_BYTES` from 8 MB to 16
+gives this recording two batches instead of three, leaves the page explaining a seam that no
+longer happens, and passes.
+
+The sentence's numbers are read out of it and run against the recording it names, at the budget
+it means: 18.7 MB to one decimal place, two full batches of 8.00 MB, a 2.73 MB tail, and the
+tail shorter than the others. Doubling the budget now fails it and names which figure moved.
+
 ## 0.7.73
 
 ### a list that trailed off where every other one counts

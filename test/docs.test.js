@@ -19,7 +19,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -2847,6 +2847,64 @@ describe('documentation and source agree on their lists', () => {
       shapeOf(real),
       'the metadata.json in output-files.md no longer has the keys a conversion writes',
     );
+  });
+
+  it('batches the recording it describes the way it says it does', async () => {
+    /*
+      "The final batch is usually short — the 18.7 MB recording this page reads gives two 8 MB
+      batches and a 2.7 MB one" is the sentence that explains why a stale view ends up a seam
+      between two batches rather than simply the last one. It is the whole reason the section
+      exists, and three numbers about a specific recording at the default read budget.
+
+      Nothing produced any of them. The test that pins the reused-buffer contract uses a
+      different recording at `chunkBytes: 5000`, on purpose — it wants a short tail and does not
+      care where — so raising `DEFAULT_CHUNK_BYTES` to 16 MB would give this recording two
+      batches, leave the page describing three, and pass.
+    */
+    const page = await read('website/content/api.md');
+    const stated = /the ([\d.]+) MB recording this page reads gives (\w+) ([\d.]+) MB batches and a ([\d.]+) MB one/u.exec(page);
+    assert.ok(stated, 'the page no longer describes how that recording batches');
+    const words = { two: 2, three: 3, four: 4 };
+    const [, statedSize, fullCount, fullSize, tailSize] = stated;
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-batches-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+
+      const bytes = (await stat(recording)).size;
+      assert.equal(
+        (bytes / 1024 ** 2).toFixed(1),
+        Number(statedSize).toFixed(1),
+        `the page calls it a ${statedSize} MB recording`,
+      );
+
+      const file = await EdfFile.open(recording);
+      const sizes = [];
+      // The default budget, which is the thing the sentence is about.
+      for await (const batch of file.readRecords()) sizes.push(batch.data.length);
+      await file.close();
+
+      const full = words[fullCount];
+      assert.ok(full, `"${fullCount}" is not a count this test can read`);
+      assert.equal(sizes.length, full + 1, `the page says ${fullCount} full batches and a tail`);
+      for (const size of sizes.slice(0, full)) {
+        assert.equal(
+          (size / 1024 ** 2).toFixed(2),
+          Number(fullSize).toFixed(2),
+          `the page says the full batches are ${fullSize} MB`,
+        );
+      }
+      assert.equal(
+        (sizes[sizes.length - 1] / 1024 ** 2).toFixed(1),
+        Number(tailSize).toFixed(1),
+        `the page says the tail is ${tailSize} MB`,
+      );
+      assert.ok(sizes[sizes.length - 1] < sizes[0], 'and that the tail is the short one');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
   });
 
   it('reads the dates its own table says it reads', async () => {
