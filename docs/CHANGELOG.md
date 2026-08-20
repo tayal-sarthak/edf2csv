@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.70
+
+### the terminal sweep's recording was too small to draw a meter
+
+The sweep that exists to watch the progress meter has only ever seen it say 96%.
+
+Its recording is 1,700 records of ten 256-sample channels: 8.7 MB against an 8 MB read budget,
+which is two batches. The meter is drawn from inside the read loop and throttled to one draw
+every hundred milliseconds, so on that file it can print exactly two numbers — 96 and 100 — and
+the second is usually dropped by the throttle. Every run of this sweep since it was written has
+produced `96%` and nothing else.
+
+That is four per cent of the file for the cut to land in. 0.7.45 replaced a fixed sleep with
+"wait for the first bytes the meter puts on the screen", on the reasoning that those bytes prove
+the reader is inside the file. True, and on this recording they arrive when it is all but read —
+so the conversion it is meant to interrupt kept finishing instead, and the sweep kept reporting
+that the run had proved nothing:
+
+```
+5 runs under a pseudo terminal.
+  the recording could not be shrunk under the reader; that run proved nothing
+```
+
+Five thousand records is 25 MB, four batches, and a first draw at 32%. Three runs in a row now
+cut it in time, where the smaller file had just failed to.
+
+And the numbers themselves, which nothing has ever looked at. Every other check here is about
+what happens *around* the meter — that it is taken down before an error, that nothing but text
+reaches the screen. A percentage is now required to be one: whole, between 0 and 100, and never
+going backwards inside a run. Scaling it by a thousand is reported as `the meter drew 327, 655,
+which is not a percentage`; running it backwards as `the meter went backwards: 67, 34`.
+
 ## 0.7.69
 
 ### --jobs auto counted cores the process could not use

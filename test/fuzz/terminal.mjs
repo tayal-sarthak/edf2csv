@@ -95,7 +95,20 @@ sys.stderr.write(str(p.returncode))
     env: { ...process.env, SHRINK: shrink ?? '' },
     maxBuffer: 64 * 1024 * 1024,
   });
-  return { output: run.stdout ?? '', code: Number(run.stderr) };
+  const output = run.stdout ?? '';
+  /*
+    What the meter actually said, which nothing has ever looked at.
+
+    Every check here is about what happens around the meter — that it is taken down before an
+    error, that nothing but text reaches the screen. The numbers in it were checked by neither:
+    `100` in the source could read `101` and this sweep, the only thing in the project that can
+    see a progress meter at all, would go on passing.
+  */
+  // The ellipsis is three UTF-8 bytes that make the round trip through python's stdout and
+  // back as six latin1 characters, so the gap between the word and the number is wider than
+  // it reads: allow up to a dozen non-digits rather than counting them.
+  const drawn = [...output.matchAll(/converting\D{0,12}?(\d+)%/gu)].map((m) => Number(m[1]));
+  return { output, code: Number(run.stderr), drawn };
 }
 
 const work = mkdtempSync(path.join(tmpdir(), 'edf2csv-tty-'));
@@ -106,12 +119,26 @@ let checked = 0;
 
 try {
   const { writeEdf } = await import('../fixtures/edf-writer.mjs');
-  // Big enough to need more than one read batch, so it can change under the reader.
-  const write = (name) => {
+  /*
+    Big enough to need more than one read batch, so it can change under the reader — and, for
+    the one that is cut, big enough that the meter draws long before the end.
+
+    1,700 records of ten 256-sample channels is 8.7 MB against an 8 MB read budget, which is
+    two batches. The meter is drawn from inside the read loop and throttled to one draw every
+    hundred milliseconds, so on that file it has only ever printed two numbers: 96% and 100%.
+    Every run of this sweep since it was written has produced those and nothing else.
+
+    Which left the cut with four per cent of the file to land in. 0.7.45 replaced a fixed sleep
+    with "wait for the first bytes the meter puts on the screen", on the reasoning that those
+    bytes prove the reader is inside the file — true, and on this recording they arrive when it
+    is all but read, so the run it is meant to interrupt kept finishing and reporting that it
+    had proved nothing. 5,000 records is 25 MB, four batches, and a first draw at 32%.
+  */
+  const write = (name, records) => {
     const at = path.join(work, name);
     writeEdf({
       path: at,
-      numRecords: 1700,
+      numRecords: records,
       recordDuration: 1,
       signals: Array.from({ length: 10 }, (unused, channel) => ({
         label: `ch${channel}`,
@@ -128,8 +155,9 @@ try {
   };
   // Two recordings: the first is truncated under the reader on purpose, so the checks that
   // need a whole file get their own.
-  const shrinking = write('shrinking.edf');
-  const steady = write('steady.edf');
+  const shrinking = write('shrinking.edf', 5000);
+  // The rest never need a meter, so they keep the smaller file and the sweep keeps its speed.
+  const steady = write('steady.edf', 1700);
 
   /*
     A conversion that fails while the meter is up. Every `error: ` and `warning: ` this tool
@@ -256,6 +284,30 @@ try {
       problems.push(`the summary did not start its own line: ${JSON.stringify(ok.output.slice(-160))}`);
     }
   }
+
+  /*
+    And the numbers the meter itself printed, over every run that drew one.
+
+    A percentage is a percentage: a whole number from 0 to 100 that does not go backwards
+    inside a run. Nothing asserted either, so `100` in the source could read `101` and this
+    sweep — the only thing in the project that can see a progress meter at all — would go on
+    passing. Every other check here is about what happens *around* the meter: that it is taken
+    down before an error, that nothing but text reaches the screen.
+
+    Not "and ends at 100": the meter is throttled to one draw every hundred milliseconds, so
+    the last one before the summary is dropped whenever it lands too soon after the one before.
+    On the shorter recordings here that is every time.
+  */
+  const drew = [failed, gz, ok].filter((run) => run.drawn.length > 0);
+  for (const run of drew) {
+    const shown = run.drawn;
+    const wrong = shown.filter((p) => !Number.isInteger(p) || p < 0 || p > 100);
+    if (wrong.length > 0) problems.push(`the meter drew ${wrong.join(', ')}, which is not a percentage`);
+    if (shown.some((p, at) => at > 0 && p < shown[at - 1])) {
+      problems.push(`the meter went backwards: ${shown.join(', ')}`);
+    }
+  }
+  if (drew.length === 0) notes.push('no run drew a progress meter, so its numbers were not checked');
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
