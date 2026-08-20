@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.58
+
+### a list cap that hid one item behind a longer phrase
+
+The list cap spent eleven characters hiding one rate.
+
+Every message that enumerates something the recording controls goes through `listed`, which
+shows eight items and counts the rest. That exists because a 200-channel recording produced a
+1,545-character warning on one line. One item over the cap is not that:
+
+```
+warning: Channels use 9 different sampling rates (100 Hz, 99 Hz, 98 Hz, 97 Hz, 96 Hz,
+         95 Hz, 94 Hz, 93 Hz and 1 more).
+```
+
+`and 1 more` is eleven characters standing in for `, 92 Hz`, which is seven. The line is four
+characters longer than naming all nine would be, and one rate shorter — and the sentence around
+it has already said there are nine, so the reader is handed the count and then denied the item,
+by a phrase that costs more than the item does.
+
+A cut that costs more than it hides is not a cut. Nine items are all named now; ten still reads
+"and 2 more", which is where the summary starts paying for itself; eight is byte-for-byte what
+it was, as is every list long enough to need cutting — the 40-rate fixture still says "and 32
+more" and the leftover-files warning still says "and 112 more".
+
 ## 0.7.57
 
 ### only one of the two channel suggestions was ever pasted back

@@ -3052,6 +3052,57 @@ describe('messages that enumerate what the file contains', () => {
   // mattered was buried. Four messages did this, two of them added in 0.3.3 and 0.3.6.
   const oneLine = (text) => text.trimEnd().split('\n')[0];
 
+  it('does not spend more words hiding one item than naming it would', async () => {
+    /*
+      The cut is at eight, and the ninth item was replaced by "and 1 more" — eleven characters
+      standing in for one rate:
+
+          Channels use 9 different sampling rates (100 Hz, 99 Hz, 98 Hz, 97 Hz, 96 Hz,
+          95 Hz, 94 Hz, 93 Hz and 1 more).
+
+      Four characters longer than naming all nine, and one rate shorter. The sentence has
+      already said there are nine, so the reader is given the count and then denied the item —
+      by a phrase that costs more than the item does. The cap exists because a 200-channel
+      recording produced a 1,545-character line; one item over is not that.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-listed-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const rated = (count) => {
+      const at = path.join(scratch, `rates-${count}.edf`);
+      writeEdf({
+        path: at,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: Array.from({ length: count }, (unused, i) => ({
+          label: `ch${i}`, dimension: 'uV', physMin: -100, physMax: 100,
+          digMin: -1000, digMax: 1000, samplesPerRecord: 100 - i, gen: () => 1,
+        })),
+      });
+      return at;
+    };
+    const warningFor = async (count) => {
+      const { stderr } = await cli([rated(count), '--info']);
+      const line = stderr.split('\n').find((l) => l.includes('different sampling rates'));
+      assert.ok(line, `no rate warning for ${count} rates:\n${stderr}`);
+      return line;
+    };
+
+    // Nine rates, all nine named, and the phrase that used to hide one of them gone.
+    const nine = await warningFor(9);
+    for (let rate = 100; rate > 91; rate--) {
+      assert.ok(nine.includes(`${rate} Hz`), `${rate} Hz is missing from: ${nine}`);
+    }
+    assert.ok(!/and 1 more/u.test(nine), nine);
+
+    // Eight is unchanged, and ten still counts its remainder — where two items really are
+    // longer than the words replacing them.
+    assert.ok(!/more/u.test(await warningFor(8)));
+    const ten = await warningFor(10);
+    assert.match(ten, /and 2 more/u);
+    assert.ok(!ten.includes('91 Hz'), ten);
+  });
+
   it('caps every list rather than letting the header set the length', async () => {
     const many = fixture('many-rates.edf');
 

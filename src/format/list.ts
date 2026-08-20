@@ -25,10 +25,27 @@ const DEFAULT_LIMIT = 8;
  * it says the list was cut without pretending the tail does not exist.
  *
  *     listed(['1 Hz', '2 Hz'])                  -> '1 Hz, 2 Hz'
+ *     listed(rates9)                            -> all nine; see below
  *     listed(rates200)                          -> '200 Hz, 199 Hz, ... 193 Hz and 192 more'
  */
 export function listed(items: readonly string[], limit = DEFAULT_LIMIT): string {
-  if (items.length <= limit) return items.join(', ');
+  /*
+    One item over the limit is shown rather than counted.
+
+    "and 1 more" is eleven characters standing in for a single item, and an item is rarely
+    that long. Nine sampling rates came out as
+
+        Channels use 9 different sampling rates (100 Hz, 99 Hz, 98 Hz, 97 Hz, 96 Hz,
+        95 Hz, 94 Hz, 93 Hz and 1 more).
+
+    which is four characters longer than naming all nine and one rate shorter — while the
+    sentence around it has already said there are nine, so the reader is told the count and
+    then denied the item. A cut that costs more than it hides is not a cut.
+
+    Two is where it starts paying: ", 92 Hz, 91 Hz" against " and 2 more". Beyond that it is
+    the whole point.
+  */
+  if (items.length <= limit + 1) return items.join(', ');
   const shown = items.slice(0, limit).join(', ');
   return `${shown} and ${items.length - limit} more`;
 }
