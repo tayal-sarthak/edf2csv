@@ -689,11 +689,34 @@ export async function main(argv: readonly string[]): Promise<number> {
         stopping = true;
         const abandoned = [...running.values()];
         for (const child of running.keys()) child.kill('SIGTERM');
+        /*
+          A destination that is not there was never written to, and saying otherwise is the
+          defect the serial handler was fixed for.
+
+          `convert()` opens the recording, hashes it under `--checksum` and reads the whole
+          annotation channel for record start times *before* it claims the directory — so
+          Ctrl-C in the first seconds of a batch of large EDF+ recordings finds nothing on
+          disk for any of them. This named every destination as incomplete output regardless,
+          and advised distrusting directories `ls` then reported did not exist.
+
+          Two answers rather than the serial path's three: whether a directory that IS there
+          was there before this run is per-child state the parent does not keep, and the
+          sentence that covers both is the one already printed.
+        */
+        const started = abandoned.filter((destination) => existsSync(destination));
+        const untouched = abandoned.filter((destination) => !existsSync(destination));
         process.stderr.write(
           `\ninterrupted (${signal}): ${abandoned.length} conversion` +
             `${abandoned.length === 1 ? '' : 's'} stopped part way through.\n` +
-            (abandoned.length > 0
-              ? detail(`Incomplete, and should not be used: ${listed(abandoned.map(printable))}`)
+            (started.length > 0
+              ? detail(`Incomplete, and should not be used: ${listed(started.map(printable))}`)
+              : '') +
+            (untouched.length > 0
+              ? detail(
+                  `Nothing was written to ${listed(untouched.map(printable))}: ` +
+                    `${untouched.length === 1 ? 'that directory was' : 'those directories were'} ` +
+                    `never created.`,
+                )
               : ''),
         );
         process.exit(signal === 'SIGINT' ? 130 : 143);
@@ -1771,9 +1794,14 @@ async function convertInChild(
         names every directory at once rather than one line per child.
       */
       if (signal !== null && !stopping) {
+        // And the same question of this one child, for the same reason as the handler above.
         err +=
           `error: stopped by ${signal} before it finished.\n` +
-          detail(`Incomplete, and should not be used: ${printable(destination)}`);
+          detail(
+            existsSync(destination)
+              ? `Incomplete, and should not be used: ${printable(destination)}`
+              : `Nothing was written: "${printable(destination)}" was never created.`,
+          );
       }
       resolve({ code: code ?? EXIT_ERROR, out, err, report });
     });

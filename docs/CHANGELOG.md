@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.82
+
+### an interrupted batch named directories that were never created
+
+An interrupted batch named directories that were never created.
+
+`convert()` opens the recording, hashes it under `--checksum` and reads the whole annotation
+channel for record start times *before* it claims the output directory. That ordering is
+deliberate — a rejected option or an unreadable input leaves nothing behind — and it means an
+interrupt in the first seconds of a batch finds nothing on disk for any recording in flight.
+
+Both of the parallel path's messages said otherwise. Ctrl-C reached the parent's handler, which
+listed every destination it had handed out:
+
+```
+interrupted (SIGINT): 2 conversions stopped part way through.
+       Incomplete, and should not be used: out/b0, out/b1
+```
+
+and a child killed by something else — the out-of-memory killer, a scheduler's time limit,
+`kill` — got the same claim about its own:
+
+```
+error: b0.edf: stopped by SIGKILL before it finished.
+       Incomplete, and should not be used: out/b0
+```
+
+Neither directory existed. `ls` said so, and the advice was to distrust nothing.
+
+The serial handler has told these apart since 0.5.x, with the sentence this now borrows: a
+destination that is not there was never written to. Two answers rather than the serial path's
+three, because whether a directory that *is* there was already there before the run is
+per-child state the parent does not keep, and the sentence covering both is the one it already
+printed.
+
+The existing test for the killed child was pinning the false message — it kills as soon as the
+child appears, which is before the directory is claimed, so it asserted "incomplete" about a
+path that was not on disk. All three interrupt tests now compare the sentence against the
+filesystem rather than against a fixed string.
+
 ## 0.7.81
 
 ### --info said no event was lost over one that was

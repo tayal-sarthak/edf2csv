@@ -2995,7 +2995,38 @@ describe('converting several recordings at once', () => {
 
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
     assert.match(stderr, /interrupted \(SIGINT\)/u);
-    assert.match(stderr, /should not be used/u, 'the half-written directories must be named');
+    /*
+      The abandoned destinations are named, in whichever of the two sentences fits them.
+
+      This asked only for "should not be used", which is the half-written case — and a batch
+      interrupted early enough has nothing on disk at all, since `convert()` reads the whole
+      annotation channel before it claims a directory. Naming those as incomplete output was
+      the defect; the sentence that replaced it says the truth instead, so the assertion moved
+      from the wording to the requirement, which is that the directories are named.
+    */
+    const abandoned = stderr.replace(/\s+/gu, ' ');
+    assert.match(
+      abandoned,
+      /(?:Incomplete, and should not be used|Nothing was written to)[^:]*out\/r\d\d/u,
+      `the abandoned directories must be named, stderr was:\n${stderr}`,
+    );
+    for (const [, named] of abandoned.matchAll(/([^\s,]*out\/r\d\d)/gu)) {
+      if (!/(?:Incomplete|Nothing was written to)[^:]*/u.test(abandoned)) continue;
+      const onDisk = await exists(named);
+      const claimedIncomplete = new RegExp(
+        `Incomplete, and should not be used:[^:]*${named}`,
+        'u',
+      ).test(abandoned);
+      const claimedUntouched = new RegExp(`Nothing was written to[^:]*${named}[^:]*:`, 'u').test(
+        abandoned,
+      );
+      if (!claimedIncomplete && !claimedUntouched) continue;
+      assert.equal(
+        onDisk ? claimedIncomplete : claimedUntouched,
+        true,
+        `${named} ${onDisk ? 'exists' : 'does not exist'} and the message disagrees:\n${stderr}`,
+      );
+    }
 
     // Nothing may outlive the parent: give the kill a moment, then look for survivors.
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -3111,13 +3142,121 @@ describe('converting several recordings at once', () => {
       /error: .*r\d\d\.edf: stopped by SIGKILL before it finished\./u,
       `the killed recording must be named, stderr was:\n${stderr}`,
     );
-    // Wrapped to the terminal: a long destination sits on its own line, unbroken, so the
-    // sentence and the path may be separated by a newline and seven spaces.
+    /*
+      And what it says about the destination has to be what is on disk.
+
+      This asserted "Incomplete, and should not be used" whatever had happened, which is the
+      sentence the child-killed path printed unconditionally — and the kill above lands as
+      soon as the child appears, which is usually before `convert()` has claimed the
+      directory at all. So the test was pinning a claim about a directory that was not there.
+
+      Wrapped to the terminal: a long destination sits on its own line, unbroken, so the
+      sentence and the path may be separated by a newline and seven spaces.
+    */
+    const flat = stderr.replace(/\s+/gu, ' ');
+    const named = /(?:Incomplete, and should not be used|Nothing was written): "?([^"\s]*out\/r\d\d)/u.exec(flat);
+    assert.ok(named, `the directory it left behind must be named:\n${stderr}`);
+    const onDisk = await exists(named[1]);
     assert.match(
-      stderr.replace(/\s+/gu, ' '),
-      /Incomplete, and should not be used: .*out\/r\d\d/u,
-      'and so must the directory it left behind',
+      flat,
+      onDisk
+        ? /Incomplete, and should not be used: [^\s]*out\/r\d\d/u
+        : /Nothing was written: "[^"]*out\/r\d\d" was never created\./u,
+      `${named[1]} ${onDisk ? 'exists' : 'does not exist'} and the message disagrees:\n${stderr}`,
     );
+  });
+
+  it('does not call a directory incomplete when it was never created', async () => {
+    /*
+      `convert()` opens the recording, hashes it under `--checksum` and reads the whole
+      annotation channel for record start times before it claims the output directory. So an
+      interrupt in the first seconds of a batch of large recordings finds nothing on disk —
+      and the parallel handler said, of every destination it had handed out:
+
+          interrupted (SIGINT): 2 conversions stopped part way through.
+                 Incomplete, and should not be used: out/b0, out/b1
+
+      about directories `ls` reported did not exist. The serial handler has told the two apart
+      since 0.5.x; this one had one sentence for both.
+
+      The race is not raced. Whichever side of it an attempt lands on, the message has to
+      agree with what is on disk, and that is asserted every time — so a machine fast or slow
+      enough to see only one branch still checks something rather than passing on nothing. The
+      recording is six megabytes and `--checksum` reads it twice, which on the machines this
+      has been run on puts the interrupt before the directory is claimed most attempts.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-intbatch-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const names = [];
+    for (let i = 0; i < 2; i++) {
+      const name = path.join(dir, `b${i}.edf`);
+      writeEdf({
+        path: name,
+        numRecords: 3000,
+        recordDuration: 1,
+        signals: [
+          { label: 'ECG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+            digMax: 2047, samplesPerRecord: 1000, gen: (r, s) => ((r + s) % 2000) - 1000 },
+        ],
+      });
+      names.push(name);
+    }
+
+    const { spawn, execFile: raw } = await import('node:child_process');
+    const seen = new Set();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const out = path.join(dir, `out${attempt}`);
+      // --checksum puts a whole extra read of the input ahead of the directory being claimed,
+      // which is what makes the "never created" side reachable at all.
+      const run = spawn(
+        process.execPath,
+        [CLI, ...names, '--out', out, '--jobs', '2', '--checksum'],
+        { stdio: ['ignore', 'ignore', 'pipe'] },
+      );
+      let stderr = '';
+      run.stderr.setEncoding('utf8').on('data', (chunk) => {
+        stderr += chunk;
+      });
+
+      // Only the children carry `<out>/bN`; see the test above.
+      const childPid = async () =>
+        new Promise((resolve) => {
+          raw('pgrep', ['-f', `${out}/b`], (_error, stdout) =>
+            resolve((stdout ?? '').trim().split('\n').filter(Boolean)[0]),
+          );
+        });
+      let running;
+      for (let tries = 0; tries < 200 && running === undefined; tries++) {
+        running = await childPid();
+        if (running === undefined) await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      assert.ok(running, 'no conversion was running to interrupt');
+
+      run.kill('SIGINT');
+      await new Promise((resolve) => run.on('close', resolve));
+      assert.match(stderr, /interrupted \(SIGINT\)/u, stderr);
+
+      const flat = stderr.replace(/\s+/gu, ' ');
+      for (const name of ['b0', 'b1']) {
+        const destination = path.join(out, name);
+        if (!flat.includes(destination)) continue;
+        const onDisk = await exists(destination);
+        const incomplete = new RegExp(
+          `Incomplete, and should not be used:[^:]*${destination}`,
+          'u',
+        ).test(flat);
+        const never = new RegExp(`Nothing was written to[^:]*${destination}[^:]*:`, 'u').test(flat);
+        assert.equal(
+          onDisk ? incomplete : never,
+          true,
+          `${destination} ${onDisk ? 'exists' : 'does not exist'} and the message disagrees:\n${stderr}`,
+        );
+        assert.equal(onDisk ? never : incomplete, false, stderr);
+        seen.add(onDisk ? 'incomplete' : 'never');
+      }
+    }
+    assert.ok(seen.size > 0, 'no destination was described at all');
   });
 
   it('rejects a job count that is not a whole number of one or more', async () => {
