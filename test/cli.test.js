@@ -1151,6 +1151,14 @@ describe('--info', () => {
 
       Checked by pasting: each suggestion goes to /bin/sh exactly as printed, and a conversion
       of that channel has to come back. Matching the sentence would pass against the old form.
+
+      Both places, which is the part this missed for twenty-six versions. It pasted the column-
+      name branch and left the near-miss one — the second message quoted above — matched by
+      nothing, and that is the branch a comma reaches: a label holding one can never be
+      selected by name, since `--channels` splits on commas, so the offer has to be a position
+      instead. Weaken the guard that decides it and the suggestion becomes `Did you mean
+      "EEG,Fp1"?`, which survives a shell perfectly and is then split by the tool that printed
+      it into two names it does not have — with the whole suite green.
     */
     const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-typeable-'));
     temporaries.push(scratch);
@@ -1194,6 +1202,42 @@ describe('--info', () => {
       assert.ok(
         header.includes(label.replaceAll('"', '""')),
         `${label}: the offered command converted something else — ${header}`,
+      );
+    }
+
+    /*
+      The near-miss branch, on one signal per file so the offer is about the label rather than
+      about a column. The term is the label with a character taken out of it, which is what a
+      typo is, and for a label holding a comma it is the comma that goes — the term itself has
+      to survive `--channels` splitting to reach the suggestion at all.
+    */
+    const mistyped = ['T8-P8', 'EEG "A1"', 'EEG $ref', "EEG 'A1'", 'EEG `ref`', 'EEG,Fp1'];
+    for (const [index, label] of mistyped.entries()) {
+      const file = path.join(scratch, `near-${index}.edf`);
+      writeEdf({
+        path: file,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [{ label, ...base, gen: () => 300 }],
+      });
+
+      const term = label.includes(',') ? label.replace(',', '') : label.slice(0, -1);
+      const refused = await cli([file, '--out', await outDir(), '--channels', term]);
+      assert.equal(refused.code, 2, `${label}: "${term}" has to be refused`);
+      const offered = /Did you mean (.+?)\?/u.exec(refused.stderr.replace(/\s+/gu, ' '));
+      assert.ok(offered, `${label}: nothing was offered for "${term}":\n${refused.stderr}`);
+
+      const destination = path.join(scratch, `near-out-${index}`);
+      const command =
+        `${JSON.stringify(process.execPath)} ${JSON.stringify(CLI)} ${JSON.stringify(file)} ` +
+        `--channels ${offered[1]} ` +
+        `--out ${JSON.stringify(destination)} --quiet`;
+      const pasted = await run('/bin/sh', ['-c', command]).then(() => 0, (error) => error.code);
+      assert.equal(pasted, 0, `${label}: the offered command failed:\n  ${command}`);
+      const header = (await readFile(path.join(destination, 'signals.csv'), 'utf8')).split('\n')[0];
+      assert.ok(
+        header.includes(label.replaceAll('"', '""')),
+        `${label}: following "${offered[1]}" converted something else — ${header}`,
       );
     }
 

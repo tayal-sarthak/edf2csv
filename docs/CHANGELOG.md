@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.57
+
+### only one of the two channel suggestions was ever pasted back
+
+The check that pastes a suggestion back into a shell pasted one of the two suggestions.
+
+0.7.30 named both places a channel is printed as something to retype, in its own comment:
+
+```
+error: "EEG "A1"_ch0" is a column name, not a channel name: ...
+       Use "#0" to select just this one, or "EEG "A1"" for every channel sharing that label.
+
+error: No channel named "EEG "A2"". Did you mean "EEG "A1""?
+```
+
+and then pasted the first. The second — the near-miss suggestion, which is the one a mistyped
+name actually produces — was matched by nothing at all.
+
+That is the branch a comma reaches. `--channels` splits its value on commas, so a channel
+labelled `EEG,Fp1` can never be selected by name, and the offer has to be its position instead.
+Weaken the guard that decides that:
+
+```
+-  if (label === '' || label.includes(',')) return null;
++  if (label === '' && label.includes(',')) return null;
+```
+
+and all 392 tests pass, while the tool answers a typo with advice that fails against itself:
+
+```
+$ edf2csv rec.edf --channels EEGFp1
+error: No channel named "EEGFp1". Did you mean "EEG,Fp1"?
+
+$ edf2csv rec.edf --channels "EEG,Fp1"
+error: No channel named "EEG".
+```
+
+The suggestion survives the shell perfectly — which is all the old check asked — and is then
+split by the tool that printed it into two names it does not have. Following the advice is the
+loop 0.7.30 was written to end.
+
+Six labels now go through the near-miss branch as well, comma included: the term is the label
+with one character taken out of it, the offer is pasted into `/bin/sh` exactly as printed, and
+the conversion that comes back has to be of the channel the message was about.
+
 ## 0.7.56
 
 ### two tests skipped themselves when they lost a race
