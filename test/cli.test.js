@@ -2726,29 +2726,51 @@ describe('converting several recordings at once', () => {
     });
     truncateSync(recording, statSync(recording).size + records * (4 + 30) * 2);
 
-    const out = path.join(dir, 'out');
     const { spawn } = await import('node:child_process');
-    const run = spawn(process.execPath, [CLI, recording, '--out', out, '--quiet'], {
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
-    let stderr = '';
-    run.stderr.setEncoding('utf8').on('data', (chunk) => {
-      stderr += chunk;
-    });
+    /*
+      Two ways to lose, pulling opposite ways, so the wait tunes itself rather than being
+      guessed once.
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    if (existsSync(out)) {
-      // The scan finished faster than the signal arrived, so this run is not the case under
-      // test. Skipped rather than failed: losing the race says nothing about the message.
-      run.kill('SIGKILL');
-      t.skip('the pre-write scan finished before the signal was sent');
+      This used to wait a flat 400 ms and skip on either. Both are scheduling accidents: the
+      scan finishing first wants a shorter wait, the signal beating the handler's installation
+      wants a longer one, and a loaded machine produces the second often — two skips in one
+      suite run while the sweeps were running beside it. A skip reads as green and takes the
+      check with it, and the check is that an interrupt before anything is written does not
+      advise distrusting a directory that was never created.
+    */
+    let out = '';
+    let attempt = 0;
+    let wait = 400;
+    let outcome = null;
+    let stderr = '';
+    for (; attempt < 6 && outcome === null; attempt++) {
+      out = path.join(dir, `out-${attempt}`);
+      const run = spawn(process.execPath, [CLI, recording, '--out', out, '--quiet'], {
+        stdio: ['ignore', 'ignore', 'pipe'],
+      });
+      stderr = '';
+      run.stderr.setEncoding('utf8').on('data', (chunk) => {
+        stderr += chunk;
+      });
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      if (existsSync(out)) {
+        // The scan finished first: interrupt sooner next time.
+        run.kill('SIGKILL');
+        await new Promise((resolve) => run.on('close', resolve));
+        wait = Math.max(50, Math.round(wait / 2));
+        continue;
+      }
+      const settled = await interrupted(run);
+      // The signal beat the handler's installation: give it longer next time.
+      // A floor as well as a doubling, so the ladder climbs from any starting point.
+      if (settled.code === null) wait = Math.max(100, wait * 2);
+      else outcome = settled;
+    }
+    if (outcome === null) {
+      t.skip(`the interrupt could not be placed inside the scan in ${attempt} attempts`);
       return;
     }
-    const { code, killedBy } = await interrupted(run);
-    if (code === null) {
-      t.skip(`the signal arrived before the handler was installed (killed by ${killedBy})`);
-      return;
-    }
+    const { code } = outcome;
 
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
     assert.match(stderr, /interrupted \(SIGINT\)/u);
@@ -2782,7 +2804,7 @@ describe('converting several recordings at once', () => {
     assert.equal(worstOf([1, 2]), 1);
   });
 
-  it('stops its children when interrupted, and says the output is incomplete', async (t) => {
+  it('stops its children when interrupted, and says the output is incomplete', async () => {
     // Ctrl-C in a terminal reaches every process in the group, so children stop anyway. A
     // signal sent to this process alone does not, which is how a batch runs from a script,
     // and interrupting one left conversions writing into a directory believed abandoned —
@@ -2808,14 +2830,34 @@ describe('converting several recordings at once', () => {
       stderr += chunk;
     });
 
-    // Long enough that conversions are certainly in flight, short enough that they
-    // cannot all have finished.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const { code, killedBy } = await interrupted(run);
-    if (code === null) {
-      t.skip(`the signal arrived before the handler was installed (killed by ${killedBy})`);
-      return;
-    }
+    /*
+      Interrupted when the batch has demonstrably started, not after a fixed wait.
+
+      A flat 400 ms was two guesses at once: long enough for the handler to be installed, short
+      enough that thirty conversions cannot all have finished. The first is the one that failed
+      — on a loaded machine Node has not finished booting in 400 ms, the default action for
+      SIGINT applies, the process dies with a null code, and the test skipped itself. Two of
+      those in one suite run while the sweeps were running beside it. A skip reads as green and
+      takes the check with it, and the check is that an interrupted batch does not report
+      success and does name the directories it left half-written.
+
+      The batch prints `[1/30]` as the first recording finishes, so that line is proof of both
+      halves at once: the parent is well past installing its handler, and twenty-nine
+      recordings are still to come. Waiting for it replaces both guesses with the event they
+      were standing in for.
+    */
+    await new Promise((resolve, reject) => {
+      const deadline = setTimeout(() => reject(new Error(`no batch progress in 60s: ${stderr}`)), 60_000);
+      const check = () => {
+        if (!/\[1\/\d+\]/u.test(stderr)) return;
+        clearTimeout(deadline);
+        run.stderr.off('data', check);
+        resolve();
+      };
+      run.stderr.on('data', check);
+      check();
+    });
+    const { code } = await interrupted(run);
 
     assert.equal(code, 130, `expected the signal exit status, stderr was:\n${stderr}`);
     assert.match(stderr, /interrupted \(SIGINT\)/u);

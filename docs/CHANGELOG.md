@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.56
+
+### two tests skipped themselves when they lost a race
+
+Two tests skipped themselves when they lost a race, and a skip reads as green.
+
+Both interrupt a running conversion, and both did it by waiting a flat 400 ms and then sending
+SIGINT. That is a guess at how long Node takes to boot and install its handler. Lose it and the
+default action applies, the process dies with a null exit code, and the test says so and
+returns:
+
+```
+﹣ does not warn about files in a directory it never created # the signal arrived before the
+  handler was installed (killed by SIGINT)
+﹣ stops its children when interrupted, and says the output is incomplete # the signal arrived
+  before the handler was installed (killed by SIGINT)
+ℹ pass 385
+ℹ fail 0
+ℹ skipped 2
+```
+
+Two of them in one suite run, on this machine, with the sweeps running beside it. `fail 0` is
+what a reader takes from that, and what went unchecked is that an interrupted batch does not
+report success and does name the directories it left half-written — the defect 0.4.x fixed,
+which ended a run with "Done in 1.6s" as the last thing on screen.
+
+The batch one is not a race any more. It prints `[1/30]` as the first recording finishes, and
+that line is proof of both things the wait was standing in for at once: the parent is well past
+installing its handler, and twenty-nine recordings are still to come. It waits for the line.
+
+The other has to interrupt *inside* the pre-write scan, before anything exists to observe, so
+there are two ways to lose and they pull opposite ways — the scan finishing first wants a
+shorter wait, the signal beating the handler wants a longer one. It now tunes the wait against
+whichever it hit and tries again, halving or doubling, up to six times. Started at zero
+milliseconds, where the old code skipped immediately, it recovers and passes.
+
 ## 0.7.55
 
 ### the input-changed check was only ever tested with both halves at once
