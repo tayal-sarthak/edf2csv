@@ -88,6 +88,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
 | `MISSING_EDF_PLUS_MARKER` | An annotation channel puts the records somewhere the missing EDF+ marker cannot honour |
 | `START_TIME_UNREADABLE` | The header's start date or time is not a date or a time |
+| `LEAP_SECOND_START` | The header's start time names the sixtieth second, which no calendar date has |
 | `STDOUT_UNSUPPORTED` | `--info --stdout` on a recording `--stdout` would refuse |
 
 ## File structure and integrity
@@ -658,6 +659,25 @@ warning: The header's start date and time ("32.13.99" and "25.61.61") are not a 
 Until 0.5.101 nothing was raised: `--info` echoed the fields with "(unparseable)" beside them and a conversion said nothing at all, so a recording with no usable timestamp passed `--strict` and left a bare `null` in the archive. Every other unusable header field reports itself.
 
 **What to do.** Nothing, unless you need wall-clock times. `time_s`, the sample values and the annotation onsets are all unaffected — they are relative to the recording's own start, which does not depend on the header's saying when that was. If you do need the instant, it has to come from outside the file.
+
+### LEAP_SECOND_START
+
+The header's start time names the sixtieth second of a minute.
+
+**Cause.** UTC writes a leap second as `23.59.60`, and a recorder synchronised through one puts that in the header. It is a real instant. It is not a time a calendar date has, and it is not one JavaScript's `Date` can hold: asking for the sixtieth second rolls the value into the next minute.
+
+**What edf2csv does.** Keeps the nearest instant a date can hold — the fifty-ninth second, one second earlier than the header says — and says so. Rolling forward instead would move it fifty-nine seconds the other way, and refusing the whole field would throw away a date that is otherwise perfectly good.
+
+```
+warning: The header's start time ("23.59.60") names the sixtieth second of a minute, which no calendar date has.
+         It is recorded as the fifty-ninth second, one second earlier, since that
+         is the nearest instant a date can hold. time_s is unaffected — it counts
+         from the start of the recording either way.
+```
+
+Until 0.7.52 the second was dropped in silence: `--info` printed `Recorded 2020-01-01 23:59:59` and `metadata.json` recorded the same, for a header that says something else, with `--strict` exiting 0.
+
+**What to do.** Nothing, unless a second matters to you at that instant. `time_s`, the sample values and the annotation onsets are all relative to the recording's own start and are unaffected; only `start_datetime_local` moves, and only by that second.
 
 ### NO_ANNOTATIONS
 

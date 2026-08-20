@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.52
+
+### a leap second in the start time was dropped without a word
+
+A start time of `23.59.60` was recorded as `23:59:59` and nothing said so.
+
+UTC writes a leap second that way, and the header parser admits it deliberately: the bound on
+the seconds field is `ss > 60`, not `ss > 59`. What happens next is `Math.min(ss, 59)`, because
+`Date.UTC(..., 60)` rolls over into the next minute and would move the instant fifty-nine
+seconds the other way. Keeping the nearest instant a date can hold is the right answer.
+
+Keeping it in silence was not:
+
+```
+$ edf2csv leap.edf --info --strict
+Recorded   2020-01-01 23:59:59
+...
+$ echo $?
+0
+```
+
+for a header that says `23.59.60`. `metadata.json` records the same second, and
+`start_datetime_local` is the field output-files points at for turning `time_s` into an
+absolute instant — so the one number that names when the recording happened was a second
+earlier than the file says, with nothing anywhere to say it had been moved.
+
+Every other header field this tool cannot represent exactly reports itself: a comma decimal
+separator, a physical span that overflows a double, a record count that disagrees with the
+file, a start date that is not a date. This one field is both accepted *and* changed, which is
+the combination that had no diagnostic. It has `LEAP_SECOND_START` now, which quotes the field
+as written and says which second was kept and why.
+
+The neighbours are unaffected and now have a test saying so: hour 24, minute 60, day zero,
+month thirteen and the twenty-ninth of a twenty-eight-day February are all still refused
+outright with `START_TIME_UNREADABLE`, and `23.59.59` still says nothing at all.
+
 ## 0.7.51
 
 ### an example annotated "no warning" raises one

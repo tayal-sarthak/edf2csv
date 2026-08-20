@@ -58,6 +58,16 @@ export type DiagnosticCode =
    */
   | 'START_TIME_UNREADABLE'
   /**
+   * The header's start time names the sixtieth second of a minute.
+   *
+   * A leap second is a real instant and `23.59.60` is how UTC writes it, but no calendar date
+   * has a sixtieth second and `Date` has no way to hold one: asking for it rolls over into the
+   * next minute. So the instant is kept as `:59`, one second earlier — which was done silently,
+   * and `start_datetime_local` then named a moment the header does not, on the field the
+   * documented recipe for an absolute instant depends on.
+   */
+  | 'LEAP_SECOND_START'
+  /**
    * An annotation channel with a non-zero origin, in a file marked neither EDF+C nor EDF+D.
    *
    * The marker decides whether the origin is applied, and the annotation channel is found by

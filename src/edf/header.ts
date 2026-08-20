@@ -214,6 +214,12 @@ function parseNumberField(
   return n;
 }
 
+/** Whether the start time names the sixtieth second. See LEAP_SECOND_START. */
+function namesLeapSecond(timeRaw: string): boolean {
+  const t = /^(\d{2})[.:\-](\d{2})[.:\-](\d{2})$/u.exec(trimField(timeRaw));
+  return t !== null && Number(t[3]) === 60;
+}
+
 /**
  * EDF stores a two-digit year. The spec pins the century: 85-99 mean 1985-1999
  * and 00-84 mean 2000-2084. Files outside 1985-2084 cannot express their date.
@@ -686,6 +692,36 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     disagrees with its signal count. This was the one that did not, and it is the field
     output-files points at for turning `time_s` into an absolute instant.
   */
+  /*
+    The sixtieth second, which is a second UTC has and a calendar date does not.
+
+    `resolveStartDateTime` admits `ss === 60` on purpose — a recorder synchronised to UTC
+    through a leap second writes `23.59.60`, and refusing it would throw away a date that is
+    otherwise perfectly good over one second. What it then does is `Math.min(ss, 59)`, because
+    `Date.UTC(..., 60)` rolls over into the next minute and would move the instant the other
+    way, by fifty-nine seconds more.
+
+    Keeping the nearest instant is the right answer. Keeping it in silence was not: `--info`
+    printed `Recorded 2020-01-01 23:59:59` and metadata.json recorded the same, for a header
+    that says `23.59.60`, with `--strict` exiting 0. Every other header field this tool cannot
+    represent exactly says so — a comma decimal separator, a physical span that overflows, a
+    record count that disagrees with the file — and this is the field `time_s` is documented as
+    being added to.
+  */
+  if (namesLeapSecond(startTimeRaw) && resolveStartDateTime(startDateRaw, startTimeRaw) !== null) {
+    diagnostics.push({
+      code: 'LEAP_SECOND_START',
+      severity: 'warning',
+      message:
+        `The header's start time ("${startTimeRaw}") names the sixtieth second of a minute, ` +
+        `which no calendar date has.`,
+      hint:
+        'It is recorded as the fifty-ninth second, one second earlier, since that is the ' +
+        'nearest instant a date can hold. time_s is unaffected — it counts from the start of ' +
+        'the recording either way.',
+    });
+  }
+
   if (resolveStartDateTime(startDateRaw, startTimeRaw) === null) {
     diagnostics.push({
       code: 'START_TIME_UNREADABLE',

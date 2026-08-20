@@ -110,6 +110,71 @@ describe('diagnostics', () => {
     assert.ok(codes(file).includes('INVERTED_PHYSICAL_RANGE'));
   });
 
+  it('says when it moved the start instant off the second the header names', async () => {
+    /*
+      `23.59.60` is how UTC writes a leap second, and the parser admits it on purpose: refusing
+      would throw away a date that is otherwise perfectly good over one second. What it does
+      with it is `Math.min(ss, 59)`, because `Date.UTC(..., 60)` rolls into the next minute and
+      would move the instant fifty-nine seconds further.
+
+      Keeping the nearest instant is right. Keeping it in silence was not — `--info` printed
+      `Recorded 2020-01-01 23:59:59` and metadata.json recorded the same for a header saying
+      something else, with `--strict` exiting 0. Every other header field this tool cannot
+      represent exactly reports itself, and this is the one `time_s` is documented as being
+      added to.
+
+      Every other out-of-range field in these two is refused outright and raises
+      START_TIME_UNREADABLE: hour 24, minute 60, day 0, month 13, the twenty-ninth of a
+      February that has twenty-eight days. The sixtieth second was the only one that was both
+      accepted and changed.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-leap-'));
+    temporaries.push(scratch);
+    const at = (time) => {
+      const file = path.join(scratch, `t${time.replaceAll('.', '')}.edf`);
+      writeEdf({
+        path: file,
+        startDate: '01.01.20',
+        startTime: time,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [
+          { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 2, gen: () => 1 },
+        ],
+      });
+      return file;
+    };
+
+    const leap = parseHeader(await readFile(at('23.59.60')), 1024);
+    assert.ok(
+      leap.diagnostics.some((d) => d.code === 'LEAP_SECOND_START'),
+      `a sixtieth second raised ${leap.diagnostics.map((d) => d.code).join(', ') || 'nothing'}`,
+    );
+    assert.equal(leap.header.startDateTime?.toISOString(), '2020-01-01T23:59:59.000Z');
+    assert.equal(leap.header.startTimeRaw, '23.59.60', 'the field itself is echoed as written');
+    const said = leap.diagnostics.find((d) => d.code === 'LEAP_SECOND_START');
+    assert.match(said.message, /"23\.59\.60"/u, 'the message quotes what the header says');
+
+    // The second before it is an ordinary time and says nothing.
+    const ordinary = parseHeader(await readFile(at('23.59.59')), 1024);
+    assert.deepEqual(
+      ordinary.diagnostics.filter((d) => d.code === 'LEAP_SECOND_START'),
+      [],
+    );
+    assert.equal(ordinary.header.startDateTime?.toISOString(), '2020-01-01T23:59:59.000Z');
+
+    // And the fields that are refused rather than moved keep being refused.
+    for (const time of ['24.00.00', '23.60.00']) {
+      const refused = parseHeader(await readFile(at(time)), 1024);
+      assert.equal(refused.header.startDateTime, null, `${time} is not a time`);
+      assert.ok(refused.diagnostics.some((d) => d.code === 'START_TIME_UNREADABLE'), time);
+      assert.ok(!refused.diagnostics.some((d) => d.code === 'LEAP_SECOND_START'), time);
+    }
+  });
+
   it('flags a digital range that cannot be scaled', async () => {
     const file = await load('degenerate-range.edf');
     assert.ok(codes(file).includes('DEGENERATE_DIGITAL_RANGE'));
