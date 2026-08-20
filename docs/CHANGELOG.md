@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.73
+
+### a list that trailed off where every other one counts
+
+One list in a sentence, cut by a second implementation of the thing that cuts lists in
+sentences.
+
+`listed` exists so a message that enumerates something the recording controls does not let the
+file decide how long the sentence gets. It shows eight items and counts the rest — "and 32 more"
+on the rate warning, "and 112 more" on the leftover files — because the count is the honest
+half: it says the list was cut without pretending the tail is not there. 0.7.58 taught it not to
+hide a single item behind a phrase longer than the item.
+
+The timekeeping warning did its own. `missing.slice(0, 5)` and a bare ellipsis:
+
+```
+warning: 10 of 12 data records carry no readable timekeeping annotation
+         (records 2, 3, 4, 5, 6, …), so their true position in time is unknown.
+```
+
+A different limit from every other list in the tool, and a tail that says nothing about itself —
+five named out of ten, and no way to tell that from the sentence. It reads:
+
+```
+         (records 2, 3, 4, 5, 6, 7, 8, 9 and 2 more)
+```
+
+now, and nine missing records are all named rather than nine hidden behind a phrase. The
+single-record shape the pages quote is unchanged, since there is nothing there to cut.
+
 ## 0.7.72
 
 ### the 1900s half of the century rule had no test

@@ -2962,6 +2962,65 @@ describe('converting', () => {
     assert.match(notice.hint, /No checksum was recorded/u);
   });
 
+  it('counts the records it leaves out of the list rather than trailing off', async () => {
+    /*
+      Every list this tool puts inside a sentence goes through `listed`, which shows eight items
+      and counts the rest — "and 32 more" on the rate warning, "and 112 more" on the leftover
+      files. The count is the honest half: it says the list was cut without pretending the tail
+      is not there, and 0.7.58 taught it not to hide a single item behind a phrase longer than
+      the item.
+
+      This message rolled its own: `missing.slice(0, 5)` and a bare `…`. Ten records with
+      unreadable timekeeping read
+
+          (records 2, 3, 4, 5, 6, …)
+
+      a different limit from every other list and a tail that says nothing about itself. One
+      job, two implementations.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-lostmany-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0);
+    const withMissing = (name, records, readable) => {
+      const at = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: at,
+        reserved: 'EDF+D',
+        numRecords: records,
+        recordDuration: 1,
+        talsForRecord: (record) => (record < readable ? `+${record}${T}${T}${Z}` : `??${T}${T}${Z}`),
+        signals: [
+          { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+          { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+            digMax: 32767, samplesPerRecord: 30, annotations: true },
+        ],
+      });
+      return at;
+    };
+    const said = async (file) => {
+      const result = await convert(file, { outputDir: await outDir(), quiet: true });
+      const note = result.diagnostics.find((d) => /no readable timekeeping/u.test(d.message));
+      assert.ok(note, JSON.stringify(result.diagnostics.map((d) => d.message)));
+      return note.message;
+    };
+
+    // Ten missing out of twelve: eight named, the other two counted.
+    const many = await said(withMissing('many', 12, 2));
+    assert.match(many, /records 2, 3, 4, 5, 6, 7, 8, 9 and 2 more\)/u, many);
+    assert.ok(!many.includes('…'), many);
+
+    // Eight is the cap and nine is one over it, which is named rather than counted.
+    const nine = await said(withMissing('nine', 10, 1));
+    assert.match(nine, /records 1, 2, 3, 4, 5, 6, 7, 8, 9\)/u, nine);
+
+    // And the shape the pages quote, where there is nothing to cut.
+    const one = await said(withMissing('one', 2, 1));
+    assert.match(one, /1 of 2 data records carries no readable timekeeping annotation \(record 1\)/u, one);
+  });
+
   it('never puts a minus sign in front of a zero', async () => {
     /*
       `fixed` normalises negative zero, and the comment above it says why: "a sample that

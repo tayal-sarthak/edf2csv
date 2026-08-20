@@ -1,6 +1,6 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
-import { counted } from '../format/list.js';
+import { counted, listed } from '../format/list.js';
 
 export interface AnnotationTimingData {
   recordStarts: (number | null)[];
@@ -289,7 +289,17 @@ export function deriveRecordStarts(
   }
 
   if (missing.length > 0) {
-    const shown = missing.slice(0, 5).join(', ');
+    /*
+      Cut by the function that cuts every other list in a sentence here.
+
+      This one rolled its own: five items and a bare `…`, where `listed` shows eight and counts
+      what it left — "and 32 more" on the rate warning, "and 112 more" on the leftover files.
+      The count is the honest half, and 0.7.58 taught the shared one not to hide a single item
+      behind a phrase longer than the item. None of that reached this message, because it was
+      never asking. Two implementations of one job, differing in the limit and in what they say
+      about the tail.
+    */
+    const shown = listed(missing.map(String));
     // "1 of 3 data records carry ... their true position" — the subject is the one, not the three.
     const one = missing.length === 1;
     diagnostics.push({
@@ -297,9 +307,8 @@ export function deriveRecordStarts(
       severity: 'warning',
       message:
         `${missing.length} of ${counted(file.recordCount, 'data record')} ${one ? 'carries' : 'carry'} no ` +
-        `readable timekeeping annotation (record${one ? '' : 's'} ${shown}` +
-        `${missing.length > 5 ? ', …' : ''}), so ${one ? 'its' : 'their'} true position in time ` +
-        `is unknown.`,
+        `readable timekeeping annotation (record${one ? '' : 's'} ${shown}), so ` +
+        `${one ? 'its' : 'their'} true position in time is unknown.`,
       hint: one
         ? 'That record is timed as if it were contiguous; treat its timestamp as unreliable.'
         : 'Those records are timed as if they were contiguous; treat their timestamps as unreliable.',
