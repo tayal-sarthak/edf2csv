@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.89
+
+### a doc comment naming two formats the function cannot return
+
+A public export's doc comment listed two strings the function cannot return.
+
+`describeFormat` names a recording's format, and that name is not decoration: it is
+`recording.format` in every `metadata.json` this tool writes, the `format` field of
+`--info --json`, and the `Format` line of `--info`. Its doc comment read:
+
+```ts
+/** "EDF", "EDF+ (EDF+D)", "BDF", "BDF+ (EDF+C)". */
+```
+
+The parenthetical is the word, not the marker. What the function returns is `EDF`, `BDF`, or
+one of `EDF+ (continuous)`, `EDF+ (discontinuous)`, `BDF+ (continuous)`,
+`BDF+ (discontinuous)` — a BDF+ file reporting its own spelling even though `continuity`
+normalises the marker to the `EDF+` form.
+
+`describeFormat` is exported from the package entry point, so that one line is what a
+TypeScript consumer's editor shows on hover and what `dist/edf/header.d.ts` ships. Someone
+branching on the spelling it offered never matches anything. api.md, cli-reference.md,
+output-files.md, faq.md and four more pages all had it right; this was the only place that did
+not, and it was the place closest to the code.
+
+The comment now says what the function does, and a test enumerates the six headers that reach
+it and compares both directions: every string produced has to be named, and every string named
+has to be producible.
+
 ## 0.7.88
 
 ### a comment that stopped at nine decimal places

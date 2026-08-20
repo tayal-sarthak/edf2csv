@@ -182,6 +182,48 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('shows only format strings describeFormat can return', async () => {
+    /*
+      `describeFormat` is a public export, so its doc comment is what a TypeScript consumer's
+      editor shows and what `dist/edf/header.d.ts` ships — and the value it describes is
+      `recording.format` in every metadata.json this tool writes, and the `Format` line of
+      `--info`.
+
+      It listed `"EDF+ (EDF+D)"` and `"BDF+ (EDF+C)"`. The parenthetical is the word, not the
+      marker, so neither is a string the function can return, and a consumer branching on the
+      tooltip's spelling never matches. Every documentation page had it right.
+
+      Checked both ways round: every string the function produces is named, and every string
+      the comment names is producible.
+    */
+    const { describeFormat } = await import(path.join(ROOT, 'dist/edf/header.js'));
+    const produced = new Set();
+    for (const isBdf of [false, true]) {
+      for (const continuity of [null, 'EDF+C', 'EDF+D']) {
+        produced.add(describeFormat({ isBdf, isEdfPlus: continuity !== null, continuity }));
+      }
+    }
+
+    const source = await read('src/edf/header.ts');
+    const doc = /\/\*\*[\s\S]*?\*\/\s*export function describeFormat/u.exec(source);
+    assert.ok(doc, 'describeFormat no longer carries a doc comment');
+    const quoted = new Set(
+      [...doc[0].matchAll(/`"([^"]+)"`/gu)].map((m) => m[1]),
+    );
+    assert.ok(quoted.size > 0, 'the comment names no format strings');
+
+    assert.deepEqual(
+      [...produced].filter((name) => !quoted.has(name)).sort(),
+      [],
+      'the comment does not name every format describeFormat returns',
+    );
+    assert.deepEqual(
+      [...quoted].filter((name) => !produced.has(name)).sort(),
+      [],
+      'the comment names a format describeFormat cannot return',
+    );
+  });
+
   it('names every conversion error code in the API reference', async () => {
     const codes = await unionMembers('src/convert/run.ts', 'ConversionErrorCode');
     const api = await read('website/content/api.md');

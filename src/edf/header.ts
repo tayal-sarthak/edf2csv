@@ -1037,7 +1037,20 @@ export function formatWallClock(date: Date | null): string | null {
   return date.toISOString().slice(0, 19);
 }
 
-/** "EDF", "EDF+ (EDF+D)", "BDF", "BDF+ (EDF+C)". */
+/**
+ * The recording's format, as `--info`, `metadata.json` and `--json` all name it.
+ *
+ * `"EDF"`, `"BDF"`, or one of `"EDF+ (continuous)"`, `"EDF+ (discontinuous)"`,
+ * `"BDF+ (continuous)"`, `"BDF+ (discontinuous)"`. A BDF+ file reports its own spelling even
+ * though `continuity` normalises the marker to the `EDF+` form.
+ *
+ * This said `EDF+ (EDF+D)` and `BDF+ (EDF+C)`, which are not strings it can return — the
+ * parenthetical is the word, not the marker. It is a one-line doc comment on a public export,
+ * so it is what a TypeScript consumer's editor shows and what `dist/edf/header.d.ts` ships,
+ * and the value it describes is `recording.format` in every metadata.json this tool writes.
+ * A consumer branching on the tooltip's spelling never matches. Every documentation page had
+ * it right; this was the only place that did not.
+ */
 export function describeFormat(header: EdfHeader): string {
   const base = header.isBdf ? 'BDF' : 'EDF';
   if (!header.isEdfPlus) return base;
