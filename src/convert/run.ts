@@ -232,40 +232,9 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
     if (plan.writeSignals && plan.groups.length > 0) {
       const signals = await writeSignalFiles(file, plan, outputDir, timing.starts, options);
       written.push(...signals);
-    } else if (plan.writeSignals) {
-      /*
-        Asked for signal data and given none to write.
-
-        Every channel selected carries zero samples per record, so there is no table to make
-        — `edf2csv rec.edf --channels unused` writes channels.csv and metadata.json and no
-        signals.csv at all. The NO_SAMPLES warning explains the channel; nothing explained the
-        missing file, and the documentation says signals.csv is written unless
-        --annotations-only was passed. Someone looking for it should be told where it went.
-
-        There are two ways to arrive with no groups, and the wording above is only true of
-        one of them. A recording that holds nothing but EDF+ annotations has no channel that
-        could have been selected, its channels.csv is a header row and nothing else, and no
-        channel of it carries samples — so "every channel selected", "channels.csv still
-        describes them" and "which channels do carry samples" were three false statements in
-        one warning, printed under a warning that had just said the file has no signal
-        channels. `--stdout` distinguishes the two cases a few lines up and `--info` prints
-        one accurate line; this path was the only one that did not.
-      */
-      const noChannelsAtAll = file.dataSignals.length === 0;
-      plan.diagnostics.push({
-        code: 'NO_SAMPLES',
-        severity: 'warning',
-        message: noChannelsAtAll
-          ? 'No signal file was written: there is no signal data in this recording to put in ' +
-            'one.'
-          : 'No signal file was written: every channel selected carries zero samples per data ' +
-            'record, so there is nothing to put in one.',
-        hint: noChannelsAtAll
-          ? 'annotations.csv holds whatever events it carries. channels.csv lists signal ' +
-            'channels, so it has none to list.'
-          : 'channels.csv still describes them. Run with --info to see which channels do carry ' +
-            'samples.',
-      });
+    } else {
+      const missing = noSignalFile(file, plan);
+      if (missing) plan.diagnostics.push(missing);
     }
 
     if (options.annotationsOnly === true && file.annotationSignals.length === 0) {
@@ -1552,6 +1521,47 @@ export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionEr
 }
 
 
+
+/**
+ * Asked for signal data and given none to put in a file.
+ *
+ * Every channel selected carries zero samples per record, so there is no table to make —
+ * `edf2csv rec.edf --channels unused` writes channels.csv and metadata.json and no signals.csv
+ * at all. The NO_SAMPLES warning explains the channel; nothing explained the missing file, and
+ * the documentation says signals.csv is written unless --annotations-only was passed. Someone
+ * looking for it should be told where it went.
+ *
+ * There are two ways to arrive with no groups, and one wording is only true of one of them. A
+ * recording that holds nothing but EDF+ annotations has no channel that could have been
+ * selected, its channels.csv is a header row and nothing else, and no channel of it carries
+ * samples — so "every channel selected", "channels.csv still describes them" and "which
+ * channels do carry samples" were three false statements in one warning, printed under a
+ * warning that had just said the file has no signal channels.
+ *
+ * Exported, and worded in the present tense, so `--info` can raise the same one. It was built
+ * inline here, which meant the one mode whose purpose is to say what a conversion will do said
+ * nothing about the file that conversion would not write: `--info --strict` on a recording of
+ * nothing but annotations reported one warning where converting it reported two, and
+ * `--info --json` carried the shorter list to whatever reads it. Everything the answer depends
+ * on is in the file and the plan, both of which `--info` already has.
+ */
+export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | null {
+  if (!plan.writeSignals || plan.groups.length > 0) return null;
+  const noChannelsAtAll = file.dataSignals.length === 0;
+  return {
+    code: 'NO_SAMPLES',
+    severity: 'warning',
+    message: noChannelsAtAll
+      ? 'No signal file is written: there is no signal data in this recording to put in one.'
+      : 'No signal file is written: every channel selected carries zero samples per data ' +
+        'record, so there is nothing to put in one.',
+    hint: noChannelsAtAll
+      ? 'annotations.csv holds whatever events it carries. channels.csv lists signal ' +
+        'channels, so it has none to list.'
+      : 'channels.csv still describes them. Run with --info to see which channels do carry ' +
+        'samples.',
+  };
+}
 
 /** Raised when the input moved while it was being read. See where it is pushed. */
 function inputChanged(hadChecksum: boolean): Diagnostic {

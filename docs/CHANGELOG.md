@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.84
+
+### --info never predicted the warning about the file it would not write
+
+`--info` never predicted the warning about the file a conversion would not write.
+
+A conversion that has signal tables to fill and no channel to fill them from writes no
+`signals.csv`, and says so:
+
+```
+warning: No signal file is written: there is no signal data in this recording to put in one.
+         annotations.csv holds whatever events it carries. channels.csv lists signal
+         channels, so it has none to list.
+```
+
+`--info` prints one accurate line about it in the report body — "Would write annotations.csv
+and channels.csv, and no signal data" — and raised no warning at all, because the diagnostic
+was built inline inside `convert()` at the moment it decided not to write the file.
+
+So the one mode whose purpose is to say what a conversion will do carried a shorter warning
+list than the conversion did. `--info --json` handed that shorter list to whatever reads it,
+and `--strict`, which cli-reference recommends with `--info` as "a cheap way to screen a
+directory for recordings that need a closer look before anyone converts them", counted one
+warning on a recording of nothing but annotations where converting it counts two.
+
+It is now one exported function, asked by both, the way `durationDiagnostics` and
+`stdoutRefusal` already are — everything the answer depends on is the file and the plan, and
+`--info` has both. The sentence moves from "was written" to "is written", which is true
+whether it is a report or a prediction.
+
+Sweeping every fixture for warnings that a conversion raises and `--info` does not now leaves
+three, all of them the same deliberate trade: they need every record's annotation slot read,
+which is the scan `--info` exists to avoid.
+
 ## 0.7.83
 
 ### a window error named a length the parser would refuse

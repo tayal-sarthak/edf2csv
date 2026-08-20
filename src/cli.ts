@@ -29,6 +29,7 @@ import {
   defaultOutputDir,
   durationDiagnostics,
   requestedAnnotationWindow,
+  noSignalFile,
   stdoutRefusal,
 } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
@@ -958,6 +959,19 @@ async function showInfo(
         to: plan.range.endSeconds,
       }),
     );
+
+    /*
+      And the warning about the signal file this conversion would not write.
+
+      `--info` prints one accurate line about it in the report body — "Would write
+      channels.csv and no signal data" — and raised nothing, so the one mode whose purpose is
+      to say what a conversion will do carried a shorter warning list than the conversion did.
+      `--info --strict` is documented as a cheap way to screen a directory before converting
+      it, and on a recording of nothing but annotations it reported one warning where the
+      conversion reports two.
+    */
+    const missing = noSignalFile(file, plan);
+    if (missing) plan.diagnostics.push(missing);
 
     if (toStdout) {
       const refusal = stdoutRefusal(file, plan);

@@ -308,7 +308,7 @@ warning: Signal 0 ("ch1") carries no samples at all (0 per data record).
 The same code also reports the file that was *not* written, when the conversion ends up with no signal table to make at all. Which of the two ways that happened is said explicitly, because the advice differs. Every channel selected carries no samples:
 
 ```
-warning: No signal file was written: every channel selected carries zero samples per data
+warning: No signal file is written: every channel selected carries zero samples per data
          record, so there is nothing to put in one.
          channels.csv still describes them. Run with --info to see which
          channels do carry samples.
@@ -317,7 +317,7 @@ warning: No signal file was written: every channel selected carries zero samples
 Or the recording has no signal channels at all, holding only EDF+ annotations — in which case nothing was selected, and `channels.csv` has no rows to describe:
 
 ```
-warning: No signal file was written: there is no signal data in this recording to put in one.
+warning: No signal file is written: there is no signal data in this recording to put in one.
          annotations.csv holds whatever events it carries. channels.csv lists
          signal channels, so it has none to list.
 ```

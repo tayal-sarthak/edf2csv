@@ -2294,8 +2294,32 @@ describe('converting several recordings at once', () => {
       fixture('single-rate-empty-channel.edf'), '--channels', 'unused', '--out', dir,
     ]);
     assert.equal(converted.code, 0, converted.stderr);
-    assert.match(converted.stderr, /No signal file was written/u);
+    assert.match(converted.stderr, /No signal file is written/u);
     assert.deepEqual((await readdir(dir)).sort(), ['channels.csv', 'metadata.json']);
+
+    /*
+      And `--info` says it too, which it did not.
+
+      The warning was built inline in `convert()`, so the one mode whose purpose is to say
+      what a conversion will do carried a shorter warning list than the conversion — and
+      `--info --strict`, documented as a cheap way to screen a directory before converting it,
+      exited 0 where converting exits 1. Both paths ask one function now.
+    */
+    const predicted = await cli([
+      fixture('single-rate-empty-channel.edf'), '--info', '--channels', 'unused',
+    ]);
+    assert.match(predicted.stderr, /No signal file is written/u, predicted.stderr);
+
+    // A recording holding nothing but annotations arrives at the same place by the other
+    // route, and gets the other wording; the two must agree between the modes as well.
+    for (const mode of [['--info'], ['--out', await outDir()]]) {
+      const { stderr } = await cli([fixture('annotations-only.edf'), ...mode]);
+      assert.match(
+        stderr,
+        /No signal file is written: there is no signal data in this recording/u,
+        `${mode[0]}: ${stderr}`,
+      );
+    }
 
     // And --info stops calling that channel "(not selected)" when it is exactly what was
     // selected — the table contradicted the warning printed below it.
