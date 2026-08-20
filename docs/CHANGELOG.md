@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.51
+
+### an example annotated "no warning" raises one
+
+A documented command annotated "no warning" raises one.
+
+The MIXED_SAMPLING_RATES section makes the point that the warning describes the conversion
+rather than the file, and demonstrates it with a pair of commands:
+
+```bash
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz"   # one file, no warning
+edf2csv sleep-study.edf --channels "EEG Fpz-Cz,Temp rectal"
+#   warning: Channels use 2 different sampling rates (100 Hz, 1 Hz).
+```
+
+Run against `sleep-study.edf` — the recording this site is written about, and the one the
+command names — the first prints:
+
+```
+warning: At least one output file will have more than 1,048,576 rows, which is more
+         than Excel or Numbers can open.
+```
+
+Eight hours at 100 Hz is 2.88 million rows, and narrowing to one channel does not change that.
+The second command raises it too, so the comment beside it shows one of the two warnings it
+prints. Both comments are the same kind of claim as a pasted output block: a statement about
+what appears on the screen when you run the line above.
+
+0.4.68 added a check for exactly this, after getting-started showed one of two warnings — and
+that check ran one command on one page. It runs three now, and it looks inside the block making
+the claim rather than at the page holding it: warnings-and-errors has a section per code, so
+every warning either command raises is quoted somewhere on that page whatever its examples say.
+Page-wide containment passed over a block asserting the opposite of what its command does.
+
 ## 0.7.50
 
 ### a span shorter than the duration was blamed on gaps

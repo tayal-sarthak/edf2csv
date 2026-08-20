@@ -1394,26 +1394,81 @@ describe('documentation and source agree on their lists', () => {
       so a reader is told about it later and shown a run that apparently did not raise it.
 
       Checked by running the command the page is describing.
+
+      Three commands, not one. This ran only the first for eleven versions, and the same slip
+      was sitting two pages over the whole time, in a stronger form: the MIXED_SAMPLING_RATES
+      section demonstrated its "it describes the conversion, not the file" rule with
+
+          edf2csv sleep-study.edf --channels "EEG Fpz-Cz"   # one file, no warning
+
+      which raises the row-limit warning — eight hours at 100 Hz is 2.88 million rows — and
+      the line below it, annotated with the rate warning alone, raises it too. A comment in a
+      shell block saying what a command prints is the same kind of claim as a pasted output
+      block, and this is the check for it.
     */
     const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-warnblock-'));
-    let printed;
+    const shown = [];
     try {
       const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
       const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
-      const { stderr } = await run(process.execPath, [CLI, recording, '--info']);
-      printed = stderr.split('\n').filter((line) => line.startsWith('warning: '));
+      for (const [page, extra] of [
+        ['website/content/getting-started.md', []],
+        ['website/content/warnings-and-errors.md', ['--channels', 'EEG Fpz-Cz']],
+        ['website/content/warnings-and-errors.md', ['--channels', 'EEG Fpz-Cz,Temp rectal']],
+      ]) {
+        const { stderr } = await run(process.execPath, [CLI, recording, '--info', ...extra]);
+        shown.push({
+          page,
+          extra,
+          printed: stderr.split('\n').filter((line) => line.startsWith('warning: ')),
+        });
+      }
     } finally {
       await rm(work, { recursive: true, force: true });
     }
-    assert.ok(printed.length >= 2, `expected several warnings, got ${printed.length}`);
 
-    const page = (await read('website/content/getting-started.md')).replace(/\s+/gu, ' ');
-    for (const line of printed) {
-      assert.ok(
-        page.includes(line.replace(/\s+/gu, ' ').trim()),
-        `getting-started does not show: ${line}`,
-      );
+    /*
+      Scoped to the block, not to the page.
+
+      warnings-and-errors has a section per code, so every warning either command raises is
+      quoted somewhere on it whatever the example says — page-wide containment passes over a
+      block claiming the opposite of what its command does. The block is the claim.
+    */
+    const blockHolding = (text, needle) => {
+      for (const fence of text.matchAll(/```[a-z]*\n([\s\S]*?)```/gu)) {
+        if (fence[1].split('\n').some((line) => line.trim().replace(/\s+#\s.*$/u, '') === needle)) {
+          return fence[1];
+        }
+      }
+      return null;
+    };
+    const blockAfter = (text, sentence) => {
+      const at = text.indexOf(sentence);
+      if (at < 0) return null;
+      return /```[a-z]*\n([\s\S]*?)```/u.exec(text.slice(at))?.[1] ?? null;
+    };
+
+    for (const { page, extra, printed } of shown) {
+      assert.ok(printed.length >= 1, `expected a warning from --info ${extra.join(' ')}`);
+      const text = await read(page);
+      const quoted = extra.length === 0
+        ? blockAfter(text, 'Anything the tool noticed is printed after the table')
+        : blockHolding(text, `edf2csv sleep-study.edf --channels "${extra[1]}"`);
+      assert.ok(quoted, `${page}: no block shows what --info ${extra.join(' ')} prints`);
+      const flat = quoted.replace(/\s+/gu, ' ');
+      for (const line of printed) {
+        assert.ok(
+          flat.includes(line.replace(/\s+/gu, ' ').trim()),
+          `${page}: the block for --info ${extra.join(' ')} does not show: ${line}`,
+        );
+      }
     }
+
+    // And the point that block is making: the rate warning follows the conversion, not the
+    // file. One channel of a three-rate recording raises it; two rates of it raise it once.
+    const rates = (line) => line.includes('different sampling rates');
+    assert.ok(!shown[1].printed.some(rates), 'one channel is one file, and raises no rate warning');
+    assert.equal(shown[2].printed.filter(rates).length, 1, 'two rates, one rate warning');
   });
 
   it('lists exactly the warnings --info cannot raise', async () => {
