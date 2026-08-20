@@ -217,6 +217,53 @@ describe('diagnostics', () => {
     assert.ok(codes(file).includes('INVERTED_PHYSICAL_RANGE'));
   });
 
+  it('counts the duplicate positions it does not name', async () => {
+    /*
+      Nothing bounds how many channels share a label — EDF labels are free text and a montage
+      may repeat one across every channel it has — and this message named all of them with a
+      plain `join`, so twenty positions came out as a 110-character parenthetical and two
+      hundred as an 1,100-character one, with the sentence that matters at the front of it.
+
+      Every other list of something the file controls goes through `listed`, which shows eight
+      and counts the rest: the rate warning, the leftover-file warning, the record indices in
+      the timekeeping warning, and `EMPTY_LABEL` in this same parser. This was the last one
+      still rolling its own.
+
+      The ordinary duplicate is two channels, and `listed` renders those unchanged, so both
+      ends are checked here.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-dup-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+
+    const shared = (count) => {
+      const at = path.join(scratch, `dup-${count}.edf`);
+      writeEdf({
+        path: at,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: Array.from({ length: count }, () => ({
+          label: 'T8-P8', dimension: 'uV', physMin: -100, physMax: 100,
+          digMin: -1000, digMax: 1000, samplesPerRecord: 2, gen: () => 100,
+        })),
+      });
+      return at;
+    };
+
+    const two = await EdfFile.open(shared(2));
+    const twenty = await EdfFile.open(shared(20));
+    try {
+      const of = (file) =>
+        file.diagnostics.find((d) => d.code === 'DUPLICATE_LABEL').message;
+      assert.match(of(two), /\(positions 0, 1\)/u, of(two));
+      assert.match(of(twenty), /\(positions 0, 1, 2, 3, 4, 5, 6, 7 and 12 more\)/u, of(twenty));
+      assert.ok(of(twenty).length < 120, `the message runs to ${of(twenty).length} characters`);
+    } finally {
+      await two.close();
+      await twenty.close();
+    }
+  });
+
   it('says when it moved the start instant off the second the header names', async () => {
     /*
       `23.59.60` is how UTC writes a leap second, and the parser admits it on purpose: refusing

@@ -854,7 +854,22 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'DUPLICATE_LABEL',
       severity: 'warning',
-      message: `${indices.length} signals share the label "${label}" (positions ${indices.join(', ')}).`,
+      /*
+        Cut by the function that cuts every other list in a sentence here.
+
+        `join` names all of them, however many there are, and a header may declare as many
+        channels as it likes under one label: a 200-channel montage all labelled `T8-P8` — which
+        is exactly the kind of file this warning is for, since CHB-MIT ships two of them —
+        produced a single 1,100-character line of positions with the sentence that mattered at
+        the front of it. `listed` shows eight and counts the rest, which is what the rate
+        warning, the leftover-file warning, the channel-position lists in `--channels` and the
+        `EMPTY_LABEL` message one loop up all already do. This was the last `join` of a
+        file-controlled list left in a diagnostic.
+
+        Two positions render identically either way, so the ordinary duplicate reads as it
+        always has.
+      */
+      message: `${indices.length} signals share the label "${label}" (positions ${listed(indices.map(String))}).`,
       hint: 'Their columns are suffixed with the signal number so they stay distinguishable.',
     });
   }

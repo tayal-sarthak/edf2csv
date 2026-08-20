@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.80
+
+### a duplicate-label warning that named every position it had
+
+The duplicate-label warning named every position it had, however many that was.
+
+EDF labels are free text and nothing makes them unique — CHB-MIT ships recordings with two
+channels both labelled `T8-P8`, which is why this warning exists. Nothing stops a header
+repeating one across every channel it declares either, and the message named them all with a
+plain `join`:
+
+```
+warning: 20 signals share the label "T8-P8" (positions 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+         12, 13, 14, 15, 16, 17, 18, 19).
+```
+
+Two hundred channels make that an 1,100-character line with the sentence that matters at the
+front of it, which is a line a terminal breaks somewhere rather than a line anybody reads.
+
+`listed` is the function every other enumeration of something the file controls already goes
+through: the sampling rates, the leftover output files, the channel positions `--channels`
+offers, the record indices in the timekeeping warning, and `EMPTY_LABEL` twenty lines up in
+this same parser. It shows eight and counts the rest, so the tail is said rather than shown:
+
+```
+warning: 20 signals share the label "T8-P8" (positions 0, 1, 2, 3, 4, 5, 6, 7 and 12 more).
+```
+
+The ordinary duplicate is two channels, and `listed` renders two items exactly as `join` did,
+so nothing about the common case moves. Both ends are checked now — the pair unchanged, and
+twenty cut and counted — which is the check the other lists gained in 0.7.58 and 0.7.73 and
+this one never had.
+
 ## 0.7.79
 
 ### a --channels command the shell would not carry back
