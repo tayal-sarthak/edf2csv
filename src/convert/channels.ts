@@ -315,7 +315,7 @@ function positionOf(label: string, candidates: readonly EdfSignal[]): number {
  * cannot be typed. Both take a position instead, which is what NONPRINTABLE_LABEL already
  * says for the same two reasons.
  */
-function typeable(label: string): string | null {
+export function typeable(label: string): string | null {
   if (label === '' || label.includes(',')) return null;
   if (/[\u0000-\u001f\u007f-\u009f]/u.test(label)) return null;
   if (!/["$`\\]/u.test(label)) return `"${label}"`;

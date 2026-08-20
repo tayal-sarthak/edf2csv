@@ -32,6 +32,9 @@
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
 import { counted, listed } from '../format/list.js';
+// The shell-quoting rule for a label, shared rather than repeated: this hint and
+// `--channels`' own "did you mean" have to print the same command for the same label.
+import { typeable } from '../convert/channels.js';
 import { decodeLatin1 } from './bytes.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
@@ -555,18 +558,28 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
               are free text, and the CSV header quotes them; only this one hint claimed
               something about them that isn't so.
             */
-            (inLabel || label === '' || label.includes(',') || label.includes('"')
+            /*
+              And a fourth way, which this branch printed straight past.
+
+              A shell expands `$`, a backtick and a backslash inside double quotes, so a
+              channel labelled `EEG $ref` was answered with `--channels "EEG $ref"` — which
+              arrives as `EEG ` and exits 2 on a channel the file does not have. A backtick
+              opens a command substitution and the pasted line does not even finish. That is
+              the failure 0.7.18 fixed for `--channels`' own suggestion, and `typeable` is the
+              rule it fixed it with: double quotes where they survive, single quotes where
+              they do not, null where nothing does. Asking it settles which branch this takes
+              as well, so the two cannot disagree about one label again.
+            */
+            (typeable(label) === null
               ? `Address the channel by position with --channels "#${i}" rather than by name, ` +
                 `since ${
                   inLabel
                     ? 'the name cannot be typed'
                     : label === ''
                       ? 'it has no label'
-                      : label.includes(',')
-                        ? 'a comma in the label would read as two names'
-                        : 'a quote in the label cannot survive being quoted back'
+                      : 'a comma in the label would read as two names'
                 }. `
-              : `The column name is unaffected, so --channels "${label}" still selects it. `) +
+              : `The column name is unaffected, so --channels ${typeable(label) as string} still selects it. `) +
             'Printing the CSV to a terminal may do more than print it.',
         });
       }

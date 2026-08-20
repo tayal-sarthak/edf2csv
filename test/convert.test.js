@@ -4,6 +4,8 @@ import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { appendFile, copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+// A real shell, because the property under test is what a shell does with the text.
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -188,36 +190,57 @@ describe('column naming', () => {
       A shell collapses that to `--channels "EEG A1"`, and the tool then refuses with
       `No channel named "EEG A1". Did you mean "EEG "A1""?` — pointing back at the label the
       hint had just told the reader to type.
+
+      `$` and a backtick are the fifth and sixth, and they were the ones left. A shell expands
+      both inside double quotes, so `--channels "EEG $ref"` arrives as `EEG ` and exits 2 on a
+      channel the file does not have, while a backtick opens a command substitution the pasted
+      line never closes. This asserted the fix rather than the property — it required the
+      position for a quoted label, which is one command that works out of several — so the
+      three labels below are checked for what the sentence above actually says: whatever the
+      hint prints, a shell has to hand it back unchanged.
     */
     const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-quoted-'));
     temporaries.push(scratch);
     const { writeEdf } = await import('./fixtures/edf-writer.mjs');
-    const file = path.join(scratch, 'quoted-label.edf');
-    writeEdf({
-      path: file,
-      numRecords: 1,
-      recordDuration: 1,
-      signals: [
-        {
-          // The control byte is in the UNIT, so the label itself is typeable — which is what
-          // sends this down the branch that quotes the label back.
-          label: 'EEG "A1"',
-          dimension: `u${String.fromCharCode(7)}V`,
-          physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
-          samplesPerRecord: 2, gen: () => 100,
-        },
-      ],
-    });
 
-    const { diagnostics } = await convert(file, { outputDir: await outDir(), quiet: true });
-    const raised = diagnostics.find((d) => d.code === 'NONPRINTABLE_LABEL');
-    assert.ok(raised, 'the control byte in the unit must still be reported');
-    assert.match(raised.hint, /--channels "#0"/u, 'a quoted label has to be addressed by position');
-    assert.doesNotMatch(
-      raised.hint,
-      /--channels "EEG "A1""/u,
-      'the hint must not print a command the shell cannot carry',
-    );
+    for (const [name, label] of [
+      ['quoted', 'EEG "A1"'],
+      ['dollar', 'EEG $ref'],
+      ['backtick', `EEG ${String.fromCharCode(96)}x`],
+    ]) {
+      const file = path.join(scratch, `${name}-label.edf`);
+      writeEdf({
+        path: file,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [
+          {
+            // The control byte is in the UNIT, so the label itself is typeable — which is what
+            // sends this down the branch that quotes the label back.
+            label,
+            dimension: `u${String.fromCharCode(7)}V`,
+            physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+            samplesPerRecord: 2, gen: () => 100,
+          },
+        ],
+      });
+
+      const { diagnostics } = await convert(file, { outputDir: await outDir(), quiet: true });
+      const raised = diagnostics.find((d) => d.code === 'NONPRINTABLE_LABEL');
+      assert.ok(raised, `${name}: the control byte in the unit must still be reported`);
+
+      // Up to the words that follow it, so a quoted argument is taken whole.
+      const advised = /--channels (.+?) (?:still selects it|rather than by name)/u.exec(raised.hint);
+      assert.ok(advised, `${name}: the hint names no --channels argument: ${raised.hint}`);
+      // What a shell hands back, checked by running one rather than by reasoning about it.
+      const arrives = execFileSync('/bin/sh', ['-c', `printf %s ${advised[1]}`], {
+        encoding: 'utf8',
+      });
+      assert.ok(
+        arrives === '#0' || arrives === label,
+        `${name}: --channels ${advised[1]} reaches the tool as ${JSON.stringify(arrives)}`,
+      );
+    }
   });
 
   it('reports records stored out of chronological order, in the singular too', async () => {

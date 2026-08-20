@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.79
+
+### a --channels command the shell would not carry back
+
+A warning about an unreadable header field advised a command a shell does not survive.
+
+`NONPRINTABLE_LABEL` fires when a channel's label, unit, transducer or prefiltering carries a
+control byte. When the byte is in one of the three cell fields rather than the label, the column
+name is untouched, so the hint says how to select the channel by name — and it built that command
+by wrapping the label in double quotes:
+
+```
+warning: Signal 0's unit contains 1 control character (\x07), which will appear in
+         channels.csv's unit cell exactly as the header has it.
+         The column name is unaffected, so --channels "EEG $ref" still selects it.
+```
+
+A shell expands `$` inside double quotes, so what arrives is `--channels "EEG "` and the tool
+exits 2 on a channel the file does not have. A backtick is worse: it opens a command substitution
+the pasted line never closes, and the shell sits waiting for the rest of it.
+
+`--channels`' own "did you mean" was fixed for exactly this in 0.7.18, and the rule it was fixed
+with is `typeable`: double quotes where they survive, single quotes — the one POSIX form with no
+escapes inside it — where they do not, and null where nothing does. This hint had its own rule
+written out beside it, and that rule knew about the empty label, the comma and the control byte
+but not about the three characters a double quote fails to protect.
+
+There is one rule now, asked rather than repeated, and it decides which branch this hint takes as
+well:
+
+```
+         The column name is unaffected, so --channels 'EEG $ref' still selects it.
+```
+
+A label carrying a double quote moves the other way. It was sent to the position, on the grounds
+that no quoting survives it; `'EEG "A1"'` does, and that is what it gets. The warnings page has
+said "whichever branch it takes, the command it prints is one that runs" since these hints gained
+branches, which is the property the test now checks — by handing each hint's argument to `/bin/sh`
+and comparing what comes back with the label the file holds.
+
 ## 0.7.78
 
 ### a dispatched publish would have shipped main under another version's number
