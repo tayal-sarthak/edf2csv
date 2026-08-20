@@ -8,6 +8,50 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.61
+
+### --info would not count annotations it had already read
+
+`--info --annotations-only` declined to count events it had just finished reading.
+
+The line it prints is:
+
+```
+Would write annotations.csv and channels.csv, and no signal data. How many events there
+are cannot be told from the header.
+```
+
+which is true, and is the wrong question on half the files it was printed for. `--info` reads
+the annotation channel of a discontinuous recording in full — every record start of an EDF+D
+file lives there, so there is no other way to place its records — and then said the count could
+not be told. It had the events in an array, and had counted them to decide how many record
+starts it had.
+
+The sentence is right about a continuous recording, which is read only as far as the first
+record that states a start time. That reason is now in the line rather than left to the page:
+
+```
+Would write annotations.csv and channels.csv, and no signal data. How many events there
+are cannot be told from the header, and finding out means reading the annotation channel
+record by record.
+```
+
+and a discontinuous one gets the answer instead:
+
+```
+Would write annotations.csv with 3 events and channels.csv, and no signal data.
+```
+
+Counted through the same window predicate a conversion filters them by — exported for the
+purpose rather than copied — so `--start 2` narrows the figure exactly as it narrows the file.
+`estimate.rows` under `--json` stays `null`, which is documented and deliberate: the estimate
+describes the signal tables, and there are none.
+
+This is the same shape as the "Would write 0 rows, roughly 0 B." that 0.4.51 removed from this
+line — `--info` declining to say what a conversion will do, on the one mode whose whole purpose
+is saying it — and the test written for that one asserted the replacement sentence appears,
+which it did, on every file.
+
 ## 0.7.60
 
 ### the worst over-estimate was a figure nothing measured

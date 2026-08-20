@@ -139,7 +139,20 @@ export function printableLines(text: string, indent = ''): string {
 }
 
 /** The `--info` view: what is in this recording, and what would converting it produce. */
-export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
+export function formatInfo(
+  file: EdfFile,
+  plan: ConversionPlan,
+  /**
+   * How many events a conversion would write, when that is already known.
+   *
+   * Null when it is not. `--info` reads the whole annotation channel of a discontinuous file,
+   * because that is where its record times are; a continuous one it reads only far enough to
+   * find the origin. So the count is in hand for one of the two, and the line below said "How
+   * many events there are cannot be told from the header" for both — true of the header, and
+   * beside the point on a file whose events had just been read and counted.
+   */
+  events: number | null = null,
+): string {
   const { header } = file;
   const lines: string[] = [];
 
@@ -316,8 +329,12 @@ export function formatInfo(file: EdfFile, plan: ConversionPlan): string {
     lines.push(
       wrap(
         file.annotationSignals.length > 0
-          ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
-            'many events there are cannot be told from the header.'
+          ? events === null
+            ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
+              'many events there are cannot be told from the header, and finding out means ' +
+              'reading the annotation channel record by record.'
+            : `Would write annotations${suffix} with ${counted(events, 'event')} and ` +
+              `channels${suffix}, and no signal data.`
           : `Would write channels${suffix} and no signal data — and no annotations${suffix} ` +
             'either, since this recording has no annotation channel.',
       ),

@@ -417,10 +417,17 @@ Writes the EDF+ event list and nothing else. The output directory gets `annotati
 
 ```
 Would write annotations.csv and channels.csv, and no signal data. How many events there
-are cannot be told from the header.
+are cannot be told from the header, and finding out means reading the annotation channel
+record by record.
 ```
 
-The event count genuinely isn't knowable that cheaply — the annotation channel has to be read record by record, which is the scan `--info` exists to avoid. Until 0.4.51 this line read `Would write 0 rows, roughly 0 B.`, which was true of the signal tables and false of the run.
+That is true of a continuous recording, which `--info` reads only as far as the first record stating a start time. A discontinuous one has every record start read out of the annotation channel already, because that is where its record times live — so the events are counted and the line says so:
+
+```
+Would write annotations.csv with 3 events and channels.csv, and no signal data.
+```
+
+The count honours `--start`, `--duration` and `--end`, since those filter the events too. Until 0.4.51 this line read `Would write 0 rows, roughly 0 B.`, which was true of the signal tables and false of the run; until 0.7.61 it declined to count the events of a file whose events it had just finished reading.
 
 On a recording with no annotation channel, the conversion still succeeds and still writes `channels.csv` and `metadata.json`, with a warning:
 

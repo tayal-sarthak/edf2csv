@@ -28,6 +28,7 @@ import {
   convert,
   defaultOutputDir,
   durationDiagnostics,
+  requestedAnnotationWindow,
   stdoutRefusal,
 } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
@@ -890,6 +891,20 @@ async function showInfo(
       },
       shared,
     );
+    /*
+      The event count, where reading the channel has already produced it.
+
+      Only a discontinuous file, where every record start has to be read out of the annotation
+      channel; a continuous one is read as far as the first record that states a start time and
+      no further, so its events are not all in hand. Counted through the same window predicate
+      a conversion filters them by, rather than a second copy of it.
+    */
+    const eventWindow = requestedAnnotationWindow(shared, plan.range.recordingStartSeconds);
+    const knownEvents = needsEveryRecordStart
+      ? annotationData.annotations.filter(
+          (a) => a.onset >= eventWindow.from && a.onset < eventWindow.to,
+        ).length
+      : null;
     plan.diagnostics.push(...timing.diagnostics);
     /*
       What --stdout would do with this recording, which --info did not ask.
@@ -940,7 +955,7 @@ async function showInfo(
     const audit = auditStdout();
     const description = asJson
       ? `${infoJson(file, plan, jsonIndent)}\n`
-      : `${formatInfo(file, plan)}\n`;
+      : `${formatInfo(file, plan, knownEvents)}\n`;
     process.stdout.write(description);
     audit?.count(Buffer.byteLength(description));
     audit?.verify();

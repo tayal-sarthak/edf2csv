@@ -2355,10 +2355,53 @@ describe('converting several recordings at once', () => {
     assert.equal(withEvents.code, 0, withEvents.stderr);
     assert.ok(!/Would write 0 rows/u.test(withEvents.stdout), withEvents.stdout);
     assert.match(withEvents.stdout, /Would write annotations\.csv and channels\.csv/u);
-    // The event count needs the annotation channel read record by record, which is the scan
-    // --info exists to avoid, so it says so rather than inventing a number.
+    // On a continuous recording the event count needs the annotation channel read record by
+    // record, which is the scan --info exists to avoid, so it says so rather than inventing a
+    // number: this file is read only as far as the first record stating a start time.
     assert.match(withEvents.stdout, /cannot be told from the header/u);
     assert.ok(!withEvents.stdout.includes('signals.csv'), 'no signal file is named');
+
+    /*
+      A discontinuous one is a different matter, and got the same sentence anyway.
+
+      Every record start of an EDF+D file has to be read out of the annotation channel, because
+      that is where its record times live — so by the time this line is printed the events have
+      been read and counted, and "how many events there are cannot be told from the header" is
+      an answer about the header to a question the run has already settled. It is the same
+      shape as the "0 rows" this test was written for: --info declining to say what a
+      conversion will do, on the one mode whose whole purpose is saying it.
+    */
+    for (const [name, expected] of [['lost-timekeeping-d.edf', 3], ['discontinuous.edf', 0]]) {
+      const described = await cli([fixture(name), '--info', '--annotations-only']);
+      assert.equal(described.code, 0, described.stderr);
+      assert.ok(
+        !/cannot be told from the header/u.test(described.stdout),
+        `${name}: the events were read; the count is not unknowable\n${described.stdout}`,
+      );
+      const said = /Would write annotations\.csv with (\d+) events?/u.exec(described.stdout);
+      assert.ok(said, `${name}: no count was given:\n${described.stdout}`);
+
+      const out = await outDir();
+      await cli([fixture(name), '--out', out, '--annotations-only', '--quiet']);
+      const rows = (await readFile(path.join(out, 'annotations.csv'), 'utf8')).trimEnd().split('\n');
+      assert.equal(Number(said[1]), rows.length - 1, `${name}: predicted ${said[1]} events`);
+      assert.equal(Number(said[1]), expected, `${name}: the fixture changed under this test`);
+    }
+
+    // And the count follows the window, which filters the events as it filters the rows.
+    const windowed = await cli([
+      fixture('lost-timekeeping-d.edf'), '--info', '--annotations-only', '--start', '2',
+    ]);
+    const narrowed = /Would write annotations\.csv with (\d+) events?/u.exec(windowed.stdout);
+    assert.ok(narrowed, windowed.stdout);
+    const out = await outDir();
+    await cli([
+      fixture('lost-timekeeping-d.edf'), '--out', out, '--annotations-only', '--start', '2',
+      '--quiet',
+    ]);
+    const rows = (await readFile(path.join(out, 'annotations.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(Number(narrowed[1]), rows.length - 1, 'the windowed count must match too');
+    assert.ok(Number(narrowed[1]) < 3, 'the window has to have dropped something');
 
     const dir = await outDir();
     await cli([fixture('annotations.edf'), '--out', dir, '--annotations-only', '--quiet']);

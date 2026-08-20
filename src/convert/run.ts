@@ -1289,7 +1289,13 @@ export function durationDiagnostics(
   return diagnostics;
 }
 
-function requestedAnnotationWindow(
+/**
+ * The window annotations are filtered by — the bounds as asked for, not as snapped to records.
+ *
+ * Exported so `--info` can count the events a conversion would write using the same predicate
+ * that writes them, rather than a second copy of it.
+ */
+export function requestedAnnotationWindow(
   options: ConvertOptions,
   recordingStart: number,
 ): { from: number; to: number } {
