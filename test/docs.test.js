@@ -1179,6 +1179,26 @@ describe('documentation and source agree on their lists', () => {
       );
     }
 
+    /*
+      And the figure the three-times ceiling rests on. "The worst any fixture produces is
+      1.73x" was written in a comment and on this page and measured by nothing: the sweep
+      summed the ratios for an average and threw the maximum away, so a fixture reading 2.9x
+      high would have passed under the ceiling with both statements wrong and the headroom
+      they describe gone. The sweep enforces it now, and the two numbers meet here.
+    */
+    const estimateSweep = await import(path.join(ROOT, 'test/fuzz/estimate.mjs'));
+    const worst = /the worst any fixture produces is ([\d.]+)x/u.exec(page);
+    assert.ok(worst, 'the page no longer states the worst over-estimate');
+    assert.equal(
+      Number(worst[1]),
+      estimateSweep.WORST_SEEN,
+      `the page says ${worst[1]}x and the sweep enforces ${estimateSweep.WORST_SEEN}x`,
+    );
+    assert.ok(
+      estimateSweep.WORST_SEEN < estimateSweep.LOOSEST,
+      'the wall has to stand above the worst the sweep has seen',
+    );
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),

@@ -99,6 +99,21 @@ function run(args) {
  */
 export const LOOSEST = 3;
 
+/**
+ * The worst ratio this sweep has actually produced, which is what makes LOOSEST a wall.
+ *
+ * "The worst any fixture produces is 1.73x" is the sentence the three above rests on, and it
+ * was written in a comment and on the correctness page and measured by nothing: the sweep
+ * summed the ratios for an average and threw away the maximum. A fixture whose estimate read
+ * 2.9x high would have passed under the ceiling, in silence, with both statements wrong and
+ * the headroom they describe gone.
+ *
+ * Enforced rather than observed, so the number is either true or the sweep says so and names
+ * the run that beat it. A recording that legitimately does worse is a reason to raise this and
+ * the page together, which is the point.
+ */
+export const WORST_SEEN = 1.73;
+
 /** Rows and bytes actually written to the signal files in a directory. */
 function written(directory) {
   let rows = 0;
@@ -127,6 +142,9 @@ export function sweepEstimates(filter = '') {
   // them: --gzip output is smaller than the CSV by design and says nothing about the bound.
   let sized = 0;
   let overBy = 0;
+  /** The largest over-estimate seen, and the run that produced it. See WORST_SEEN. */
+  let worst = 0;
+  let worstAt = '';
 
   for (const name of names) {
     const source = path.join(FIXTURES, name);
@@ -169,6 +187,10 @@ export function sweepEstimates(filter = '') {
             const ratio = estimate.bytes / actual.bytes;
             overBy += ratio;
             sized++;
+            if (ratio > worst) {
+              worst = ratio;
+              worstAt = where;
+            }
             /*
               And a ceiling, which the claim never had.
 
@@ -184,6 +206,12 @@ export function sweepEstimates(filter = '') {
               again is not a target, it is a wall: the arithmetic would have to have stopped
               describing the file to reach it.
             */
+            if (ratio > WORST_SEEN) {
+              problems.push(
+                `${where}: ${ratio.toFixed(2)}x is worse than the ${WORST_SEEN}x this sweep ` +
+                  `has ever produced — raise WORST_SEEN and the figure on the correctness page`,
+              );
+            }
             if (ratio > LOOSEST) {
               problems.push(
                 `${where}: predicted ${estimate.bytes} bytes, wrote ${actual.bytes} — ` +
@@ -198,11 +226,13 @@ export function sweepEstimates(filter = '') {
     }
   }
 
-  return { problems, checked, names: names.length, sized, overBy };
+  return { problems, checked, names: names.length, sized, overBy, worst, worstAt };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { problems, checked, names, sized, overBy } = sweepEstimates(process.argv[2] ?? '');
+  const { problems, checked, names, sized, overBy, worst, worstAt } = sweepEstimates(
+    process.argv[2] ?? '',
+  );
 
   process.stdout.write(`\n${checked} predictions over ${names} recordings.\n`);
   if (problems.length > 0) {
@@ -213,6 +243,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const margin = sized > 0 ? overBy / sized : 1;
   process.stdout.write(
     `Every row count exact, and every byte count between the truth and ${LOOSEST}x it ` +
-      `(sizes read ${((margin - 1) * 100).toFixed(0)}% high on average).\n`,
+      `(sizes read ${((margin - 1) * 100).toFixed(0)}% high on average, worst ` +
+      `${worst.toFixed(2)}x at ${worstAt}).\n`,
   );
 }

@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.60
+
+### the worst over-estimate was a figure nothing measured
+
+The number the three-times ceiling rests on was measured by nothing.
+
+`--info` may not read low, and since 0.7.38 it may not read more than three times high either.
+Three is justified in one sentence, written in the sweep's own comment and on the correctness
+page: "the worst any fixture produces is 1.73x, a three-byte-per-sample BDF at `--decimals 0`".
+That is what makes three a wall rather than a target — it stands at nearly twice the worst
+anything has ever done.
+
+The sweep never measured it. It summed the ratios to report an average and threw the maximum
+away, so the sentence was an observation somebody made once. A fixture whose estimate read 2.9x
+high would have passed under the ceiling in silence, with both copies of the sentence wrong and
+the headroom they describe gone — and the ceiling itself is only as trustworthy as the distance
+between the two numbers.
+
+It is enforced now, from a constant beside `LOOSEST`:
+
+```
+601 predictions over 50 recordings.
+Every row count exact, and every byte count between the truth and 3x it (sizes read 16% high
+on average, worst 1.73x at biosemi-plus.bdf [--decimals 0]).
+```
+
+and a run that beats it is a failure naming itself:
+
+```
+biosemi-plus.bdf [--decimals 0]: 1.73x is worse than the 1.5x this sweep has ever produced
+— raise WORST_SEEN and the figure on the correctness page
+```
+
+The page's figure is pinned to that constant by the suite, alongside the harness sizes it
+already checks, together with the ordering the wall depends on: the worst seen has to stand
+below the ceiling. A recording that legitimately does worse now raises the number in both
+places, which is the point of writing it down.
+
 ## 0.7.59
 
 ### the output page still described the old annotation decoding
