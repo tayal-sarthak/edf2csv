@@ -287,7 +287,7 @@ Taking the first silently would drop data you asked for, and refusing outright w
 
 ### Typos
 
-A term that matches nothing is an error rather than a quiet omission, since dropping a requested channel would produce a CSV missing data you asked for with nothing in the file recording that it happened. Close labels are offered as suggestions, up to three of them, ranked by edit distance:
+A term that matches nothing is an error rather than a quiet omission, since dropping a requested channel would produce a CSV missing data you asked for with nothing in the file recording that it happened. Close labels are offered as suggestions, ranked by edit distance. Three are named and the rest counted — `Did you mean "ECG1", "ECG2", "ECG3" and 2 more?` — except when there are exactly four, which are all named, since "and 1 more" is longer than the item it would be standing in for:
 
 ```bash
 edf2csv recording.edf --channels ECQ

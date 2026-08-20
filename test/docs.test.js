@@ -110,7 +110,7 @@ describe('documentation and source agree on their lists', () => {
       `list.ts` fails here rather than leaving the pages describing a cut that no longer
       happens.
     */
-    const words = { five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
+    const words = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
     const source = await read('src/format/list.ts');
     const declared = /const DEFAULT_LIMIT = (\d+);/u.exec(source);
     assert.ok(declared, 'list.ts no longer declares a default limit');
@@ -129,6 +129,26 @@ describe('documentation and source agree on their lists', () => {
       const paragraph = text.slice(text.indexOf(stated[0]), text.indexOf(stated[0]) + 300);
       assert.match(paragraph, /and 2 more/u, `${page} does not show the counted tail`);
     }
+
+    /*
+      And the one call site that passes its own limit.
+
+      `suggest` cuts at three, and cli-reference said "up to three of them" — which stopped
+      being true in 0.7.76, when the cut moved to `listed`: four suggestions are all named,
+      because "and 1 more" is eleven characters standing in for one item. So the page
+      understated the list by one and said nothing about the count that replaced the tail.
+    */
+    const channels = await read('src/convert/channels.ts');
+    const cut = /listed\(offered, (\d+)\)/u.exec(channels);
+    assert.ok(cut, 'suggest no longer cuts its list with an explicit limit');
+    const reference = await read('website/content/cli-reference.md');
+    const named = /(\w+) are named and the rest counted/u.exec(reference);
+    assert.ok(named, 'cli-reference no longer states how many suggestions are named');
+    assert.equal(
+      words[named[1].toLowerCase()],
+      Number(cut[1]),
+      `cli-reference says ${named[1]}, suggest cuts at ${cut[1]}`,
+    );
   });
 
   it('names every conversion error code in the API reference', async () => {

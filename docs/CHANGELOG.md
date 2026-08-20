@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.86
+
+### the reference promised three suggestions where four are shown
+
+The reference promised three channel suggestions where four are shown.
+
+0.7.76 replaced `suggest`'s `.slice(0, 3)` with `listed(offered, 3)`, which does two things
+`slice` did not: it counts what it leaves, so a reader can tell a cut list from a complete
+one, and it shows a fourth item rather than hiding it behind "and 1 more" — eleven characters
+standing in for one channel name.
+
+cli-reference went on saying:
+
+> Close labels are offered as suggestions, up to three of them, ranked by edit distance
+
+which understates the list by one and says nothing about the count. Someone with four channels
+one edit from their typo sees four names on a page that told them to expect at most three, and
+someone with five sees `and 2 more` with no explanation of what that is.
+
+The sentence now says what happens, and shows it. The cut lives at one call site, so the page
+is read back against it — a limit changed in `channels.ts` fails the suite rather than leaving
+the reference describing a different list.
+
 ## 0.7.85
 
 ### two pages described a list that no longer trails off
