@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.69
+
+### --jobs auto counted cores the process could not use
+
+`--jobs auto` counted the machine's cores rather than the ones this process may use.
+
+The promise is in the reference: "`auto` is one job per core less one, so a long batch leaves
+the machine usable." The count came from `os.cpus().length`, which is every core the kernel can
+see — the machine's answer to a question about this process.
+
+They are the same number on a laptop and different numbers everywhere a batch converter
+actually runs at scale. A container given two CPUs of a sixty-four core node, a job pinned by
+`taskset`, a `docker --cpuset-cpus`, a cluster scheduler handing out slices: in all of them
+`edf2csv /data/study --jobs auto` asked for sixty-three workers on two cores. That is the
+sentence above inverted, and it is the shape of run — a folder of overnight recordings on
+shared hardware — that `auto` exists for.
+
+`os.availableParallelism` is the call for that question. It reports the parallelism actually
+available to the process, and it has been in Node since 18.14; this package requires 20.
+
+Nothing checked the number either way. `auto` appears in one test as a value the option
+accepts, and what it resolves to is invisible from outside — the only effect is how many
+children run at once, which a test would have to race to observe. The resolver is exported and
+asked directly now, the way `worstOf` already is: one per core less one, never more jobs than
+recordings, never zero, and the explicit counts untouched.
+
 ## 0.7.68
 
 ### the one-record test asserted the fixture, not the conversion

@@ -12,7 +12,7 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { existsSync, realpathSync } from 'node:fs';
 import { lstat, readdir, realpath, stat } from 'node:fs/promises';
-import { cpus } from 'node:os';
+import { availableParallelism } from 'node:os';
 import { fork } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
@@ -1890,7 +1890,17 @@ function reportError(error: unknown, input?: string, emit: Emit = writeThrough):
 function parseJobs(raw: unknown, inputs: number): number {
   if (raw === undefined) return 1;
   const text = String(raw).trim();
-  if (text === 'auto') return Math.max(1, Math.min(inputs, cpus().length - 1));
+  /*
+    The cores this process may use, not the ones the machine has.
+
+    `cpus().length` counts every core the kernel can see, which is the machine's answer to a
+    question about this process. A container given two CPUs of a sixty-four core node, a job
+    pinned by `taskset` or a scheduler, a `docker --cpuset-cpus` — in all of them `auto` asked
+    for sixty-three workers, which is exactly the "leaves the machine usable" this setting
+    exists for, inverted. `availableParallelism` is the call for the question and has been
+    there since Node 18.14; this package requires 20.
+  */
+  if (text === 'auto') return Math.max(1, Math.min(inputs, availableParallelism() - 1));
   /*
     A whole number as written, not as `Number()` chooses to read it.
 
@@ -2157,7 +2167,9 @@ function message(error: unknown, indent = ''): string {
 // `worstOf` is exported for the test that pins the exit-code mapping. A batch's verdict is
 // one of the few things a script branches on, and the mapping is easier to check directly
 // than by racing a signal at a worker.
-export { defaultOutputDir, worstOf };
+// `parseJobs` joins them for the same reason: what `auto` resolves to is a number nothing
+// could see from outside, since the only observable effect is how many children run at once.
+export { defaultOutputDir, parseJobs, worstOf };
 
 /**
  * Whether this file was executed rather than imported.

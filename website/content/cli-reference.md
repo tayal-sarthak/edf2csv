@@ -473,7 +473,7 @@ Eight recordings of 19 MB, each converting to 168 MB of CSV, on an eight-core ma
 | `--jobs 4` | 3.3 s |
 | `--jobs auto` | 3.8 s |
 
-`auto` is one job per core less one, so a long batch leaves the machine usable. It is not always the fastest setting: past a point the conversions compete for disk rather than CPU, which is why `auto` lands slightly behind `4` above. Start with `auto` and try a smaller number if the disk is the limit.
+`auto` is one job per core less one, so a long batch leaves the machine usable — counted as the cores this process may use rather than the ones the machine has, which are different numbers inside a container, under `taskset`, or anywhere a scheduler has pinned the job. It is not always the fastest setting: past a point the conversions compete for disk rather than CPU, which is why `auto` lands slightly behind `4` above. Start with `auto` and try a smaller number if the disk is the limit.
 
 Each conversion runs in its own process, because converting is almost entirely arithmetic and string building — 1.17 s of CPU for 1.24 s of wall clock — and Node runs that on a single thread. Doing it with concurrent promises inside one process was tried and gained 6%, which is the overlap in the file reads and nothing more.
 

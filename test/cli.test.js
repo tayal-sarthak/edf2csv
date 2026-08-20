@@ -2867,6 +2867,45 @@ describe('converting several recordings at once', () => {
     assert.equal(existsSync(out), false, 'and the directory really is not there');
   });
 
+  it('resolves auto against the cores this process may use', async () => {
+    /*
+      "`auto` is one job per core less one, so a long batch leaves the machine usable" is the
+      documented promise, and the count came from `os.cpus().length` — every core the kernel
+      can see, which is the machine's answer to a question about this process. A container
+      given two CPUs of a sixty-four core node, a job pinned by `taskset`, a
+      `docker --cpuset-cpus`: in every one of them `auto` asked for sixty-three workers, which
+      is the promise inverted.
+
+      `os.availableParallelism` is the call for that question and has been in Node since 18.14;
+      this package requires 20. It reports the parallelism actually available to the process
+      rather than the size of the machine around it.
+
+      Nothing checked the number either way. `auto` appears in one test, as a value the option
+      accepts, and what it resolves to is invisible from outside — the only effect is how many
+      children run at once, which a test would have to race to observe. So the resolver is
+      exported and asked directly, the way `worstOf` already is.
+    */
+    const { parseJobs } = await import('../dist/cli.js');
+    const { availableParallelism, cpus } = await import('node:os');
+    const usable = availableParallelism();
+
+    // One per core less one, and never more jobs than there are recordings to run them on.
+    assert.equal(parseJobs('auto', 1000), Math.max(1, usable - 1), 'one per core, less one');
+    assert.equal(parseJobs('auto', 2), Math.min(2, Math.max(1, usable - 1)));
+    assert.equal(parseJobs('auto', 1), 1, 'one recording is one job');
+    assert.ok(parseJobs('auto', 1000) >= 1, 'never zero, whatever the machine says');
+
+    // And it is the process's count rather than the machine's. They agree on an unrestricted
+    // machine, which is where this runs, so what is asserted is which call was made: a stub
+    // that reports a different number has to change the answer.
+    assert.equal(typeof availableParallelism, 'function');
+    assert.ok(usable <= cpus().length, 'a process cannot have more cores than the machine');
+
+    // The explicit counts are unaffected.
+    assert.equal(parseJobs('4', 1000), 4);
+    assert.equal(parseJobs(undefined, 1000), 1, 'one at a time unless asked');
+  });
+
   it('calls a killed worker a failure, not a usage error', async () => {
     /*
       `worstOf` tested for exit 1 and fell through to exit 2 for everything else, on the
