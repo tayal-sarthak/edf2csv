@@ -249,12 +249,20 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   /*
     A time column that cannot tell two samples apart.
 
-    Sample times are written to at most nine decimal places, which separates everything up to
-    a gigahertz. Below that the column repeats: a recording of 1 ns records holding ten
-    samples each writes twenty rows carrying three distinct times, so joining or plotting on
-    `time_s` silently collapses them. Nothing is lost from the file — every sample is there,
-    in order — but the column stops being an identifier, and that is worth saying rather than
-    leaving to be discovered.
+    Sample times are written to at most fifteen decimal places, which separates everything a
+    terminating rate can reach — every power of two through 32768 Hz and far past it. Below
+    that interval the column repeats: at 3e15 Hz, whose reciprocal never terminates, the rows
+    of one record carry the same time_s, so joining or plotting on it silently collapses
+    samples that are genuinely distinct. Nothing is lost from the file — every sample is
+    there, in order — but the column stops being an identifier, and that is worth saying
+    rather than leaving to be discovered.
+
+    This said nine places and a gigahertz, and illustrated it with 1 ns records — all three of
+    which stopped being true when 0.4.55 raised the search bound. Fifteen places resolve
+    1e-15 s, so a nanosecond interval is written exactly and that recording raises nothing at
+    all. warnings-and-errors.md was corrected then and carries a note saying so; the comment
+    it was written from was not, and the hint printed four lines below here has said "the
+    fifteen places a double can hold exactly" ever since.
   */
   for (const group of groups) {
     const step = group.rate > 0 ? 1 / group.rate : 0;

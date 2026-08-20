@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.88
+
+### a comment that stopped at nine decimal places
+
+A comment that stopped at nine decimal places, four lines above a hint that says fifteen.
+
+`MAX_TIME_DECIMALS` was nine until 0.4.55, which raised it to fifteen so that the two rates a
+BioSemi ActiveTwo records at — 1024 Hz and 2048 Hz, needing ten and eleven places — stopped
+falling through to the rounding fallback. That number is what decides when `TIME_RESOLUTION`
+fires at all.
+
+The comment above the code that raises it still described the old bound, and the example with
+it:
+
+> Sample times are written to at most nine decimal places, which separates everything up to a
+> gigahertz. Below that the column repeats: a recording of 1 ns records holding ten samples
+> each writes twenty rows carrying three distinct times
+
+None of that is so. Fifteen places resolve 1e-15 s, so a nanosecond interval is written
+exactly and that recording raises nothing — there is a fixture for it, `sub-nanosecond.edf`,
+asserting exactly that. And the hint printed inside the diagnostic, four lines further down,
+has said "the column already carries the fifteen places a double can hold exactly" since it
+was written.
+
+warnings-and-errors.md was corrected when the bound moved and carries a note saying so. The
+comment it was written from was not, so the page and the source it describes disagreed by six
+orders of magnitude.
+
+Both sentences are now read back against the constant, so moving it fails the suite rather
+than leaving either one describing a bound the formatter does not have.
+
 ## 0.7.87
 
 ### the sweep count the workflow states about itself

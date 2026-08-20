@@ -151,6 +151,37 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('states the time-column precision the formatter actually reaches', async () => {
+    /*
+      `MAX_TIME_DECIMALS` was nine until 0.4.55 and is fifteen now, which is what decides when
+      `TIME_RESOLUTION` fires at all. The warnings page was corrected then and carries a note
+      about it. The comment the page was written from, above the code that raises the warning,
+      was not: it still said "at most nine decimal places, which separates everything up to a
+      gigahertz", and illustrated it with a recording of 1 ns records — a rate that at fifteen
+      places is written exactly and raises nothing.
+
+      So the sentence four lines above the diagnostic contradicted the hint inside it, which
+      has said "the fifteen places a double can hold exactly" the whole time. Both are read
+      back against the constant now, so raising or lowering it fails here.
+    */
+    const words = { nine: 9, ten: 10, twelve: 12, fifteen: 15, sixteen: 16, twenty: 20 };
+    const number = await read('src/format/number.ts');
+    const declared = /const MAX_TIME_DECIMALS = (\d+);/u.exec(number);
+    assert.ok(declared, 'number.ts no longer declares MAX_TIME_DECIMALS');
+    const places = Number(declared[1]);
+
+    for (const where of ['src/convert/plan.ts', 'website/content/warnings-and-errors.md']) {
+      const text = await read(where);
+      const stated = /Sample times are written to at most (\w+) decimal places/u.exec(text);
+      assert.ok(stated, `${where} no longer states the time-column precision`);
+      assert.equal(
+        words[stated[1]],
+        places,
+        `${where} says ${stated[1]} places, the formatter reaches ${places}`,
+      );
+    }
+  });
+
   it('names every conversion error code in the API reference', async () => {
     const codes = await unionMembers('src/convert/run.ts', 'ConversionErrorCode');
     const api = await read('website/content/api.md');
