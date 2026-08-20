@@ -89,6 +89,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `MISSING_EDF_PLUS_MARKER` | An annotation channel puts the records somewhere the missing EDF+ marker cannot honour |
 | `START_TIME_UNREADABLE` | The header's start date or time is not a date or a time |
 | `LEAP_SECOND_START` | The header's start time names the sixtieth second, which no calendar date has |
+| `START_DATE_MISMATCH` | An EDF+ recording identification field states a different start date from the header's own |
 | `STDOUT_UNSUPPORTED` | `--info --stdout` on a recording `--stdout` would refuse |
 
 ## File structure and integrity
@@ -661,6 +662,23 @@ warning: The header's start date and time ("32.13.99" and "25.61.61") are not a 
 Until 0.5.101 nothing was raised: `--info` echoed the fields with "(unparseable)" beside them and a conversion said nothing at all, so a recording with no usable timestamp passed `--strict` and left a bare `null` in the archive. Every other unusable header field reports itself.
 
 **What to do.** Nothing, unless you need wall-clock times. `time_s`, the sample values and the annotation onsets are all unaffected — they are relative to the recording's own start, which does not depend on the header's saying when that was. If you do need the instant, it has to come from outside the file.
+
+### START_DATE_MISMATCH
+
+The recording identification field states a start date that is not the header's start date.
+
+**Cause.** EDF+ requires the recording identification field to begin `Startdate dd-MMM-yyyy` and requires that date to be the one in the header's own start date field. A writer that filled the two independently, or a file whose date field was edited afterwards, produces a header that contradicts itself.
+
+**What edf2csv does.** Uses the start date field, which is the one the format defines, and says so. The four-digit year in the recording identification is what settles the century when the two *do* agree — see [the two-digit year](/docs/edf-format#start-date-and-time-and-the-two-digit-year) — so a disagreement is exactly the case where that corroboration is missing.
+
+```
+warning: The header's start date ("02.03.02") and the date its recording identification states ("05-MAR-2002") are different dates, which EDF+ does not permit.
+         The start date field is used, since that is the one the format
+         defines. Which of the two is right is not knowable from the file, so
+         start_datetime_local may name the wrong day.
+```
+
+**What to do.** Treat the recording's date as uncertain. Nothing else is affected: `time_s`, the sample values and the annotation onsets are all relative to the recording's own start, whatever day that was.
 
 ### LEAP_SECOND_START
 

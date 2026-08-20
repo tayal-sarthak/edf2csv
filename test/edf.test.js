@@ -49,6 +49,61 @@ describe('header parsing', () => {
     assert.equal(file.header.startDateTime.toISOString(), '2009-06-05T12:34:56.000Z');
   });
 
+  it('says when a header states two different start dates', async () => {
+    /*
+      EDF+ requires the recording identification field's `Startdate` to be the header's start
+      date, and where it is, its four digits settle the century. Where it is not, one of the two
+      is wrong, there is no way to tell which, and the file's one statement of when the
+      recording happened has lost its corroboration.
+
+      Nothing said so. `--info` printed `Recorded 2002-03-02` two lines above
+      `Recording Startdate 05-MAR-2002`, and `--strict` exited 0 — on a header that contradicts
+      itself in a way the specification forbids, and which every other self-contradicting header
+      field in this parser reports.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-twodates-'));
+    temporaries.push(scratch);
+    const written = (name, startDate, recording) => {
+      const at = path.join(scratch, `${name}.edf`);
+      writeEdf({
+        path: at, reserved: 'EDF+C', startDate, startTime: '22.15.00', recording,
+        numRecords: 1, recordDuration: 1,
+        signals: [
+          { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 2, gen: () => 1 },
+        ],
+      });
+      return at;
+    };
+    const raised = async (file) =>
+      parseHeader(await readFile(file), 1024).diagnostics.filter(
+        (d) => d.code === 'START_DATE_MISMATCH',
+      );
+
+    const wrongDay = await raised(written('day', '02.03.02', 'Startdate 05-MAR-2002 X X X'));
+    assert.equal(wrongDay.length, 1, JSON.stringify(wrongDay));
+    assert.match(wrongDay[0].message, /"02\.03\.02"/u, wrongDay[0].message);
+    assert.match(wrongDay[0].message, /"05-MAR-2002"/u, wrongDay[0].message);
+
+    // A different month and a different year, each on their own.
+    assert.equal((await raised(written('month', '02.03.02', 'Startdate 02-APR-2002 X X X'))).length, 1);
+    assert.equal((await raised(written('year', '02.03.02', 'Startdate 02-MAR-1998 X X X'))).length, 1);
+
+    // And the dates that agree, in either century, say nothing — nor does a file with no
+    // Startdate to compare against, nor one whose month is not a month.
+    for (const [name, date, recording] of [
+      ['same', '02.03.02', 'Startdate 02-MAR-2002 X X X'],
+      ['old', '02.03.84', 'Startdate 02-MAR-1984 X X X'],
+      ['ahead', '02.03.85', 'Startdate 02-MAR-2085 X X X'],
+      ['none', '02.03.02', 'X X X X'],
+      ['junk', '02.03.02', 'Startdate 02-XXX-2002 X X X'],
+    ]) {
+      assert.deepEqual(await raised(written(name, date, recording)), [], name);
+    }
+  });
+
   it('takes the century from the year an EDF+ file writes in full', async () => {
     /*
       The date field is `dd.mm.yy`, so the rule above is the only thing that can decide the

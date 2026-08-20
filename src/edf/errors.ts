@@ -68,6 +68,15 @@ export type DiagnosticCode =
    */
   | 'LEAP_SECOND_START'
   /**
+   * An EDF+ recording identification field whose `Startdate` is not the header's start date.
+   *
+   * EDF+ requires the two to be the same date, and the four-digit year in the recording ID is
+   * what lets a file say which century it belongs to. When they disagree about the day or the
+   * month, or about a year that is not the same year at all, neither is corroborated and the
+   * one number naming when the recording happened cannot be trusted — which nothing said.
+   */
+  | 'START_DATE_MISMATCH'
+  /**
    * An annotation channel with a non-zero origin, in a file marked neither EDF+C nor EDF+D.
    *
    * The marker decides whether the origin is applied, and the annotation channel is found by

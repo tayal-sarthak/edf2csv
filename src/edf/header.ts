@@ -783,6 +783,44 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     });
   }
 
+  /*
+    Two dates in one header, disagreeing.
+
+    EDF+ requires the recording identification field's `Startdate` to be the header's start
+    date. Where it is, its four digits settle the century — see resolveStartDateTime. Where it
+    is not, one of the two is wrong and there is no way to tell which, so the date field is
+    used, being the one the format defines. That was done in silence, on a header that plainly
+    contradicts itself:
+
+        Recorded   2002-03-02 22:15:00
+        Recording  Startdate 05-MAR-2002 PSG-1234/2002 NN Telemetry03
+
+    The same shape as a record count that disagrees with the file, or a declared header size
+    that disagrees with the signal count, both of which have said so for versions.
+  */
+  const statedDate = recordingIdStartdate(recordingId);
+  const headerDate = /^(\d{2})[.\-/](\d{2})[.\-/](\d{2})$/u.exec(trimField(startDateRaw));
+  if (statedDate !== null && headerDate !== null) {
+    const day = Number(headerDate[1]);
+    const month = Number(headerDate[2]);
+    const yy = Number(headerDate[3]);
+    if (statedDate.day !== day || statedDate.month !== month || statedDate.year % 100 !== yy) {
+      diagnostics.push({
+        code: 'START_DATE_MISMATCH',
+        severity: 'warning',
+        message:
+          `The header's start date ("${startDateRaw}") and the date its recording ` +
+          `identification states ("${String(statedDate.day).padStart(2, '0')}-` +
+          `${MONTHS[statedDate.month - 1] as string}-${statedDate.year}") are different ` +
+          `dates, which EDF+ does not permit.`,
+        hint:
+          'The start date field is used, since that is the one the format defines. Which of ' +
+          'the two is right is not knowable from the file, so start_datetime_local may name ' +
+          'the wrong day.',
+      });
+    }
+  }
+
   if (resolveStartDateTime(startDateRaw, startTimeRaw, recordingId) === null) {
     diagnostics.push({
       code: 'START_TIME_UNREADABLE',

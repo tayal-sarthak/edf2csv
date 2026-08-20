@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.64
+
+### a header that contradicts itself about the day it was recorded
+
+A header stating two different start dates said nothing about it.
+
+EDF+ requires the recording identification field to begin `Startdate dd-MMM-yyyy` and requires
+that date to be the header's own start date. 0.7.63 started using the four-digit year there to
+settle the century, which only works where the two agree. Where they do not, one of them is
+wrong, there is no way to tell which, and the file's single statement of when the recording
+happened has lost its corroboration:
+
+```
+$ edf2csv contradicts.edf --info --strict
+Recorded   2002-03-02 22:15:00
+...
+Recording  Startdate 05-MAR-2002 PSG-1234/2002 NN Telemetry03
+$ echo $?
+0
+```
+
+Two dates, three days apart, printed two lines from each other, and exit 0.
+
+`START_DATE_MISMATCH` now quotes both as the file writes them and says which is used and why —
+the start date field, being the one the format defines, since nothing in the file decides
+between them. This is the shape RECORD_COUNT_MISMATCH and HEADER_BYTES_MISMATCH have had for
+versions: a header that contradicts itself, reported rather than resolved on a guess.
+
+Nothing else changed. A file with no `Startdate`, one whose month is not a month, and one that
+agrees — in either century — all say exactly what they said before.
+
 ## 0.7.63
 
 ### the century came from a rule while the file stated the year
