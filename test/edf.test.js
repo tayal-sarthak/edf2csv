@@ -461,6 +461,52 @@ describe('digital to physical conversion', () => {
     assert.equal(decimalsForSignal(uv), 3); // step 0.1
     assert.equal(decimalsForSignal(mv), 5); // step 0.001
   });
+
+  it('agrees with itself about whether a channel hit the ceiling', async () => {
+    /*
+      Two functions and one formula. `decimalsForSignal` works out how many places a step needs
+      and clamps it; `decimalsAreClamped` answers whether that clamp happened, and it worked the
+      number out again with its own copy of `Math.ceil(-Math.log10(step)) + 2`.
+
+      Their only job is to give the same answer, and nothing compared them. Change either `+ 2`
+      and they part at the boundary — a channel whose precision really was capped is reported as
+      not capped, VALUE_RESOLUTION goes unraised, and its codes print indistinguishable in
+      silence, which is the exact thing that warning exists to say. Reachable, too: the ceiling
+      is a hundred places, and an eight-character physical bound reaches it at `1e-99`.
+
+      Asked without knowing the formula: `decimalsForSignal` takes the ceiling as an argument, so
+      handing it one nothing can reach gives the unclamped answer, and "was it clamped" is
+      whether the two differ.
+    */
+    const { decimalsAreClamped } = await import('../dist/edf/scale.js');
+    const signal = (physicalMax) => ({
+      index: 0, label: 'x', digitalMin: -1, digitalMax: 0, physicalMin: 0, physicalMax,
+    });
+    const cappedByTheCeiling = (s) =>
+      decimalsForSignal(s, Number.MAX_SAFE_INTEGER) > decimalsForSignal(s);
+
+    // Across the whole range a step can take, including both sides of the boundary.
+    for (const exponent of [1, 0, -1, -3, -20, -96, -97, -98, -99, -100, -200, -300]) {
+      const s = signal(10 ** exponent);
+      assert.equal(
+        decimalsAreClamped(s),
+        cappedByTheCeiling(s),
+        `a step of 1e${exponent} needs ${decimalsForSignal(s, Number.MAX_SAFE_INTEGER)} places`,
+      );
+    }
+
+    // The boundary itself, named: a hundred places is the ceiling, so needing exactly a
+    // hundred is not clamped and needing one more is.
+    assert.equal(decimalsForSignal(signal(1e-98)), 100);
+    assert.equal(decimalsAreClamped(signal(1e-98)), false);
+    assert.equal(decimalsForSignal(signal(1e-99)), 100);
+    assert.equal(decimalsAreClamped(signal(1e-99)), true);
+
+    // And a channel with no step at all is neither: both decline it the same way.
+    const flat = { index: 0, label: 'x', digitalMin: 5, digitalMax: 5, physicalMin: 0, physicalMax: 1 };
+    assert.equal(decimalsForSignal(flat), 3);
+    assert.equal(decimalsAreClamped(flat), false);
+  });
 });
 
 describe('reading samples', () => {

@@ -114,10 +114,26 @@ const MAX_DERIVED_DECIMALS = 100;
  * below 1e-98, which an 8-character physical bound can still express — `1e-99` is five
  * characters. Those get VALUE_RESOLUTION rather than silence.
  */
-export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS): number {
+/**
+ * Places this channel needs before any ceiling, or null when it has no step to derive one from.
+ *
+ * One expression, because two functions depend on agreeing about it. `decimalsForSignal`
+ * computed `Math.ceil(-Math.log10(step)) + 2` and clamped it; `decimalsAreClamped` computed the
+ * same thing again and compared it to the same ceiling. Two copies of one formula whose only
+ * job is to give the same answer — change either `+ 2` and they part company at the boundary,
+ * so a channel whose precision really was capped is reported as not capped, VALUE_RESOLUTION is
+ * not raised, and its codes print indistinguishable in silence. Which is the exact thing that
+ * warning exists to say.
+ */
+function decimalsNeeded(signal: EdfSignal): number | null {
   const step = quantizationStep(signal);
-  if (!(step > 0) || !Number.isFinite(step)) return 3;
-  const needed = Math.ceil(-Math.log10(step)) + 2;
+  if (!(step > 0) || !Number.isFinite(step)) return null;
+  return Math.ceil(-Math.log10(step)) + 2;
+}
+
+export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS): number {
+  const needed = decimalsNeeded(signal);
+  if (needed === null) return 3;
   return Math.min(max, Math.max(0, needed));
 }
 
@@ -135,7 +151,6 @@ export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS)
  * the answer is no, that is a ceiling nobody chose, and it holds whatever `--decimals` says.
  */
 export function decimalsAreClamped(signal: EdfSignal): boolean {
-  const step = quantizationStep(signal);
-  if (!(step > 0) || !Number.isFinite(step)) return false;
-  return Math.ceil(-Math.log10(step)) + 2 > MAX_DERIVED_DECIMALS;
+  const needed = decimalsNeeded(signal);
+  return needed !== null && needed > MAX_DERIVED_DECIMALS;
 }

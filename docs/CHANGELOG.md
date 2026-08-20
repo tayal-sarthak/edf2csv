@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.67
+
+### one formula written twice, and never compared
+
+Two functions computing one formula, and nothing compared their answers.
+
+`decimalsForSignal` works out how many decimal places a channel's quantization step needs and
+clamps the result to the hundred `toFixed` allows. `decimalsAreClamped` answers whether that
+clamp happened — and it worked the number out again, with its own copy of
+`Math.ceil(-Math.log10(step)) + 2`, against its own copy of the ceiling.
+
+Their only job is to agree. Change either `+ 2`:
+
+```
+-  return Math.ceil(-Math.log10(step)) + 2 > MAX_DERIVED_DECIMALS;
++  return Math.ceil(-Math.log10(step)) + 3 > MAX_DERIVED_DECIMALS;
+```
+
+and all 398 tests pass, while a channel whose precision really was capped is reported as not
+capped. `VALUE_RESOLUTION` is the warning that says consecutive codes will print the same text,
+and it asks this function — so the channel converts with every one of its codes rendered
+identically, in silence, which is the exact thing that warning exists to prevent.
+
+Reachable rather than theoretical: the ceiling is a hundred places, and an eight-character
+physical bound reaches it. A step of `1e-98` needs exactly a hundred and is not clamped; `1e-99`
+needs a hundred and one and is.
+
+One expression now, asked once. The test compares the two without knowing the formula:
+`decimalsForSignal` takes the ceiling as an argument, so handing it one nothing can reach gives
+the unclamped answer, and "was it clamped" is whether the two differ. Twelve steps from `1e1`
+down to `1e-300`, the boundary named on both sides, and a channel with no step at all, which
+both have to decline the same way.
+
 ## 0.7.66
 
 ### negative zero was normalised by a line nothing tested
