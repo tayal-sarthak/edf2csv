@@ -3367,6 +3367,71 @@ describe('what the summary says it did', () => {
   });
 });
 
+describe('--info and the origin scan', () => {
+  it('reports the entries that scan read exactly as a conversion does', async () => {
+    /*
+      A continuous recording's origin is read by `scanOrigin`, which stops at the first record
+      that states a time rather than reading the whole annotation channel — that bounded read
+      is what keeps `--info` a header summary on a multi-gigabyte file.
+
+      It counted what it saw and threw two thirds of it away. `malformedTimekeepingWithText`
+      is what decides whether the warning beside a lost record position says "No event was
+      lost" or names the events that went with it, and the call site hard-coded it to zero, so
+      `--info` took the reassuring branch every time:
+
+          warning: 1 data record carries a timekeeping annotation that could not be read...
+                   No event was lost — a timekeeping annotation states a record's start
+                   time and is never exported.
+
+      An event had been lost, and converting the same file said so. `malformed` was zeroed the
+      same way, which is what the surviving hint's "and is counted above" refers to.
+
+      All three come from the same bounded read now, so they are consistent with each other.
+      They remain lower bounds on the file — a conversion reads every record and may count
+      more — which is what they have always been for the one that was returned.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-scan-'));
+    temporaries.push(scratch);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const TEXT = String.fromCharCode(0x14);
+    const END = String.fromCharCode(0);
+
+    // Record 0's first-position TAL has no leading sign, so it cannot be parsed — and it
+    // carries event text, so an event goes with the record's position. Record 1 states a
+    // time, which is where the scan stops.
+    const file = path.join(scratch, 'lost-with-text.edf');
+    writeEdf({
+      path: file,
+      reserved: 'EDF+C',
+      numRecords: 3,
+      recordDuration: 1,
+      talsForRecord: (r) => (r === 0 ? `X0.5${TEXT}Seizure onset${TEXT}${END}` : buildTal(0.5 + r)),
+      signals: [
+        { label: 'ECG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const described = await cli([file, '--info']);
+    const converted = await cli([file, '--out', await outDir()]);
+    assert.equal(described.code, 0, described.stderr);
+    assert.equal(converted.code, 0, converted.stderr);
+
+    const warnings = (stderr) =>
+      stderr.replace(/\s+/gu, ' ').match(/warning: .*?(?=warning: |Wrote |$)/gu) ?? [];
+    assert.deepEqual(
+      warnings(described.stderr),
+      warnings(converted.stderr),
+      'what --info says about this file and what converting it says must be the same',
+    );
+    // And what they agree on is the true sentence, not the reassuring one.
+    assert.match(described.stderr.replace(/\s+/gu, ' '), /also carried event text/u);
+    assert.doesNotMatch(described.stderr, /No event was lost/u);
+  });
+});
+
 describe('--info over a folder', () => {
   it('names the recording each warning came from, as a conversion does', async () => {
     /*

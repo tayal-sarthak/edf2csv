@@ -432,31 +432,56 @@ export class EdfFile {
    *
    * The failure was being read and then thrown away. `readOrigin` keeps its shape for callers
    * who only want the number.
+   *
+   * All three counters, not one. A first-position TAL may carry events after the start time,
+   * and when it cannot be parsed those go with it — which is what `malformedTimekeepingWithText`
+   * counts and what decides whether the warning says "No event was lost" or names the events
+   * that were. Counting only the first meant `--info` took the first sentence every time: it
+   * announced that a record had lost its position and that nothing else had gone, over a file
+   * whose conversion said, correctly, that an event had gone with it. One file, two answers,
+   * and the confident one was `--info`, which is the command run first to find out what a
+   * conversion will say.
+   *
+   * `malformed` comes back for the same reason one sentence further on: that hint ends "and is
+   * counted above", which is only true where the entry warning is printed too.
+   *
+   * All three are of the records this actually read, which is as far as the first record that
+   * states a time — so they are lower bounds on the file, as `malformedTimekeeping` has been
+   * since it was returned at all. A conversion reads every record and may count more. What
+   * they must not be is inconsistent with each other, which is what a hard-coded zero made
+   * them.
    */
-  async scanOrigin(): Promise<{ origin: number | null; malformedTimekeeping: number }> {
+  async scanOrigin(): Promise<{
+    origin: number | null;
+    malformed: number;
+    malformedTimekeeping: number;
+    malformedTimekeepingWithText: number;
+  }> {
     this.#assertOpen();
 
-    let malformedTimekeeping = 0;
+    const counts = { malformed: 0, malformedTimekeeping: 0, malformedTimekeepingWithText: 0 };
     const channel = this.timekeepingSignal;
-    if (!channel || this.recordCount === 0) return { origin: null, malformedTimekeeping };
+    if (!channel || this.recordCount === 0) return { origin: null, ...counts };
 
     const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
     const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
-    if (buffer.length === 0) return { origin: null, malformedTimekeeping };
+    if (buffer.length === 0) return { origin: null, ...counts };
 
     const searched = Math.min(this.recordCount, RECORDS_SEARCHED_FOR_ORIGIN);
     for (let record = 0; record < searched; record++) {
       const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
       const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
-      if (bytesRead < buffer.length) return { origin: null, malformedTimekeeping };
+      if (bytesRead < buffer.length) return { origin: null, ...counts };
 
       const decoded = decodeRecordAnnotations(buffer, record);
-      malformedTimekeeping += decoded.malformedTimekeeping;
+      counts.malformed += decoded.malformed;
+      counts.malformedTimekeeping += decoded.malformedTimekeeping;
+      counts.malformedTimekeepingWithText += decoded.malformedTimekeepingWithText;
       if (decoded.recordStart !== null) {
-        return { origin: decoded.recordStart - record * recordDuration, malformedTimekeeping };
+        return { origin: decoded.recordStart - record * recordDuration, ...counts };
       }
     }
-    return { origin: null, malformedTimekeeping };
+    return { origin: null, ...counts };
   }
 
   async readAnnotations(): Promise<{

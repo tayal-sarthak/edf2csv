@@ -876,9 +876,12 @@ async function showInfo(
       : {
           annotations: [],
           recordStarts: scan ? [scan.origin] : [],
-          malformed: 0,
+          malformed: scan?.malformed ?? 0,
           // Counted rather than assumed: see EdfFile.scanOrigin.
           malformedTimekeeping: scan?.malformedTimekeeping ?? 0,
+          // And how many of those took events with them, which decides whether the warning
+          // beside it says nothing was lost. See EdfFile.scanOrigin.
+          malformedTimekeepingWithText: scan?.malformedTimekeepingWithText ?? 0,
         };
     const timing = deriveRecordStarts(file, annotationData);
     const plan = buildPlan(

@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.81
+
+### --info said no event was lost over one that was
+
+`--info` said no event had been lost over a recording that had lost one.
+
+A continuous recording's origin is the fraction of a second by which its first data record
+follows the header's start time, and `--info` reads it with `scanOrigin` — a seek into each
+record's annotation slot that stops at the first record stating a time. That bound is what
+keeps `--info` a header summary rather than a scan of the whole file.
+
+The scan counts what it reads on the way. 0.7.x taught it to return `malformedTimekeeping`,
+because a first-position TAL that cannot be parsed costs a record its position and `--info` was
+saying nothing about it. Two counters beside it stayed hard-coded to zero at the call site, and
+one of them decides which sentence gets printed:
+
+```
+warning: 1 data record carries a timekeeping annotation that could not be read, so it does
+         not say where in time it sits.
+         No event was lost — a timekeeping annotation states a record's start time and
+         is never exported.
+```
+
+A first-position TAL may carry events after the start time — the specification allows it and
+writers use it — and when it cannot be parsed those go with it. This file's did. Converting it
+said so:
+
+```
+warning: 1 annotation entry was unreadable and could not be exported.
+warning: 1 data record carries a timekeeping annotation that could not be read, so it does
+         not say where in time it sits.
+         One of them also carried event text, which went with it and is counted above.
+```
+
+Two answers about one file from one tool, and the confident one was `--info`, which is the
+command you run first to find out what a conversion will say. `malformed` was zeroed the same
+way, which is what "and is counted above" points at, so both come back now.
+
+All three are counts of the records the scan actually read, so they are lower bounds on the
+file — as the one that was already returned has always been — and consistent with each other,
+which is what a hard-coded zero made them stop being.
+
 ## 0.7.80
 
 ### a duplicate-label warning that named every position it had
