@@ -1,6 +1,6 @@
 {
   "name": "edf2csv",
-  "version": "0.7.65",
+  "version": "0.7.66",
   "description": "Convert EDF, EDF+ and BDF biosignal recordings (European Data Format) to CSV from the command line. Local, streaming, and never resamples or alters units.",
   "keywords": [
     "edf",

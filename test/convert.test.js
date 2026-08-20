@@ -2962,6 +2962,62 @@ describe('converting', () => {
     assert.match(notice.hint, /No checksum was recorded/u);
   });
 
+  it('never puts a minus sign in front of a zero', async () => {
+    /*
+      `fixed` normalises negative zero, and the comment above it says why: "a sample that
+      scales to a very small negative value prints as -0.000, which looks like a distinct
+      measurement but is not". Nothing checked it. Change the character it compares against —
+      `45` for `-`, one digit either way — and every such sample prints `-0.000`, with the
+      whole suite green.
+
+      Not a curiosity of the arithmetic. Any value between zero and minus half a unit in the
+      last place rounds there, so `--decimals 0` sends every negative sample under half a unit
+      to it, and an ordinary channel reaches it whenever a code lands just below the zero
+      crossing. A reader sorting or grouping that column then has two zeroes in it, and a
+      `-0.000` beside a `0.000` reads as a measurement that is somehow more negative.
+    */
+    const { fixed } = await import('../dist/format/number.js');
+
+    // Every shape of it: an actual negative zero, values that round to one, and every width.
+    for (const [value, decimals, expected] of [
+      [-0, 3, '0.000'],
+      [-0, 0, '0'],
+      [-1e-9, 3, '0.000'],
+      [-0.0004, 3, '0.000'],
+      [-0.4, 0, '0'],
+      [-0.00000001, 6, '0.000000'],
+      [-0.5, 3, '-0.500'],
+      [-0.5, 0, '-1'],
+      [0.0004, 3, '0.000'],
+    ]) {
+      assert.equal(fixed(value, decimals), expected, `fixed(${value}, ${decimals})`);
+    }
+
+    /*
+      And through a conversion, which is where a reader meets it. Every sample of the negative
+      half of this channel is between zero and minus half a unit at `--decimals 0`.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-negzero-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const source = path.join(scratch, 'near-zero.edf');
+    writeEdf({
+      path: source,
+      numRecords: 1,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -0.4, physMax: 0.4, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 5, gen: (r, s) => [-1000, -500, -1, 500, 1000][s] },
+      ],
+    });
+
+    const out = await outDir();
+    await convert(source, { outputDir: out, quiet: true, decimals: 0 });
+    const rows = (await readFile(path.join(out, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+    const values = rows.slice(1).map((row) => row.split(',')[1]);
+    assert.deepEqual(values, ['0', '0', '0', '0', '0'], rows.join('\n'));
+  });
+
   it('writes the description bytes the annotation holds, not a stand-in for them', async () => {
     /*
       0.7.54 stopped the decoder turning a latin1 annotation into U+FFFD, and checked it at

@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.66
+
+### negative zero was normalised by a line nothing tested
+
+The one thing `fixed` exists to do was checked by nothing.
+
+Its comment says so plainly: "Without this, a sample that scales to a very small negative value
+prints as `-0.000`, which looks like a distinct measurement but is not." Underneath is a
+comparison against character 45, the minus sign. Change it to 46 — one digit — and every such
+sample prints `-0.000`, and all 397 tests pass.
+
+Not a curiosity of the arithmetic. Anything between zero and minus half a unit in the last place
+rounds there, so `--decimals 0` sends every negative sample under half a unit to it:
+
+```
+$ edf2csv near-zero.edf --out csv --decimals 0
+$ cat csv/signals.csv
+time_s,ch
+0.000,-0
+0.200,-0
+0.400,-0
+```
+
+and an ordinary channel reaches it whenever a code lands just below the zero crossing. A column
+with two zeroes in it groups and sorts as two values, and a `-0.000` beside a `0.000` reads as a
+measurement that is somehow more negative than none.
+
+Nine widths and shapes of it are asserted now — an actual negative zero, values that round to
+one at three, six and zero decimals, and the genuine negatives either side that must keep their
+sign — and a conversion of a channel sitting just below zero has to come back with plain zeroes
+in every cell.
+
 ## 0.7.65
 
 ### twelve accepted time units that nothing named or checked
