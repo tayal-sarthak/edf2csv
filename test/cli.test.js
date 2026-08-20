@@ -3000,6 +3000,58 @@ describe('converting several recordings at once', () => {
     assert.equal(survivors, '', `conversions outlived the interrupted parent: ${survivors}`);
   });
 
+  it('exits 143 when a scheduler kills it rather than a keyboard', async () => {
+    /*
+      `process.exit(signal === 'SIGINT' ? 130 : 143)` is written twice — once for a single
+      conversion, once for a batch — and every interrupt test here sends SIGINT. So the second
+      branch has never run. `143` in it could be any number and the whole suite would pass; the
+      `interrupted` helper above even takes a signal to send, and no call site has ever set it.
+
+      Which is the branch that matters to anything unattended. SIGTERM is what a scheduler's
+      time limit sends, what `kill` sends by default, and what a container runtime sends before
+      it gives up and uses SIGKILL. Both exit-code tables document `143` for it, and 0.5.88
+      fixed a batch that returned 2 for a signalled worker — a fix that reads a child's 143 and
+      had nothing producing one.
+
+      Sent when the batch has demonstrably started, on the same `[1/N]` line 0.7.56 waits for
+      rather than a timer.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-term-'));
+    temporaries.push(dir);
+    const source = await readFile(fixture('long-stream.edf'));
+    const names = [];
+    for (let i = 0; i < 30; i++) {
+      const name = path.join(dir, `r${String(i).padStart(2, '0')}.edf`);
+      await writeFile(name, source);
+      names.push(name);
+    }
+
+    const { spawn } = await import('node:child_process');
+    const run = spawn(process.execPath, [CLI, ...names, '--out', path.join(dir, 'out'), '--jobs', '2'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    run.stderr.setEncoding('utf8').on('data', (chunk) => {
+      stderr += chunk;
+    });
+    await new Promise((resolve, reject) => {
+      const deadline = setTimeout(() => reject(new Error(`no batch progress in 60s: ${stderr}`)), 60_000);
+      const check = () => {
+        if (!/\[1\/\d+\]/u.test(stderr)) return;
+        clearTimeout(deadline);
+        run.stderr.off('data', check);
+        resolve();
+      };
+      run.stderr.on('data', check);
+      check();
+    });
+
+    const { code } = await interrupted(run, 'SIGTERM');
+    assert.equal(code, 143, `expected 128 + 15, stderr was:\n${stderr}`);
+    assert.match(stderr, /interrupted \(SIGTERM\)/u, stderr);
+    assert.ok(!/interrupted \(SIGINT\)/u.test(stderr), 'and it must name the signal it got');
+  });
+
   it('names a conversion that was killed, and the directory it left behind', async () => {
     // A process that dies by signal exits with a null code and says nothing on its way out.
     // The parent read that as an ordinary failure with empty output, so the run printed

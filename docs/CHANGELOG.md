@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.75
+
+### the SIGTERM exit code was written twice and run never
+
+The exit code a scheduler's kill produces was documented twice and emitted by a branch nothing
+ran.
+
+```js
+process.exit(signal === 'SIGINT' ? 130 : 143);
+```
+
+written once for a single conversion and once for a batch. Every interrupt test in this project
+sends SIGINT, so the second branch has never been taken: `143` could be any number and all 403
+tests would pass. The helper those tests use even takes a signal to send —
+`interrupted(run, signal = 'SIGINT')` — and no call site has ever set it.
+
+It is the branch that matters to anything unattended. SIGTERM is what a scheduler's time limit
+sends, what `kill` sends by default, and what a container runtime sends before it gives up and
+reaches for SIGKILL. Both exit-code tables document `143` for it. And 0.5.88 fixed a batch that
+returned 2 for a signalled worker — "a signalled child exits 130 or 143 and the mapping only
+knew about 1 and 2" — a fix whose input nothing was producing.
+
+A batch is now stopped with SIGTERM once it has demonstrably started, on the same `[1/N]` line
+0.7.56 waits for rather than on a timer, and has to exit 143 and say `interrupted (SIGTERM)`
+rather than name the signal it did not get.
+
 ## 0.7.74
 
 ### the batch sizes the API page explains a defect with
