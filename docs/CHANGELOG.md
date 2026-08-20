@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.65
+
+### twelve accepted time units that nothing named or checked
+
+`--start 2hrs` is worth two hours because a number in a table says so, and nothing checked it.
+
+Sixteen spellings of four units are accepted: `h`, `hr`, `hrs`, `hour`, `hours`; `m`, `min`,
+`mins`, `minute`, `minutes`; `s`, `sec`, `secs`, `second`, `seconds`; and `ms`. The reference
+lists all sixteen. The tool's own message named four:
+
+```
+error: --start "5x" uses an unknown unit "x". Use h, m, s, or ms.
+```
+
+and no test exercised any of the twelve others. They are entries in a lookup table, so being
+wrong costs nothing to write and shows nothing when read: set `hrs` to 360 and `--start 2hrs`
+converts from twelve minutes in, the reference is wrong about what it means, and all 396 tests
+pass. A window that is quietly the wrong length is the one mistake this option may not make —
+it is the reason `1h1h` is refused rather than summed.
+
+Every spelling is now parsed and checked against what it is *called* rather than against the
+table it came from: anything starting with `h` is worth 3,600 seconds, `ms` is 0.001, and so
+on. The reference's list and the table are compared both ways, so a spelling added to one
+without the other fails. And the message points at the long forms it never mentioned.
+
 ## 0.7.64
 
 ### a header that contradicts itself about the day it was recorded

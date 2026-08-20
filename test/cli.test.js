@@ -1320,7 +1320,7 @@ describe('--info', () => {
                  which runs from 1e+21s to 4e+21s.
 
           $ edf2csv far.edf --start 1e+21s
-          error: --start "1e+21s" uses an unknown unit "e". Use h, m, s, or ms.
+          error: --start "1e+21s" uses an unknown unit "e". Use h, m, s or ms, ...
 
       `toFixed` switches to exponent notation at 1e21 and `Number(...)` puts it back, so the
       one line whose parenthesis is an instruction — type this back in — ended in a token that

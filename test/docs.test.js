@@ -2849,6 +2849,58 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('accepts exactly the time units it says it accepts, each worth what it is called', async () => {
+    /*
+      Sixteen spellings of four units, and the reference lists all sixteen. The tool's own
+      message named four of them — "Use h, m, s, or ms" — and nothing checked any of the
+      values. `hrs: 3600` is a number in a table: set it to 360 and `--start 2hrs` converts
+      from twelve minutes in, the reference is wrong, and the whole suite is green. A window
+      that is quietly the wrong length is the mistake this option may not make.
+
+      Both directions on the list, and the value derived from the name rather than read out of
+      the table, so the table is checked against what its own keys mean.
+    */
+    const { UNIT_SECONDS } = await import(path.join(ROOT, 'dist/convert/time-range.js'));
+    const { parseTimeSpec } = await import(path.join(ROOT, 'dist/index.js'));
+
+    const page = await read('website/content/cli-reference.md');
+    const sentence = /Recognised units are ([^\n]*?)\. Note that/u.exec(page);
+    assert.ok(sentence, 'the reference no longer lists the units');
+    const listed = [...sentence[1].matchAll(/`([a-z]+)`/gu)].map((m) => m[1]);
+    assert.deepEqual(
+      listed.filter((unit) => !(unit in UNIT_SECONDS)),
+      [],
+      'the reference lists a unit the parser does not take',
+    );
+    assert.deepEqual(
+      Object.keys(UNIT_SECONDS).filter((unit) => !listed.includes(unit)),
+      [],
+      'the parser takes a unit the reference does not list',
+    );
+
+    // What one of each is worth, from the spelling: ms before m, since it starts with one.
+    const worth = (unit) => {
+      if (unit === 'ms') return 0.001;
+      if (unit.startsWith('h')) return 3600;
+      if (unit.startsWith('m')) return 60;
+      if (unit.startsWith('s')) return 1;
+      return null;
+    };
+    for (const unit of Object.keys(UNIT_SECONDS)) {
+      const expected = worth(unit);
+      assert.ok(expected !== null, `"${unit}" is not a spelling of any unit this checks`);
+      assert.equal(UNIT_SECONDS[unit], expected, `"${unit}" is worth ${UNIT_SECONDS[unit]}s`);
+      assert.equal(parseTimeSpec(`2${unit}`, '--start'), 2 * expected, `--start 2${unit}`);
+    }
+
+    // And the message a mistyped unit gets, which named four of the sixteen.
+    assert.throws(
+      () => parseTimeSpec('5x', '--start'),
+      (error) => /Use h, m, s or ms, or their long forms/u.test(error.message),
+      'the unknown-unit message no longer points at the long forms',
+    );
+  });
+
   it('lists every filesystem failure it says it translates', async () => {
     /*
       "Filesystem failures are translated into plain language rather than passed through as

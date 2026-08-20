@@ -16,7 +16,15 @@ export class TimeRangeError extends Error {
   }
 }
 
-const UNIT_SECONDS: Record<string, number> = {
+/**
+ * Every spelling of a unit this accepts, and what one of it is worth in seconds.
+ *
+ * Exported so the spellings can be enumerated by a test rather than listed a second time:
+ * twelve of these sixteen are named nowhere in the tool or its documentation, and none of
+ * their values was checked by anything. `hrs: 360` would have converted `--start 2hrs` from
+ * twelve minutes in and said nothing, which is the one kind of mistake a window may not make.
+ */
+export const UNIT_SECONDS: Record<string, number> = {
   h: 3600,
   hr: 3600,
   hrs: 3600,
@@ -108,7 +116,8 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     const scale = UNIT_SECONDS[unit];
     if (scale === undefined) {
       throw new TimeRangeError(
-        `${optionName} "${input}" uses an unknown unit "${unit}". Use h, m, s, or ms.`,
+        `${optionName} "${input}" uses an unknown unit "${unit}". Use h, m, s or ms, ` +
+          `or their long forms: hours, minutes, seconds.`,
       );
     }
 
