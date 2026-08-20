@@ -846,7 +846,7 @@ Raised for every affected channel, so a file with three of them gets three warni
 
 ### FORMULA_LABEL
 
-One of a channel's four free-text header fields starts with `=`, `+` or `@`. Excel, LibreOffice and Google Sheets read a cell beginning with any of those as the start of a formula rather than as text, whatever file it arrived in — so a channel labelled `=1+1` opens as a column headed `2`, and one labelled `=HYPERLINK("http://...","EEG")` opens as a link nobody in the reading chain wrote.
+One of a channel's four free-text header fields starts with `=`, `+`, `@` or `-`. Excel, LibreOffice and Google Sheets read a cell beginning with any of those as the start of a formula rather than as text, whatever file it arrived in — so a channel labelled `=1+1` opens as a column headed `2`, one labelled `-2+3` as a column headed `1`, and one labelled `=HYPERLINK("http://...","EEG")` as a link nobody in the reading chain wrote.
 
 **Cause.** EDF's label, unit, transducer and prefiltering fields are free text, and nothing in the format says they may not look like a formula. Usually that is a header written by a script that pasted a computed name in; it is also the shape a deliberately hostile recording would take, which is why the [security policy](https://github.com/tayal-sarthak/edf2csv/blob/main/SECURITY.md) already treats these four fields as attacker-controlled.
 
@@ -860,7 +860,7 @@ warning: Signal 0's label starts with =, which Excel, LibreOffice and Google She
 
 **What edf2csv does.** Writes the field exactly as the header has it, and says so. The usual mitigation is to prefix the cell with an apostrophe, and that means writing something the recording does not contain — the one thing this tool does not do. `NONPRINTABLE_LABEL` answers control bytes the same way, for the same reason.
 
-A leading `-` is not flagged, though the same advice usually includes it. A lone `-` is a real convention for "no unit" and appears in the test recordings, a leading `-` on a montage label is ordinary, and neither is evaluated unless what follows it parses as a formula. Warning on those would fire on files that are fine, which is how a warning stops being read.
+The minus sign has two exceptions, and until 0.7.62 it was one big one — nothing with a leading `-` was flagged at all, on the reasoning that a lone `-` is a real convention for "no unit" and appears in the test recordings. That is true of a lone `-`, which every spreadsheet leaves as text, and of a field that is entirely a number, which reads as that number and so says what the header says. It is not true of anything else after the minus: `-2+3` is arithmetic and `-A1` is a name, and both are evaluated. Those are named now; the two cases the exception was written for still are not.
 
 **What to do.** Read the CSV with pandas, R or any CSV library, none of which evaluate anything. If it has to go into a spreadsheet, use its text-import path rather than opening the file directly — in Excel that is Data → From Text/CSV with the column set to Text, and in LibreOffice the import dialog with "Evaluate formulas" off. `--channels` still selects the channel by its literal name.
 

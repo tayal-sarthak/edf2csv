@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.62
+
+### a minus sign that starts a formula was the one nothing looked at
+
+A label of `-2+3` opens as a column headed `1`, and nothing said so.
+
+`FORMULA_LABEL` names a header field a spreadsheet will run instead of read, and it tested for
+`=`, `+` and `@`. Every list of these characters names a fourth. This one left it out on
+purpose, with the reason written out on the warnings page:
+
+> A leading `-` is not flagged, though the same advice usually includes it. A lone `-` is a
+> real convention for "no unit" and appears in the test recordings, a leading `-` on a montage
+> label is ordinary, and **neither is evaluated unless what follows it parses as a formula**.
+
+That last clause is a condition, and nothing applied it. Nothing with a leading minus was
+flagged at all:
+
+```
+$ edf2csv arithmetic.edf --info --strict
+#  COLUMN  LABEL  UNIT  RATE   RANGE      OUTPUT
+0  -2+3    -2+3   uV    10 Hz  -100 to 100  signals.csv
+$ echo $?
+0
+```
+
+`-2+3` is arithmetic and opens as `1`. `-A1` is a name and opens as `#NAME?`. Neither is a lone
+dash and neither is a montage label, and both go into the CSV header row and into channels.csv,
+in a tool whose security policy already treats these four fields as attacker-controlled.
+
+The exception is now the case it was written for rather than the whole character. A lone `-` is
+left as text by every spreadsheet and is still not flagged; a field that is entirely a number —
+`-100`, `-1.5`, `-1e3` — reads as that number, which is what the header says, and is not
+flagged either. Anything else after the minus is named, in the same words the other three get.
+The fixture with a channel labelled `-` still raises nothing.
+
 ## 0.7.61
 
 ### --info would not count annotations it had already read

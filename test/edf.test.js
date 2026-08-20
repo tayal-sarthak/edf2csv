@@ -820,9 +820,15 @@ describe('EDF+ annotations', () => {
       came from, and all four free-text header fields are written through verbatim into a CSV
       header row and into channels.csv. A channel labelled `=1+1` opens as a column headed 2.
 
-      And not `-`, which the same advice usually includes: a lone `-` is a real convention for
-      "no unit" and is in the fixtures, a leading `-` on a montage label is ordinary, and
-      neither is evaluated unless what follows parses as a formula.
+      And `-`, which this left out with the reason written on the warnings page: "a lone `-` is
+      a real convention for no unit ... and neither is evaluated unless what follows it parses
+      as a formula". That is a condition, and nothing applied it — no field with a leading minus
+      was flagged at all, so `-2+3` opened as a column headed 1 and `-A1` as the #NAME? a
+      spreadsheet gives an unknown name, both in silence.
+
+      The exception is the case it names, not the character: a lone `-` is left as text by every
+      spreadsheet, and a field that is entirely a number reads as that number, which is what the
+      header says. Anything else after the minus is arithmetic or a name.
     */
     const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-formula-'));
     temporaries.push(dir);
@@ -834,18 +840,29 @@ describe('EDF+ annotations', () => {
     const target = path.join(dir, 'formula.edf');
     writeEdf({
       path: target, numRecords: 1, recordDuration: 1,
-      signals: [channel('=1+1', 'uV'), channel('plain', '@lookup'), channel('-A1', '-')],
+      signals: [
+        channel('=1+1', 'uV'),
+        channel('plain', '@lookup'),
+        channel('-2+3', 'uV'),
+        channel('-A1', 'uV'),
+        channel('-100', '-'),
+      ],
     });
 
     const file = await EdfFile.open(target);
     open.push(file);
     const raised = file.diagnostics.filter((d) => d.code === 'FORMULA_LABEL');
-    assert.equal(raised.length, 2, JSON.stringify(codes(file)));
-    assert.match(raised[0].message, /Signal 0's label starts with =/u, raised[0].message);
-    assert.match(raised[1].message, /Signal 1's unit starts with @/u, raised[1].message);
-    // The dashes said nothing, and the label is still the label.
-    assert.ok(raised.every((d) => !d.message.includes('Signal 2')), JSON.stringify(raised));
+    const named = (n) => raised.find((d) => d.message.startsWith(`Signal ${n}'s`));
+    assert.match(named(0)?.message ?? '', /label starts with =/u, JSON.stringify(raised));
+    assert.match(named(1)?.message ?? '', /unit starts with @/u, JSON.stringify(raised));
+    assert.match(named(2)?.message ?? '', /label starts with -/u, JSON.stringify(raised));
+    assert.match(named(3)?.message ?? '', /label starts with -/u, JSON.stringify(raised));
+    // Signal 4 is `-100` with a unit of `-`: a number reads as that number and a lone dash is
+    // text, so neither is a formula and neither is named.
+    assert.equal(named(4), undefined, JSON.stringify(raised));
+    assert.equal(raised.length, 4, JSON.stringify(codes(file)));
     assert.equal(file.header.signals[0]?.label, '=1+1', 'the field is written through unchanged');
+    assert.equal(file.header.signals[4]?.label, '-100', 'and so is the one nothing was said about');
 
     // An ordinary recording never raises it.
     const fine = await load('tiny.edf');

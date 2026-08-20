@@ -122,6 +122,27 @@ export interface EdfHeaderInfo {
  * makes a CSV column name that cannot be typed or matched reliably, which is the other half
  * of what this warning is for.
  */
+/**
+ * Whether a spreadsheet reads this field as the start of a formula rather than as text.
+ *
+ * `=`, `+` and `@` unconditionally; every list of these characters names a fourth, and this
+ * had it as an exception with the reason written out on the warnings page: "a lone `-` is a
+ * real convention for no unit ... and neither is evaluated unless what follows it parses as a
+ * formula". Which is the condition, and it was not being applied — nothing with a leading
+ * minus was flagged at all. A channel labelled `-2+3` opens as a column headed `1`, and
+ * `-HYPERLINK("http://...","EEG")` is a name the spreadsheet resolves, in silence.
+ *
+ * So the exception is what it says it is rather than the whole character. A lone `-` is left
+ * as text by every spreadsheet and is not flagged; a field that is entirely a number reads as
+ * that number, which is what the header says, and is not flagged either. Anything else after
+ * the minus is arithmetic or a name.
+ */
+function startsFormula(text: string): boolean {
+  if (/^[=+@]/u.test(text)) return true;
+  if (!/^-./u.test(text)) return false;
+  return !/^-(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
+}
+
 function isControlCharacter(character: string): boolean {
   const code = character.codePointAt(0) as number;
   return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
@@ -533,7 +554,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         writing something the header does not say, which is the one thing this tool refuses to
         do; NONPRINTABLE_LABEL answers control bytes the same way.
       */
-      const formulaic = fields.filter(([, text]) => /^[=+@]/u.test(text));
+      const formulaic = fields.filter(([, text]) => startsFormula(text));
       if (formulaic.length > 0) {
         const names = formulaic.map(([name]) => name);
         const named =
