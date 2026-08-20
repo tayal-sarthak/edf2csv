@@ -2,7 +2,7 @@
 
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -2960,5 +2960,99 @@ describe('converting', () => {
     const notice = result.diagnostics.find((d) => d.code === 'INPUT_CHANGED');
     assert.ok(notice, `the change must be reported: ${JSON.stringify(result.diagnostics)}`);
     assert.match(notice.hint, /No checksum was recorded/u);
+  });
+
+  it('notices a change of either kind, not only of both at once', async () => {
+    /*
+      "Whether the file has changed since it was opened, by size or by modification time" —
+      and both tests of it replaced a 2,000-record file with a 3,000-record one, which moves
+      the two together. Turn the `||` into `&&` and the whole suite stays green.
+
+      The case that matters most is the one neither covered: an overwrite in place. A recorder
+      patching a header field or rewriting the last record leaves the length exactly as it was
+      and moves only the timestamp — and it is the case where a recorded checksum is at its
+      most misleading, because the bytes it describes are gone and the file still looks the
+      same size. Under `&&`, that conversion recorded a `sha256` matching neither the file on
+      disk nor the bytes the samples came from, with no INPUT_CHANGED beside it and exit 0.
+
+      The mtime is pinned to a fixed instant so both halves are exact rather than nearly:
+      `utimes` cannot restore a sub-millisecond mtime it did not set, and a test that passes
+      because two timestamps happen to differ is not testing what it says.
+    */
+    const { EdfFile } = await import('../dist/index.js');
+    const { closeSync, openSync, writeSync } = await import('node:fs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-moved-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const signals = [{
+      label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100,
+      digMin: -1000, digMax: 1000, samplesPerRecord: 64, gen: (r, s) => (r + s) % 1000,
+    }];
+    const PINNED = new Date(1_600_000_000_000);
+    const LATER = new Date(1_600_000_060_000);
+    const build = async (name) => {
+      const at = path.join(scratch, name);
+      writeEdf({ path: at, numRecords: 40, recordDuration: 1, signals });
+      await utimes(at, PINNED, PINNED);
+      return at;
+    };
+
+    // The modification time alone: same length, different instant.
+    const touched = await build('touched.edf');
+    let file = await EdfFile.open(touched);
+    const lengthBefore = (await stat(touched)).size;
+    await utimes(touched, LATER, LATER);
+    assert.equal((await stat(touched)).size, lengthBefore, 'the length must not have moved');
+    assert.equal(await file.changedSinceOpen(), true, 'a new modification time is a change');
+    await file.close();
+
+    // The length alone: different size, the same instant to the millisecond.
+    const grown = await build('grown.edf');
+    file = await EdfFile.open(grown);
+    const openedAt = (await stat(grown)).mtimeMs;
+    await appendFile(grown, '\0');
+    await utimes(grown, PINNED, PINNED);
+    assert.equal((await stat(grown)).mtimeMs, openedAt, 'the instant must not have moved');
+    assert.equal(await file.changedSinceOpen(), true, 'a new length is a change');
+    await file.close();
+
+    // And neither: a file nothing touched is still the file that was opened.
+    const still = await build('still.edf');
+    file = await EdfFile.open(still);
+    assert.equal(await file.changedSinceOpen(), false);
+    await file.close();
+
+    /*
+      End to end, on the overwrite that keeps the length: no checksum, and the change
+      reported. A hash of bytes that are gone, presented beside samples read from the bytes
+      that replaced them, is provenance for a file that never existed.
+    */
+    const live = await build('live.edf');
+    const size = (await stat(live)).size;
+    let overwritten = false;
+    const out = await outDir();
+    const result = await convert(live, {
+      outputDir: out,
+      quiet: true,
+      checksum: true,
+      onProgress: () => {
+        if (overwritten) return;
+        overwritten = true;
+        const handle = openSync(live, 'r+');
+        try {
+          writeSync(handle, Buffer.alloc(128, 7), 0, 128, size - 128);
+        } finally {
+          closeSync(handle);
+        }
+      },
+    });
+    assert.ok(overwritten, 'the input was never overwritten, so this proves nothing');
+    assert.equal((await stat(live)).size, size, 'the overwrite must keep the length');
+    const written = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+    assert.equal(written.source.sha256, null, 'no hash for bytes that are gone');
+    assert.ok(
+      result.diagnostics.some((d) => d.code === 'INPUT_CHANGED'),
+      `the change must be reported: ${result.diagnostics.map((d) => d.code).join(', ')}`,
+    );
   });
 });

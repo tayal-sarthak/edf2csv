@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.55
+
+### the input-changed check was only ever tested with both halves at once
+
+The input-changed check says "size **or** modification time", and both tests moved them
+together.
+
+`changedSinceOpen` is what makes `--checksum` a guarantee rather than a hope: if the recording
+moved at any point, the hash is dropped and the run says why. Its two tests both replace a
+2,000-record file with a 3,000-record one, which changes the length and the timestamp at once.
+So this:
+
+```
+-  now.size !== this.fileSize || now.mtimeMs !== this.modifiedAtOpenMs
++  now.size !== this.fileSize && now.mtimeMs !== this.modifiedAtOpenMs
+```
+
+passes all 391 tests.
+
+The case neither covered is the one that matters most. A recorder patching a header field, or
+rewriting the last record of a fixed-length buffer, overwrites in place: the length is exactly
+what it was and only the timestamp moves. It is also where a recorded checksum is at its most
+misleading, because the bytes it describes are gone and the file still looks the same size.
+Under `&&`:
+
+```
+overwrote in place: true   size unchanged: true
+metadata sha256   : 28535bb4b900cbb0...
+hash of the file  : e90455176f1c4165...
+INPUT_CHANGED     : false
+```
+
+A `sha256` in the provenance file matching neither the file on disk nor the bytes the samples
+were read from, with nothing beside it, and exit 0. As shipped, that conversion records
+`sha256: null` and raises INPUT_CHANGED, which is the whole point of the check.
+
+Both halves are now asserted separately: a new modification time at an unchanged length, and a
+new length at an identical modification time. The instant is pinned to a fixed value first,
+because `utimes` cannot restore a sub-millisecond timestamp it did not set — a test that passes
+because two timestamps happened to differ is not testing what it says.
+
 ## 0.7.54
 
 ### a latin1 annotation was exported with a character the file does not hold
