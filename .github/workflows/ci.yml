@@ -44,7 +44,7 @@ jobs:
   # until 0.6.58 nothing ran any of them on a push: `npm test` covers the suite and not the
   # harnesses, so a regression in an invariant only a sweep checks shipped in silence.
   #
-  # Seven of the eight run here. `crossvalidate` is the exception and has its own weekly
+  # Eight of the nine run here. `crossvalidate` is the exception and has its own weekly
   # workflow, because it needs pyEDFlib installed and this package has no dependencies.
   #
   # Its own job rather than steps on `core`, because these take minutes where the suite takes

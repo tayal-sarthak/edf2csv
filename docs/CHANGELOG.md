@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.87
+
+### the sweep count the workflow states about itself
+
+The CI workflow miscounted the sweeps it runs, in the comment a test was written to check.
+
+`ci.yml`'s `sweeps` job opens with two sentences about how many harnesses exist and how many
+of them run there. The first is read back against the correctness page by
+`runs every sweep it offers as evidence`, whose own comment records why:
+
+> The workflow comment counts them too, and said seven while the page named eight. Same
+> failure as the claims heading below: a number in prose that the thing it describes has
+> outgrown.
+
+The second sentence, one line below it, still read:
+
+```yaml
+  # Eight of the nine run here.  <- was: Seven of the eight run here.
+```
+
+Both halves stale. There are nine sweeps — which is what the test asserts about the sentence
+above — and the job runs eight of them, one step per invariant. `crossvalidate` is the ninth
+and has its own weekly workflow because it needs pyEDFlib.
+
+So the number the test was written for was sitting inside the comment it was reading, one line
+outside the regular expression. Both halves are checked now: the total against the page, and
+the count that runs here against the job's own steps — which is the same pair CONTRIBUTING.md
+has been held to since that test was written.
+
 ## 0.7.86
 
 ### the reference promised three suggestions where four are shown

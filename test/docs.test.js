@@ -257,6 +257,16 @@ describe('documentation and source agree on their lists', () => {
     );
 
     /*
+      And the sentence one line under it, which was reading seven of eight while the one above
+      was corrected to nine — both halves of its arithmetic stale, in the file this very test
+      was written to hold to the page. A number in a comment that nothing reads is the failure
+      this test exists for, and it was sitting inside the comment it was checking.
+    */
+    const runsHere = /(\w+) of the (\w+) run here/u.exec(yaml);
+    assert.ok(runsHere, 'the "N of the M run here" sentence is gone or reworded');
+    assert.equal(words[runsHere[2].toLowerCase()], named.length, `it says "of the ${runsHere[2]}"`);
+
+    /*
       And CONTRIBUTING.md, which the first version of this test did not look at — so the very
       omission it was written for was still sitting in a third file when it went green. It is
       the list a contributor actually runs before opening a pull request; a sweep missing from
@@ -290,6 +300,12 @@ describe('documentation and source agree on their lists', () => {
       words[onPush[1]],
       runOnPush.length,
       `CONTRIBUTING.md says CI runs the first ${onPush[1]}; the sweeps job runs ${runOnPush.length}`,
+    );
+    // The workflow's own half of that same claim; see the comment beside `runsHere` above.
+    assert.equal(
+      words[runsHere[1].toLowerCase()],
+      runOnPush.length,
+      `the workflow says ${runsHere[1]} run here; the sweeps job runs ${runOnPush.length}`,
     );
   });
 
