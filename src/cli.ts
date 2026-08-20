@@ -851,8 +851,23 @@ async function showInfo(
       predicted 8 rows where the conversion wrote 10, on a file whose discontinuous twin —
       identical but for the reserved field — agreed with itself.
     */
+    /*
+      And a file with an annotation channel and no marker at all, which is the one case this
+      condition used to exclude and the one that most needs it.
+
+      Without `EDF+C` or `EDF+D` the origin is not applied — the samples are timed from zero —
+      but the annotation channel is found by label, so its events keep the onsets the file
+      gives them and the two CSVs come out on clocks the origin apart. That is what
+      MISSING_EDF_PLUS_MARKER says, and it is raised from the record starts, which this
+      declined to read for exactly the files that produce it. So a conversion warned that
+      signals.csv and annotations.csv would be a hundred seconds apart, and `--info` — run
+      first, on purpose, to find out what a conversion would say — said nothing at all.
+
+      The same single read the continuous case already pays for, on a file that is anomalous
+      to begin with: an EDF Annotations channel is not something a plain EDF file has.
+    */
     const scan =
-      !needsEveryRecordStart && file.header.continuity === 'EDF+C' && hasAnnotations
+      !needsEveryRecordStart && file.header.continuity !== 'EDF+D' && hasAnnotations
         ? await file.scanOrigin()
         : null;
     const annotationData = needsEveryRecordStart

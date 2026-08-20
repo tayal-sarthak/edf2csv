@@ -36,7 +36,7 @@ There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has alre
 
 `--info` reads the header and builds a conversion plan, so it surfaces every structural, calibration and output-shape warning without converting anything.
 
-It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first sixteen records of a continuous one to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
+It reads the annotation channel too, for an EDF+ recording: the whole of it for a discontinuous file, whose record times are stored rather than arithmetic, and the first sixteen records of a continuous one — or of a file that has an annotation channel and no marker at all — to find where the recording begins. So it also raises `ANNOTATION_DECODE_FAILED` and the `DISCONTINUOUS` variants that come from inspecting record timestamps — records out of order, records overlapping, an origin too far from zero.
 
 It raises them for what it read, which on a continuous file is however many records it took to find one stating a start time — the search stops there, so usually that is the first record and only ever at most sixteen. A timekeeping entry that cannot be read *after* that point is not seen: give the second record of a three-record continuous file a corrupt TAL and the conversion raises `ANNOTATION_DECODE_FAILED` while `--info` says nothing, even though record 1 is well inside the sixteen. An unreadable *event* further into a continuous recording is not seen either, so `two-annotation-channels.edf` raises `ANNOTATION_DECODE_FAILED` when converted and nothing under `--info`. Its byte-identical discontinuous twin raises it either way, because there the whole channel is read.
 
@@ -634,6 +634,8 @@ warning: This file has an annotation channel stating that its records begin at 1
          signals.csv are on different clocks. Mark the file EDF+C, or subtract
          the offset from the onsets, before joining them.
 ```
+
+`--info` raises it too. Until 0.7.53 it did not: it read the annotation channel only for a file that claimed to be EDF+, which is every file except the ones this warning is about — so a conversion said the two CSVs would be a thousand seconds apart and the command you run first, to find out what a conversion would say, said nothing at all.
 
 Until 0.5.104 nothing was raised: `signals.csv` opened at `0.000`, `annotations.csv` put the event at `1000.5`, and the pages promise the opposite — "`onset_s` is on the same clock as `time_s` in the signal files".
 

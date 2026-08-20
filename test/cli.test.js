@@ -680,6 +680,60 @@ describe('--info', () => {
     assert.match(stdout, /Would write 10 rows/);
   });
 
+  it('sees the marker a conversion would complain about', async () => {
+    /*
+      `--info` reads the annotation channel for a file that claims to be EDF+ — the whole of
+      it for a discontinuous one, the first records of a continuous one — and for nothing
+      else. MISSING_EDF_PLUS_MARKER is about a file that claims neither: an annotation channel
+      whose timekeeping puts the records at a non-zero instant, in a file with no marker, so
+      the samples are timed from zero and the events keep their own onsets and the two CSVs
+      come out on clocks the origin apart.
+
+      Which is the one file the read was skipped for. The conversion warned that signals.csv
+      and annotations.csv would be a thousand seconds apart; `--info` — the command you run
+      first, on purpose, to find out what a conversion would say — printed the channel table
+      and nothing else. `--info --strict` exited 0 on it.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-nomarker-'));
+    temporaries.push(dir);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const unmarked = path.join(dir, 'unmarked.edf');
+    writeEdf({
+      path: unmarked,
+      reserved: '',
+      numRecords: 3,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 30, annotations: true },
+      ],
+      talsForRecord: (record) => buildTal(1000 + record, record === 0
+        ? [{ onset: 1000.5, duration: null, text: 'mark' }]
+        : []),
+    });
+
+    const info = await cli([unmarked, '--info', '--json']);
+    assert.equal(info.code, 0, info.stderr);
+    const codes = JSON.parse(info.stdout).warnings.map((w) => w.code);
+    assert.ok(codes.includes('MISSING_EDF_PLUS_MARKER'), `--info raised ${codes.join(', ') || 'nothing'}`);
+
+    // The same words the conversion uses, since it is the same recording being described.
+    const converted = await cli([unmarked, '--out', path.join(dir, 'out'), '--json', '--quiet']);
+    const said = (text) => JSON.parse(text).warnings.find((w) => w.code === 'MISSING_EDF_PLUS_MARKER');
+    assert.equal(said(info.stdout).message, said(converted.stdout).message);
+    assert.match(said(info.stdout).message, /disagree by 1000s/u);
+
+    // And it is still exit 1 under --strict, in the mode that never converts anything.
+    const strict = await cli([unmarked, '--info', '--strict']);
+    assert.equal(strict.code, 1, 'a warning under --info --strict is still a warning');
+
+    // A plain EDF with no annotation channel is untouched: nothing to read, nothing to say.
+    const plain = await cli([fixture('tiny.edf'), '--info', '--json']);
+    assert.deepEqual(JSON.parse(plain.stdout).warnings, []);
+  });
+
   it('does not blame gaps for a span its records overlap into', async () => {
     /*
       `Time span` is printed whenever the span and the duration disagree, and the parenthetical

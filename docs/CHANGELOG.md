@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.53
+
+### --info skipped the annotation channel of the files that needed it read
+
+`--info` could not see the one warning it most needed to.
+
+MISSING_EDF_PLUS_MARKER is about a file that carries an annotation channel whose timekeeping
+puts the records at a non-zero instant, and a reserved field with neither `EDF+C` nor `EDF+D`
+in it. The marker is what applies the origin, so the samples are timed from zero; the
+annotation channel is found by label, so its events keep the onsets the file gives them. The
+two CSVs come out on clocks the origin apart, and the conversion says so.
+
+`--info` said nothing:
+
+```
+$ edf2csv unmarked.edf --info --strict
+File       unmarked.edf
+Format     EDF
+Duration   3s  (3 records of 1s)
+...
+$ echo $?
+0
+
+$ edf2csv unmarked.edf --out csv
+warning: This file has an annotation channel stating that its records begin at 1000s,
+         but its reserved field carries no EDF+C or EDF+D marker — so it is read as
+         plain EDF, time_s counts from zero, and the two disagree by 1000s.
+```
+
+The reason is the condition that decides whether the annotation channel is read at all:
+`continuity === 'EDF+C'`. A discontinuous file has every record start read, a continuous one
+has its first records read to find the origin, and everything else is skipped — which is every
+file this warning is about. The read it needed is the one the continuous case already pays for,
+on a file that is anomalous to begin with, since an `EDF Annotations` channel is not something
+a plain EDF file has.
+
+So `--info` now reads it for anything that is not EDF+D and has an annotation channel, and
+raises the warning in the same words the conversion does. `--info --strict` exits 1 on such a
+file, where it exited 0 before. A plain EDF with no annotation channel reads nothing extra and
+says nothing, as it did.
+
+The check that keeps the page's list of "warnings `--info` cannot raise" honest is a sweep over
+the fixture set, and no fixture in it raises this code — so the omission was invisible from
+both ends. The test added here builds the file rather than waiting for a fixture to exist.
+
 ## 0.7.52
 
 ### a leap second in the start time was dropped without a word
