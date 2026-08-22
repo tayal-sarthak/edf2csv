@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.97
+
+### the one control byte that ends a CSV row had no test
+
+`NEEDS_QUOTING` is `/[",\r\n]/u`, and the `\r` in it had never been exercised. Drop it — the
+one-character edit the class would be written with by mistake — and all 417 tests still pass.
+
+A carriage return is as legal in an EDF header field as the ESC and BEL bytes this suite
+already covers, and CSV readers apply universal newlines outside quotes, so it is the one
+control byte that ends a row rather than sitting inside one. Unquoted, a channel labelled
+`EEG<CR>Fpz` gives Python's `csv.reader` six rows where the file has five:
+
+```
+['time_s', 'EEG']
+['Fpz']
+['0.000', '0.0244']
+```
+
+A header row split in half, a stray row above the data, and every subsequent row shifted by
+one — from a conversion that exits 0 and prints a `NONPRINTABLE_LABEL` warning about the
+column name rather than about the file's shape.
+
+The escaping was already right. This is the test it did not have, alongside the ESC, BEL and
+tab cases beside it, plus the direct assertion on `escapeCsvField` that pins the class itself.
+
 ## 0.7.96
 
 ### two usage refusals without the prefix every other one carries

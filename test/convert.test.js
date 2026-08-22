@@ -171,6 +171,37 @@ describe('column naming', () => {
     const header = (await readCsv(dir, 'signals.csv'))[0];
     assert.ok(header.includes(String.fromCharCode(27)), 'the escape is still in the column');
     assert.ok(header.includes('plain'));
+
+    /*
+      One of those bytes ends a row rather than sitting inside one.
+
+      A carriage return is as legal in an 8-bit header field as an ESC, and CSV readers apply
+      universal newlines outside quotes: unquoted, `EEG\rFpz` makes Python's `csv.reader` see
+      six rows where the file has five and a header of `['time_s', 'EEG']` followed by a row
+      `['Fpz']`. `NEEDS_QUOTING` has always covered it and nothing here asked — drop the `\r`
+      from that class and every test in this suite still passed, on a file whose every row had
+      moved.
+    */
+    const { escapeCsvField } = await import('../dist/format/csv.js');
+    assert.equal(escapeCsvField('EEG\rFpz'), '"EEG\rFpz"');
+
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-cr-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const returns = path.join(scratch, 'carriage-return.edf');
+    writeEdf({
+      path: returns,
+      numRecords: 2,
+      recordDuration: 1,
+      signals: [
+        { label: 'EEG\rFpz', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 2, gen: (r, s) => r * 2 + s },
+      ],
+    });
+    const crOut = await outDir();
+    await convert(returns, { outputDir: crOut });
+    const crHeader = (await readCsv(crOut, 'signals.csv'))[0];
+    assert.equal(crHeader, 'time_s,"EEG\rFpz"', JSON.stringify(crHeader));
   });
 
   it('never advises a --channels command the shell cannot carry', async () => {
