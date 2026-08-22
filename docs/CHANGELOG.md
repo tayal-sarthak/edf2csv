@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.107
+
+### the one place a recording's name reached the terminal unescaped
+
+A file name is untrusted text. The filesystem supplies it, a recording inside a scanned folder
+may be called anything, and a name carrying an ESC byte is legal on every platform this runs on —
+which is why `reportError`, `named`, the `[n/m]` batch header and the interrupt handler all put a
+recording's name through `printable` before it reaches a terminal. Seven places in `cli.ts`
+interpolate that name. Six of them did.
+
+The seventh is the parallel path's fork-failure branch:
+
+```ts
+err: `${err}error: ${input}: ${error.message}\n`
+```
+
+It fires when the fork itself fails rather than the conversion — a batch of five hundred at
+`--jobs auto` running out of file descriptors is the ordinary way to get there — so it is at once
+the least exercised line and the only one that writes a name straight to stderr. 0.5.67 fixed
+this class for the serial path and 0.7.1 for the hint under it; this was the copy in the branch
+nothing can reach from a test.
+
+Which is why the test reads it out of the source instead: there is no way from a test to make a
+fork fail, and a line that only runs under exhaustion is exactly the one to check by enumeration.
+Every interpolation of the recording's name in that file now has to be the escaped form, and
+putting the bare one back fails the suite.
+
 ## 0.7.106
 
 ### a plus and a minus in front of the same number answered differently

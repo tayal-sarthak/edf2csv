@@ -501,6 +501,23 @@ describe('terminal safety', () => {
     assert.deepEqual(control(info.stdout + info.stderr), [], 'the File line');
 
     /*
+      And every place in the CLI that prints a recording's name, not only the ones a test can
+      reach. Six of the seven interpolations of `input` went through `printable`; the seventh
+      was the fork-failure branch of the parallel path, which fires when a batch of five
+      hundred at --jobs auto runs out of file descriptors — the moment least likely to be
+      exercised and the one that prints the name straight to stderr. Read out of the source,
+      because there is no way from here to make a fork fail.
+    */
+    const cliSource = await readFile(path.join(ROOT, 'src/cli.ts'), 'utf8');
+    const uses = [...cliSource.matchAll(/\$\{(?:printable\()?input\b/gu)].map((m) => m[0]);
+    assert.ok(uses.length >= 6, `only ${uses.length} interpolations of the input path found`);
+    assert.deepEqual(
+      [...new Set(uses)],
+      ['${printable(input'],
+      'a recording name reaches the terminal unescaped',
+    );
+
+    /*
       A newline in the name must not turn one reported path into two lines. No --out here on
       purpose: the destination is then derived from the recording's own name, so the newline
       is in the path the summary prints rather than only in the one it was given.

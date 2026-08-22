@@ -1820,7 +1820,23 @@ async function convertInChild(
     });
     child.on('error', (error) => {
       running.delete(child);
-      resolve({ code: EXIT_ERROR, out, err: `${err}error: ${input}: ${error.message}\n`, report });
+      /*
+        Escaped, which every other place this file prints a recording's name has been since
+        0.5.67 and this one was not.
+
+        A file name is untrusted text — the filesystem supplies it and a recording inside a
+        scanned folder may be called anything, including a name carrying an ESC byte — and
+        `named`, `reportError`, the `[n/m]` header and the interrupt handler all put it
+        through `printable`. This line is the one that fires when the fork itself fails, which
+        is the moment a batch of five hundred at `--jobs auto` runs out of file descriptors,
+        and it is the only line in this file that prints a name straight to stderr.
+      */
+      resolve({
+        code: EXIT_ERROR,
+        out,
+        err: `${err}error: ${printable(input)}: ${printableLines(error.message, '       ')}\n`,
+        report,
+      });
     });
     child.on('close', (code, signal) => {
       running.delete(child);
