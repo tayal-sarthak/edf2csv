@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.106
+
+### a plus and a minus in front of the same number answered differently
+
+`FORMULA_LABEL` warns about header text a spreadsheet evaluates instead of showing. 0.7.62
+worked out what the exception for `-` actually is — a lone dash is left as text, and a field
+that is entirely a number reads as that number, which is what the header says — and applied it
+to the minus only. The plus was still unconditional:
+
+```
+label "+100"   warning: Signal 0's label starts with +, which Excel, LibreOffice and Google
+                        Sheets read as the start of a formula rather than as text.
+label "-100"   (nothing)
+```
+
+Both cells open as the number. It is one rule in the spreadsheet — Lotus compatibility converts
+a leading `+` or `-` to a formula when what follows one parses as a formula, and leaves it as
+text when it does not — so the sign cannot decide it, and the reasoning written out for the
+minus is the reasoning for the plus. A warning that fires on a field which is fine is how a
+warning gets ignored, which is the argument 0.7.62 made; under `--strict` it was also an exit
+code, on two channels differing by a sign.
+
+`+1+1` is arithmetic and is still named, as `-1+1` is. `+EEG` is a name and is still named. `=`
+and `@` are unconditional and unchanged.
+
+Found by mutation: removing `+` from the character class left all 419 tests passing, because
+every case under test used `=`, `@` or `-`.
+
 ## 0.7.105
 
 ### half of a window field pair described as resolved

@@ -1111,6 +1111,15 @@ describe('EDF+ annotations', () => {
         channel('-2+3', 'uV'),
         channel('-A1', 'uV'),
         channel('-100', '-'),
+        /*
+          The same exception, one sign over, which it did not take. `+100` reads as 100 in
+          every spreadsheet — Lotus compatibility converts a leading `+` or `-` to a formula
+          only when what follows one parses as a formula — so it says what the header says,
+          exactly as `-100` above does. It was warned about anyway, and under --strict that
+          difference was an exit code.
+        */
+        channel('+100', '+1e3'),
+        channel('+1+1', 'uV'),
       ],
     });
 
@@ -1123,9 +1132,13 @@ describe('EDF+ annotations', () => {
     assert.match(named(2)?.message ?? '', /label starts with -/u, JSON.stringify(raised));
     assert.match(named(3)?.message ?? '', /label starts with -/u, JSON.stringify(raised));
     // Signal 4 is `-100` with a unit of `-`: a number reads as that number and a lone dash is
-    // text, so neither is a formula and neither is named.
+    // text, so neither is a formula and neither is named. Signal 5 is the same pair written
+    // with a plus, and takes the same answer.
     assert.equal(named(4), undefined, JSON.stringify(raised));
-    assert.equal(raised.length, 4, JSON.stringify(codes(file)));
+    assert.equal(named(5), undefined, JSON.stringify(raised));
+    // Signal 6 is arithmetic behind the plus, which is what the exception is not for.
+    assert.match(named(6)?.message ?? '', /label starts with \+/u, JSON.stringify(raised));
+    assert.equal(raised.length, 5, JSON.stringify(codes(file)));
     assert.equal(file.header.signals[0]?.label, '=1+1', 'the field is written through unchanged');
     assert.equal(file.header.signals[4]?.label, '-100', 'and so is the one nothing was said about');
 

@@ -129,8 +129,8 @@ export interface EdfHeaderInfo {
 /**
  * Whether a spreadsheet reads this field as the start of a formula rather than as text.
  *
- * `=`, `+` and `@` unconditionally; every list of these characters names a fourth, and this
- * had it as an exception with the reason written out on the warnings page: "a lone `-` is a
+ * `=` and `@` unconditionally; every list of these characters names two more, and this had
+ * `-` as an exception with the reason written out on the warnings page: "a lone `-` is a
  * real convention for no unit ... and neither is evaluated unless what follows it parses as a
  * formula". Which is the condition, and it was not being applied — nothing with a leading
  * minus was flagged at all. A channel labelled `-2+3` opens as a column headed `1`, and
@@ -140,11 +140,19 @@ export interface EdfHeaderInfo {
  * as text by every spreadsheet and is not flagged; a field that is entirely a number reads as
  * that number, which is what the header says, and is not flagged either. Anything else after
  * the minus is arithmetic or a name.
+ *
+ * And `+` takes the same exception, which it did not. It is the same rule in the spreadsheet —
+ * Lotus compatibility, which converts a leading `+` or `-` to a formula when what follows one
+ * parses as a formula and leaves it as text when it does not — so the two signs cannot differ
+ * here for a reason that comes from the sign. A channel labelled `+100` was warned about as
+ * something a spreadsheet "reads as the start of a formula rather than as text", over a cell
+ * that opens as 100, which is what the header says; `-100` beside it said nothing, and under
+ * `--strict` the difference was an exit code. `+1+1` is still arithmetic and still flagged.
  */
 function startsFormula(text: string): boolean {
-  if (/^[=+@]/u.test(text)) return true;
-  if (!/^-./u.test(text)) return false;
-  return !/^-(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
+  if (/^[=@]/u.test(text)) return true;
+  if (!/^[+-]./u.test(text)) return false;
+  return !/^[+-](?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
 }
 
 function isControlCharacter(character: string): boolean {
