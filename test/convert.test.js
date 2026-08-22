@@ -1243,11 +1243,20 @@ describe('option checking', () => {
       */
       [{ channels: 'ECG' }, /channels must be a list of channel names, got "ECG"/u],
       [{ channels: [1] }, /channels must be a list of channel names, got \[1\]/u],
+      /*
+        And an empty destination, which went the whole way to `mkdir('')` and came back a
+        ConversionError about a path that does not exist and a permission that is not the
+        problem — a failure class meaning the conversion went wrong, for a value that was
+        wrong before it started. `--out "$DEST"` with DEST unset is how the command line gets
+        it by accident; building the path in code is how the library does.
+      */
+      [{ outputDir: '' }, /outputDir is empty\. Give a directory/u],
     ];
 
     for (const [options, expected] of cases) {
       const dir = await outDir();
       await assert.rejects(
+        // `...options` last, so a case naming outputDir is the one that reaches convert.
         convert(fixture('tiny.edf'), { outputDir: dir, quiet: true, ...options }),
         (error) => {
           assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);

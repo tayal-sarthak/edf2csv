@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.112
+
+### an empty destination answered by the filesystem, not by the option check
+
+`convert(file, { outputDir: '' })` went the whole way to `mkdir('')` and came back:
+
+```
+ConversionError: Cannot create "": part of the path does not exist.
+                 Check the path exists and that you have permission to write there.
+```
+
+Advice about a path and a permission for a value that is neither, and a `ConversionError` —
+which means the conversion went wrong — for an option that was wrong before it started.
+
+The command line refused this, in as many words: "Every other option that takes a value refuses
+an empty one from the command line and says what it wanted ... `--out ""` was the eighth of
+eight and the exception." That fix stopped at the command line. A caller building the path in
+code reaches the same `mkdir('')` the same way, and `--out "$DEST"` with `DEST` unset has a
+direct equivalent in every language that has string interpolation.
+
+`assertOptions` refuses it now, before the directory exists, alongside the other seven. Not
+trimmed, for the reason the command line gives: a directory whose name is a space is a strange
+thing to ask for, but it is a thing the filesystem has, and a path is not a keyword.
+
 ## 0.7.111
 
 ### a channels option of the wrong shape taken apart instead of refused

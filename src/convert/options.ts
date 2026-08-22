@@ -44,6 +44,7 @@ export function assertOptions(options: {
   end?: number | undefined;
   layout?: string | undefined;
   channels?: readonly string[] | undefined;
+  outputDir?: string | undefined;
 }): void {
   const { decimals } = options;
   if (decimals !== undefined) {
@@ -105,6 +106,25 @@ export function assertOptions(options: {
     file rather than about the call. Both are the option being wrong, so both are refused
     here, before a directory exists.
   */
+  /*
+    An empty destination, refused here rather than by the filesystem.
+
+    `convert(file, { outputDir: '' })` went the whole way to `mkdir('')` and came back a
+    `ConversionError`: "Cannot create \"\": part of the path does not exist. Check the path
+    exists and that you have permission to write there." Advice about a path and a permission
+    for a value that is neither, and a failure class that means the conversion went wrong
+    where the option did.
+
+    The command line refused this at 0.6.x, with the reasoning that `--out "$DEST"` and `DEST`
+    unset is how it gets written by accident — and left the library, which a caller building
+    the path in code reaches the same way. Not trimmed, for the reason given there: a
+    directory whose name is a space is a strange thing to ask for, but it is a thing the
+    filesystem has and a path is not a keyword.
+  */
+  if (options.outputDir === '') {
+    throw new OptionError('outputDir is empty. Give a directory, for example "./converted".');
+  }
+
   const { channels } = options;
   if (channels !== undefined) {
     /*
