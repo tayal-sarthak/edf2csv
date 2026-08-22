@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.113
+
+### the half of the scaler's no-mapping answer nothing reached
+
+The scaler has two ways to end up with no mapping at all, one at each end of what a double can
+hold. A physical span below the smallest subnormal makes the gain underflow to `+0`; a span
+above the largest double makes it overflow to `Infinity`. Both mean the header states a
+calibration that cannot be applied, and both are answered the same way — empty cells, plus
+`UNUSABLE_PHYSICAL_RANGE` — rather than with a number the header does not justify.
+
+The test written for the underflow says so in its own comment: "It is the same fact as the
+overflow case the scaler already handled". It never reached it. Replace `NaN` in that branch
+with `physicalMin`, which is what it returned before it was fixed, and all 420 tests pass while
+a channel spanning `-1e308` to `1e308` prints a column of one repeated 309-digit constant for
+samples that are genuinely different — a whole recording flattened to a number no writer wrote.
+
+`-1e308` fits EDF's eight-character physical bound with three characters to spare, so it is a
+header a writer can produce, and this repository already carries a fixture for the field
+accepting exponent form. The overflow, and the range one power of ten inside it that converts
+normally, are both pinned now.
+
 ## 0.7.112
 
 ### an empty destination answered by the filesystem, not by the option check

@@ -728,6 +728,37 @@ describe('column naming', () => {
     const flatCells = (await readCsv(flatDir, 'signals.csv')).slice(1).map((row) => row.split(',')[1]);
     assert.deepEqual([...new Set(flatCells)], ['5.000'], 'a flat range still writes its value');
 
+    /*
+      And the overflow this comment calls "the same fact ... the scaler already handled", which
+      nothing reached. The two failures are one range apart: a span below the smallest
+      subnormal underflows to a gain of +0, and a span above the largest double overflows to a
+      gain of Infinity. Both mean there is no mapping, and both are written as empty cells.
+
+      `-1e308` to `1e308` fits EDF's eight-character physical bounds with three to spare, so
+      this is a header a writer can produce. Give the overflow branch a number instead of NaN —
+      `physicalMin`, which is what it returned before 0.5.x, or a zero — and every one of these
+      tests still passes while that channel prints a column of one repeated 309-digit constant
+      for samples that are genuinely different.
+    */
+    const hugeDir = await outDir();
+    const huge = await convert(build('huge', '-1e308', '1e308'), { outputDir: hugeDir });
+    const overflowed = huge.diagnostics.filter((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE');
+    assert.equal(overflowed.length, 1, JSON.stringify(huge.diagnostics));
+    assert.match(overflowed[0].message, /too large to represent/u, overflowed[0].message);
+    const hugeCells = (await readCsv(hugeDir, 'signals.csv')).slice(1).map((row) => row.split(',')[1]);
+    assert.deepEqual([...new Set(hugeCells)], [''], `expected empty cells, got ${[...new Set(hugeCells)]}`);
+
+    // One power of ten in, the span is a double and the channel converts normally.
+    const okDir = await outDir();
+    const inRange = await convert(build('inrange', '-1e307', '1e307'), { outputDir: okDir });
+    assert.deepEqual(
+      inRange.diagnostics.filter((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE'),
+      [],
+      JSON.stringify(inRange.diagnostics),
+    );
+    const okCells = (await readCsv(okDir, 'signals.csv')).slice(1).map((row) => row.split(',')[1]);
+    assert.ok(new Set(okCells).size > 1, `distinct samples must stay distinct: ${okCells.join(' ')}`);
+
     // And an ordinary calibration is untouched.
     const ordinary = await convert(fixture('tiny.edf'), { outputDir: await outDir() });
     assert.ok(
