@@ -1039,6 +1039,38 @@ describe('EDF+ annotations', () => {
       );
     }
 
+    /*
+      The page lists four ways a header field is not a number, and one of them was under test.
+
+      warnings-and-errors gives `BAD_HEADER_FIELD` a section, and it says the code is "raised
+      when a numeric field is empty, when its contents don't parse as a finite number, when a
+      field that must be a whole number is fractional, or when a signal declares a negative
+      sample count". Everything above is the second of those. The other three each have their
+      own sentence in the parser, each names the field, and none had ever been produced by
+      anything here.
+    */
+    const RECORD_COUNT = 236;
+    const SAMPLES_PER_RECORD = 256 + 216;
+    for (const [at, field, expected] of [
+      // Blank. Eight spaces is what a writer leaves when it has nothing to put there, and
+      // `Number('')` is 0 — a physical maximum of zero, invented from an empty field.
+      [PHYSICAL_MAX, '', /Header field "physical maximum \(signal 0\)" is empty\./u],
+      // Fractional where the format says whole. Half a data record is not a count of them.
+      [RECORD_COUNT, '1.5', /Header field "number of data records" must be a whole number \(found "1\.5"\)/u],
+      // A negative sample count, which has its own sentence naming the signal and its label.
+      [SAMPLES_PER_RECORD, '-1', /Signal 0 \("ch1"\) declares -1 samples per record\./u],
+    ]) {
+      assert.throws(
+        () => parseHeader(patched(at, field), original.length),
+        (error) => {
+          assert.equal(error.code, 'BAD_HEADER_FIELD', `${JSON.stringify(field)}: ${error.message}`);
+          assert.match(error.message, expected);
+          return true;
+        },
+        `${JSON.stringify(field)} at ${at} was accepted`,
+      );
+    }
+
     // And the forms EDF does write are still read, exponent included.
     for (const field of ['100', '+100', '-100', '100.0', '1e30', '1E30', '.5']) {
       const { header } = parseHeader(patched(PHYSICAL_MAX, field), original.length);

@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.114
+
+### four documented causes of one error, one of them tested
+
+`BAD_HEADER_FIELD` has a section on the warnings page, and it lists four ways to reach it:
+"when a numeric field is empty, when its contents don't parse as a finite number, when a field
+that must be a whole number is fractional, or when a signal declares a negative sample count".
+
+One of the four was under test. The suite feeds the parser `0x64`, `0b1100100` and `0o144` in a
+physical bound and `0x02` in the signal count — the second cause, thoroughly — and had never
+handed it a blank field, a fractional count, or a negative sample count. Each of the other three
+has its own sentence in the parser, each names the field it is about, and none of them had ever
+been produced by anything in this repository.
+
+They are not exotic. Eight spaces is what a writer leaves in a field it has nothing to put in,
+and `Number('')` is zero — so the guard between a blank physical maximum and a calibration of
+zero, invented from nothing, is the one sentence that was never exercised. A fractional record
+count is half a data record. A negative sample count is the field that decides how many bytes of
+each record belong to a channel.
+
+All four now, with the message each produces read back.
+
 ## 0.7.113
 
 ### the half of the scaler's no-mapping answer nothing reached
