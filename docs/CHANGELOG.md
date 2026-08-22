@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.96
+
+### two usage refusals without the prefix every other one carries
+
+Two argument-parser refusals came from `parseArgs` unchanged, and unchanged included the
+prefix:
+
+```
+$ edf2csv recording.edf --decimals
+Option '--decimals <value>' argument missing
+
+$ edf2csv recording.edf --gzip=yes
+Option '--gzip' does not take an argument
+```
+
+against `error:` on every other refusal this tool prints — including `--decimals 101`, one
+keystroke away, which answers "error: --decimals must be a whole number between 0 and 20".
+
+Keeping Node's wording here is deliberate and stays: both sentences are true and say what to
+do, and replacing them with near-identical ones would be churn. The prefix was not part of that
+trade. It is the other half of what was wrong with the unknown-option message, which 0.5.x
+reworded for two reasons — an unfinished sentence and a missing prefix — and these two were
+left with the second one.
+
+It is load-bearing rather than decorative: this repository's own stdout audit picks errors out
+of stderr with `line.startsWith('error:')`, so by its own reckoning both of those runs printed
+no error at all and exited 2.
+
 ## 0.7.95
 
 ### a recording shorter than a millisecond reported as zero seconds

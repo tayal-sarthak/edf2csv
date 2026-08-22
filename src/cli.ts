@@ -2094,6 +2094,17 @@ function optionalDecimals(raw: unknown): number | undefined {
  *
  * Node's remaining two — a switch given a value, an option missing its value — say something true
  * in words a reader can act on, and replacing them with near-identical sentences would be churn.
+ * They do go out with the prefix, which is the other half of what was wrong with the unknown-option
+ * message above and was left behind when its wording was fixed:
+ *
+ *     $ edf2csv recording.edf --decimals
+ *     Option '--decimals <value>' argument missing
+ *     $ edf2csv recording.edf --gzip=yes
+ *     Option '--gzip' does not take an argument
+ *
+ * against `error:` on every other refusal this tool prints, including the one for `--decimals 101`
+ * one keystroke away. This repository's own stdout audit picks errors out of stderr with
+ * `line.startsWith('error:')`, so by its own reckoning these two runs printed no error and exited 2.
  */
 /**
  * A token as it has to be typed for a shell to hand it over unchanged.
@@ -2118,21 +2129,23 @@ function singleQuoted(text: string): string {
 }
 
 function usageMessage(error: unknown, argv: readonly string[]): string {
+  /** Node's own wording, carrying this tool's prefix. */
+  const asError = (text: string): string => (text.startsWith('error:') ? text : `error: ${text}`);
   const raw = message(error);
   const code = (error as { code?: unknown } | null)?.code;
   if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') return unknownOption(raw);
   if (code !== 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
-    return raw;
+    return asError(raw);
   }
   const ambiguous = /^Option '(-[^']+)' argument is ambiguous/u.exec(raw);
-  if (!ambiguous) return raw;
+  if (!ambiguous) return asError(raw);
 
   const flag = ambiguous[1] as string;
   // The value is whatever followed the flag. Read from argv rather than from the message,
   // which does not carry it — and if it is not there after all, Node's text is still true.
   const at = argv.indexOf(flag);
   const value = at >= 0 ? argv[at + 1] : undefined;
-  if (value === undefined) return raw;
+  if (value === undefined) return asError(raw);
 
   /*
     How the two shapes join, which is not the same and matters.

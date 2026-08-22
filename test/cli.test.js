@@ -230,6 +230,19 @@ describe('argument errors exit 2', () => {
     assert.match(shortUnknown.stderr, /^error: There is no -Z option\./u, shortUnknown.stderr);
 
     /*
+      The two Node messages this tool keeps carry the prefix too. Their wording is fine and
+      rewording it would be churn; going out bare was the other half of what was wrong with the
+      unknown-option message above, and it was left behind when the wording was fixed. The
+      stdout audit in this suite picks errors out of stderr with `startsWith('error:')`, so by
+      its own reckoning these two runs printed no error and exited 2.
+    */
+    for (const args of [['--decimals'], ['--gzip=yes']]) {
+      const bare = await cli([fixture('tiny.edf'), ...args]);
+      assert.equal(bare.code, 2, bare.stderr);
+      assert.match(bare.stderr, /^error: /u, `${args.join(' ')}: ${bare.stderr}`);
+    }
+
+    /*
       And it names the option they meant, when one is close enough to name.
 
       Both directions matter. A wrong guess is worse than none — it sends someone to
