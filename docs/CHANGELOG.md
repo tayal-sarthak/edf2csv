@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.116
+
+### a memory bound and the promise that makes it safe, both unchecked
+
+Every distinct digital code on a channel maps to one string, so the text is computed once and
+reused — the hottest loop in a conversion. The cache is bounded twice: to 65,536 slots for one
+channel, and to a budget for the whole conversion, because a bound on one channel is not a bound
+when a file may declare as many channels as it likes. Without the second, a 256-channel montage
+each claiming the full 16-bit range reserved 134 MB of pointers before writing a row, and a
+7.9 MB recording died with a V8 out-of-memory fatal error under anything smaller than a 192 MB
+heap.
+
+What makes that bound safe to have is the promise beside it: "The ones that miss out fall back
+to formatting directly, which produces identical text — the output is byte-for-byte what it
+was." Neither half was checked. Delete the budget test and all 421 tests pass, on a montage that
+no longer converts; and nothing anywhere held the fallback to producing the same text as the
+cache, which is the whole reason a channel may be denied one.
+
+Both now. The budget is spent one slot per code the channel declares; a formatter built with
+none produces the same string as one built with a full budget across six thousand codes,
+including the ones outside the declared range that miss the cache even when there is one; and
+two channels sharing a budget of exactly one channel's worth agree on every code, the second
+having had nothing left to claim.
+
 ## 0.7.115
 
 ### the bounded-memory invariant a hung-up reader breaks, unchecked

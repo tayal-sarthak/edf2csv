@@ -1678,6 +1678,58 @@ describe('formatting a duration', () => {
   });
 });
 
+describe('the sample cache', () => {
+  it('formats a channel the same whether or not it got a cache', async () => {
+    /*
+      Every distinct digital code on a channel maps to one string, so the text is computed once
+      and reused — which is the hottest loop in a conversion. The cache is bounded twice: to
+      65,536 slots for one channel, and to a budget for the whole conversion, because a bound
+      on one channel is not a bound when a file may declare as many channels as it likes. A
+      256-channel montage each claiming the full 16-bit range reserved 134 MB of pointers
+      before writing a row, and a 7.9 MB recording died with a V8 out-of-memory fatal error
+      under anything smaller than a 192 MB heap.
+
+      What makes that bound safe to have is the promise beside it: "The ones that miss out fall
+      back to formatting directly, which produces identical text — the output is byte-for-byte
+      what it was." Nothing checked either half. Remove the budget test and all 421 tests pass,
+      on a montage that no longer converts.
+    */
+    const { makeSampleFormatter, newSampleCacheBudget } = await import('../dist/format/number.js');
+    const signal = {
+      digitalMin: -2048, digitalMax: 2047, physicalMin: -250, physicalMax: 250,
+    };
+
+    // The budget is spent, one slot per code the channel declares.
+    const budget = newSampleCacheBudget();
+    const before = budget.remaining;
+    makeSampleFormatter(signal, 3, budget);
+    assert.equal(before - budget.remaining, 4096, 'a 12-bit channel claims its whole range');
+
+    // A channel that arrives after the budget is gone formats without one, and the text it
+    // produces has to be the same text — including for codes outside the declared range,
+    // which miss the cache even when there is one.
+    const cached = makeSampleFormatter(signal, 3, newSampleCacheBudget());
+    const direct = makeSampleFormatter(signal, 3, { remaining: 0 });
+    let compared = 0;
+    for (let code = -3000; code <= 3000; code++) {
+      assert.equal(direct(code), cached(code), `digital ${code}`);
+      compared++;
+    }
+    assert.ok(compared > 6000, compared);
+
+    // And the same across a run: one budget, the fastest group first, the rest formatting
+    // directly and writing the same bytes.
+    const shared = newSampleCacheBudget();
+    shared.remaining = 4096;
+    const first = makeSampleFormatter(signal, 3, shared);
+    const second = makeSampleFormatter(signal, 3, shared);
+    assert.equal(shared.remaining, 0, 'the first channel took what there was');
+    for (let code = -2048; code <= 2047; code += 7) {
+      assert.equal(second(code), first(code), `digital ${code} after the budget ran out`);
+    }
+  });
+});
+
 describe('the buffered writer', () => {
   it('drops what it is holding when the reader hangs up', async () => {
     /*
