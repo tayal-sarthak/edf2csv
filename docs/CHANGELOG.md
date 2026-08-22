@@ -8,6 +8,22 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.108
+
+### a third count of the sweeps in one file, and a third answer
+
+The third count of the sweeps in `ci.yml`, thirty lines above the two 0.7.87 corrected.
+
+The concurrency comment explains what a superseded pull-request run is wasting — "three Node
+versions of the suite plus seven sweeps" — and it was seven when it was written. The `sweeps`
+job runs eight steps. 0.7.87 found the comment over that job saying "Seven of the eight run
+here" when nine sweeps exist and eight run there, fixed both halves of it, and wrote a test that
+reads that sentence and the two claims in CONTRIBUTING.md. This one is in the same file, in the
+comment nobody was reading, saying a third number.
+
+Every count of the sweeps in that file is now read out of it and checked against the steps the
+job actually runs, so the next sweep added has to correct all three or fail here.
+
 ## 0.7.107
 
 ### the one place a recording's name reached the terminal unescaped

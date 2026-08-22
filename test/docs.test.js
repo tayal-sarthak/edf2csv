@@ -444,6 +444,22 @@ describe('documentation and source agree on their lists', () => {
       runOnPush.length,
       `CONTRIBUTING.md says CI runs the first ${onPush[1]}; the sweeps job runs ${runOnPush.length}`,
     );
+    /*
+      And the third count in the same file, at the top of it.
+
+      The concurrency comment explains what a superseded run is wasting — "three Node versions
+      of the suite plus seven sweeps" — and it was seven when it was written. 0.7.87 corrected
+      the two numbers in the comment above the `sweeps` job and left this one, thirty lines
+      up, saying a third thing. Every count of the sweeps in this file is read now.
+    */
+    const wasting = /plus (\w+) sweeps, all proving things/u.exec(yaml);
+    assert.ok(wasting, 'the concurrency comment is gone or reworded');
+    assert.equal(
+      words[wasting[1].toLowerCase()],
+      runOnPush.length,
+      `the concurrency comment says ${wasting[1]} sweeps; the job runs ${runOnPush.length}`,
+    );
+
     // The workflow's own half of that same claim; see the comment beside `runsHere` above.
     assert.equal(
       words[runsHere[1].toLowerCase()],
