@@ -276,6 +276,26 @@ export function formatDuration(seconds: number): string {
   // as 59 minutes and 59.9996 seconds and then printed as "59m 60s" — a duration that
   // cannot exist. Rounding first carries the extra second into the minute where it belongs.
   const total = Math.round(seconds * 1000) / 1000;
+  /*
+    A duration shorter than the rounding is not a duration of zero.
+
+    Three decimals is the right precision for a recording measured in hours, and it collapses
+    everything under half a millisecond to "0s". `repeating-fast.edf` — two records of 1e-15s,
+    six samples, one of this repository's own fixtures — printed
+
+        Duration   0s  (2 records of 1e-15s)
+
+    and refused `--start 0.5` with "is at or past the end of this 0s recording". A reader is
+    told the file holds nothing, on the line they look at first, about a file that converts to
+    six rows; the record duration two columns over already contradicts it. Same shape as the
+    other end of this function, which stops decomposing past 2^53 and prints the seconds
+    instead, and as the byte size above, which does not round 1023.999 KB into the next unit.
+
+    Written through `plain` rather than interpolated, for the reason the comment above gives:
+    `${1e-15}` is exponent notation, and the sentence this feeds is one whose whole job is to
+    say what `--start` may be given — and `--start 1e-15s` is refused as an unknown unit "e".
+  */
+  if (total === 0 && seconds > 0) return `${plain(seconds)}s`;
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = Math.round((total - h * 3600 - m * 60) * 1000) / 1000;

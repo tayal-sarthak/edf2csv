@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.95
+
+### a recording shorter than a millisecond reported as zero seconds
+
+`formatDuration` rounds to three decimals, which is right for a recording measured in hours
+and collapses everything under half a millisecond to `0s`. `repeating-fast.edf`, one of this
+repository's own fixtures, is two records of 1e-15s and converts to six rows. `--info` opened
+with
+
+```
+Duration   0s  (2 records of 1e-15s)
+```
+
+— the line a reader looks at first, saying the file holds nothing, contradicted by the record
+duration two columns to its right. The same number reaches the window refusal, so `--start 0.5`
+came back "is at or past the end of this 0s recording": a sentence whose job is to say what
+window there is to ask for, reporting that there is none.
+
+It is the same shape as the other end of this function, which stops decomposing past 2^53 and
+prints the seconds instead, and as the byte size above it, which does not let 1023.999 KB round
+into the next unit. A duration below the rounding is now printed rather than rounded away —
+through `plain`, so what comes back is `0.000000000000002s` and not `2e-15s`, which `--start`
+refuses as an unknown unit `"e"`.
+
+Durations a recording actually has are untouched, and a genuine zero is still `0s`.
+
 ## 0.7.94
 
 ### a refusal that named an empty list of channels

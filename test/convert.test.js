@@ -1500,6 +1500,13 @@ describe('formatting a duration', () => {
     assert.equal(formatDuration(86400), '24h 00m 0s');
     // Rounded before splitting, so this never becomes "59m 60s".
     assert.equal(formatDuration(3599.9996), '1h 00m 0s');
+
+    // Shorter than the rounding is not zero. `repeating-fast.edf` is 2e-15s long and six
+    // samples, and --info called it "Duration 0s" while naming its record duration two
+    // columns over. Plain decimal, because the sentence this feeds says what --start takes.
+    assert.equal(formatDuration(2e-15), '0.000000000000002s');
+    assert.equal(formatDuration(0.0004), '0.0004s');
+    assert.doesNotMatch(formatDuration(2e-15), /e/u);
   });
 });
 
