@@ -563,7 +563,7 @@ The warning names two rates rather than the file's three, because it describes t
 | --- | --- |
 | `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
 | `ConversionError` | The output can't be written, the request can't be carried out, or your own callback threw. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST`, `CALLBACK_FAILED` or `WRITE_FAILED`. |
-| `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, a `start` or `end` that is not a finite number of seconds, or a `duration` that is not a non-negative one. |
+| `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, a `start` or `end` that is not a finite number of seconds, a `duration` that is not a non-negative one, a `layout` that is neither `"wide"` nor `"long"`, or a `channels` list that names nothing — an empty array, or one holding only blanks, which is what an empty string split on commas produces. |
 | `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
 

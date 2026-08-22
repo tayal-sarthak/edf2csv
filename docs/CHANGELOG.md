@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.110
+
+### an empty channel list read as no channel list at all
+
+`convert(recording, { channels: [] })` wrote every channel in the recording, resolved, and said
+nothing.
+
+`buildPlan` asks `options.channels.length > 0` before selecting, so an empty array falls through
+to the branch that means "no channels option was given". The command line has refused exactly
+this since it existed, and its own comment says why:
+
+> Returning undefined here would mean "no --channels given" and convert everything, which is
+> the opposite of what someone passing an empty list is asking for.
+
+A list holding only blanks is the same request written differently — it is what `''.split(',')`
+produces, which is how a caller building the array from user input arrives here — and it went a
+third way: through to `selectChannels` and back as "No channels were selected", a sentence about
+the recording rather than about the call.
+
+Both are the option being wrong, so both are now `OptionError`, raised by `assertOptions` before
+the output directory exists — which is the whole reason that function exists, and what its own
+doc comment describes: "the same value behaved differently depending on how it arrived". A blank
+beside a real name is a list that names something and still selects it.
+
 ## 0.7.109
 
 ### a warning with a documented section and no test at all

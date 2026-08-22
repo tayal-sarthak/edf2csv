@@ -1221,6 +1221,20 @@ describe('option checking', () => {
       [{ layout: 'tall' }, /layout must be "wide" or "long", got "tall"/u],
       [{ layout: '' }, /layout must be "wide" or "long", got ""/u],
       [{ layout: 'LONG' }, /got "LONG"/u],
+      /*
+        And a selection that names nothing, which is not the absence of a selection.
+
+        `buildPlan` asks `channels.length > 0` before selecting, so an empty array fell through
+        to the branch meaning "no channels option was given": every channel in the recording was
+        written, the call resolved, and nothing was said. The command line has refused exactly
+        this since it existed — "Returning undefined here would mean 'no --channels given' and
+        convert everything, which is the opposite of what someone passing an empty list is
+        asking for". A list of blanks is the same request written differently, and it is what
+        `''.split(',')` produces.
+      */
+      [{ channels: [] }, /channels was given but lists no channel names/u],
+      [{ channels: [''] }, /channels was given but lists no channel names/u],
+      [{ channels: ['  ', ''] }, /channels was given but lists no channel names/u],
     ];
 
     for (const [options, expected] of cases) {
@@ -1239,7 +1253,9 @@ describe('option checking', () => {
   });
 
   it('leaves the values it should accept alone', async () => {
-    for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 }]) {
+    for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
+      // A blank beside a real name is a list that names something, and still selects it.
+      { channels: ['', 'ch1'] }]) {
       const dir = await outDir();
       await convert(fixture('tiny.edf'), { outputDir: dir, quiet: true, ...options });
       assert.ok((await readdir(dir)).includes('signals.csv'), JSON.stringify(options));

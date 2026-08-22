@@ -43,6 +43,7 @@ export function assertOptions(options: {
   duration?: number | undefined;
   end?: number | undefined;
   layout?: string | undefined;
+  channels?: readonly string[] | undefined;
 }): void {
   const { decimals } = options;
   if (decimals !== undefined) {
@@ -86,6 +87,27 @@ export function assertOptions(options: {
   const { layout } = options;
   if (layout !== undefined && layout !== 'wide' && layout !== 'long') {
     throw new OptionError(`layout must be "wide" or "long", got ${describe(layout)}.`);
+  }
+
+  /*
+    A selection that names nothing is not the absence of a selection.
+
+    `buildPlan` asks `options.channels.length > 0` before selecting, so an empty array fell
+    through to the branch that means "no channels option was given" — and `convert(file, {
+    channels: [] })` wrote every channel in the recording, resolved, and said nothing. That is
+    the one shape of this the command line has always refused, in as many words: "Returning
+    undefined here would mean 'no --channels given' and convert everything, which is the
+    opposite of what someone passing an empty list is asking for."
+
+    A list of blanks is the same request written differently — it is what `''.split(',')`
+    produces, which is how a caller building the array from user input arrives here — and it
+    reached `selectChannels` and came back "No channels were selected", a sentence about the
+    file rather than about the call. Both are the option being wrong, so both are refused
+    here, before a directory exists.
+  */
+  const { channels } = options;
+  if (channels !== undefined && channels.every((term) => String(term).trim() === '')) {
+    throw new OptionError('channels was given but lists no channel names.');
   }
 }
 
