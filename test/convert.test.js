@@ -2587,6 +2587,54 @@ describe('converting', () => {
     assert.deepEqual(rows.map((row) => row.split(',').slice(0, 3)), [['0.1', '-3', 'backwards']]);
   });
 
+  it('writes an onset as a decimal whatever its magnitude', async () => {
+    /*
+      An EDF+ onset is decimal text, and `String()` is not: it switches to exponent notation
+      below 1e-6 and above 1e21, so a TAL written `+0.0000001` came back as `1e-7` in a
+      column documented as joining directly with `time_s`. One exponent cell makes pandas
+      read the whole column as object rather than float64, and the join matches nothing.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-onset-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const recording = path.join(scratch, 'extreme-onsets.edf');
+    writeEdf({
+      path: recording,
+      reserved: 'EDF+C',
+      numRecords: 1,
+      recordDuration: 1,
+      talsForRecord: () =>
+        `+0${T}${T}${Z}` +
+        `+0.0000001${T}tiny${T}${Z}` +
+        `+0.0000005${D}0.0000002${T}both${T}${Z}` +
+        `+1000000000000000000000${T}far${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 4, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 120, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    await convert(recording, { outputDir: dir });
+    const rows = (await readCsv(dir, 'annotations.csv')).slice(1);
+    const cells = rows.flatMap((row) => row.split(',').slice(0, 2)).filter((cell) => cell !== '');
+    assert.ok(cells.length >= 4, rows.join(' | '));
+    for (const cell of cells) {
+      assert.doesNotMatch(cell, /e/iu, `${cell} is not a plain decimal`);
+      // Still the number the file stated, not a rounded stand-in for it.
+      assert.ok(Number.isFinite(Number(cell)), cell);
+    }
+    assert.deepEqual(
+      rows.map((row) => row.split(',')[0]),
+      ['0.0000001', '0.0000005', '1000000000000000000000'],
+    );
+  });
+
   it('reads timekeeping from an annotation channel that has room for it', async () => {
     /*
       EDF+ puts the timekeeping TAL first in the first annotation channel, and that was read

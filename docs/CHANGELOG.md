@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.93
+
+### annotation onsets in exponent notation, in a column of decimals
+
+`onset_s` and `duration_s` were written through `String()`, which switches to exponent
+notation below 1e-6 and above 1e21. An EDF+ TAL states its onset as ordinary decimal text, so
+a file holding `+0.0000001` produced
+
+```
+onset_s,duration_s,description,record_index
+1e-7,,tiny,0
+5e-7,2e-7,tiny with duration,0
+1e+21,,far,0
+```
+
+in a column output-files.md says is "on the same scale as `time_s` in the signals files, so
+the two join directly". It is not: `time_s` is fixed-decimal throughout, and one exponent cell
+is enough for pandas to read the whole column as `object` rather than `float64`, so a merge on
+it matches nothing and raises nothing. The same page says both columns are written "in their
+natural numeric form ... without padding to a fixed decimal count", which rules out the
+existing `fixed` — asking it for enough places to hold 1e-7 would rewrite `0.1` as
+`0.10000000000000000555`.
+
+Expanding the notation touches only the cells that are in it. Every other cell is byte-for-byte
+what it was, and the values are unchanged: the digits are the ones `String()` produced, with
+the point moved to where the exponent puts it.
+
 ## 0.7.92
 
 ### a publish that wrote nothing said the write had landed

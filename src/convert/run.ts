@@ -32,6 +32,7 @@ import {
   makeTimeFormatter,
   newOffsetBudget,
   newSampleCacheBudget,
+  plain,
 } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { TIME_COLUMN } from './channels.js';
@@ -1293,8 +1294,8 @@ async function writeAnnotationsCsv(
   for (const annotation of inWindow) {
     lines.push(
       csvRow([
-        String(annotation.onset),
-        annotation.duration === null ? '' : String(annotation.duration),
+        plain(annotation.onset),
+        annotation.duration === null ? '' : plain(annotation.duration),
         annotation.text,
         String(annotation.recordIndex),
       ]),

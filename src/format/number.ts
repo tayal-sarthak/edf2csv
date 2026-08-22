@@ -93,6 +93,38 @@ export function fixed(value: number, decimals: number): string {
   return text.slice(1);
 }
 
+/**
+ * A number as plain decimal text, at any magnitude.
+ *
+ * `String()` switches to exponent notation twice — above 1e21 and below 1e-6 — and
+ * annotations.csv wrote its `onset_s` and `duration_s` through it. An EDF+ TAL states its
+ * onset as ordinary decimal text, so a file saying `+0.0000001` came back as `1e-7` in a
+ * column whose every other cell is a plain decimal, beside a `time_s` the documentation says
+ * it "joins directly" with. It does not: pandas reads the column as object rather than
+ * float64 once one cell is exponent text, and a `merge` on it matches nothing.
+ *
+ * `fixed` cannot answer this. It needs a decimal count, and these two columns are documented
+ * as carrying "their natural numeric form ... without padding to a fixed decimal count" —
+ * asking for enough places to hold 1e-7 would rewrite `0.1` as `0.10000000000000000555`.
+ * Expanding the notation instead touches only the values that are in it and leaves every
+ * other cell byte-for-byte what it was.
+ */
+export function plain(value: number): string {
+  const text = String(value);
+  const e = text.indexOf('e');
+  if (e === -1) return text;
+  const negative = text.charCodeAt(0) === 45 /* - */;
+  const mantissa = text.slice(negative ? 1 : 0, e);
+  const dot = mantissa.indexOf('.');
+  // Where the point sits once the exponent is spent, counted in significant digits.
+  const point = (dot === -1 ? mantissa.length : dot) + Number(text.slice(e + 1));
+  const digits = dot === -1 ? mantissa : mantissa.slice(0, dot) + mantissa.slice(dot + 1);
+  const sign = negative ? '-' : '';
+  if (point <= 0) return `${sign}0.${'0'.repeat(-point)}${digits}`;
+  if (point >= digits.length) return `${sign}${digits}${'0'.repeat(point - digits.length)}`;
+  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
 /** Maps a raw digital sample to its formatted physical value. */
 export type SampleFormatter = (digital: number) => string;
 
