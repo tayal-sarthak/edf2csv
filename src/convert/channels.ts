@@ -143,6 +143,22 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
 
   const chosen = new Map<number, EdfSignal>();
   const ambiguous: { term: string; matched: EdfSignal[] }[] = [];
+  /*
+    A file may have no signal channels at all, and both position errors below assumed it had
+    some. `listed([])` is the empty string, so `--channels "#0"` on an annotations-only
+    recording — one of this tool's own fixtures — was refused with
+
+        No channel at position #0. This file has signal channels at .
+
+    a sentence that states there are channels and then names none, ending mid-clause. The
+    conversion already raises NO_SIGNAL_CHANNELS for this file and says what it is, so the
+    fact was known one layer up; the message that a `--channels` user actually reaches was
+    the one that did not have it.
+  */
+  const positions =
+    candidates.length === 0
+      ? 'This file has no signal channels; it contains only annotations.'
+      : `This file has signal channels at ${listed(candidates.map((s) => `#${s.index}`))}.`;
 
   for (const rawTerm of terms) {
     const term = rawTerm.trim();
@@ -166,15 +182,14 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       if (!/^\d+$/u.test(position)) {
         throw new ChannelSelectionError(
           `"${term}" is not a channel position: a position is #0, #1, #2 and so on.\n` +
-            `This file has signal channels at ${listed(candidates.map((s) => `#${s.index}`))}.`,
+            positions,
         );
       }
       const index = Number(position);
       const signal = candidates.find((s) => s.index === index);
       if (!signal) {
         throw new ChannelSelectionError(
-          `No channel at position ${term}. This file has signal channels at ` +
-            `${listed(candidates.map((s) => `#${s.index}`))}.`,
+          `No channel at position ${term}. ${positions}`,
         );
       }
       chosen.set(signal.index, signal);

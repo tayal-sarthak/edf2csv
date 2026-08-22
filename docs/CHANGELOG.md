@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.94
+
+### a refusal that named an empty list of channels
+
+Both `--channels "#N"` refusals end by naming the positions the file does have, and that list
+came from `listed(candidates)` with nothing guarding an empty one. A recording with no signal
+channels — annotations and nothing else, which is one of this repository's own fixtures and a
+shape EDF+ explicitly allows — was refused with
+
+```
+error: No channel at position #0. This file has signal channels at .
+error: "#x" is not a channel position: a position is #0, #1, #2 and so on.
+       This file has signal channels at .
+```
+
+A sentence that asserts there are channels, names none of them, and stops mid-clause. The
+conversion itself already knows better: the same file raises `NO_SIGNAL_CHANNELS`, whose text
+is "This file has no signal channels; it contains only EDF+ annotations." The fact was two
+layers away from the message that a `--channels` user actually reaches.
+
+Both refusals now say the file has none, and the list is unchanged wherever there is one.
+
 ## 0.7.93
 
 ### annotation onsets in exponent notation, in a column of decimals

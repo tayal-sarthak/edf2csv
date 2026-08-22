@@ -333,6 +333,15 @@ describe('argument errors exit 2', () => {
     assert.equal(missing.code, 2);
     assert.match(missing.stderr, /No channel at position #99/u);
 
+    // Both messages name the positions there are, and a file may have none: `listed([])` is
+    // the empty string, so an annotations-only recording was refused with "This file has
+    // signal channels at ." — a claim that there are some, followed by none of them.
+    for (const term of ['#0', '#x']) {
+      const { stderr } = await cli([fixture('annotations-only.edf'), '--stdout', '--channels', term]);
+      assert.doesNotMatch(stderr, /channels at \.|channels at $/mu, `${term}: empty list`);
+      assert.match(stderr, /no signal channels/u, `${term}: says the file has none`);
+    }
+
     // And the valid forms still work.
     const ok = await cli([fixture('mixed-rates.edf'), '--stdout', '--channels', '#2']);
     assert.equal(ok.code, 0);
