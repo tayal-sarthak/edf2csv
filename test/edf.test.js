@@ -204,6 +204,62 @@ describe('diagnostics', () => {
     assert.ok(codes(file).includes('RECORD_COUNT_MISMATCH'));
   });
 
+  it('accounts for every byte after the header, as records or as a remainder', async () => {
+    /*
+      `TRAILING_BYTES` is one of the eight warnings the reference page gives a section to, and
+      nothing under test/ had ever raised it: the only occurrences of the name were the docs
+      cross-check, which reads the pages and confirms a code documented somewhere is documented
+      everywhere. That is a check on prose.
+
+      What it and `RECORD_COUNT_MISMATCH` divide between them is the file: `recordCount` is
+      `floor(dataBytes / recordBytes)` and the remainder is what this reports, so a byte is
+      either inside a record that gets converted or named as ignored, and never both or
+      neither. The boundary is a whole record — one byte short of it is a remainder, one byte
+      into it is a record the header did not declare — and it is the boundary a reader has to
+      trust when a recording was cut short mid-write.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-trailing-'));
+    temporaries.push(dir);
+    const { appendFileSync, copyFileSync } = await import('node:fs');
+    const base = fixture('tiny.edf');
+    // Two channels of ten samples per record, two bytes each: 40 bytes to a record.
+    const RECORD = (await load('tiny.edf')).header.recordBytes;
+    assert.equal(RECORD, 40, 'the fixture changed shape, so the sizes below mean something else');
+    const grown = async (extra) => {
+      const at = path.join(dir, `plus${extra}.edf`);
+      copyFileSync(base, at);
+      if (extra > 0) appendFileSync(at, Buffer.alloc(extra));
+      const file = await EdfFile.open(at);
+      open.push(file);
+      return { file, trailing: file.diagnostics.find((d) => d.code === 'TRAILING_BYTES') };
+    };
+
+    for (const [extra, records, remainder] of [
+      [0, 2, 0], [1, 2, 1], [RECORD - 1, 2, RECORD - 1],
+      [RECORD, 3, 0], [RECORD + 1, 3, 1], [2 * RECORD, 4, 0],
+    ]) {
+      const { file, trailing } = await grown(extra);
+      assert.equal(file.recordCount, records, `+${extra} bytes should be ${records} records`);
+      if (remainder === 0) {
+        assert.equal(trailing, undefined, `+${extra} bytes must raise nothing`);
+      } else {
+        assert.ok(trailing, `+${extra} bytes must be reported`);
+        assert.match(
+          trailing.message,
+          new RegExp(`^${remainder} byte${remainder === 1 ? '' : 's'} after the last complete`, 'u'),
+          trailing.message,
+        );
+      }
+      // Nothing is lost and nothing is counted twice: the records converted plus the bytes
+      // reported as ignored are exactly what follows the header.
+      assert.equal(
+        file.recordCount * RECORD + remainder,
+        file.fileSize - file.header.headerBytes,
+        `+${extra} bytes: the file is not fully accounted for`,
+      );
+    }
+  });
+
   it('accepts a record count of -1, which the spec permits', async () => {
     const file = await load('unknown-records.edf');
     assert.equal(file.header.declaredRecordCount, -1);

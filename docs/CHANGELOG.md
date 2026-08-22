@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.109
+
+### a warning with a documented section and no test at all
+
+`TRAILING_BYTES` is one of the warnings the reference gives a section to, and nothing under
+`test/` had ever raised it. The only occurrences of the name were in the documentation
+cross-check, which reads the pages and confirms that a code documented in one place is
+documented everywhere — a check on prose. No fixture and no test had ever handed the parser a
+file with a partial record at the end of it.
+
+What it and `RECORD_COUNT_MISMATCH` divide between them is the file. `recordCount` is
+`floor(dataBytes / recordBytes)` and this reports the remainder, so every byte after the header
+is either inside a record that gets converted or named as ignored, never both and never
+neither. The boundary is a whole record: one byte short of it is a remainder, one byte into it
+is a record the header did not declare and the other warning reports.
+
+Six sizes are pinned across that boundary — exact, one byte over, one short of a record, exactly
+a record, one into the next, two records — each checked for the record count, for the warning or
+its absence, for singular against plural at one byte, and for the sum coming back to the size of
+the file. The behaviour was already right; it now cannot change without saying so.
+
 ## 0.7.108
 
 ### a third count of the sweeps in one file, and a third answer
