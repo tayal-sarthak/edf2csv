@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.99
+
+### a guard test that read the first warning and not the wrong one
+
+The test written to hold the fix could not fail on it.
+
+Only the first annotation channel carries a record's timekeeping TAL. The decoder once flagged
+the first TAL of *every* annotation channel as timekeeping, so three dropped events in a second
+channel were charged to timekeeping and reported as "3 data records carry a timekeeping
+annotation that could not be read ... No event was lost" — three events gone, and a file whose
+timekeeping is perfectly readable, both sentences false. `two-annotation-channels.edf` was built
+for it and this test asserts neither sentence appears.
+
+It asserted that of `diagnostics.find(d => d.code === 'ANNOTATION_DECODE_FAILED')`, which is the
+entry warning — "3 annotation entries were unreadable and could not be exported" — and that
+message is right however the timekeeping is counted. The two sentences the test excludes appear
+in a *second* diagnostic with the same code, which `find` never returns. Put the bug back, one
+`&&` shorter, and the run raises both warnings and the test still passes.
+
+It reads every diagnostic now, and pins the count at one. The mutation that reintroduces the bug
+fails it.
+
 ## 0.7.98
 
 ### four more lengths of time printed in exponent notation

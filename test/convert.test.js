@@ -2465,14 +2465,23 @@ describe('converting', () => {
     const dir = await outDir();
     const result = await convert(fixture('two-annotation-channels.edf'), { outputDir: dir });
 
-    const notice = result.diagnostics.find((d) => d.code === 'ANNOTATION_DECODE_FAILED');
-    assert.ok(notice, JSON.stringify(result.diagnostics));
+    /*
+      Read from every diagnostic, not from the first one with this code.
+
+      `find` returned the entry warning, which is correct and stays correct however the
+      timekeeping is counted — so both sentences this test exists to exclude were checked
+      against a message that could never contain them. Restore the bug the comment above
+      describes and a second ANNOTATION_DECODE_FAILED appears alongside it, saying the two
+      false things; the test passed anyway.
+    */
+    const raised = result.diagnostics.filter((d) => d.code === 'ANNOTATION_DECODE_FAILED');
+    assert.equal(raised.length, 1, raised.map((d) => d.message).join(' | '));
+    const notice = raised[0];
     assert.match(notice.message, /3 annotation entries were unreadable and could not be exported/u);
-    assert.ok(!/No event was lost/u.test(notice.hint ?? ''), notice.hint);
-    assert.ok(
-      !/timekeeping annotation that could not be read/u.test(notice.message),
-      'the timekeeping in this file is readable',
-    );
+    const said = result.diagnostics.map((d) => `${d.message} ${d.hint ?? ''}`).join('\n');
+    assert.doesNotMatch(said, /No event was lost/u, said);
+    assert.doesNotMatch(said, /timekeeping annotation that could not be read/u,
+      'the timekeeping in this file is readable');
 
     // The readable events from both channels are still exported, in onset order.
     const events = (await readCsv(dir, 'annotations.csv')).slice(1).map((row) => row.split(',')[2]);
