@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.111
+
+### a channels option of the wrong shape taken apart instead of refused
+
+The other way a `channels` option can be wrong, which the selector took apart rather than
+refused.
+
+`convert(file, { channels: 'ECG' })` — the string rather than a list of one — was iterated
+character by character, because a string is iterable and `selectChannels` loops over its
+argument, and came back `No channel named "E". Did you mean "ECG"?`: a sentence about the
+recording, about a channel nobody named, suggesting the thing that was actually passed.
+
+`convert(file, { channels: [1] })` — a position written as a number, which is a reasonable
+thing to reach for when `"#1"` is the documented spelling — reached `rawTerm.trim()` and came
+back `TypeError: rawTerm.trim is not a function`, out of the middle of the selector, naming
+nothing the caller had written. That is the shape of failure `assertOptions` was added to
+remove: "a bare RangeError from deep inside the formatter, naming nothing the caller had
+written" is what its own doc comment says about `decimals: -1`.
+
+Both are the option being the wrong shape, so both are refused there now, before a directory
+exists, with the value quoted back.
+
 ## 0.7.110
 
 ### an empty channel list read as no channel list at all

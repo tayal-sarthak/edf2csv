@@ -1235,6 +1235,14 @@ describe('option checking', () => {
       [{ channels: [] }, /channels was given but lists no channel names/u],
       [{ channels: [''] }, /channels was given but lists no channel names/u],
       [{ channels: ['  ', ''] }, /channels was given but lists no channel names/u],
+      /*
+        And the wrong shape, which the selector took apart rather than refused. `'ECG'` was
+        iterated character by character and answered `No channel named "E"`; `[1]` — a
+        position, reasonably enough — came back as `TypeError: rawTerm.trim is not a function`
+        from inside the selector, naming nothing the caller had written.
+      */
+      [{ channels: 'ECG' }, /channels must be a list of channel names, got "ECG"/u],
+      [{ channels: [1] }, /channels must be a list of channel names, got \[1\]/u],
     ];
 
     for (const [options, expected] of cases) {

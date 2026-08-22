@@ -106,8 +106,21 @@ export function assertOptions(options: {
     here, before a directory exists.
   */
   const { channels } = options;
-  if (channels !== undefined && channels.every((term) => String(term).trim() === '')) {
-    throw new OptionError('channels was given but lists no channel names.');
+  if (channels !== undefined) {
+    /*
+      A list of strings, checked as one. `selectChannels` calls `.trim()` on every term, so a
+      caller who passed the string `'ECG'` had it iterated character by character and was told
+      `No channel named "E"`, and one who passed `[1]` — a position, reasonably enough — got
+      `TypeError: rawTerm.trim is not a function` out of the middle of the selector, naming
+      nothing they had written. Both are the option being the wrong shape, which is the case
+      this function exists for.
+    */
+    if (!Array.isArray(channels) || channels.some((term) => typeof term !== 'string')) {
+      throw new OptionError(`channels must be a list of channel names, got ${describe(channels)}.`);
+    }
+    if (channels.every((term) => term.trim() === '')) {
+      throw new OptionError('channels was given but lists no channel names.');
+    }
   }
 }
 
