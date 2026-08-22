@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.104
+
+### the date guard that stops a header naming a day no month has
+
+The header's start date is bounded field by field — day 1 to 31, month 1 to 12 — and then built
+and compared back, because `Date.UTC` does not refuse a day a month does not have. It rolls it
+forward. That round-trip check is the only thing between a header and a day it does not name,
+and nothing exercised it: replace it with `if (false)` and all 419 tests pass while
+
+```
+31.02.85  ->  1985-03-03
+31.04.85  ->  1985-05-01
+29.02.23  ->  2023-03-01
+```
+
+each reported as `start_datetime_local` in `metadata.json`, printed on `--info`'s `Recorded`
+line, and each with no warning at all. A date the file does not state, in the one field the
+documented recipe for an absolute instant depends on, silently and exit 0 — which is the
+failure `START_TIME_UNREADABLE` exists to prevent and does prevent.
+
+The test beside this one names the guard in its own comment — "builds the date and checks it
+did not roll over, which is a second guard for anything that changes the day: hour 24, month 13,
+the thirty-second of a month" — and then only ever varies the *time*. Minutes and seconds do not
+change the day, so nothing it passed could reach the check it describes.
+
+Six impossible dates and four real ones beside them now do, including the leap day that exists
+and the one that does not.
+
 ## 0.7.103
 
 ### --info and a conversion counting the same annotations differently

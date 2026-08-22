@@ -340,6 +340,49 @@ describe('diagnostics', () => {
       assert.ok(!refused.diagnostics.some((d) => d.code === 'LEAP_SECOND_START'), time);
     }
 
+    /*
+      And the round-trip check itself, which the paragraph above names and nothing exercised.
+
+      Every date below passes the bounds — the day is 1 to 31 and the month 1 to 12 — and is
+      still not a date. `Date.UTC` does not refuse them; it rolls them forward, so the guard
+      that compares the month and day back is the only thing between the header and a day it
+      does not name. Take it out and all 419 tests pass while `31.02.85` reports
+      `1985-03-03`, `31.04.85` reports `1985-05-01` and `29.02.23` reports `2023-03-01` —
+      each with no warning at all, in the field the documented recipe for an absolute instant
+      depends on.
+    */
+    const on = (date) => {
+      const file = path.join(scratch, `d${date.replaceAll('.', '')}.edf`);
+      writeEdf({
+        path: file,
+        startDate: date,
+        startTime: '12.00.00',
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [
+          { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 2, gen: () => 1 },
+        ],
+      });
+      return file;
+    };
+    for (const date of ['31.02.85', '31.04.85', '29.02.23', '30.02.24', '31.06.85', '31.09.85']) {
+      const refused = parseHeader(await readFile(on(date)), 1024);
+      assert.equal(refused.header.startDateTime, null, `${date} is not a date`);
+      assert.ok(refused.diagnostics.some((d) => d.code === 'START_TIME_UNREADABLE'), date);
+    }
+    // The days beside them are dates, including the one leap day that exists.
+    for (const [date, instant] of [
+      ['28.02.85', '1985-02-28T12:00:00.000Z'],
+      ['29.02.24', '2024-02-29T12:00:00.000Z'],
+      ['30.04.85', '1985-04-30T12:00:00.000Z'],
+      ['31.03.85', '1985-03-31T12:00:00.000Z'],
+    ]) {
+      const read = parseHeader(await readFile(on(date)), 1024);
+      assert.equal(read.header.startDateTime?.toISOString(), instant, date);
+      assert.ok(!read.diagnostics.some((d) => d.code === 'START_TIME_UNREADABLE'), date);
+    }
+
     // The neighbours of both, which are times and stay times.
     for (const [time, instant] of [
       ['10.59.59', '2020-01-01T10:59:59.000Z'],
