@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.101
+
+### --info stayed quiet about the one thing --annotations-only would not write
+
+`--info` exists to say what a conversion will do, and `--annotations-only` on a recording with
+no annotation channel was the one it stayed quiet about. It printed the fact in prose —
+
+```
+Would write channels.csv and no signal data — and no annotations.csv either,
+since this recording has no annotation channel.
+```
+
+— and raised nothing, so `--info --json --annotations-only` carried an empty warning list where
+the conversion carries one, and `--info --strict` exited 0 where the conversion exits 1. That
+combination is what cli-reference recommends for screening a folder before converting it.
+
+It is the defect 0.7.84 closed for `NO_SAMPLES`, one flag over, and it has the same answer:
+whether a recording has an annotation channel is a header fact, and `--info` reads the header.
+The warning is built by one exported function now and pushed from both places, so the two cannot
+drift again.
+
+Found by sweeping every fixture under seven option sets for a code the conversion raises and
+`--info` does not. What is left after this are the three documented cases that genuinely need a
+conversion, plus the two that need a record `--info` does not read.
+
 ## 0.7.100
 
 ### a documented limit of --info that stopped being one eight versions ago

@@ -42,11 +42,11 @@ It raises them for what it read, which on a continuous file is however many reco
 
 What it cannot raise is the handful that need a conversion to exist:
 
-- `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written.
+- `STALE_OUTPUT`, which is noticed after `metadata.json` has been written and so needs there to be an output directory to be stale.
 - `INPUT_CHANGED`, which asks whether the recording moved while it was being converted. `--info` opens the file, reads a header and closes it, so there is no window for it to have moved during — and no output whose description of the file could have stopped being true.
 - The EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
 
-`EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds. So was the `NO_SAMPLES` that reports a signal file *not written*, until 0.7.84 made `--info` raise it — whether a conversion writes one is settled by the header and the plan, both of which `--info` has. The per-channel `NO_SAMPLES`, about a channel carrying no samples, has always come from the header and been raised.
+`EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds. So was `NO_ANNOTATIONS`, until 0.7.101: whether a recording has an annotation channel is a header fact, and `--info --annotations-only` had been printing it in prose all along. So was the `NO_SAMPLES` that reports a signal file *not written*, until 0.7.84 made `--info` raise it — whether a conversion writes one is settled by the header and the plan, both of which `--info` has. The per-channel `NO_SAMPLES`, about a channel carrying no samples, has always come from the header and been raised.
 
 Until 0.5.37 this section said the opposite — that `--info` touches neither the data records nor the annotation channel, and cannot raise `ANNOTATION_DECODE_FAILED` or any timestamp-derived `DISCONTINUOUS`. The `DISCONTINUOUS` section further down said "`--info` raises `DISCONTINUOUS` too, since it has to read those record times", on the same page.
 
@@ -704,7 +704,7 @@ You passed `--annotations-only` but the recording has no annotation channel.
 
 **Cause.** Plain EDF and plain BDF carry no annotations at all. Only EDF+ and BDF+ files have an `EDF Annotations` or `BDF Annotations` channel.
 
-**What edf2csv does.** Writes `channels.csv` and `metadata.json` but no `annotations.csv` and no signal files, because you asked for annotations and there are none. The command still exits 0.
+**What edf2csv does.** Writes `channels.csv` and `metadata.json` but no `annotations.csv` and no signal files, because you asked for annotations and there are none. The command still exits 0. `--info --annotations-only` raises the same warning without converting anything, so `--strict` catches it either way.
 
 ```
 warning: --annotations-only was requested but this recording has no annotation channel, so there are no events to export.

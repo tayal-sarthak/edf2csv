@@ -29,9 +29,11 @@ import {
   defaultOutputDir,
   durationDiagnostics,
   requestedAnnotationWindow,
+  noAnnotations,
   noSignalFile,
   stdoutRefusal,
 } from './convert/run.js';
+import type { ConvertOptions } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 // Shared with the library so a bad option is the same error whichever way it arrived.
 import { OptionError } from './convert/options.js';
@@ -972,6 +974,9 @@ async function showInfo(
     */
     const missing = noSignalFile(file, plan);
     if (missing) plan.diagnostics.push(missing);
+    // The same for --annotations-only on a file with none; see noAnnotations.
+    const noEvents = noAnnotations(file, shared as ConvertOptions);
+    if (noEvents) plan.diagnostics.push(noEvents);
 
     if (toStdout) {
       const refusal = stdoutRefusal(file, plan);

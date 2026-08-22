@@ -238,16 +238,8 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       if (missing) plan.diagnostics.push(missing);
     }
 
-    if (options.annotationsOnly === true && file.annotationSignals.length === 0) {
-      plan.diagnostics.push({
-        code: 'NO_ANNOTATIONS',
-        severity: 'warning',
-        message:
-          '--annotations-only was requested but this recording has no annotation channel, ' +
-          'so there are no events to export.',
-        hint: 'Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.',
-      });
-    }
+    const noEvents = noAnnotations(file, options);
+    if (noEvents) plan.diagnostics.push(noEvents);
 
     let annotationsWritten = 0;
     if (file.annotationSignals.length > 0) {
@@ -1561,6 +1553,31 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
         'channels, so it has none to list.'
       : 'channels.csv still describes them. Run with --info to see which channels do carry ' +
         'samples.',
+  };
+}
+
+/**
+ * `--annotations-only` on a recording that has no annotations.
+ *
+ * Exported and present-tense for the same reason `noSignalFile` above is. `--info` prints an
+ * accurate line about it in the report body — "and no annotations.csv either, since this
+ * recording has no annotation channel" — and raised nothing, so the one mode whose purpose is
+ * to say what a conversion will do carried a shorter warning list than the conversion did:
+ * `--info --json --annotations-only` on a plain EDF file listed no warning where converting
+ * lists one, and `--info --strict`, which cli-reference.md recommends for screening a folder
+ * before converting it, exited 0 where the conversion exits 1. Same defect as the one 0.7.84
+ * closed for `NO_SAMPLES`, one flag over; both halves of the answer are in the file and the
+ * options, which `--info` already has.
+ */
+export function noAnnotations(file: EdfFile, options: ConvertOptions): Diagnostic | null {
+  if (options.annotationsOnly !== true || file.annotationSignals.length > 0) return null;
+  return {
+    code: 'NO_ANNOTATIONS',
+    severity: 'warning',
+    message:
+      '--annotations-only was requested but this recording has no annotation channel, ' +
+      'so there are no events to export.',
+    hint: 'Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.',
   };
 }
 
