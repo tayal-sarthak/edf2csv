@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.100
+
+### a documented limit of --info that stopped being one eight versions ago
+
+warnings-and-errors.md lists what `--info` cannot raise, and one of them it has raised since
+0.7.84 — the release whose whole point was making it raise it. The bullet stayed:
+
+> The `NO_SAMPLES` that reports a signal file *not written* — the per-channel one, about a
+> channel carrying no samples, comes from the header and is raised.
+
+cli-reference points readers at this section for the answer, and the answer is that
+`--info --json` on an annotations-only recording carries `NO_SAMPLES` and always has since
+0.7.84. Whether a conversion writes a signal file is settled by the header and the plan, both
+of which `--info` has, which is exactly the argument that release made.
+
+It survived eight versions because the check beside it is one-directional. The sweep asserts
+that a code the *conversion* raises and `--info` does not is named on the page, so a stale
+exemption only ever makes it more permissive — an entry that no longer belongs is invisible to
+the one thing reading the list. It now sweeps the other way too: every code the bullets name is
+run against `--info` on every fixture, with and without `--annotations-only`, and one that turns
+up fails here. Restoring the bullet fails it on `annotations-only.edf`.
+
 ## 0.7.99
 
 ### a guard test that read the first warning and not the wrong one

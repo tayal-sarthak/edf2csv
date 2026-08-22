@@ -1768,6 +1768,39 @@ describe('documentation and source agree on their lists', () => {
         }
       }
       assert.ok(compared > 20, `expected most fixtures to be comparable, got ${compared}`);
+
+      /*
+        And the other direction, which nothing checked.
+
+        This swept for codes the page fails to exempt, and never for an exemption the page no
+        longer needs. 0.7.84 made `--info` raise the `NO_SAMPLES` that reports a signal file
+        not written — the whole point of that release — and the bullet saying it cannot stayed
+        on the page for eight more, because a stale exemption only ever makes the sweep above
+        more permissive.
+
+        Only the bulleted list, and only its codes: the prose above it is about
+        `ANNOTATION_DECODE_FAILED` and `DISCONTINUOUS`, which `--info` does raise, for records
+        it read.
+      */
+      const bullets = page.slice(
+        page.indexOf('What it cannot raise is the handful'),
+        page.indexOf('`EMPTY_WINDOW` used to be on that list'),
+      );
+      const cannotRaise = new Set([...bullets.matchAll(/`([A-Z_]+)`/gu)].map((m) => m[1]));
+      assert.ok(cannotRaise.size > 0, 'the page no longer lists what --info cannot raise');
+      for (const name of names) {
+        const recording = path.join(ROOT, 'test/fixtures/generated', name);
+        for (const extra of [[], ['--annotations-only']]) {
+          const described = await codes([recording, '--info', '--json', ...extra]);
+          if (!described) continue;
+          for (const code of described) {
+            assert.ok(
+              !cannotRaise.has(code),
+              `${name} ${extra.join(' ')}: --info raises ${code}, which the page says it cannot`,
+            );
+          }
+        }
+      }
     } finally {
       await rm(work, { recursive: true, force: true });
     }

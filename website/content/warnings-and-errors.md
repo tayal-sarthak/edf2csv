@@ -44,10 +44,9 @@ What it cannot raise is the handful that need a conversion to exist:
 
 - `NO_ANNOTATIONS` and `STALE_OUTPUT`, which are about files being written.
 - `INPUT_CHANGED`, which asks whether the recording moved while it was being converted. `--info` opens the file, reads a header and closes it, so there is no window for it to have moved during — and no output whose description of the file could have stopped being true.
-- The `NO_SAMPLES` that reports a signal file *not written* — the per-channel one, about a channel carrying no samples, comes from the header and is raised.
 - The EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
 
-`EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds.
+`EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds. So was the `NO_SAMPLES` that reports a signal file *not written*, until 0.7.84 made `--info` raise it — whether a conversion writes one is settled by the header and the plan, both of which `--info` has. The per-channel `NO_SAMPLES`, about a channel carrying no samples, has always come from the header and been raised.
 
 Until 0.5.37 this section said the opposite — that `--info` touches neither the data records nor the annotation channel, and cannot raise `ANNOTATION_DECODE_FAILED` or any timestamp-derived `DISCONTINUOUS`. The `DISCONTINUOUS` section further down said "`--info` raises `DISCONTINUOUS` too, since it has to read those record times", on the same page.
 
