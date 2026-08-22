@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { counted, listed } from '../format/list.js';
+import { plain } from '../format/number.js';
 
 export interface AnnotationTimingData {
   recordStarts: (number | null)[];
@@ -147,8 +148,9 @@ export function deriveRecordStarts(
           severity: 'warning',
           message:
             `This file has an annotation channel stating that its records begin at ` +
-            `${stated}s, but its reserved field carries no EDF+C or EDF+D marker — so it is ` +
-            `read as plain EDF, time_s counts from zero, and the two disagree by ${stated}s.`,
+            `${plain(stated)}s, but its reserved field carries no EDF+C or EDF+D marker — so ` +
+            `it is read as plain EDF, time_s counts from zero, and the two disagree by ` +
+            `${plain(stated)}s.`,
           hint:
             'annotations.csv keeps the onsets the file gives, so its events and signals.csv ' +
             'are on different clocks. Mark the file EDF+C, or subtract the offset from the ' +
@@ -465,8 +467,8 @@ function unusableOrigin(origin: number, file: EdfFile): Diagnostic {
     code: 'DISCONTINUOUS',
     severity: 'warning',
     message:
-      `This recording's timekeeping annotations place it ${origin}s from its own start ` +
-      `date, which is too far out for its ${file.header.recordDuration}s records to be told ` +
+      `This recording's timekeeping annotations place it ${plain(origin)}s from its own start ` +
+      `date, which is too far out for its ${plain(file.header.recordDuration)}s records to be told ` +
       `apart: at that magnitude adding a sample interval leaves the number unchanged.`,
     hint:
       'Sample times are written from zero instead, so every row is present and the column ' +

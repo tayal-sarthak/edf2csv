@@ -32,6 +32,7 @@
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
 import { counted, listed } from '../format/list.js';
+import { plain } from '../format/number.js';
 // The shell-quoting rule for a label, shared rather than repeated: this hint and
 // `--channels`' own "did you mean" have to print the same command for the same label.
 import { typeable } from '../convert/channels.js';
@@ -358,7 +359,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   if (!(recordDuration > 0)) {
     throw new EdfError(
       'INVALID_RECORD_DURATION',
-      `Header declares a data record duration of ${recordDuration}s; expected a positive number.`,
+      `Header declares a data record duration of ${plain(recordDuration)}s; expected a positive number.`,
     );
   }
 

@@ -182,6 +182,43 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('never states a number of seconds without formatting it', async () => {
+    /*
+      `${n}s` is the implicit Number-to-String conversion, which switches to exponent notation
+      below 1e-6 and above 1e21 — and every message that names a length of time is read by
+      someone who may have to type it back or subtract it. `--start` refuses an exponent with
+      "uses an unknown unit \"e\"", so a sentence built this way hands back a value its own
+      parser will not take.
+
+      Five separate messages have been fixed for exactly this: the window refusal's bound, its
+      recording length, the time column, `annotations.csv`'s onsets, and `--info`'s record
+      duration. Each was found by someone reading the output rather than by anything here, and
+      each fix left the other call sites alone because nothing enumerated them.
+
+      The rule is mechanical: outside `src/format/`, where the formatters themselves live, an
+      interpolation ending in `s` has to go through one — `plain`, `fixed`, `toFixed`,
+      `formatDuration`. A bare identifier is the shape every one of those defects had.
+    */
+    const files = [
+      'src/cli.ts', 'src/cli/report.ts', 'src/convert/plan.ts', 'src/convert/run.ts',
+      'src/convert/time-range.ts', 'src/convert/timing.ts', 'src/convert/channels.ts',
+      'src/edf/header.ts', 'src/edf/reader.ts', 'src/edf/annotations.ts',
+    ];
+    let checked = 0;
+    for (const where of files) {
+      const text = await read(where);
+      for (const [whole, expression] of text.matchAll(/\$\{([^{}]*)\}s\b/gu)) {
+        checked++;
+        assert.match(
+          expression,
+          /\w\(/u,
+          `${where} writes ${whole} — a raw number of seconds, which is exponent notation past 1e21`,
+        );
+      }
+    }
+    assert.ok(checked >= 8, `only ${checked} seconds interpolations found; the scan has drifted`);
+  });
+
   it('shows only format strings describeFormat can return', async () => {
     /*
       `describeFormat` is a public export, so its doc comment is what a TypeScript consumer's

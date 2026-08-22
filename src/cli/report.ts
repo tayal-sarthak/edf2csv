@@ -8,7 +8,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
-import { fixed, formatBytes, formatDuration } from '../format/number.js';
+import { fixed, formatBytes, formatDuration, plain } from '../format/number.js';
 import { counted } from '../format/list.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
@@ -176,7 +176,7 @@ export function formatInfo(
     }`,
   );
   lines.push(
-    `Duration   ${formatDuration(file.durationSeconds)}  (${counted(file.recordCount, 'record')} of ${header.recordDuration}s)`,
+    `Duration   ${formatDuration(file.durationSeconds)}  (${counted(file.recordCount, 'record')} of ${plain(header.recordDuration)}s)`,
   );
   const elapsedSpan = plan.range.recordingEndSeconds - plan.range.recordingStartSeconds;
   if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {

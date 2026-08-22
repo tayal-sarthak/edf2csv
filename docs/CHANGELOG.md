@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.98
+
+### four more lengths of time printed in exponent notation
+
+Three messages still built a length of time with `${n}s`, which is the implicit
+Number-to-String conversion and so exponent notation below 1e-6 and above 1e21.
+
+`--info`, on the line 0.7.95 fixed the other half of:
+
+```
+Duration   0.000000000000002s  (2 records of 1e-15s)
+```
+
+`MISSING_EDF_PLUS_MARKER`, whose hint tells the reader to "subtract the offset from the
+onsets" — so the number is one they have to work with, and `annotations.csv` writes the same
+quantity as `0.0000001` since 0.7.93:
+
+```
+warning: This file has an annotation channel stating that its records begin at 1e-7s ...
+         and the two disagree by 1e-7s.
+```
+
+And the unusable-origin warning, which reported an origin of `1e+21s`. `INVALID_RECORD_DURATION`
+is the fourth, reachable because EDF's 8-character numeric fields accept exponent form.
+
+All four go through `plain` now. The guard is the more useful half: this is the fifth time this
+cliff has been fixed in a different message — the window refusal's bound, its recording length,
+the time column, `annotations.csv`'s onsets, and now these — and every one was found by reading
+the output rather than by anything in the suite, because nothing enumerated the call sites. A
+test now reads them out of the source and requires each to pass through a formatter, so the next
+one fails here instead of shipping.
+
 ## 0.7.97
 
 ### the one control byte that ends a CSV row had no test
