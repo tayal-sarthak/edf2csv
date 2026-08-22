@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.115
+
+### the bounded-memory invariant a hung-up reader breaks, unchecked
+
+Bounded memory is what `BufferedLineWriter` exists for: rows accumulate and are flushed in
+blocks, so a conversion of any size costs a threshold's worth of characters plus whatever the
+stream has not drained. Nothing checked it.
+
+The case where it fails is a hung-up reader — `edf2csv big.edf --stdout | head -1`, an ordinary
+shell idiom rather than a failure. That is the one flush with nowhere to go, and returning
+without clearing the buffer let `push()` keep appending for the rest of the conversion with
+nothing ever draining it: a 165 MB conversion grew to a 1.3 GB working set and died with a heap
+out-of-memory under a 256 MB limit. Worse than the error it was avoiding, and the opposite of
+what the class is for.
+
+The discard has been there since; take it out and all 420 tests still passed, because every test
+that hangs up a reader asks whether the run exits cleanly, and it does either way — the process
+finishes before the memory becomes the problem on a file that size.
+
+Checked through `full`, the buffer's own account of how much it is holding, which makes the
+assertion the invariant itself rather than a measurement of the heap: five rounds of pushing a
+block past the threshold and flushing, each of which must leave the writer holding nothing, and
+nothing reaching a reader that is gone.
+
 ## 0.7.114
 
 ### four documented causes of one error, one of them tested

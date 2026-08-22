@@ -1678,6 +1678,53 @@ describe('formatting a duration', () => {
   });
 });
 
+describe('the buffered writer', () => {
+  it('drops what it is holding when the reader hangs up', async () => {
+    /*
+      Bounded memory is the invariant this class exists to hold: rows accumulate and are
+      flushed in blocks, so a conversion of any size costs a threshold's worth of characters
+      plus whatever the stream has not drained.
+
+      A hung-up reader — `edf2csv big.edf --stdout | head -1`, which is an ordinary shell
+      idiom and not a failure — is the one case where a flush has nowhere to go. Returning
+      without clearing the buffer let `push()` keep appending for the rest of the conversion
+      with nothing ever draining it, so a 165 MB conversion grew to a 1.3 GB working set and
+      died with a heap out-of-memory under a 256 MB limit: worse than the error that was
+      being avoided, and the opposite of what the class is for.
+
+      Checked through `full`, which is the buffer's own account of how much it is holding, so
+      this is the invariant itself rather than a measurement of the heap.
+    */
+    const { BufferedLineWriter } = await import('../dist/format/csv.js');
+    const { Writable } = await import('node:stream');
+
+    const landed = [];
+    const stream = new Writable({
+      write(chunk, encoding, done) {
+        landed.push(String(chunk));
+        done();
+      },
+    });
+    const writer = new BufferedLineWriter(stream, 1024);
+
+    // What the shell does: the consumer closes the pipe while the conversion is still going.
+    stream.emit('error', Object.assign(new Error('broken pipe'), { code: 'EPIPE' }));
+    assert.equal(writer.hungUp, true, 'EPIPE is the reader leaving, not a write failure');
+
+    for (let round = 0; round < 5; round++) {
+      writer.push('x'.repeat(4096));
+      assert.equal(writer.full, true, `round ${round}: the writer should be holding a block`);
+      await writer.flush();
+      assert.equal(writer.full, false, `round ${round}: the block was kept rather than dropped`);
+    }
+    assert.deepEqual(landed, [], 'nothing can reach a reader that is gone');
+
+    // And ending is still clean: there is nothing to close and nothing to report.
+    await writer.end();
+    assert.equal(writer.hungUp, true);
+  });
+});
+
 describe('the time column', () => {
   // Value cells are cached — a channel has only so many distinct readings — but the time
   // column rises monotonically, so no two rows share a string and toFixed ran once per row.
