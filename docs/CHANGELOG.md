@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.105
+
+### half of a window field pair described as resolved
+
+`metadata.json` calls `start_seconds` and `end_seconds` "the resolved time window". Only one of
+them was resolved. The end has been clamped to the recording since the fields existed — `--end
+999h` on a two-hour file is documented as converting to the end, silently — and the start was
+recorded exactly as typed:
+
+```
+edf2csv two-second.edf --out csv --start=-500
+metadata.json   "start_seconds": -500,  "end_seconds": 2,  "whole_recording": true
+signals.csv     time_s,ch1
+                0.000,...
+```
+
+`records_converted` is `[0, 2]`, because the record selection clamps on its own; the field a
+pipeline reads for the window says the conversion began 500 seconds before any data exists, and
+`end_seconds - start_seconds` gives 502 seconds for two seconds of samples.
+
+Clamped to where the recording begins rather than to zero, since a recording is timed from its
+first record and need not start there: on `negative-origin.edf`, which runs from -100s, the same
+`--start=-500` now records -100.
+
+Nothing downstream moves. Every sample sits at or after that bound, so the row filter and the
+record selection give the same answers either way, and the byte estimate takes its time-column
+width from the smaller magnitude — the one the column actually holds. The test checks that:
+the clamped run's `signals.csv` is byte-identical to a bare conversion's.
+
 ## 0.7.104
 
 ### the date guard that stops a header naming a day no month has

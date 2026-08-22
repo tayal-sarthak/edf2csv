@@ -531,7 +531,10 @@ warning: The input changed while it was being converted, so this output covers t
 
 - `converted_at` is when this run finished, as an ISO 8601 instant in UTC.
 - `start_seconds` and `end_seconds` are the resolved time window, in seconds from the start of the
-  recording, half-open. `whole_recording` is `true` when the window covers everything, which saves
+  recording, half-open. Both ends are clamped to the recording, so a window asked for wider than
+  the recording is recorded as the part of it that exists: `--start=-500 --end 999h` on a
+  two-second file comes back as `0` and `2`, and their difference is always a span the conversion
+  actually covered. `whole_recording` is `true` when the window covers everything, which saves
   a script from comparing floats.
 - `whole_recording` is true when the conversion covered the recording from its first sample to its last. A window that happens to name exactly those bounds counts as whole — the length of a recording is `records × record_duration`, which for 6003 records of 0.1s is 600.3000000000001 rather than the 600.3 it prints as, and up to 0.5.94 `--end 600.3` on such a file was recorded as partial while writing every sample.
 - `records_converted` is the half-open range of data record indexes the converted window covers, `[first, last)`. Under `--annotations-only` no signal records are read at all and this still describes the window; the annotation channel is read in full whatever it says.

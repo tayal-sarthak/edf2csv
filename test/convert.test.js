@@ -533,6 +533,57 @@ describe('column naming', () => {
     await convert(recording, { outputDir: half, end: 300 });
     const partial = JSON.parse(await readFile(path.join(half, 'metadata.json'), 'utf8'));
     assert.equal(partial.conversion.whole_recording, false);
+
+    /*
+      And both ends of that window are clamped to the recording, not just the far one.
+
+      output-files calls the pair "the resolved time window". The end has always been
+      resolved — `--end 999h` is documented as converting to the end, silently — and the start
+      was recorded as typed, so `--start=-500` on this recording wrote every sample and
+      described itself as running from -500s. `end_seconds - start_seconds` then gives a span
+      no conversion took.
+
+      Clamped to where the recording begins rather than to zero: a recording is timed from its
+      first record and need not start there.
+    */
+    const early = await outDir();
+    await convert(recording, { outputDir: early, start: -500 });
+    const before = JSON.parse(await readFile(path.join(early, 'metadata.json'), 'utf8'));
+    assert.equal(before.conversion.start_seconds, 0, 'a start before the recording is clamped');
+    assert.equal(before.conversion.whole_recording, true);
+    assert.equal(
+      await readFile(path.join(early, 'signals.csv'), 'utf8'),
+      await readFile(path.join(bare, 'signals.csv'), 'utf8'),
+      'clamping the bound must not change a byte of the output',
+    );
+
+    // On a recording timed from before zero, that bound is where it begins.
+    const shifted = await outDir();
+    await convert(fixture('negative-origin.edf'), { outputDir: shifted, start: -500 });
+    const timed = JSON.parse(await readFile(path.join(shifted, 'metadata.json'), 'utf8'));
+    assert.equal(timed.conversion.start_seconds, -100);
+    assert.equal(timed.conversion.end_seconds, -97);
+
+    /*
+      And a window that lies entirely before the recording keeps the bounds as asked for.
+
+      There is no overlap to clamp to, so raising the start to where the recording begins puts
+      it past the end and describes the request backwards. EMPTY_WINDOW quotes both bounds and
+      its hint is about the window sitting before the data, which needs the window it was
+      given: "(30.000s to 0.001s)" is not a window anyone asked for.
+    */
+    const missed = await outDir();
+    const away = await convert(fixture('late-start.edf'), {
+      outputDir: missed, start: 0, duration: 0.001,
+    });
+    const empty = away.diagnostics.find((d) => d.code === 'EMPTY_WINDOW');
+    assert.ok(empty, JSON.stringify(away.diagnostics));
+    assert.match(empty.message, /\(0\.000s to 0\.001s\)/u, empty.message);
+    const missedMeta = JSON.parse(await readFile(path.join(missed, 'metadata.json'), 'utf8'));
+    assert.ok(
+      missedMeta.conversion.start_seconds < missedMeta.conversion.end_seconds,
+      JSON.stringify(missedMeta.conversion),
+    );
   });
 
   it('never predicts fewer bytes than it writes, sign included', async () => {

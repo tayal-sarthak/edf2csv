@@ -380,10 +380,39 @@ export function resolveRange(options: {
   }
 
   const clampedEnd = Math.min(endSeconds, latest);
-  const { startRecord, endRecord } = selectRecords(options, startSeconds, clampedEnd);
+  /*
+    Both ends of the window, clamped the same way.
+
+    The end has been clamped to the recording since these fields existed — `--end 999h` on a
+    two-hour file is documented as converting to the end, silently — and the start was left as
+    typed. So a window asked for before the recording begins was recorded as one:
+
+        edf2csv two-second.edf --out csv --start=-500
+        metadata.json  "start_seconds": -500, "end_seconds": 2
+
+    over a signals.csv whose first row is 0.000, with `records_converted` correctly `[0, 2]`.
+    output-files calls the pair "the resolved time window", which the end is and the start was
+    not, and a script taking `end_seconds - start_seconds` for the span converted got 502 for
+    two seconds of data.
+
+    `earliest` and not zero, because a recording is timed from its first record and need not
+    begin there: negative-origin.edf runs from -100s, and -100 is where a start before the
+    recording belongs. Nothing downstream moves — every sample sits at or after `earliest`, so
+    the row filter and the record selection answer the same for either value, and the byte
+    estimate takes a width from the smaller magnitude, which is the one the column actually
+    holds.
+
+    Not when the whole window sits before the recording, where there is no overlap to clamp
+    to and raising the start past the end would describe the request backwards: `--start 0
+    --duration 0.001` on a file beginning at 30s is an empty window, and EMPTY_WINDOW quotes
+    the bounds — "(30.000s to 0.001s)" says nothing a reader can act on, where the bounds as
+    asked for are what its hint is already explaining.
+  */
+  const clampedStart = clampedEnd <= earliest ? startSeconds : Math.max(startSeconds, earliest);
+  const { startRecord, endRecord } = selectRecords(options, clampedStart, clampedEnd);
 
   return {
-    startSeconds,
+    startSeconds: clampedStart,
     endSeconds: clampedEnd,
     startRecord,
     endRecord,
