@@ -349,7 +349,7 @@ Recognised units are `h`, `hr`, `hrs`, `hour`, `hours`; `m`, `min`, `mins`, `min
 
 Each unit may appear once. `1h30m20s` is fine and so is `1h30min`, but `1h1h` is rejected rather than summed to two hours — a repeated unit is a typo far more often than it is a request, and silently adding it up produces a window that is quietly the wrong length. Aliases count as the same unit, so `30m20min` is caught too.
 
-Two details of the unit form. A number must sit directly against its unit, with no space between them: `5min` is accepted and `5 min` isn't. Space between separate terms is fine, so `1h30m 15s` works. And a number must lead with a digit: `1.5h` is accepted, `.5` isn't.
+Two details of the unit form. A number must sit directly against its unit, with no space between them: `5min` is accepted and `5 min` isn't — and the refusal says so, rather than sending you back to check the unit. Space between separate terms is fine, so `1h30m 15s` works. And a number must lead with a digit: `1.5h` is accepted, `.5` isn't.
 
 `--start` and `--end` also take a leading `-`, for the recordings whose clock begins before zero. The sign applies to the whole value, so `-1h30m` is ninety minutes before the origin rather than sixty before and thirty after, and nothing may sit between the sign and the number. A leading `+` is refused, as it is for `--decimals` and `--jobs`. `--duration` is a length rather than a position and takes no sign at all: `--duration=-5` is `--duration "-5" is not a valid non-negative time`. Because a value beginning with a dash reads as another flag, these are written as one argument — `--start=-100`, not `--start -100`, which the tool says in as many words if you try.
 
@@ -361,6 +361,7 @@ Rejections say what went wrong:
 error: --start "5x" uses an unknown unit "x". Use h, m, s or ms, or their long forms:
        hours, minutes, seconds.
 error: --start "1h banana" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds.
+error: --start "5 min" puts a space between a number and its unit. Write them together: 5min
 error: --duration is empty. Try a value like 30s, 5m, or 00:30:00.
 ```
 

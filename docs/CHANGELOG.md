@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.102
+
+### a space in a time value answered as if the value were unreadable
+
+`--start "5 min"` was refused with the message for input that could not be read:
+
+```
+error: --start "5 min" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain
+       number of seconds.
+```
+
+All of it was read. `5` parsed, `min` was looked up in the unit table and found and is worth
+sixty seconds. The only thing wrong is a space, and the reader is sent back to re-check their
+units — with `5m` sitting in the list of suggestions, one character from what they typed and
+that character invisible.
+
+The rule itself is deliberate and stays: cli-reference sets it out, and it is what stops `1 2h`
+being read as anything. What was missing is that the parser knew which of the two had happened
+and threw the same sentence for both, because the length check that catches a half-understood
+value counted the whitespace inside a token and so caught these first. Counting it out leaves
+them distinguishable, and they now get their own refusal with the form to type:
+
+```
+error: --start "5 min" puts a space between a number and its unit. Write them together: 5min
+```
+
+The advised form is checked by the test to parse, and to parse to what was meant — `1 h 30 m`
+comes back as `1h 30m`, since a space between terms is legal and only the one inside a term is
+not.
+
 ## 0.7.101
 
 ### --info stayed quiet about the one thing --annotations-only would not write

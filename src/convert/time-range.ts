@@ -102,11 +102,13 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     return signed(hours * 3600 + minutes * 60 + seconds);
   }
 
-  // Unit form: 1h30m, 5 min, 250ms.
+  // Unit form: 1h30m, 1h30m 15s, 250ms. A number sits directly against its unit; see below.
   UNIT_TOKEN.lastIndex = 0;
   let total = 0;
   let matched = 0;
   let consumed = 0;
+  /** Whether any token had a space between its number and its unit. See the refusal below. */
+  let spaced = false;
   let match: RegExpExecArray | null;
   // Which units have already been seen, so a repeat can be rejected rather than added.
   const seen = new Set<number>();
@@ -134,7 +136,11 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
 
     total += amount * scale;
     matched++;
-    consumed += match[0].length;
+    // Counted with the whitespace taken out, so the comparison below is against the same
+    // string on both sides and a space inside a token reaches the refusal written for it
+    // rather than the one about input that could not be read at all.
+    consumed += match[0].replace(/\s+/gu, '').length;
+    if (/\s/u.test(match[0])) spaced = true;
   }
 
   // Reject partially-understood input like "5x" or "1h banana".
@@ -142,6 +148,27 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     throw new TimeRangeError(
       `${optionName} "${input}" is not a time I understand. ` +
         `Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds.`,
+    );
+  }
+
+  /*
+    A space between a number and its unit, named as such.
+
+    `5 min` is refused on purpose — cli-reference sets the rule out, and it is what keeps
+    `1 2h` from being read as anything — but it came back as "is not a time I understand. Try
+    30s, 5m, 1h30m, 00:30:00, or a plain number of seconds", which is the message for input
+    that could not be read at all. Every part of `5 min` was read: the number parsed, the unit
+    was looked up in the table and found. The one thing wrong with it is a space, and the
+    reader was sent to re-check their unit spellings instead — with `5m` sitting in the list of
+    suggestions, differing from what they typed by a character they cannot see is the problem.
+
+    Only reachable now that the count above ignores whitespace; before, the length check caught
+    these first and there was nothing left to tell them apart by.
+  */
+  if (spaced) {
+    throw new TimeRangeError(
+      `${optionName} "${input}" puts a space between a number and its unit. ` +
+        `Write them together: ${input.trim().replace(/(\d)\s+([a-z])/giu, '$1$2')}`,
     );
   }
 

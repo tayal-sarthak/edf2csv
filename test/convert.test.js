@@ -71,6 +71,28 @@ describe('time specifications', () => {
     for (const bad of ['5x', '1h banana', '', 'abc', '00:99:00']) {
       assert.throws(() => parseTimeSpec(bad, '--start'), TimeRangeError, `should reject ${bad}`);
     }
+
+    /*
+      A space between a number and its unit is refused on purpose, and it is not input this
+      only partly understands: the number parsed and the unit was found in the table. It came
+      back as "is not a time I understand. Try 30s, 5m, 1h30m ..." — the message for something
+      unreadable — with `5m` in the suggestions, one invisible character from what was typed.
+    */
+    for (const [typed, seconds] of [['5 min', 300], ['1 h 30 m', 5400], ['250 ms', 0.25]]) {
+      assert.throws(
+        () => parseTimeSpec(typed, '--start'),
+        (error) => {
+          assert.ok(error instanceof TimeRangeError, error);
+          assert.match(error.message, /puts a space between a number and its unit/u, error.message);
+          // The form it advises has to be one this parser takes, and to mean what was typed.
+          const advised = /Write them together: (.+)$/u.exec(error.message);
+          assert.ok(advised, error.message);
+          assert.equal(parseTimeSpec(advised[1], '--start'), seconds, advised[1]);
+          return true;
+        },
+        typed,
+      );
+    }
   });
 
   it('takes an offset below zero, in every form, for the options that name a position', () => {
