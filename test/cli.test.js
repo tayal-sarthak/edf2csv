@@ -4737,6 +4737,53 @@ describe('--strict', () => {
     assert.equal((await cli([fixture('tiny.edf'), '--info', '--strict'])).code, 0);
     assert.equal((await cli([fixture('mixed-rates.edf'), '--info', '--strict'])).code, 1);
   });
+
+  it('counts annotation durations over the rows a conversion would write', async () => {
+    /*
+      An annotation onset is not obliged to fall inside the recorded span — a marker for the
+      end of a recording sits at exactly its length — and with no time option given a
+      conversion writes every event it finds. `--info` counted the duration warnings over the
+      resolved range instead, which is clamped to the recording, so the two described the same
+      file differently:
+
+          --info      1 annotation states a duration that is not a number, so its ...
+          conversion  2 annotations state a duration that is not a number, so their ...
+
+      over an annotations.csv holding both rows.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-edgedur-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const recording = path.join(scratch, 'edge-durations.edf');
+    writeEdf({
+      path: recording, reserved: 'EDF+D', numRecords: 2, recordDuration: 1,
+      // One unreadable duration inside the two-second span, one a long way past its end.
+      talsForRecord: (r) =>
+        r === 0
+          ? `+0${T}${T}${Z}+0.5${D}abc${T}inside${T}${Z}`
+          : `+1${T}${T}${Z}+100${D}abc${T}past the end${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 2, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    const described = JSON.parse((await cli([recording, '--info', '--json'])).stdout);
+    const converted = JSON.parse((await cli([recording, '--out', dir, '--json'])).stdout);
+    const durations = (doc) => doc.warnings.filter((w) => /duration/u.test(w.message)).map((w) => w.message);
+    assert.deepEqual(durations(described), durations(converted), '--info predicts the conversion');
+
+    // And the count is the one annotations.csv actually holds.
+    const rows = (await readFile(path.join(dir, 'annotations.csv'), 'utf8')).trimEnd().split('\n');
+    assert.equal(rows.length - 1, 2, rows.join(' | '));
+    assert.match(durations(converted)[0], /^2 annotations state a duration that is not a number/u);
+  });
 });
 
 describe('--info --json', () => {

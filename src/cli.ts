@@ -954,13 +954,23 @@ async function showInfo(
       Same window the conversion applies, so --info predicts the warnings rather than a
       different set. Raised here rather than in the parser because the counts have to be of
       the rows that reach annotations.csv — see durationDiagnostics.
+
+      `eventWindow` above and not the resolved range, which is what this passed. The two are
+      the same window only while the conversion asks for no more than the recording holds:
+      the range is clamped to the recording, and an annotation onset is not obliged to fall
+      inside it — a marker for the end of a recording sits at exactly its length, and
+      annotations-at-edges.edf exists because filtering events by the range dropped those.
+      So a two-second EDF+D carrying one unreadable duration inside its span and one past the
+      end was described by
+
+          --info      1 annotation states a duration that is not a number, so its ...
+          conversion  2 annotations state a duration that is not a number, so their ...
+
+      about the same file with no time option given, over an annotations.csv holding both
+      rows. `knownEvents` three lines up already counts through `eventWindow`, for the reason
+      its comment gives; this was the second copy that comment says not to make.
     */
-    plan.diagnostics.push(
-      ...durationDiagnostics(annotationData.annotations, {
-        from: plan.range.startSeconds,
-        to: plan.range.endSeconds,
-      }),
-    );
+    plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, eventWindow));
 
     /*
       And the warning about the signal file this conversion would not write.

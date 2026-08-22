@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.103
+
+### --info and a conversion counting the same annotations differently
+
+`--info` and a conversion counted the annotation-duration warnings over different windows, so
+they described the same file differently with no time option given at all:
+
+```
+--info      warning: 1 annotation states a duration that is not a number, so its duration_s
+                     cell is empty.
+conversion  warning: 2 annotations state a duration that is not a number, so their duration_s
+                     cell is empty.
+```
+
+over an `annotations.csv` holding both rows. The conversion counts through the window it filters
+events by, which with nothing asked for is unbounded; `--info` counted through `plan.range`,
+which is clamped to the recording. An annotation onset is not obliged to fall inside the recorded
+span — a marker for the end of a recording sits at exactly its length, and
+`annotations-at-edges.edf` exists in this repository because filtering events by the range used
+to drop them — so any event past the end with a duration that cannot be read was counted by one
+and not the other.
+
+`--info` already computes the right window three lines above, for the event count, with a comment
+saying it is "the same window predicate a conversion filters them by, rather than a second copy
+of it". The duration counts were the second copy. They use the one window now.
+
+Found by sweeping `--info` against a conversion over every fixture and seven option sets, which
+compared codes; this pair shares a code and differs in the number inside the sentence, so it took
+a fixture built for it.
+
 ## 0.7.102
 
 ### a space in a time value answered as if the value were unreadable
