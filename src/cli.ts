@@ -396,13 +396,20 @@ export async function main(argv: readonly string[]): Promise<number> {
     // Prefixed and indented like the rest; see the --json refusal above. The recording's
     // name goes through `printable` for the reason 0.5.67 gives: a path is untrusted text,
     // and this one is read straight out of a directory the caller named.
+    //
+    // Quoted where a shell would not hand it back unchanged, by the same rule as the
+    // --stdout --gzip hint below, whose comment sets it out: this sentence names a recording
+    // to type in place of the folder, and one found inside a folder is as likely to hold a
+    // space as the folder is. Unquoted it was two arguments, which --stdout then refuses for
+    // being two recordings — the message one step on from the one being read.
+    const only = printable(inputs[0] as string);
     process.stderr.write(
       inputs.length === 1
         ? `error: --stdout writes a single CSV, and a folder is converted as a batch even ` +
           `when it holds one recording.\n` +
           detail(
-            `Name the recording itself — ${printable(inputs[0] as string)} — or convert ` +
-              `to a directory instead.`,
+            `Name the recording itself — ${survivesBare(only) ? only : singleQuoted(only)} — ` +
+              `or convert to a directory instead.`,
           )
         : `error: --stdout writes a single CSV, so it cannot take ` +
           `${counted(inputs.length, 'recording')}.\n` +

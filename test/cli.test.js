@@ -4052,6 +4052,28 @@ describe('what --stdout says about itself', () => {
     assert.ok(!/take 1 recordings/u.test(stderr), stderr);
     assert.match(stderr, /a folder is converted as a batch even when it holds one recording/u);
     assert.match(stderr, /night\.edf/u, 'and names the recording to run instead');
+
+    /*
+      And names it as something that can be typed. The sentence exists to hand the reader an
+      argument to use in place of the folder, and a recording found inside one is as likely to
+      hold a space as the folder is — `Name the recording itself — /data/sleep study/night 1.edf
+      — or convert to a directory instead` is three arguments, and --stdout answers three
+      recordings with a different refusal again.
+
+      The hint one branch down, for `--stdout --gzip`, already quotes by this rule and its
+      comment sets out why. This one was left bare.
+    */
+    const spaced = await mkdtemp(path.join(tmpdir(), 'edf2csv one '));
+    temporaries.push(spaced);
+    await writeFile(path.join(spaced, 'night one.edf'), await readFile(fixture('tiny.edf')));
+    const quoted = await cli([spaced, '--stdout']);
+    assert.equal(quoted.code, 2);
+    assert.ok(
+      quoted.stderr.replace(/\s+/gu, ' ').includes(`'${path.join(spaced, 'night one.edf')}'`),
+      `a recording whose path holds a space has to be offered quoted:\n${quoted.stderr}`,
+    );
+    // And one that needs no quoting keeps none, so the ordinary message is unchanged.
+    assert.ok(!/'/u.test(stderr), `a plain path must stay bare:\n${stderr}`);
   });
 });
 

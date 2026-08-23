@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.119
+
+### a recording named for retyping, in a form no shell reads as one name
+
+`--stdout` refuses a folder, and the refusal hands the reader the argument to use instead:
+
+```
+error: --stdout writes a single CSV, and a folder is converted as a batch even when it holds one recording.
+       Name the recording itself — /data/sleep study/night 1.edf — or convert to a directory instead.
+```
+
+Which is three arguments, and `--stdout` answers three recordings with a different refusal
+again — so following the advice on a path with a space in it gets a second refusal rather than
+the conversion. A recording found inside a folder is as likely to hold a space as the folder
+the reader just named.
+
+The hint one branch down, for `--stdout --gzip`, has quoted by `survivesBare` since 0.6.86 and
+its comment sets out the rule: "Quoted by the same rule as the other two hints, so a path with
+a space in it stays one argument." There were three; two of them followed it.
+
+A path a shell hands back unchanged is still printed bare, so the ordinary message has not
+moved.
+
 ## 0.7.118
 
 ### a name printed to be typed back, re-flowed into a different name
