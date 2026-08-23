@@ -597,7 +597,7 @@ It exists for one reader. Excel on Windows opens a CSV with no mark in the syste
 edf2csv recording.edf --out ./converted --bom
 ```
 
-It applies to `signals.csv`, `channels.csv` and `annotations.csv`, and to their `.csv.gz` forms — the mark goes inside the compressed stream, so decompressing gives a marked CSV. `metadata.json` never gets one: `JSON.parse` rejects a leading U+FEFF, so a mark there would break every reader of the file to help a program that will not open it anyway.
+It applies to `signals.csv`, `channels.csv` and `annotations.csv`, and to their `.csv.gz` forms — the mark goes inside the compressed stream, so decompressing gives a marked CSV. It applies to `--stdout` too, ahead of the header row and inside the compression when `--gzip` is given as well, since `edf2csv rec.edf --stdout --bom > signals.csv` is a way of producing the file Excel opens and the mark is the reason for asking. That is also the case to know about if the other end is a script rather than a spreadsheet: what arrives on the pipe begins `EF BB BF`. `metadata.json` never gets one: `JSON.parse` rejects a leading U+FEFF, so a mark there would break every reader of the file to help a program that will not open it anyway.
 
 The reason it is not the default is that the mark is not invisible to everything. pandas strips it on the way in, either engine. Python's own `csv` module over a plain `open()` does not, and neither does Node's `fs.readFileSync(path, 'utf8')` — the first column name comes back as `\ufefftime_s` and a lookup of `time_s` misses. Readers that want it gone ask for it by name:
 

@@ -4468,6 +4468,24 @@ describe('--bom', () => {
       'one signal file, three bytes',
     );
   });
+
+  it('marks the stream as well as the files, which is where Excel opens it from', async () => {
+    /*
+      `--stdout` is the third destination and the only one the reference's list of where the
+      mark goes never named — it enumerated the three CSVs and their `.csv.gz` forms, which
+      reads as all of them. `edf2csv rec.edf --stdout --bom > signals.csv` is a way of making
+      the file Excel opens, and the mark is the reason for asking; on the other side, a script
+      reading the pipe gets three bytes in front of `time_s` with nothing having said so.
+    */
+    const marked = await cli([fixture('latin1-labels.edf'), '--stdout', '--bom']);
+    assert.equal(marked.code, 0, marked.stderr);
+    assert.equal(marked.stdout.codePointAt(0), 0xfeff, 'the stream must start with the mark');
+
+    const plain = await cli([fixture('latin1-labels.edf'), '--stdout']);
+    assert.equal(plain.code, 0, plain.stderr);
+    assert.equal(marked.stdout.slice(1), plain.stdout, 'and be the same text after it');
+    assert.equal(plain.stdout.codePointAt(0), 't'.codePointAt(0), 'without the flag, no mark');
+  });
 });
 
 describe('--gzip', () => {

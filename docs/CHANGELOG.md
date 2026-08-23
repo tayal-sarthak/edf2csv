@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.129
+
+### the byte order mark on the one destination the page did not name
+
+The `--bom` section lists where the mark goes: "It applies to `signals.csv`, `channels.csv` and
+`annotations.csv`, and to their `.csv.gz` forms." Which reads as all of them, and leaves out the
+third destination — `--stdout`, where the mark is written ahead of the header row, and inside
+the compression when `--gzip` is given as well.
+
+Both halves of that matter to somebody. `edf2csv rec.edf --stdout --bom > signals.csv` is a way
+of producing the file Excel opens, which is the entire reason the flag exists, and nothing said
+it worked. On the other side, a script reading the pipe gets `EF BB BF` in front of `time_s` —
+the failure the same section warns about for files, where `csv.reader` over a plain `open()`
+returns `﻿time_s` and a lookup of `time_s` misses.
+
+The `--bom` tests covered the files and the compressed forms and stopped in the same place the
+sentence did.
+
 ## 0.7.128
 
 ### two JSON fields documented as numbers that are null where it matters
