@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.152
+
+### one digit budgeted for a bound that is not a number
+
+The other half of 0.7.145, and this one reads *low* — the direction the correctness page says
+the estimate never goes.
+
+A recording's far bound is `recordCount * recordDuration`, so a header stating a record duration
+near the top of a double overflows it, while every sample time under that bound stays finite and
+prints in full. `widthOf` budgeted one digit for a bound that is not a number. Three records of
+1e308, eight samples:
+
+```
+Would write 8 rows, roughly 115 B.        signals.csv is 2,244 bytes.
+```
+
+Each of those rows carries a 313-character time cell. The width of a non-finite bound is now the
+widest a finite double prints — 309 digits, `Number.MAX_VALUE` written out — which is exact
+here, since `fixed` leaves a cell empty when the value itself is not finite. The sweep's
+existing numbers are unchanged; no fixture has a bound this function could not measure.
+
 ## 0.7.151
 
 ### a string iterated into a suggestion of itself

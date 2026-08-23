@@ -547,6 +547,9 @@ function valueWidthOf(channel: PlannedChannel): number {
   );
 }
 
+/** Integer digits in `Number.MAX_VALUE`, which is the widest a finite double prints. */
+const MAX_DOUBLE_DIGITS = 309;
+
 /** Characters a fixed-decimal number of this magnitude occupies, sign included. */
 function widthOf(magnitude: number, decimals: number, signed = false): number {
   const size = Math.abs(magnitude);
@@ -563,7 +566,21 @@ function widthOf(magnitude: number, decimals: number, signed = false): number {
     Measuring the bound as rendered removes that. toFixed switches to exponential notation
     past 1e21, so the arithmetic form still covers magnitudes beyond it.
   */
-  if (!Number.isFinite(size)) return sign + 1 + fraction;
+  /*
+    A bound that is not a number bounds nothing, so the widest cell it can produce is taken
+    instead: 309 digits, which is `Number.MAX_VALUE` written out.
+
+    One digit was budgeted, and the estimate read low — the one direction the correctness page
+    says it never goes. `latest` is `recordCount * recordDuration`, so a header stating a
+    record duration near the top of a double overflows it while every sample time under it
+    stays finite and prints in full. Three records of 1e308, eight samples:
+
+        Would write 8 rows, roughly 115 B.        signals.csv is 2,244 bytes.
+
+    Each of those rows carries a 313-character time cell. `fixed` writes an empty cell for a
+    value that is itself non-finite, so nothing wider than this is ever printed.
+  */
+  if (!Number.isFinite(size)) return sign + MAX_DOUBLE_DIGITS + fraction;
   if (size < 1e21) return sign + size.toFixed(Math.min(decimals, 100)).length;
   return sign + (Math.floor(Math.log10(size)) + 1) + fraction;
 }

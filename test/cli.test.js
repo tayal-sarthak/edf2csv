@@ -1690,6 +1690,34 @@ describe('--info', () => {
       if (estimate < actual) short.push(`${name}: said ${estimate}, wrote ${actual}`);
     }
     assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
+
+    /*
+      And a recording no fixture is: `latest` is `recordCount * recordDuration`, so a header
+      stating a record duration near the top of a double overflows it while every sample time
+      under it stays finite and prints in full. The width of a non-finite bound was budgeted at
+      one digit, and the estimate read low by a factor of twenty — the one direction this test
+      exists to catch, on the only input that could reach it.
+
+          Would write 8 rows, roughly 115 B.     signals.csv is 2,244 bytes.
+    */
+    const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-giant-'));
+    temporaries.push(work);
+    const giant = path.join(work, 'giant-duration.edf');
+    writeEdf({
+      path: giant, numRecords: 3, recordDuration: 1e308,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, i) => r * 4 + i },
+      ],
+    });
+    const { stdout: survey } = await cli([giant, '--info', '--json', '--decimals', '1']);
+    const dir = await outDir();
+    await cli([giant, '--out', dir, '--decimals', '1']);
+    const wrote = (await stat(path.join(dir, 'signals.csv'))).size;
+    const said = JSON.parse(survey).estimate.bytes;
+    assert.ok(said >= wrote, `said ${said}, wrote ${wrote}`);
+    assert.ok(said <= wrote * 3, `said ${said}, wrote ${wrote}`);
   });
 
   it('stays under the wall on a recording whose every cell is empty', async () => {
