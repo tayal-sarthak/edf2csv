@@ -181,7 +181,7 @@ Diagnostics are the non-fatal observations edf2csv makes about a file. They are 
 ```ts
 interface Diagnostic {
   code: DiagnosticCode;
-  severity: 'warning' | 'info';
+  severity: 'warning';
   message: string;
   /** What the user can do about it. Omitted when there is nothing useful to say. */
   hint?: string;

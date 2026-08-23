@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.127
+
+### a published severity nothing raises, under a third name if it did
+
+```ts
+interface Diagnostic {
+  code: DiagnosticCode;
+  severity: 'warning' | 'info';
+  ...
+```
+
+Nothing in this codebase has ever built an `'info'`. A union in a published interface is a
+promise about what a caller may receive, so `api.md` printed that one and `cli-reference.md`
+told a `--json` reader to expect `"warning"` or `"info"` — a branch that cannot run, in the
+field a pipeline switches on.
+
+The terminal supplied a third name for the same thing. `formatDiagnostics` wrote
+`d.severity === 'warning' ? 'warning' : 'note'`, so the value the type allowed would have
+reached the screen as `note:` — a prefix no page mentions and no run has produced.
+
+Narrowed to `'warning'`, with both pages saying so, and the label taken from the field rather
+than chosen by a ternary with one live arm. A check now reads the union and the `severity:`
+literals out of the source and requires them to be the same set in both directions, and holds
+`api.md` to printing it.
+
+The field itself stays. `metadata.json`, both JSON streams and this interface all carry it, and
+taking it out of documents people have archived is a different and worse change than narrowing
+what it can say.
+
 ## 0.7.126
 
 ### the exit code a scheduler produces, named on one page of two

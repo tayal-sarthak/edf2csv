@@ -96,6 +96,43 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('publishes no diagnostic severity it never raises', async () => {
+    /*
+      `severity: 'warning' | 'info'` was the published type, and nothing in this codebase has
+      ever built an `'info'`. A union in a public interface is a promise about what a caller
+      may receive: api.md printed it, cli-reference told a `--json` reader to expect
+      `"warning"` or `"info"`, and both were asking for a branch that cannot run. The
+      terminal made the third version of it — `formatDiagnostics` labelled anything not
+      `'warning'` as `note:`, so the value the type allowed would have arrived under a name
+      neither page mentions.
+
+      Held from the source in both directions: the union may only name severities the code
+      constructs, and every severity the code constructs has to be in the union.
+    */
+    const errors = (await read('src/edf/errors.ts'))
+      .replace(/\/\*[\s\S]*?\*\//gu, '')
+      .replace(/\/\/[^\n]*/gu, '');
+    const field = /interface Diagnostic \{[\s\S]*?severity: ([^;]+);/u.exec(errors);
+    assert.ok(field, 'Diagnostic no longer declares a severity');
+    const declared = [...field[1].matchAll(/'([a-z]+)'/gu)].map((m) => m[1]);
+    assert.ok(declared.length > 0, 'the severity union is gone from Diagnostic');
+
+    const built = new Set();
+    for (const file of ['src/edf/header.ts', 'src/convert/plan.ts', 'src/convert/run.ts',
+      'src/convert/timing.ts', 'src/cli.ts']) {
+      for (const [, value] of (await read(file)).matchAll(/severity: '([a-z]+)'/gu)) built.add(value);
+    }
+    assert.ok(built.size > 0, 'no diagnostic is constructed anywhere');
+    assert.deepEqual([...declared].sort(), [...built].sort(), 'the union and the code disagree');
+
+    // And the page that prints the interface prints the same thing.
+    const api = await read('website/content/api.md');
+    const block = /interface Diagnostic \{([\s\S]*?)\}/u.exec(api);
+    assert.ok(block, 'api.md no longer shows the Diagnostic interface');
+    const shown = [...block[1].matchAll(/'([a-z]+)'/gu)].map((m) => m[1]);
+    assert.deepEqual(shown.sort(), [...declared].sort(), `api.md shows ${shown}`);
+  });
+
   it('shows the message every section it writes about is written about', async () => {
     /*
       The page's shape is cause, what the tool does, the message it printed, what to do. The

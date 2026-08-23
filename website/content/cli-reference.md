@@ -829,7 +829,7 @@ Field by field:
 | `duration_seconds` | Duration of the whole recording, not of the converted window |
 | `records` | Number of data records the file actually contains, which can differ from the count its header declares |
 | `elapsed_ms` | Wall-clock time for the conversion |
-| `warnings` | One entry per diagnostic, each with a stable `code`, a `severity` of `"warning"` or `"info"`, and a human-readable `message`. Empty array when there's nothing to report |
+| `warnings` | One entry per diagnostic, each with a stable `code`, a `severity` — always `"warning"`, the only one this raises — and a human-readable `message`. Empty array when there's nothing to report |
 
 Those three fields are all of it. The **hint** — the indented second line under every warning on the terminal, and the part that says what to do about it — is not carried in the JSON, and neither is it in `metadata.json`'s `notes`. It is advice rather than data, and it varies with the run: the same code prints a different hint depending on whether `--checksum` was given, whether the layout is `long`, or which of two causes raised it. Match on `code` and look the remedy up in [warnings and errors](/docs/warnings-and-errors), where every code has its own section.
 

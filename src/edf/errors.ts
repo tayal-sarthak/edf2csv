@@ -94,7 +94,21 @@ export type DiagnosticCode =
 
 export interface Diagnostic {
   code: DiagnosticCode;
-  severity: 'warning' | 'info';
+  /**
+   * Always `'warning'`. One field, one value, because there has only ever been one.
+   *
+   * It was `'warning' | 'info'`, and nothing in this codebase has ever built an `'info'`.
+   * A published union is a promise about what a caller may receive, so the two pages that
+   * print this interface told them to expect a second value and handle it — a branch that
+   * cannot run, in the type a `--json` consumer reads `severity` out of. The terminal was
+   * worse: `formatDiagnostics` labelled anything that was not `'warning'` as `note:`, so the
+   * one thing the type said could arrive would have arrived under a third name again.
+   *
+   * Kept as a field rather than dropped: `metadata.json`, both JSON streams and this
+   * interface all carry it, and removing it from a document people have archived is a
+   * different and worse change than narrowing what it can say.
+   */
+  severity: 'warning';
   message: string;
   /** What the user can do about it. Omitted when there is nothing useful to say. */
   hint?: string;

@@ -505,7 +505,7 @@ export function formatDiagnostics(diagnostics: readonly Diagnostic[]): string {
     .map((d) => {
       // Diagnostics quote channel labels, which come from the file, so they need the
       // same treatment as the --info table.
-      const head = `${d.severity === 'warning' ? 'warning' : 'note'}: ${printable(d.message)}`;
+      const head = `${d.severity}: ${printable(d.message)}`;
       return d.hint ? `${head}\n${wrap(printable(d.hint), HINT_INDENT)}` : head;
     })
     .join('\n');
