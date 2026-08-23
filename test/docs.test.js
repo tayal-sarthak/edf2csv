@@ -3712,6 +3712,43 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('does not pass its cross-check by not running it', async () => {
+    /*
+      `compare.py` is the only check here that compares against an implementation nobody in
+      this repository wrote, which is what makes it the first claim on the correctness page —
+      and it exited 0 when pyEDFlib was absent. Its own docstring said so on purpose; the
+      workflow that runs it weekly says the opposite, in as many words: "a check whose entire
+      value is that it compares against an independent implementation must not skip itself
+      when that implementation fails to install: a green tick meaning `pip was unhappy` is
+      worse than no tick."
+
+      The workflow's `pip install pyedflib` step was the only thing standing between those two
+      sentences, and it is a different step on a different interpreter than the one that does
+      the import — so a `pip` that installs into a python `setup-python` did not select leaves
+      the check reporting success over nothing. And a contributor running it from CONTRIBUTING,
+      where the whole point is to reproduce the claim, got the same.
+
+      Exercised rather than read: `python3 -S` skips `site`, so `import pyedflib` fails whether
+      or not it is installed, which is the branch under test on any machine.
+    */
+    const python = await run('python3', ['-c', 'print(1)']).then(() => true, () => false);
+    if (!python) {
+      // Same answer the terminal sweep gives: report that this proved nothing rather than
+      // turn a missing interpreter into a failure about the checker.
+      assert.ok(true, 'python3 is not available, so this check did not run');
+      return;
+    }
+    const outcome = await run('python3', ['-S', path.join(ROOT, 'test/crossvalidate/compare.py')], {
+      cwd: ROOT,
+    }).then(
+      (ok) => ({ code: 0, stdout: ok.stdout }),
+      (error) => ({ code: error.code, stdout: String(error.stdout ?? '') }),
+    );
+    assert.match(outcome.stdout, /pyEDFlib is not installed/u, outcome.stdout);
+    assert.notEqual(outcome.code, 0, 'a cross-check that did not run must not exit 0');
+    assert.equal(outcome.code, 2, 'and must be tellable apart from values that disagreed');
+  });
+
   it('ends every diagnostic it prints as a sentence', async () => {
     /*
       `Cannot read "rec.edf": no such file` was the one that did not — 68 of the 69 distinct

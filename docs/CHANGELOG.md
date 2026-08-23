@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.136
+
+### a cross-check that reported success by not running
+
+The cross-check against pyEDFlib is the first claim on the correctness page and the only one
+that compares against an implementation nobody in this repository wrote. Without pyEDFlib
+installed it printed a notice and exited **0**.
+
+Its own docstring said so on purpose. `crossvalidate.yml`, which runs it weekly, says the
+opposite in as many words:
+
+> a check whose entire value is that it compares against an independent implementation must not
+> skip itself when that implementation fails to install: a green tick meaning "pip was unhappy"
+> is worse than no tick
+
+Both sentences cannot describe one exit code. The only thing standing between them was the
+workflow's `pip install pyedflib` step — a different step, on a different interpreter than the
+one that does the import, so a `pip` writing into a python `setup-python` did not select leaves
+the job reporting success over a check that never ran. A contributor following CONTRIBUTING,
+where the whole point is to reproduce the claim, got the same answer.
+
+Exit 2 now, distinct from the 1 a disagreement gives so the two stay tellable apart, and the
+same convention the CLI uses: 2 is the request that could not be carried out. A check exercises
+it under `python3 -S`, which skips `site` and so cannot import pyEDFlib whether or not it is
+installed — the branch under test on any machine.
+
 ## 0.7.135
 
 ### a publish log announcing a retry there is nothing left to retry

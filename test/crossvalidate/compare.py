@@ -22,8 +22,16 @@ differing bits ... not equal to within a tolerance". The page described a method
 did not use. It now dumps the doubles through the public API — the recipe the page prints,
 checked in as dump-doubles.mjs — and compares the 64 bits of each value.
 
-Exits 0 when every value agrees, 1 on any mismatch, and 0 with a notice when pyEDFlib is not
-installed — this is opt-in and never part of `npm test`, which stays dependency-free.
+Exits 0 when every value agrees, 1 on any mismatch, and 2 when pyEDFlib is not installed. Two
+rather than nought, because this is the one check whose whole value is that it compares against
+an implementation nobody here wrote: an exit status meaning "did not run" must not be the status
+meaning "agreed". The workflow that runs it weekly says so in as many words — "a green tick
+meaning pip was unhappy is worse than no tick" — and relied on `pip install` failing first,
+which is a different step, on a different interpreter than the one that does the import.
+
+Distinct from 1 so the two are still tellable apart, and the same convention the CLI uses: 2 is
+the request that could not be carried out. It stays opt-in and out of `npm test`, which is
+dependency-free.
 """
 
 from __future__ import annotations
@@ -61,7 +69,7 @@ def load() -> object:
             "pyEDFlib is not installed, so the cross-check did not run.\n"
             "    pip install pyedflib\n"
         )
-        raise SystemExit(0)
+        raise SystemExit(2)
     import pyedflib
 
     return pyedflib
