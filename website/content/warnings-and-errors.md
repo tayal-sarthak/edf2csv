@@ -220,6 +220,10 @@ A channel declares the same value for its physical minimum and physical maximum,
 
 **What edf2csv does.** The mapping is well defined but flat, so every digital code converts to the same physical number. The channel is converted normally and produces a constant column.
 
+```
+warning: Signal 1 ("flatphys") has physical minimum equal to physical maximum (5), so every sample converts to the same value.
+```
+
 Note the difference from `DEGENERATE_DIGITAL_RANGE` above. There the mapping doesn't exist and the cells are left empty; here it exists and simply has no slope, so the value it gives is a real reading and is written as one.
 
 **What to do.** Treat the column as carrying no information. Distinct digital codes were recorded, but the header says they all mean the same physical value, so the distinction can't be recovered from the CSV. If you need the raw codes, the header calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and `physical_max` to work from.
@@ -759,6 +763,15 @@ The file has no signal channels: it contains only an EDF+ annotations channel.
 **Cause.** Some systems export events into a separate companion file alongside the recording proper.
 
 **What edf2csv does.** Writes `annotations.csv`, `metadata.json`, and a `channels.csv` containing only its header row. No signal files are written, because there are no signals.
+
+```
+warning: This file has no signal channels; it contains only EDF+ annotations.
+warning: No signal file is written: there is no signal data in this recording to put in one.
+         annotations.csv holds whatever events it carries. channels.csv lists
+         signal channels, so it has none to list.
+```
+
+The second is `NO_SAMPLES`, raised beside it by the conversion rather than by the header: one says what the file is, the other what the run therefore did.
 
 **What to do.** Nothing, if you were after the events. If you expected signal data, you're converting the wrong file of the pair.
 

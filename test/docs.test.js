@@ -96,6 +96,36 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('shows the message every section it writes about is written about', async () => {
+    /*
+      The page's shape is cause, what the tool does, the message it printed, what to do. The
+      message is the part a reader arrives with — they saw a line of stderr and came here to
+      look it up — and two of the forty-five sections never showed one.
+
+      `DEGENERATE_PHYSICAL_RANGE` described a flat calibration in prose across four
+      paragraphs, including a sentence contrasting it with the section above, which does quote
+      its warning; `NO_SIGNAL_CHANNELS` described the files a conversion writes without ever
+      printing the sentence that sends someone to it. Searching the page for the words in
+      front of you found nothing in either case, on the page whose whole job is that search.
+    */
+    const page = 'website/content/warnings-and-errors.md';
+    const text = await read(page);
+    const codes = new Set(await unionMembers('src/edf/errors.ts', 'DiagnosticCode'));
+
+    const missing = [];
+    let checked = 0;
+    for (const [, title, body] of text.matchAll(/\n### ([^\n]+)\n([\s\S]*?)(?=\n### |$)/gu)) {
+      if (!codes.has(title.trim())) continue;
+      checked++;
+      const quoted = [...body.matchAll(/```(?:\w+)?\n([\s\S]*?)```/gu)].map((m) => m[1]);
+      if (!quoted.some((block) => /^(?:warning|error|note): \S/mu.test(block))) {
+        missing.push(title.trim());
+      }
+    }
+    assert.ok(checked > 15, `expected a section per code, found ${checked}`);
+    assert.deepEqual(missing, [], `sections that never show their message: ${missing.join(', ')}`);
+  });
+
   it('states the list cap the shared cutter actually uses', async () => {
     /*
       0.7.73 replaced the timekeeping warning's hand-rolled cut — five items and a bare `…` —

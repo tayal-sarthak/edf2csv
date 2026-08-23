@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.125
+
+### two warning sections that never showed the warning
+
+`warnings-and-errors.md` gives each code a section shaped the same way: what causes it, what
+edf2csv does about it, the message it printed, and what to do. The message is the part a reader
+arrives with — they saw a line on stderr and came to look it up — and two of the forty-five
+sections never showed one.
+
+`DEGENERATE_PHYSICAL_RANGE` explains a flat calibration over four paragraphs, one of which
+contrasts it with the section directly above, which does quote its warning. `NO_SIGNAL_CHANNELS`
+lists the files such a conversion writes without ever printing the sentence that sends someone
+to it — and there are two of those, since the header and the conversion each raise one.
+
+Both are quoted now, and a check reads the page section by section: a heading named after a
+diagnostic code has to show a line the tool really prints. The guard on quoted messages until
+now only held the ones that were there.
+
 ## 0.7.124
 
 ### three refusals whose first sentence was broken in half by hand
