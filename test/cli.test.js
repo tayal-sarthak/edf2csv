@@ -1295,6 +1295,62 @@ describe('--info', () => {
     }
   });
 
+  it('spells a name it offers back the way the thing is really spelled', async () => {
+    /*
+      The wrapper re-flowed the line, and a quoted value is not prose. A channel labelled
+      `EEG  A` — a run of spaces is ordinary in a header written by a tool that aligns its
+      fields — was offered back as
+
+          error: No channel named "EEG A". Did you mean "EEG  A"?
+
+      with the label correct in the question and one space short in the answer, because
+      `wrap` splits on `\s+` and rejoins with a single space. Typing what it says gets "No
+      channel named "EEG A"" again. `--out "-my  nightly"` was the same failure at the
+      command line: the refusal quotes the destination correctly and then says to run
+      `--out='-my nightly'`, which is a different directory.
+
+      The test that pastes those suggestions back — the one above — could not see it: it
+      flattens the message with `.replace(/\s+/gu, ' ')` before reading the offer out, which
+      is the same normalisation, and none of its labels held a run of spaces to lose.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-spacing-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000,
+      samplesPerRecord: 2 };
+
+    const label = 'EEG  A';
+    const file = path.join(scratch, 'spaced.edf');
+    writeEdf({
+      path: file, numRecords: 1, recordDuration: 1,
+      signals: [{ label, ...base, gen: () => 100 }, { label, ...base, gen: () => 200 }],
+    });
+
+    // The near-miss branch: the label is offered back as the answer to a typo.
+    const near = await cli([file, '--out', await outDir(), '--channels', 'EEG A']);
+    assert.equal(near.code, 2);
+    assert.ok(
+      near.stderr.includes(`Did you mean "${label}"?`),
+      `the suggestion lost the label's spacing:\n${near.stderr}`,
+    );
+
+    // And the column-name branch, where the offer sits on a wrapped continuation line.
+    const column = await cli([file, '--out', await outDir(), '--channels', `${label}_ch0`]);
+    assert.equal(column.code, 2);
+    assert.ok(
+      column.stderr.includes(`or "${label}" for every channel`),
+      `the offer lost the label's spacing:\n${column.stderr}`,
+    );
+
+    // The same line of a command-line refusal, which prints a command to paste.
+    const dashed = await cli([fixture('tiny.edf'), '--out', '-my  nightly']);
+    assert.equal(dashed.code, 2);
+    assert.ok(
+      dashed.stderr.includes(`Write it as one argument instead: '--out=-my  nightly'`),
+      `the command to paste names a different directory:\n${dashed.stderr}`,
+    );
+  });
+
   it('takes a window on a clock that begins before zero, which is where that file sits', async (t) => {
     /*
       "Timed from -100.000s  (first sample; --start and --end use this clock)" is what --info

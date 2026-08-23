@@ -31,17 +31,28 @@ const HINT_INDENT = ' '.repeat(9);
  * A word wider than the column is left to overrun rather than broken. The long words here
  * are file paths and quoted channel labels, and neither survives being split across lines:
  * the point of printing a path is that it can be copied back out.
+ *
+ * Which is also why the gap between two words is reproduced rather than normalised to one
+ * space. Splitting on `\s+` and rejoining with `' '` re-flowed everything, and a quoted value
+ * is not prose: a channel labelled `EEG  A` was offered back as `Did you mean "EEG A"?`, and
+ * a destination given as `-my  nightly` as `Write it as one argument instead:
+ * '--out=-my nightly'`. Following either gets a different channel or a different directory
+ * than the one the sentence is about, and the run before it had already quoted the name
+ * correctly on the line above.
  */
 export function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
   const lines: string[] = [];
   let line = indent;
-  for (const word of text.split(/\s+/u)) {
-    if (word === '') continue;
-    if (line === indent) line += word;
-    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+  let gap = ' ';
+  // Odd pieces are the separators, since the pattern is captured.
+  for (const [index, piece] of text.split(/(\s+)/u).entries()) {
+    if (index % 2 === 1) gap = piece;
+    else if (piece === '') continue;
+    else if (line === indent) line += piece;
+    else if (line.length + gap.length + piece.length <= width) line += gap + piece;
     else {
       lines.push(line);
-      line = indent + word;
+      line = indent + piece;
     }
   }
   if (line !== indent) lines.push(line);

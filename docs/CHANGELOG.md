@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.118
+
+### a name printed to be typed back, re-flowed into a different name
+
+Two messages print a name and then tell you to type it back. `wrap` split them on `\s+` and
+rejoined with a single space, which is right for prose and a rewrite for a quoted value:
+
+```
+error: No channel named "EEG A". Did you mean "EEG  A"?
+error: --out was given "-my  nightly", ...
+       Write it as one argument instead: '--out=-my nightly'
+```
+
+The first line quotes the name correctly, because it is the one line `printableLines` leaves
+whole; the continuation under it is wrapped, and a run of spaces does not survive that. Typing
+the suggested channel gets the same refusal back, and pasting the suggested command makes a
+directory that is not the one the sentence is about. A run of spaces in a channel label is
+ordinary — a header written by a tool that aligns its fields has them — and a directory may
+hold any name the filesystem takes.
+
+The wrapper keeps the gap between two words now instead of normalising it. The test that pastes
+these suggestions back could not have caught it: it flattens the message with
+`.replace(/\s+/gu, ' ')` before reading the offer out, which is the same normalisation, and
+none of its labels held a run of spaces to lose.
+
 ## 0.7.117
 
 ### an annotation duration in hex read as the number it is not
