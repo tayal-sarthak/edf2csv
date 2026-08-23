@@ -76,7 +76,7 @@ The `/docs/<slug>.md` mirrors and `llms-full.txt` are served with `X-Robots-Tag:
 (see the repository root's `vercel.json`). They are the same prose as the HTML pages they
 sit beside, at a second address, and a plain-text file has no way to declare a canonical
 link — so left indexable they would compete with the pages they mirror. `llms-full.txt` is
-the strongest case of all: it is every page at once, 374 kB of it. The header keeps them
+the strongest case of all: it is every page at once, over 400 kB of it. The header keeps them
 fetchable by anyone who asks, which is the reason they exist, while leaving one indexable
 copy of each page. `llms.txt` stays indexable — it is a 3 kB index of the site rather than
 a copy of it.

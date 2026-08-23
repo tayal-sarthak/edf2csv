@@ -8,6 +8,19 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.146
+
+### a size that grew 43 kB while the sentence did not
+
+`website/README.md` explains why `llms-full.txt` is served `noindex`, and the argument rests on
+its size: it is every page at once, large enough that leaving it indexable would compete with
+the pages it mirrors. The figure was 374 kB. The file the build emits today is 417 kB.
+
+This is the class of number the landing-page check was written for — "the figures with no source
+at all, which makes them the ones most able to go stale quietly" — in a file that check does not
+read. Stated as a floor rather than a measurement, so it stays true as pages are added rather
+than drifting again with the next one.
+
 ## 0.7.145
 
 ### the estimate's other wall, and a cell that is never written
