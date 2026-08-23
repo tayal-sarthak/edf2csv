@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.126
+
+### the exit code a scheduler produces, named on one page of two
+
+The README ends its options section with the exit codes, and stopped one short:
+
+> Exit codes: `0` success, `1` ... `2` the command was wrong. An interrupted run exits 130.
+
+`cli-reference.md` names five — `0`, `1`, `2`, and `130` / `143` for SIGINT and SIGTERM. 143 is
+the one a scheduler produces: systemd stopping a unit, a container runtime draining a pod, a CI
+job hitting its timeout. 0.7.75 exists because that code was written in the source twice and
+returned never, so it is not a code nobody meets.
+
+The README is the page npm renders and the one most readers see first, and a script reading its
+list has no name for the status it gets when something stops the run without a keyboard.
+
+The check that holds the reference to the codes the CLI declares now reads the codes back out of
+the reference and requires the README to name them too, so the two cannot drift apart in either
+direction.
+
 ## 0.7.125
 
 ### two warning sections that never showed the warning

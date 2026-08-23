@@ -3833,6 +3833,23 @@ describe('documentation and source agree on their lists', () => {
     for (const code of declared) {
       assert.match(table[1], new RegExp(`\`${code}\``, 'u'), `exit ${code} is not documented`);
     }
+
+    /*
+      And the README, which is the page npm shows and the one most readers see first. It
+      stated the three and then "An interrupted run exits 130" — 143, which a scheduler's
+      SIGTERM produces and 0.7.75 exists to make correct, was named only in the reference. A
+      script reading the README's list has no name for the code it gets when systemd stops it.
+
+      Read out of the reference rather than listed here, so the two pages cannot drift apart
+      in either direction.
+    */
+    const documented = [...table[1].matchAll(/`(\d+)`/gu)].map((m) => m[1]);
+    assert.ok(documented.length >= 4, `the reference now names ${documented}`);
+    const readme = await read('README.md');
+    const paragraph = /Exit codes:[\s\S]*?\n\n/u.exec(readme);
+    assert.ok(paragraph, 'the README no longer states the exit codes');
+    const absent = documented.filter((code) => !paragraph[0].includes(code));
+    assert.deepEqual(absent, [], `the README does not name exit ${absent.join(', ')}`);
   });
 });
 
