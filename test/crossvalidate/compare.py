@@ -219,6 +219,17 @@ def main() -> int:
         for line in mismatches[:20]:
             sys.stdout.write(f"  {line}\n")
         return 1
+    # A comparison that compared nothing has not agreed with anything. The directory is
+    # checked above; its contents were not, so an empty one — generate.mjs not run, or run
+    # and cleaned — printed "Compared 0 sample values bit for bit, and 0 annotations, across
+    # 0 recordings." followed by "Every value agreed", and exited 0. Same answer as a missing
+    # pyEDFlib, for the same reason and with the same code.
+    if compared == 0:
+        sys.stdout.write(
+            "Nothing was compared, so nothing has agreed. `npm run crossvalidate` generates "
+            "the recordings this reads.\n"
+        )
+        return 2
     sys.stdout.write("Every value agreed.\n")
     return 0
 

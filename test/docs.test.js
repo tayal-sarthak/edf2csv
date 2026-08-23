@@ -3884,6 +3884,16 @@ describe('documentation and source agree on their lists', () => {
       Exercised rather than read: `python3 -S` skips `site`, so `import pyedflib` fails whether
       or not it is installed, which is the branch under test on any machine.
     */
+    /*
+      And the other way it can pass without running: pyEDFlib present, recordings absent. The
+      directory's existence was checked and its contents were not, so an empty one printed
+      "Compared 0 sample values bit for bit, and 0 annotations, across 0 recordings" and then
+      "Every value agreed", exit 0 — the page's first claim, held over nothing. Read at the
+      source, since reaching that branch means having pyEDFlib and no recordings at once.
+    */
+    const compare = await read('test/crossvalidate/compare.py');
+    assert.match(compare, /if compared == 0:/u, 'compare.py can still agree over nothing');
+
     const python = await run('python3', ['-c', 'print(1)']).then(() => true, () => false);
     if (!python) {
       // Same answer the terminal sweep gives: report that this proved nothing rather than

@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.147
+
+### the cross-check agreeing over no recordings
+
+0.7.136 stopped `compare.py` exiting 0 when pyEDFlib was absent. There is a second way to pass
+without running, and it needs pyEDFlib to be present: the script checks that the recordings
+directory exists and never checks that it holds anything.
+
+```
+Compared 0 sample values bit for bit, and 0 annotations, across 0 recordings.
+Every value agreed.
+$ echo $?
+0
+```
+
+That is the correctness page's *first* claim — bit identity against an independent
+implementation — reported over nothing at all. `generate.mjs` not run, or run and cleaned, is
+all it takes. Zero comparisons now exit 2, the same code and the same reasoning as a missing
+pyEDFlib: a check that did not run has not passed.
+
 ## 0.7.146
 
 ### a size that grew 43 kB while the sentence did not
