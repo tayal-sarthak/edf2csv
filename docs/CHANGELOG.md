@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.124
+
+### three refusals whose first sentence was broken in half by hand
+
+Three refusals — `--stdout` with `--out`, with `--checksum`, with `--force` — carried a line
+break written into the middle of their first sentence:
+
+```
+error: --stdout and --out cannot be combined: --stdout writes no
+       files, and --out has nothing to act on.
+       Drop --out, or drop --stdout and convert to a directory.
+```
+
+So the line a log greps ended on "no", the line under it opened with "files,", and neither is a
+sentence. `grep 'writes no files'` found nothing in a run that had said it.
+
+The first line is the one `printableLines` leaves whole at whatever width it runs to — that is
+the design, since a break in the middle of the grepped line costs more than the overrun — so
+there was nothing to pre-wrap it for. The sibling refusal three flags over has always had the
+shape: one whole sentence, then the advice indented under it.
+
 ## 0.7.123
 
 ### a position named without the character that makes it selectable

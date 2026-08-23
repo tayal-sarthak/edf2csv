@@ -3997,6 +3997,28 @@ describe('what --stdout says about itself', () => {
     const checksum = await cli([fixture('tiny.edf'), '--stdout', '--checksum']);
     assert.equal(checksum.code, 2);
     assert.match(checksum.stderr, /--stdout and --checksum cannot be combined/u);
+
+    /*
+      Each of the three says it in one sentence on the first line, which is where every other
+      refusal here puts its whole sentence. The break was written into the middle of this one
+      — "...cannot be combined: --stdout writes no" / "files, and --out has nothing to act
+      on." — so the line a log greps ended on "no" and the advice line opened with "files,".
+      `printableLines` leaves a first line whole at whatever width it runs to, so there was
+      nothing to pre-wrap it for.
+    */
+    for (const flag of ['--out', '--checksum', '--force']) {
+      const args = flag === '--out' ? [flag, await outDir()] : [flag];
+      const { stderr } = await cli([fixture('tiny.edf'), '--stdout', ...args]);
+      const lines = stderr.trimEnd().split('\n');
+      assert.equal(
+        lines[0],
+        `error: --stdout and ${flag} cannot be combined: --stdout writes no files, and ` +
+          `${flag} has nothing to act on.`,
+        stderr,
+      );
+      assert.equal(lines.length, 2, `only the advice belongs under it:\n${stderr}`);
+      assert.match(lines[1], /^ {7}Drop /u, stderr);
+    }
   });
 
   it('refuses a recording with no signal table instead of streaming nothing', async () => {

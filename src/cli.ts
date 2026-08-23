@@ -447,9 +447,16 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (toStdout && given) {
       // `error:` and the seven-space continuation, like every other refusal — the shape
       // 0.5.79 gave the rest and these two were not enumerated in its test.
+      //
+      // One sentence on the first line, which is the other half of that shape. The break was
+      // written into the middle of it — "cannot be combined: --stdout writes no" / "files,
+      // and --out has nothing to act on" — so the line a log greps carried a fragment ending
+      // in "no", and the line under it opened with "files,". `printableLines` leaves the
+      // first line whole at whatever width it runs to, deliberately, so there was nothing to
+      // pre-wrap it for.
       process.stderr.write(
-        `error: --stdout and ${flag} cannot be combined: --stdout writes no\n` +
-          detail(`files, and ${flag} has nothing to act on.`) +
+        `error: --stdout and ${flag} cannot be combined: --stdout writes no files, and ` +
+          `${flag} has nothing to act on.\n` +
           detail(`Drop ${flag}, or drop --stdout and convert to a directory.`),
       );
       return EXIT_USAGE;
