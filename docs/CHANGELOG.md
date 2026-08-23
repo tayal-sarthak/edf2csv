@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.144
+
+### one file per directory the batch promise does not cover
+
+The third claim, and the first of the five the batch sweep makes, both say serial and parallel
+produce the same directories holding the same bytes. The sweep says otherwise, twice, in as
+many words:
+
+```js
+// metadata.json carries the time of the conversion, which differs by design.
+if (name === 'metadata.json') continue;
+```
+
+One file per directory is compared by name and not by content, and it is the file a reader
+would go to first to check what a run did. The reason is sound — `converted_at` cannot be equal
+across two runs without freezing the clock — and it belongs on the page beside the promise
+rather than only in the harness that keeps it.
+
 ## 0.7.143
 
 ### a fifth field JSON cannot hold, and two documents that can
