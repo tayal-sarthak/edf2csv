@@ -1828,6 +1828,47 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(shown[2].printed.filter(rates).length, 1, 'two rates, one rate warning');
   });
 
+  it('states the precision its recovery promise is about', async () => {
+    /*
+      "The digital codes can be recovered from the CSV" is the sixth promise, and it read "the
+      written decimals are always fine enough to get the original integer back". Always is the
+      word the sweep behind it declines to use: its own header says "That is a promise about
+      the *derived* precision — the decimals edf2csv chooses per channel from its calibration",
+      and the FAQ says the same beside the recipe, ending "leave `--decimals` alone".
+
+      Two ways it stops holding, both of them documented elsewhere on the site: a coarser
+      `--decimals` than the channel needs, which rounds distinct codes together — silently,
+      since it is a trade the caller made — and the 100-place ceiling on the derived precision
+      itself, which `VALUE_RESOLUTION` reports. This is the page that says in its own
+      description what is *not* claimed.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-recover-'));
+    try {
+      const recording = path.join(ROOT, 'test/fixtures/generated/tiny.edf');
+      const derived = path.join(work, 'derived');
+      const coarse = path.join(work, 'coarse');
+      await run(process.execPath, [CLI, recording, '--out', derived, '--quiet']);
+      await run(process.execPath, [CLI, recording, '--out', coarse, '--decimals', '0', '--quiet']);
+      const cells = async (dir) =>
+        (await readFile(path.join(dir, 'signals.csv'), 'utf8'))
+          .trimEnd().split('\n').slice(1).map((row) => row.split(',')[1]);
+      const fine = await cells(derived);
+      const rounded = await cells(coarse);
+      assert.equal(fine.length, rounded.length);
+      assert.ok(
+        new Set(rounded).size < new Set(fine).size,
+        'a coarser --decimals has to collapse codes for this promise to need its qualifier',
+      );
+
+      const page = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
+      assert.match(page, /at the precision edf2csv derives/u, 'the promise is stated unqualified');
+      assert.match(page, /`--decimals` replaces that precision/u, 'the first exception is missing');
+      assert.match(page, /100 places/u, 'the ceiling on the derived precision is missing');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('states the one case its size estimate reads under the truth', async () => {
     /*
       "The row count is exact and the byte count never reads low" is the fifth of the

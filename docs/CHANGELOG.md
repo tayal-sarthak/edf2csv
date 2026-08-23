@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.133
+
+### a recovery promise stated without the precision it is about
+
+The sixth promise read: "The digital codes can be recovered from the CSV. The documentation says
+the written decimals are **always** fine enough to get the original integer back."
+
+Always is the word the sweep behind it declines to use. `roundtrip.mjs` opens by quoting the FAQ
+and then narrowing it: "That is a promise about the *derived* precision — the decimals edf2csv
+chooses per channel from its calibration — and it is the reason the tool does not offer a
+raw-digital output mode." The FAQ carries the qualifier too, in the paragraph under the recipe:
+"leave `--decimals` alone. The promise is about the precision edf2csv derives per channel; force
+a coarser one and the codes stop being recoverable, silently — `--decimals 0` on a 256 Hz EEG
+channel gets 645 of 768 samples wrong."
+
+There is a second exception the page also skipped: the derived precision itself stops at 100
+places, the most `toFixed` will print, so a channel stepping by less than 1e-98 is past it.
+`VALUE_RESOLUTION` reports that one, which is why it is not the same kind of silence.
+
+This is the page whose own description ends "and what is not claimed". Both exceptions are on it
+now, in the promise rather than under it, and a check requires them there — plus the thing they
+are about: a coarser `--decimals` really does collapse codes that the derived precision keeps
+apart.
+
 ## 0.7.132
 
 ### the size estimate's one promise, stated without its exception
