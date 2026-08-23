@@ -995,7 +995,9 @@ Both numbers are there because the interesting comparison is between them: a hea
 The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected.
 
 ```
-error: Cannot read "recording.edf": no such file
+error: Cannot read "recording.edf": no such file.
+       Check the path is spelled the way it is on disk and that you have
+       permission to read it.
 ```
 
 There is one more form of this error that the command line no longer reaches:

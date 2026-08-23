@@ -3696,6 +3696,69 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('ends every diagnostic it prints as a sentence', async () => {
+    /*
+      `Cannot read "rec.edf": no such file` was the one that did not — 68 of the 69 distinct
+      lines this tool prints end in a full stop or a question mark, and the family it belongs
+      to answers the destination side with `Cannot create "out": part of the path does not
+      exist.` and a line of advice under it. A refusal that trails off reads as truncated,
+      which is the wrong thing for it to read as.
+
+      The set is swept rather than listed: every fixture converted, plus every refusal the
+      command line has, which is where the ones nobody thinks of live.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-sentence-'));
+    try {
+      await cp(path.join(ROOT, 'test/fixtures/generated'), work, { recursive: true });
+      const recordings = (await readdir(work)).filter((f) => /\.(edf|bdf)$/u.test(f));
+      const refusals = [
+        ['--chanels'], ['--decimals', '21'], ['--decimals', 'abc'], ['--decimals', ''],
+        ['--layout', 'tall'], ['--jobs', '0'], ['--jobs', 'abc'], ['--channels', 'nope'],
+        ['--channels', '#x'], ['--channels', '#99'], ['--channels', ''],
+        ['--channels', 'signal_0'], ['--stdout', '--checksum'], ['--stdout', '--force'],
+        ['--start', 'abc'], ['--start', '1h1h'], ['--start', '99999'], ['--start', '5x'],
+        ['--start', '+5s'], ['--start', '5 min'], ['--duration', '0'], ['--end', '00:99:00'],
+        ['--info', '--stdout'], ['--json', '--stdout'],
+      ];
+
+      /*
+        Two refusals end in a value instead, and must: "Write them together: 5min" and "Write
+        the number on its own: 5s" hand back a corrected value to type, and a full stop glued
+        to one makes it `5min.`, which the parser then refuses. Same reason the unknown-option
+        hint's `edf2csv -- "--chanels"` is exempt from wrapping — a token to copy is not
+        prose. This tool introduces such a token with a colon, so that is the exemption:
+        anything else has to be a sentence.
+      */
+      const trailing = [];
+      let heads = 0;
+      const measure = (text, what) => {
+        for (const line of text.split('\n')) {
+          if (!/^(?:error|warning|note): /u.test(line)) continue;
+          heads++;
+          if (!/[.?]$/u.test(line) && !/: \S+$/u.test(line)) trailing.push(`${what}: ${line}`);
+        }
+      };
+
+      const printed = async (args) => {
+        const result = await run(process.execPath, [CLI, ...args, '--out', 'o'], {
+          cwd: work,
+          maxBuffer: 64 << 20,
+        }).catch((error) => error);
+        await rm(path.join(work, 'o'), { recursive: true, force: true });
+        return String(result.stderr ?? '');
+      };
+      for (const name of recordings) measure(await printed([name]), name);
+      for (const args of refusals) measure(await printed(['tiny.edf', ...args]), args.join(' '));
+      // The one a missing path reaches, which is the form this was found in.
+      measure(await printed(['no-such-recording.edf']), 'missing input');
+
+      assert.deepEqual(trailing, [], trailing.join('\n'));
+      assert.ok(heads > 50, `only ${heads} diagnostics were measured`);
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('wraps every line it wraps at all to eighty columns', async () => {
     /*
       Eighty is what a terminal is unless someone has changed it, and `--help` had six lines

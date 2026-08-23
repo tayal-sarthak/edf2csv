@@ -164,9 +164,26 @@ export class EdfFile {
     return this.#changed;
   }
 
+  /*
+    A sentence, and advice under it, like the destination-side twin.
+
+    `Cannot read "rec.edf": no such file` was the one diagnostic this tool prints that does not
+    end in a full stop — 68 of its 69 do — and the only member of its family with nothing
+    indented under it. `Cannot create "out": part of the path does not exist.` has carried
+    "Check the path exists and that you have permission to write there." since the destination
+    errors were given sentences, the mid-conversion UNREADABLE beside it carries one too, and
+    this is the form a mistyped path actually reaches.
+  */
+  static readonly #UNREADABLE_HINT =
+    'Check the path is spelled the way it is on disk and that you have permission to read it.';
+
   static async open(path: string): Promise<EdfFile> {
     const info = await stat(path).catch((cause: unknown) => {
-      throw new EdfError('UNREADABLE', `Cannot read "${path}": ${describe(cause)}`);
+      throw new EdfError(
+        'UNREADABLE',
+        `Cannot read "${path}": ${describe(cause)}.`,
+        EdfFile.#UNREADABLE_HINT,
+      );
     });
     if (info.isDirectory()) {
       throw new EdfError('UNREADABLE', `"${path}" is a directory, not an EDF file.`);
@@ -190,7 +207,11 @@ export class EdfFile {
       generic handler.
     */
     const handle = await open(path, 'r').catch((cause: unknown) => {
-      throw new EdfError('UNREADABLE', `Cannot read "${path}": ${describe(cause)}`);
+      throw new EdfError(
+        'UNREADABLE',
+        `Cannot read "${path}": ${describe(cause)}.`,
+        EdfFile.#UNREADABLE_HINT,
+      );
     });
     try {
       const fixed = Buffer.alloc(Math.min(FIXED_HEADER_BYTES, info.size));

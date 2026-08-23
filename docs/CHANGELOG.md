@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.134
+
+### the one refusal that was not a sentence, and had no advice either
+
+```
+error: Cannot read "recording.edf": no such file
+```
+
+The one diagnostic this tool prints that is not a sentence. Sixty-eight of the sixty-nine
+distinct lines end in a full stop or a question mark, and a refusal that trails off reads as
+truncated — which is the wrong thing for the message you get from a mistyped path to read as.
+
+It is also the only member of its family with nothing under it. The destination side answers
+`Cannot create "out": part of the path does not exist.` and adds "Check the path exists and that
+you have permission to write there."; the mid-conversion `UNREADABLE` beside it carries advice
+too. `describe()` in the reader already exists to keep this side's wording in step with that one
+— its comment says as much about `ENOTDIR` — and the stop and the hint were what was left.
+
+A check sweeps for it now rather than naming it: every fixture converted and every refusal the
+command line has, each head line held to ending as a sentence. Two are exempt and have to be:
+"Write them together: 5min" and "Write the number on its own: 5s" hand back a value to type, and
+a full stop glued to one makes it `5min.`, which the parser refuses. A token to copy is
+introduced with a colon here, which is what the exemption keys on — the same distinction the
+unknown-option hint's `edf2csv -- "--chanels"` is exempted from wrapping for.
+
 ## 0.7.133
 
 ### a recovery promise stated without the precision it is about
