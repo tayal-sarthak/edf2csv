@@ -463,13 +463,26 @@ function finestInterval(file: EdfFile): number {
  * values. The origin is lost, so this says so.
  */
 function unusableOrigin(origin: number, file: EdfFile): Diagnostic {
+  /*
+    `Infinity` is a token, not a distance.
+
+    `plain` expands exponent notation and hands anything else back, so a non-finite origin
+    arrived on screen as "place it Infinitys from its own start date" — the exact form
+    `formatDuration` exists to keep off the screen, its comment naming "NaNs" and "Infinitys"
+    as what the fallback used to print, and the word the rest of this tool uses for the same
+    quantity is "unknown". The origin overflows for the reason the recording's length does:
+    a record duration near the top of a double, multiplied out over three records, leaves it.
+  */
+  const away = Number.isFinite(origin)
+    ? `${plain(origin)}s from its own start date`
+    : 'further from its own start date than a number can hold';
   return {
     code: 'DISCONTINUOUS',
     severity: 'warning',
     message:
-      `This recording's timekeeping annotations place it ${plain(origin)}s from its own start ` +
-      `date, which is too far out for its ${plain(file.header.recordDuration)}s records to be told ` +
-      `apart: at that magnitude adding a sample interval leaves the number unchanged.`,
+      `This recording's timekeeping annotations place it ${away}, which is too far out for ` +
+      `its ${plain(file.header.recordDuration)}s records to be told apart: at that magnitude ` +
+      `adding a sample interval leaves the number unchanged.`,
     hint:
       'Sample times are written from zero instead, so every row is present and the column ' +
       'increases. Add the onsets in annotations.csv to recover absolute times if you need them.',

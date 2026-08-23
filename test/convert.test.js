@@ -2732,11 +2732,36 @@ describe('converting', () => {
     const second = await convert(fixture('far-origin-collapsed.edf'), { outputDir: collapsed });
     assert.equal((await readCsv(collapsed, 'signals.csv')).length - 1, 12);
 
-    for (const result of [first, second]) {
+    /*
+      And an origin that is not a number at all. `plain` expands exponent notation and hands
+      anything else back, so a record duration near the top of a double — three of them, past
+      what one holds — put the word itself in the sentence: "place it Infinitys from its own
+      start date". That is the form `formatDuration` was written to keep off the screen.
+    */
+    const { writeEdf } = await import(path.join(FIXTURES, '..', 'edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-far-overflow-'));
+    temporaries.push(work);
+    const overflowing = path.join(work, 'overflowing.edf');
+    const sep = String.fromCharCode(0x14);
+    const starts = ['+0', '+1e308', '+2e308'];
+    writeEdf({
+      path: overflowing, reserved: 'EDF+D', numRecords: 3, recordDuration: 1e308,
+      talsForRecord: (r) => `${starts[r]}${sep}${sep}${String.fromCharCode(0)}`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 4, gen: (r, sample) => r * 4 + sample },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 30, annotations: true },
+      ],
+    });
+    const third = await convert(overflowing, { outputDir: await outDir() });
+
+    for (const result of [first, second, third]) {
       const warning = result.diagnostics.find((d) => /too far out/u.test(d.message));
       assert.ok(warning, `the lost origin must be reported: ${JSON.stringify(result.diagnostics)}`);
       assert.equal(warning.severity, 'warning');
       assert.match(warning.hint, /written from zero instead/u);
+      assert.doesNotMatch(warning.message, /Infinity|NaN/u, warning.message);
     }
 
     // Timed from zero, so the column is usable and increases.

@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.148
+
+### Infinitys, in the one message that still printed it
+
+`formatDuration` opens with the reason it refuses a non-finite value: "the fallback below
+rendered these as `NaNs` and `Infinitys`". One message still did. A discontinuous recording
+whose record duration sits near the top of a double has an origin past what a double holds,
+and the warning that reports it formats the origin with `plain`, which expands exponent
+notation and hands anything else straight back:
+
+```
+warning: This recording's timekeeping annotations place it Infinitys from its own start date,
+```
+
+`Duration unknown` is what the same quantity reads as two lines above it, in the same run. The
+non-finite case now says the recording is placed *further from its own start date than a number
+can hold*; the ordinary case is unchanged, down to the `-10000000000000002s` the page quotes.
+
 ## 0.7.147
 
 ### the cross-check agreeing over no recordings
