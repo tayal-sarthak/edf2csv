@@ -167,6 +167,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     `\n${compared} conversions compared over ${recordings} recordings ` +
       `(${channels} channel sequences, ${skipped} refused by both).\n`,
   );
+  // Nothing compared is not both layouts agreeing; see the comment in estimate.mjs.
+  if (compared === 0) {
+    process.stdout.write('No conversion was compared, so the two layouts were not.\n');
+    process.exit(1);
+  }
   if (problems.length > 0) {
     process.stdout.write(`${problems.length} disagreed:\n`);
     for (const problem of problems.slice(0, 20)) process.stdout.write(`  ${problem}\n`);

@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.137
+
+### six sweeps that passed by comparing nothing
+
+```
+$ npm run estimate -- typo
+
+0 predictions over 0 recordings.
+Every row count exact, and every byte count between the truth and 3x it (sizes read 0% high
+on average, worst 0.00x at ).
+```
+
+Exit 0, and a sentence asserting the invariant held over nothing — with the empty `at ` where
+the worst recording's name goes. The name filter is the harness's own documented usage, two
+lines into its header.
+
+Six of them ended the same way: a count, then the sentence that says what was proved, with
+nothing between them asking whether anything was measured. The filter is the route a person
+reaches it by; the one that matters is an empty fixture set, which is a rename away — CI
+generates the fixtures in the step before it runs these, and every sweep reads them out of one
+directory by one pattern. The correctness page names these harnesses as how this project knows
+what it claims, so a sweep that measures nothing must not be the one that says everything
+agreed.
+
+Each refuses its own size zero now, and a check holds all six to having such a guard — plus a
+real run of the one a documented flag can empty.
+
+Same defect as 0.7.136 one directory over: a check that did not run has not passed.
+
 ## 0.7.136
 
 ### a cross-check that reported success by not running

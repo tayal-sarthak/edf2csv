@@ -163,6 +163,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { problems, checked, calibrations } = await sweepRoundTrip();
 
   process.stdout.write(`\n${checked} cells over ${calibrations} calibrations.\n`);
+  // Nothing checked is not everything right; see the comment in estimate.mjs.
+  if (checked === 0) {
+    process.stdout.write('No cell was read, so nothing was recovered.\n');
+    process.exit(1);
+  }
   if (problems.length > 0) {
     process.stdout.write(`${problems.length} did not recover:\n`);
     for (const problem of problems.slice(0, 20)) process.stdout.write(`  ${problem}\n`);

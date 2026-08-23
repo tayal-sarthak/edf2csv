@@ -3712,6 +3712,38 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('has no sweep that passes by comparing nothing', async () => {
+    /*
+      `npm run estimate -- typo` — the name filter that harness documents two lines into its own
+      usage — printed "0 predictions over 0 recordings." and then "Every row count exact, and
+      every byte count between the truth and 3x it (sizes read 0% high on average, worst 0.00x
+      at )", and exited 0. Six of the sweeps ended the same way: a count, then the sentence that
+      says the invariant held, with nothing between them asking whether anything was measured.
+
+      A filter is the reachable route; an empty fixture set is the one that matters, and it is a
+      rename away — CI generates the fixtures in the step before it runs these, and every sweep
+      reads them out of one directory by one pattern.
+
+      Held at the source rather than by running each: a sweep that reports its own size has to
+      refuse the size zero.
+    */
+    const sweeps = ['estimate', 'layouts', 'roundtrip', 'narrowing', 'stream', 'trees'];
+    const missing = [];
+    for (const name of sweeps) {
+      const source = await read(`test/fuzz/${name}.mjs`);
+      const tail = source.slice(source.length - 2500);
+      if (!/=== 0\)|\+ \w+ === 0\)/u.test(tail)) missing.push(name);
+    }
+    assert.deepEqual(missing, [], `sweeps that still pass on nothing: ${missing.join(', ')}`);
+
+    // And the one whose zero case a documented flag reaches, run for real.
+    const outcome = await run(process.execPath, [path.join(ROOT, 'test/fuzz/estimate.mjs'), 'no-such-fixture'], {
+      cwd: ROOT,
+    }).then((ok) => ({ code: 0, stdout: ok.stdout }), (error) => ({ code: error.code, stdout: String(error.stdout ?? '') }));
+    assert.notEqual(outcome.code, 0, `a sweep that predicted nothing exited 0:\n${outcome.stdout}`);
+    assert.match(outcome.stdout, /0 predictions over 0 recordings/u, outcome.stdout);
+  });
+
   it('does not pass its cross-check by not running it', async () => {
     /*
       `compare.py` is the only check here that compares against an implementation nobody in

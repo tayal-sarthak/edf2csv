@@ -109,7 +109,11 @@ for (const name of names) {
   }
 }
 
-if (problems.length > 0) {
+// Nothing streamed is not every stream matching; see the comment in estimate.mjs.
+if (compared === 0) {
+  console.error('No stream was compared against the file it replaces.');
+  process.exitCode = 1;
+} else if (problems.length > 0) {
   console.error(problems.slice(0, 20).join('\n'));
   if (problems.length > 20) console.error(`... and ${problems.length - 20} more`);
   process.exitCode = 1;

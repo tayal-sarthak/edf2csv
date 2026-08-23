@@ -325,6 +325,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   process.stdout.write(
     `\n${trees} folder trees, ${recordings} recordings, ${directories} conversions (seed ${seed}).\n`,
   );
+  // Nothing converted is not everything agreeing; see the comment in estimate.mjs.
+  if (directories === 0) {
+    process.stdout.write('No recording was converted, so nothing was compared.\n');
+    process.exit(1);
+  }
   if (problems.length > 0) {
     process.stdout.write(`${problems.length} problems:\n`);
     for (const problem of [...new Set(problems)].slice(0, 10)) {

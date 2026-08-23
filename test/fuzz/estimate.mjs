@@ -237,6 +237,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   );
 
   process.stdout.write(`\n${checked} predictions over ${names} recordings.\n`);
+  /*
+    Nothing checked is not everything right.
+
+    `npm run estimate -- typo` — the name filter this harness documents two lines into its own
+    usage — printed "0 predictions over 0 recordings." and then "Every row count exact, and
+    every byte count between the truth and 3x it (sizes read 0% high on average, worst 0.00x
+    at )", and exited 0. The same sentence arrives on a full run whose fixtures are missing,
+    which is a rename away: CI generates them in the step before this one.
+  */
+  if (checked === 0) {
+    process.stdout.write('Nothing was predicted, so nothing was checked.\n');
+    process.exit(1);
+  }
   if (problems.length > 0) {
     process.stdout.write(`${problems.length} wrong:\n`);
     for (const problem of problems.slice(0, 20)) process.stdout.write(`  ${problem}\n`);
