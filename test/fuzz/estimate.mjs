@@ -16,12 +16,14 @@
  *      decide whether they have room. Reading low is a defect even though "approximate"
  *      would excuse it.
  *
- * Property (2) has one theoretical hole, noted in the code that produces the estimate:
- * nothing obliges a recording to keep its samples inside the digital range its header
- * declares, and one that does not maps outside the physical range too, so it could convert
- * larger than a bound taken from the header. No fixture here does that, so the check is
- * strict rather than carrying an allowlist — an exemption nobody has to earn is how a
- * regression gets in wearing the name of a known case.
+ * Property (2) has one hole, noted in the code that produces the estimate and — since 0.7.132
+ * — on the correctness page beside the promise: nothing obliges a recording to keep its
+ * samples inside the digital range its header declares, and one that does not maps outside the
+ * physical range too, so it converts larger than a bound taken from the header. It is not
+ * theoretical; a header bounded at +/-100 whose codes run to +/-32000 converts about 8% larger
+ * than the estimate. No fixture here does that, so the check is strict rather than carrying an
+ * allowlist — an exemption nobody has to earn is how a regression gets in wearing the name of
+ * a known case.
  */
 
 import { execFileSync } from 'node:child_process';

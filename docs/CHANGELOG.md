@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.132
+
+### the size estimate's one promise, stated without its exception
+
+The fifth of the correctness page's promises: "The row count is exact and the byte count never
+reads low." It is the half of the estimate people act on — the figure that answers "do I have
+room" — and the page gives the sweep that checks it over every fixture.
+
+A cell is bounded by the channel's declared physical range, which is what its two calibration
+points map its declared digital range onto. Nothing in EDF obliges a recording to keep its
+samples inside that digital range, and one that does not maps outside the physical range too and
+is written at its full width. A channel bounded at ±100 whose codes run to ±32000 converts about
+8% larger than the estimate.
+
+`plan.ts` has said so beside the arithmetic since the bound was introduced — "Such a file can
+convert larger than the estimate. Clamping the data to make the estimate true is not a trade
+worth making — the samples are what they are" — and the sweep's own header called it a
+theoretical hole. It is not theoretical, and the page that makes the promise did not carry the
+condition.
+
+The promise is stated with it now, the exception is described under it, and a check builds such
+a recording and requires the estimate to come out under the file. The trade is unchanged: the
+alternative is budgeting the full width a sample can occupy, which reads several hundred times
+high on every ordinary recording, and reading absurdly high answers the same question wrongly.
+
 ## 0.7.131
 
 ### a documented limit of --info that costs a warning, and also the clock

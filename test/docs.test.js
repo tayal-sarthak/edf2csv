@@ -1828,6 +1828,64 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(shown[2].printed.filter(rates).length, 1, 'two rates, one rate warning');
   });
 
+  it('states the one case its size estimate reads under the truth', async () => {
+    /*
+      "The row count is exact and the byte count never reads low" is the fifth of the
+      correctness page's promises, and the sweep it names asserts exactly that over every
+      fixture. A cell is bounded by the channel's declared physical range, which is what its
+      two calibration points map its declared digital range onto — and nothing in EDF obliges
+      a recording to keep its samples inside that digital range. One that does not maps
+      outside the physical range too and is written at its full width.
+
+      `plan.ts` has said so beside the arithmetic since the bound was introduced, and the
+      sweep's header called it a theoretical hole. It is not theoretical: a channel bounded at
+      +/-100 whose codes run to +/-32000 converts about 8% larger than the estimate, which is
+      the one direction the promise says it never goes. Clamping the data to make the figure
+      true is not a trade worth making, so the page states the exception.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-outrange-'));
+    try {
+      const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      const recording = path.join(work, 'outside-its-range.edf');
+      writeEdf({
+        path: recording, numRecords: 5, recordDuration: 1,
+        signals: [{ label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -100,
+          digMax: 100, samplesPerRecord: 20, gen: () => 0 }],
+      });
+      // The writer clamps to the declared range, which is what an honest one does; these bytes
+      // are written past it on purpose.
+      const bytes = await readFile(recording);
+      for (let at = 256 * 2; at + 1 < bytes.length; at += 2) {
+        bytes.writeInt16LE(at % 4 === 0 ? 32000 : -32000, at);
+      }
+      await writeFile(recording, bytes);
+
+      const survey = await run(process.execPath, [CLI, recording, '--info', '--json']);
+      const estimated = JSON.parse(survey.stdout).estimate.bytes;
+      const out = path.join(work, 'converted');
+      await run(process.execPath, [CLI, recording, '--out', out, '--quiet']);
+      const written = (await stat(path.join(out, 'signals.csv'))).size;
+      assert.ok(
+        estimated < written,
+        `this recording is meant to convert larger than its estimate: ${estimated} vs ${written}`,
+      );
+
+      const page = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
+      assert.match(
+        page,
+        /never reads low for any recording whose samples stay inside the digital range/u,
+        'the promise is stated without its condition',
+      );
+      assert.match(
+        page,
+        /The one case that reads low is a file whose samples leave the digital range/u,
+        'and the exception is not described',
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says what the origin search costs when nothing inside it states a time', async () => {
     /*
       The sixteen-record bound is documented on six pages, and both pages that describe what
