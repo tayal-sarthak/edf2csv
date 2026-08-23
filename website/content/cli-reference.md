@@ -826,7 +826,7 @@ Field by field:
 | `output_dir` | The directory that was written, exactly as it will be found on disk |
 | `files` | Every CSV written, in the order it was produced, with its data-row count excluding the header line. `metadata.json` isn't listed |
 | `annotations` | Number of events written to `annotations.csv`, after time-window filtering. `0` when the recording has no annotation channel |
-| `duration_seconds` | Duration of the whole recording, not of the converted window |
+| `duration_seconds` | Duration of the whole recording, not of the converted window. `null` when it is not a number JSON can hold: `data_records * record_duration_seconds` overflows a double on a header stating both at their extremes, and the text form prints `Duration unknown` for the same reason |
 | `records` | Number of data records the file actually contains, which can differ from the count its header declares |
 | `elapsed_ms` | Wall-clock time for the conversion |
 | `warnings` | One entry per diagnostic, each with a stable `code`, a `severity` — always `"warning"`, the only one this raises — and a human-readable `message`. Empty array when there's nothing to report |
@@ -848,8 +848,8 @@ The `code` values are stable identifiers meant for programmatic checks: `MIXED_S
 | `data_records` | Records the file actually holds |
 | `data_records_declared` | What the header claims, which can differ; `-1` means the writer didn't know |
 | `record_duration_seconds` | Seconds per data record, possibly fractional |
-| `duration_seconds` | `data_records * record_duration_seconds` — how much signal exists |
-| `time_span_seconds` | How long the recording covers, which exceeds the above by the length of any gaps |
+| `duration_seconds` | `data_records * record_duration_seconds` — how much signal exists. `null` when that product overflows a double, which JSON has no value for; the text form prints `Duration unknown` |
+| `time_span_seconds` | How long the recording covers, which exceeds the above by the length of any gaps. `null` on the same overflow, and for the same reason |
 | `first_sample_seconds` | Where `time_s` begins, and the clock `--start` and `--end` are read against. Usually 0 |
 | `annotation_channels` | How many `EDF Annotations` channels the file declares |
 | `channels` | One object per signal channel, with `signal_index`, `column`, `label`, `unit`, the rates and bounds, and `output_file` (`null` when it wouldn't be converted) |

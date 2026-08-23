@@ -3712,6 +3712,64 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('says which of its time fields JSON cannot hold', async () => {
+    /*
+      `JSON.stringify(Infinity)` is `null`, and a recording's length is
+      `data_records * record_duration_seconds` — a product of two header fields, each of which
+      can state a number a double can hold while the product cannot. The text form has always
+      said `Duration unknown` for such a file; the three JSON documents said `null` and the
+      pages describing them called each field a number.
+
+      Only reachable at all since 0.7.130, which stopped refusing such a recording the window
+      nobody asked for. A survey summing `duration_seconds` over a folder now has a value it
+      was not told about: nought in JavaScript, a TypeError in Python.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-overflow-json-'));
+    try {
+      const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      const recording = path.join(work, 'overflowing.edf');
+      const starts = ['+0', '+1e308', '+2e308'];
+      writeEdf({
+        path: recording, reserved: 'EDF+D', numRecords: 3, recordDuration: 1e308,
+        talsForRecord: (r) => `${starts[r]}\u0014\u0014\u0000`,
+        signals: [
+          { label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+            digMax: 2047, samplesPerRecord: 4, gen: (r, sample) => r * 4 + sample },
+          { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+            digMax: 32767, samplesPerRecord: 30, annotations: true },
+        ],
+      });
+
+      const survey = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--info', '--json'])).stdout,
+      );
+      assert.equal(survey.duration_seconds, null, 'the survey holds a number after all');
+      assert.equal(survey.time_span_seconds, null);
+      // The text form says it in words on the same file, which is what the pages point at.
+      const text = (await run(process.execPath, [CLI, recording, '--info'])).stdout;
+      assert.match(text, /^Duration {3}unknown/mu, text.split('\n').slice(0, 5).join('\n'));
+
+      const out = path.join(work, 'converted');
+      const summary = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--out', out, '--json'])).stdout,
+      );
+      assert.equal(summary.duration_seconds, null, 'the summary holds a number after all');
+      const meta = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+      assert.equal(meta.recording.duration_seconds, null);
+      assert.equal(meta.conversion.end_seconds, null);
+
+      for (const [page, needle] of [
+        ['cli-reference.md', /`duration_seconds` \| Duration of the whole recording[^|]*`null`/u],
+        ['cli-reference.md', /`time_span_seconds` \|[^|]*`null` on the same overflow/u],
+        ['output-files.md', /`end_seconds` is `null` when the recording's end is not a number JSON can/u],
+      ]) {
+        assert.match((await read(`website/content/${page}`)).replace(/\s+/gu, ' '), needle, page);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says which of the tests it counts do not run where CI runs', async () => {
     /*
       `stdout-audit.test.js` builds a filesystem of a known small size to fill up, and builds it

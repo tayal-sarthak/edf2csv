@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.139
+
+### four time fields JSON cannot hold, documented as numbers
+
+A recording's length is `data_records * record_duration_seconds` — a product of two header fields,
+each of which can state a number a double holds while the product does not. `--info` has always
+answered that with `Duration unknown`; the JSON answered it with `null`, and the pages describing
+those documents called each field a number:
+
+| `duration_seconds` | `data_records * record_duration_seconds` — how much signal exists |
+
+`JSON.stringify(Infinity)` is `null`, so there was never another value to give. Four fields
+across the three documents take it: `duration_seconds` and `time_span_seconds` in the `--info`
+survey, `duration_seconds` in the conversion summary, and `recording.duration_seconds` and
+`conversion.end_seconds` in `metadata.json`.
+
+Only reachable at all since 0.7.130, which stopped refusing such a recording the window nobody
+asked for — before that the run ended before any of these were written. A survey summing
+`duration_seconds` over a folder now has a value it was not told about: nought in JavaScript, a
+`TypeError` in Python.
+
+Both pages say it now, next to the text form's own word for it, and a check builds the recording
+and reads all four back.
+
 ## 0.7.138
 
 ### nine tests the page counts that CI has never run

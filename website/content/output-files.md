@@ -531,7 +531,9 @@ warning: The input changed while it was being converted, so this output covers t
 
 - `converted_at` is when this run finished, as an ISO 8601 instant in UTC.
 - `start_seconds` and `end_seconds` are the resolved time window, in seconds from the start of the
-  recording, half-open. Both ends are clamped to the recording, so a window asked for wider than
+  recording, half-open. `end_seconds` is `null` when the recording's end is not a number JSON can
+  hold — a header stating 1e308-second records overflows a double at its third one — as is
+  `recording.duration_seconds` on the same file, where `--info` prints `Duration unknown`. Both ends are clamped to the recording, so a window asked for wider than
   the recording is recorded as the part of it that exists: `--start=-500 --end 999h` on a
   two-second file comes back as `0` and `2`, and their difference is always a span the conversion
   actually covered. `whole_recording` is `true` when the window covers everything, which saves
