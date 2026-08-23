@@ -8,6 +8,7 @@
  */
 
 import { fixed, formatDuration } from '../format/number.js';
+import { assertOptions } from './options.js';
 
 export class TimeRangeError extends Error {
   constructor(message: string) {
@@ -364,6 +365,19 @@ export function resolveRange(options: {
    */
   recordStarts?: Float64Array | null | undefined;
 }): ResolvedRange {
+  /*
+    The same check `buildPlan` makes, made here too, because this is exported on its own.
+
+    `assertOptions` sits at the top of `buildPlan`, so `convert` was covered and the function
+    underneath it was not — and this one has its own signature block on the API page.
+    `resolveRange({ start: NaN, ... })` resolved: no error, no warning, and a range read back
+    as `startSeconds: null, startRecord: null`, which is the "takes the whole recording
+    without saying so" that comment names. `{ end: '2' }` was coerced by the arithmetic and
+    accepted; `{ start: '30' }` reached the past-the-end error and printed it with the value
+    missing — `--start s is at or past the end of this 3s recording`.
+  */
+  assertOptions({ start: options.start, duration: options.duration, end: options.end });
+
   // For a continuous file the recording spans recordCount * recordDuration. A
   // discontinuous one does not: a 10-second recording with a 95-second gap in the
   // middle still ends at 105 seconds. Deriving the span from the records' real

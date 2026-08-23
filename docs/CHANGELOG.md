@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.150
+
+### the option check one function above where it was needed
+
+`assertOptions` runs at the top of `buildPlan`, which covers `convert`. It does not cover
+`resolveRange`, which is exported and carries its own signature block on the API page:
+
+```js
+resolveRange({ start: NaN, recordDuration: 1, recordCount: 3 })
+// { startSeconds: null, startRecord: null, endSeconds: 3, ... }
+```
+
+No error, no warning — the "takes the whole recording without saying so" that check was written
+to stop, handed back as a range with holes in it. `{ end: '2' }` was coerced by the arithmetic
+and accepted. `{ start: '30' }` got as far as the past-the-end error and printed it with the
+value gone: `--start s is at or past the end of this 3s recording`.
+
+The same call now runs here too, so the three answer the same way whichever door they come in.
+
 ## 0.7.149
 
 ### a TypeError from the function the page hands your users

@@ -1417,6 +1417,38 @@ describe('option checking', () => {
     });
   });
 
+  it('makes the same check in the function underneath, which is exported too', async () => {
+    /*
+      `assertOptions` runs at the top of `buildPlan`, so `convert` was covered and
+      `resolveRange` — which has its own signature block on the API page — was not.
+      `{ start: NaN }` resolved: no error, no warning, and a range reading back
+      `startSeconds: null, startRecord: null`, which is the "takes the whole recording without
+      saying so" the checker exists to stop. `{ end: '2' }` was coerced by the arithmetic and
+      accepted, and `{ start: '30' }` reached the past-the-end error with the value missing
+      from the sentence: `--start s is at or past the end of this 3s recording`.
+    */
+    const { OptionError, resolveRange } = await import('../dist/index.js');
+    for (const [options, expected] of [
+      [{ start: NaN }, /start must be a number of seconds, got NaN/u],
+      [{ start: '30' }, /start must be a number of seconds, got "30"/u],
+      [{ end: '2' }, /end must be a number of seconds, got "2"/u],
+      [{ duration: Infinity }, /duration must be a number of seconds/u],
+    ]) {
+      assert.throws(
+        () => resolveRange({ recordDuration: 1, recordCount: 3, ...options }),
+        (error) => {
+          assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
+          assert.match(error.message, expected);
+          return true;
+        },
+      );
+    }
+    // And the ordinary window still resolves.
+    const range = resolveRange({ start: 1, end: 2, recordDuration: 1, recordCount: 3 });
+    assert.equal(range.startSeconds, 1);
+    assert.equal(range.endSeconds, 2);
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.
