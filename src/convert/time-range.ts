@@ -82,6 +82,26 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
   */
   const negative = trimmed.startsWith('-');
   const text = negative ? trimmed.slice(1) : trimmed;
+
+  /*
+    A leading plus, named as such.
+
+    Refusing it is deliberate — see the paragraph above — but it came back as "is not a time I
+    understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds", which is the
+    message for input that could not be read at all. Every part of `+5s` was read: the number
+    parsed, the unit was looked up and found. The one thing wrong with it is a character the
+    reader put there on purpose, and they were sent to re-check their unit spellings with `5m`
+    sitting in the list of suggestions, differing from what they typed by the sign they cannot
+    see is the problem. 0.7.102 made this argument about a space; this is the same sentence
+    about the other character that reaches it. `--decimals` and `--jobs` both quote the value
+    back and say what is wrong with it.
+  */
+  if (text.startsWith('+')) {
+    throw new TimeRangeError(
+      `${optionName} "${input}" begins with a plus. Write the number on its own: ` +
+        `${input.trim().replace('+', '')}`,
+    );
+  }
   const signed = (seconds: number): number =>
     assertFinite(negative ? -seconds : seconds, optionName, input, allowNegative);
 

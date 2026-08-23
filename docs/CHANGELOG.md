@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.121
+
+### a leading plus on a time value answered as if the value were unreadable
+
+`--start +5s` came back as:
+
+```
+error: --start "+5s" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds.
+```
+
+which is the message for input that could not be read at all, and is not true of this one:
+the number parsed, the unit was looked up in the table and found. The one thing wrong with
+`+5s` is a character the reader put there on purpose — and the sentence sends them to re-check
+their unit spellings with `5m` sitting in the list of suggestions, differing from what they
+typed by the sign they cannot see is the problem.
+
+Refusing the plus is deliberate and stays: `cli-reference.md` sets the rule out, and
+`--decimals +5` and `--jobs +2` reject it one flag over. Both of those quote the value back and
+say what is wrong with it, which is what this now does.
+
+0.7.102 made this argument about a space between a number and its unit. This is the same
+sentence about the other character that reaches that message with everything else readable.
+
 ## 0.7.120
 
 ### a quoted path broken across the line the wrapper promised not to break

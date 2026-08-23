@@ -362,6 +362,7 @@ error: --start "5x" uses an unknown unit "x". Use h, m, s or ms, or their long f
        hours, minutes, seconds.
 error: --start "1h banana" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds.
 error: --start "5 min" puts a space between a number and its unit. Write them together: 5min
+error: --start "+5s" begins with a plus. Write the number on its own: 5s
 error: --duration is empty. Try a value like 30s, 5m, or 00:30:00.
 ```
 

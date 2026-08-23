@@ -93,6 +93,28 @@ describe('time specifications', () => {
         typed,
       );
     }
+
+    /*
+      And the other character that reaches that message with everything else about the value
+      readable. A leading `+` is refused on purpose — `--decimals +5` and `--jobs +2` reject
+      one flag over, and both quote the value back and say what is wrong with it — but this
+      answered `+5s` with "is not a time I understand", which is not true of it, while the
+      list of suggestions it sent the reader to check held `5m`.
+    */
+    for (const [typed, seconds] of [['+5s', 5], ['+90', 90], ['+1h30m', 5400], ['-+5s', -5]]) {
+      assert.throws(
+        () => parseTimeSpec(typed, '--start', true),
+        (error) => {
+          assert.ok(error instanceof TimeRangeError, error);
+          assert.match(error.message, /begins with a plus/u, error.message);
+          const advised = /Write the number on its own: (.+)$/u.exec(error.message);
+          assert.ok(advised, error.message);
+          assert.equal(parseTimeSpec(advised[1], '--start', true), seconds, advised[1]);
+          return true;
+        },
+        typed,
+      );
+    }
   });
 
   it('takes an offset below zero, in every form, for the options that name a position', () => {
