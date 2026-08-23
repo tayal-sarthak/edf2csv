@@ -1691,6 +1691,44 @@ describe('--info', () => {
     }
     assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
   });
+
+  it('stays under the wall on a recording whose every cell is empty', async () => {
+    /*
+      The other half of the contract: never more than three times the truth, which the
+      correctness page calls a wall rather than a target. The estimate budgeted a full-width
+      number for every channel from its declared physical range — including a channel whose
+      digital minimum equals its maximum, which has no mapping and so writes an empty cell for
+      every sample. At `--decimals 20` that is 24 characters budgeted against nought written.
+
+      `degenerate-range.edf` cannot show it: two ordinary channels sit beside its flat one and
+      their real cells pad the total back under three. A recording holding only the flat one
+      was predicted at 651 bytes and wrote 151 — 4.31x.
+    */
+    const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-flat-'));
+    temporaries.push(work);
+    const recording = path.join(work, 'all-flat.edf');
+    writeEdf({
+      path: recording, numRecords: 2, recordDuration: 1,
+      signals: [
+        { label: 'flat', dimension: 'uV', physMin: -100, physMax: 100, digMin: 7, digMax: 7,
+          samplesPerRecord: 10, gen: () => 7 },
+      ],
+    });
+
+    for (const layout of [[], ['--layout', 'long']]) {
+      const { stdout } = await cli([recording, '--info', '--json', '--decimals', '20', ...layout]);
+      const dir = await outDir();
+      await cli([recording, '--out', dir, '--decimals', '20', ...layout]);
+      let actual = 0;
+      for (const file of await readdir(dir)) {
+        if (file.startsWith('signals')) actual += (await stat(path.join(dir, file))).size;
+      }
+      const estimate = JSON.parse(stdout).estimate.bytes;
+      assert.ok(estimate >= actual, `${layout.join(' ')}: said ${estimate}, wrote ${actual}`);
+      assert.ok(estimate <= actual * 3, `${layout.join(' ')}: said ${estimate}, wrote ${actual}`);
+    }
+  });
 });
 
 describe('converting several recordings at once', () => {

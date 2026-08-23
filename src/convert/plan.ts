@@ -12,7 +12,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
-import { decimalsAreClamped, decimalsForSignal } from '../edf/scale.js';
+import { decimalsAreClamped, decimalsForSignal, makeScaler } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { listed } from '../format/list.js';
 import { fixed, timeDecimals } from '../format/number.js';
@@ -516,6 +516,37 @@ function timeWidthFor(range: ResolvedRange, decimals: number): number {
   );
 }
 
+/**
+ * How wide a value cell can print, from the channel's own calibration.
+ *
+ * Zero when that calibration holds no mapping — a digital range of one point, a physical span
+ * that overflows or underflows a double — because such a channel writes an empty cell for
+ * every sample rather than a number, which is the whole point of `makeScaler` returning NaN.
+ *
+ * Budgeting a full-width number for one broke the bound this estimate states beside never
+ * reading low. A single-channel recording whose digital minimum equals its maximum, at
+ * `--decimals 20`, was predicted at 651 bytes and wrote 151 — 4.31x, against a documented wall
+ * of three. No fixture reaches it because `degenerate-range.edf` has two ordinary channels
+ * beside its flat one, whose real cells pad the total back under the wall.
+ *
+ * Asked of `makeScaler` rather than restated here, for the reason `csvRow` measures the header
+ * row: the function that decides whether a cell gets a number is the one that can still be
+ * right when the rule changes. Both ends of the declared range are probed, so a calibration
+ * that is finite anywhere keeps its full width and the estimate cannot start reading low.
+ */
+function valueWidthOf(channel: PlannedChannel): number {
+  const scale = makeScaler(channel.signal);
+  const blank =
+    !Number.isFinite(scale(channel.signal.digitalMin)) &&
+    !Number.isFinite(scale(channel.signal.digitalMax));
+  if (blank) return 0;
+  return widthOf(
+    Math.max(Math.abs(channel.signal.physicalMin), Math.abs(channel.signal.physicalMax)),
+    channel.decimals,
+    channel.signal.physicalMin < 0 || channel.signal.physicalMax < 0,
+  );
+}
+
 /** Characters a fixed-decimal number of this magnitude occupies, sign included. */
 function widthOf(magnitude: number, decimals: number, signed = false): number {
   const size = Math.abs(magnitude);
@@ -629,11 +660,7 @@ function estimateOutput(
       */
       const timeWidth = timeWidthFor(range, group.timeDecimals);
       for (const channel of group.channels) {
-        const valueWidth = widthOf(
-          Math.max(Math.abs(channel.signal.physicalMin), Math.abs(channel.signal.physicalMax)),
-          channel.decimals,
-          channel.signal.physicalMin < 0 || channel.signal.physicalMax < 0,
-        );
+        const valueWidth = valueWidthOf(channel);
         const nameWidth = Buffer.byteLength(escapeCsvField(channel.column));
         // Two commas and the newline.
         bytes += groupRows * (timeWidth + nameWidth + valueWidth + 3);
@@ -662,16 +689,7 @@ function estimateOutput(
       to make the estimate true is not a trade worth making — the samples are what they are.
     */
     const timeWidth = timeWidthFor(range, group.timeDecimals);
-    const cellWidth = group.channels.reduce(
-      (sum, c) =>
-        sum +
-        widthOf(
-          Math.max(Math.abs(c.signal.physicalMin), Math.abs(c.signal.physicalMax)),
-          c.decimals,
-          c.signal.physicalMin < 0 || c.signal.physicalMax < 0,
-        ),
-      0,
-    );
+    const cellWidth = group.channels.reduce((sum, c) => sum + valueWidthOf(c), 0);
     // One comma per channel, plus the newline.
     bytes += groupRows * (timeWidth + cellWidth + group.channels.length + 1);
     /*

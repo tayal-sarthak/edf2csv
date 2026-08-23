@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.145
+
+### the estimate's other wall, and a cell that is never written
+
+The estimate makes two promises. It never reads low, which the sweep checks over every fixture,
+and it never reads more than three times the truth — "a wall rather than a target", the page
+says, the worst any fixture producing 1.73x.
+
+A channel whose digital minimum equals its maximum has no calibration in it, so every one of its
+cells is written empty. The estimate budgeted a full-width number for it anyway, taken from the
+declared physical range. A single-channel recording of that shape, at `--decimals 20`:
+
+```
+Would write 20 rows, roughly 651 B.      signals.csv is 151 bytes.      4.31x
+```
+
+`degenerate-range.edf` cannot show it — two ordinary channels sit beside its flat one, and their
+real cells pad the total back under three. The width now comes from `makeScaler`, which is the
+function that decides whether a cell gets a number at all; both ends of the declared range are
+probed, so a calibration finite anywhere keeps its full width and the estimate cannot start
+reading low. That recording is now predicted exactly, in both layouts.
+
 ## 0.7.144
 
 ### one file per directory the batch promise does not cover
