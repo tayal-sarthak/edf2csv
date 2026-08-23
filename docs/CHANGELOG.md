@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.138
+
+### nine tests the page counts that CI has never run
+
+`stdout-audit.test.js` fills a destination up, which needs a filesystem of a known small size,
+which it builds with `hdiutil` — a tool only macOS has. Its own header settled the rest a long
+time ago: "on anything else the tests skip rather than pretend."
+
+Every job in CI is `ubuntu-latest`. So those nine tests have never run on a push, and the
+correctness page counted them among its 436 and described what they check without saying where
+that happens. A reader running `npm test` on Linux gets nine skips and no way to tell which nine
+of the numbers on the page their machine will produce.
+
+Nothing claimed to have passed — a skip is reported as a skip, which is the difference between
+this and the two versions before it. What was missing was the sentence.
+
+The file table row and the paragraph above it say it now, and a check reads it out of the three
+places that decide it: the harness names the tool it needs, the workflow names the runner it
+gets, and the page has to name both.
+
 ## 0.7.137
 
 ### six sweeps that passed by comparing nothing

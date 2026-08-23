@@ -3712,6 +3712,32 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
+  it('says which of the tests it counts do not run where CI runs', async () => {
+    /*
+      `stdout-audit.test.js` builds a filesystem of a known small size to fill up, and builds it
+      with `hdiutil` — which only macOS has. Its own header says it "skips rather than pretends"
+      anywhere else, which is the right answer, and CI is `ubuntu-latest` on every job: those
+      nine tests have never run on a push. The page counted them among the 435 and described
+      what they check without saying where.
+
+      A skip is reported as a skip, so nothing here claims to have passed — what was missing is
+      the reader's ability to tell which nine of the numbers in front of them their own machine
+      will produce.
+
+      Held from the sources rather than from a list here: the harness names the tool it needs,
+      the workflow names the runner it gets, and the page has to name both.
+    */
+    const harness = await read('test/stdout-audit.test.js');
+    assert.match(harness, /hdiutil/u, 'the audit no longer builds its filesystem with hdiutil');
+    const ci = await read('.github/workflows/ci.yml');
+    assert.match(ci, /runs-on: ubuntu-latest/u, 'CI no longer runs on Linux');
+
+    const page = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
+    assert.match(page, /`hdiutil`, which only macOS has/u, 'the page does not say what it needs');
+    assert.match(page, /skips rather than pretends anywhere else — including in CI/u,
+      'the page does not say those tests are skipped where CI runs');
+  });
+
   it('has no sweep that passes by comparing nothing', async () => {
     /*
       `npm run estimate -- typo` — the name filter that harness documents two lines into its own
