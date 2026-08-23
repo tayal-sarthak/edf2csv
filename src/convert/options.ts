@@ -144,6 +144,26 @@ export function assertOptions(options: {
   }
 }
 
+/**
+ * The recording to read, checked before it is opened.
+ *
+ * `EdfFile.open` hands whatever it is given to `fs`, and the refusal comes back as an
+ * `EdfError` coded `UNREADABLE`, hinted "Check the path is spelled the way it is on disk and
+ * that you have permission to read it" — advice about a path, over a value that is not one,
+ * filed as a problem with the recording rather than with the call. `convert({ input: 'a.edf' })`,
+ * which is the option-bag shape the second parameter has, answered `Cannot read "[object
+ * Object]"`; `convert(['a.edf', 'b.edf'])` answered `Cannot read "a.edf,b.edf"`, a path the
+ * caller never wrote, because `String` of an array joins it with commas.
+ *
+ * The empty string is left to `fs`, which has no such file and says so truthfully — the same
+ * reasoning `outputDir` states for not trimming: a path is not a keyword.
+ */
+export function assertInputPath(input: unknown): void {
+  if (typeof input !== 'string') {
+    throw new OptionError(`input must be a path to a recording, got ${describe(input)}.`);
+  }
+}
+
 /** `NaN` and `-1` read better unquoted; anything else is quoted so its type is visible. */
 function describe(value: unknown): string {
   return typeof value === 'number' ? String(value) : JSON.stringify(value);

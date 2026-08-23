@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.140
+
+### a first argument nothing checked
+
+`convert()` takes the recording as its first argument and the options as its second, and only
+the second was checked. Anything else went to `fs`, whose refusal came back as an `EdfError`
+coded `UNREADABLE` — a problem with the recording — hinting that the path might be misspelled
+or unreadable, over a value that is not a path:
+
+```
+convert({ input: 'a.edf' })       EdfError UNREADABLE: Cannot read "[object Object]"
+convert(['a.edf', 'b.edf'])       EdfError UNREADABLE: Cannot read "a.edf,b.edf"
+```
+
+The second prints back a path nobody wrote, because `String` of an array joins it with commas.
+Both are the same case `assertOptions` exists for and both are now an `OptionError` naming the
+argument. The empty string still goes to `fs`, which has no such file and says so truthfully.
+
 ## 0.7.139
 
 ### four time fields JSON cannot hold, documented as numbers

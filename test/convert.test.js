@@ -1375,6 +1375,30 @@ describe('option checking', () => {
     }
   });
 
+  it('rejects an input that is not a path, before it reaches the filesystem', async () => {
+    /*
+      Everything above is the second argument. The first was unchecked, so `fs` refused it and
+      the refusal came back as an EdfError coded UNREADABLE — a problem with the recording,
+      hinting that the path might be misspelled or unreadable, over a value that is not a path.
+      `convert({ input: 'a.edf' })`, written in the option-bag shape the second argument has,
+      answered `Cannot read "[object Object]"`, and an array answered `Cannot read
+      "a.edf,b.edf"` — a path printed back that nobody wrote, because String joins an array.
+    */
+    const { OptionError } = await import('../dist/index.js');
+    for (const input of [{ input: 'a.edf' }, 123, null, undefined, ['a.edf', 'b.edf']]) {
+      await assert.rejects(convert(input, { quiet: true }), (error) => {
+        assert.ok(error instanceof OptionError, `${JSON.stringify(input)} threw ${error}`);
+        assert.match(error.message, /^input must be a path to a recording, got /u);
+        return true;
+      });
+    }
+    // The empty string is a path the filesystem can answer for, and it does.
+    await assert.rejects(convert('', { quiet: true }), (error) => {
+      assert.equal(error.code, 'UNREADABLE');
+      return true;
+    });
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.

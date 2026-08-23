@@ -36,6 +36,7 @@ import {
 } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { TIME_COLUMN } from './channels.js';
+import { assertInputPath } from './options.js';
 import { buildPlan, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './timing.js';
@@ -137,6 +138,7 @@ interface OpenGroup {
 }
 
 export async function convert(inputPath: string, options: ConvertOptions = {}): Promise<ConvertResult> {
+  assertInputPath(inputPath);
   const startedAt = Date.now();
   const file = await EdfFile.open(inputPath);
 
