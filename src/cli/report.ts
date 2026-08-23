@@ -22,6 +22,16 @@ const WRAP_COLUMNS = 80;
 const HINT_INDENT = ' '.repeat(9);
 
 /**
+ * One unbreakable unit of a wrapped line: a quoted span, or a run of non-space.
+ *
+ * The lookbehind is what keeps an apostrophe out of it. `the file's own header and it's` has
+ * two of them, and without the guard `'s own header and it'` is one quoted span — a token
+ * with spaces in it that then refuses to break. A quote opening a span is at the start of a
+ * word, so that is what is required of it.
+ */
+const WORD = /(?<=^|[\s(])(?:"[^"]*"|'[^']*')|\S+/gu;
+
+/**
  * Greedy word wrap, `indent` on every line including the first.
  *
  * Only free prose goes through this. The aligned parts of `--info` — the `Format`/`Size`
@@ -31,6 +41,14 @@ const HINT_INDENT = ' '.repeat(9);
  * A word wider than the column is left to overrun rather than broken. The long words here
  * are file paths and quoted channel labels, and neither survives being split across lines:
  * the point of printing a path is that it can be copied back out.
+ *
+ * A quoted span is one word for the same reason, however many spaces are inside it. The
+ * sentence above is the promise, and it held only for the paths that have no spaces in them:
+ * an interrupted conversion said `Files already written to "/tmp/a very long destination
+ * folder name with` / `many spaces here indeed" are incomplete`, splitting the one thing on
+ * the line that has to be copied whole — and quoting is what a path with spaces in it is
+ * given in the first place. A word wider than the column already overruns rather than
+ * breaking; this is that rule reaching the words it was written for.
  *
  * Which is also why the gap between two words is reproduced rather than normalised to one
  * space. Splitting on `\s+` and rejoining with `' '` re-flowed everything, and a quoted value
@@ -43,12 +61,12 @@ const HINT_INDENT = ' '.repeat(9);
 export function wrap(text: string, indent = '', width = WRAP_COLUMNS): string {
   const lines: string[] = [];
   let line = indent;
-  let gap = ' ';
-  // Odd pieces are the separators, since the pattern is captured.
-  for (const [index, piece] of text.split(/(\s+)/u).entries()) {
-    if (index % 2 === 1) gap = piece;
-    else if (piece === '') continue;
-    else if (line === indent) line += piece;
+  let at = 0;
+  for (const match of text.matchAll(WORD)) {
+    const piece = match[0];
+    const gap = text.slice(at, match.index);
+    at = match.index + piece.length;
+    if (line === indent) line += piece;
     else if (line.length + gap.length + piece.length <= width) line += gap + piece;
     else {
       lines.push(line);

@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.120
+
+### a quoted path broken across the line the wrapper promised not to break
+
+"A word wider than the column is left to overrun rather than broken. The long words here are
+file paths and quoted channel labels, and neither survives being split across lines: the point
+of printing a path is that it can be copied back out." That is what `wrap` says it does, and it
+did it for the paths that have no spaces in them — which is the opposite of the ones that need
+it, since quoting is what a path with a space in it is given in the first place. An interrupted
+conversion printed:
+
+```
+interrupted (SIGINT): the conversion stopped part way through.
+       Files already written to "/tmp/a very long destination folder name with
+       many spaces here indeed" are incomplete and should not be used.
+```
+
+with the one thing on the line that has to be copied whole broken over two of them, an indent
+in the middle.
+
+A quoted span is one word now, however many spaces are inside it — the rule the comment already
+stated, reaching the words it was written for. The lookbehind on the opening quote is what
+keeps an apostrophe out of it: `the file's own header and it's` has two, and without it
+`'s own header and it'` is a span.
+
 ## 0.7.119
 
 ### a recording named for retyping, in a form no shell reads as one name

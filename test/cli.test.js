@@ -1349,6 +1349,27 @@ describe('--info', () => {
       dashed.stderr.includes(`Write it as one argument instead: '--out=-my  nightly'`),
       `the command to paste names a different directory:\n${dashed.stderr}`,
     );
+
+    /*
+      And keeps it on one line. "A word wider than the column is left to overrun rather than
+      broken. The long words here are file paths and quoted channel labels, and neither
+      survives being split across lines" is what `wrap` promises, and it held only for the
+      paths with no spaces in them — which is the opposite of the ones that need it, since
+      quoting is what a path with a space is given in the first place. An interrupted
+      conversion said `Files already written to "/tmp/a very long destination folder name
+      with` / `many spaces here indeed" are incomplete`, breaking the one thing on the line
+      that has to be copied whole.
+    */
+    const folder = await mkdtemp(path.join(tmpdir(), 'edf2csv wrap one long destination name '));
+    temporaries.push(folder);
+    const recording = path.join(folder, 'a recording with spaces in its name.edf');
+    await writeFile(recording, await readFile(fixture('tiny.edf')));
+    const refused = await cli([folder, '--stdout']);
+    assert.equal(refused.code, 2);
+    assert.ok(
+      refused.stderr.split('\n').some((line) => line.includes(`'${recording}'`)),
+      `the quoted path was split across lines:\n${refused.stderr}`,
+    );
   });
 
   it('takes a window on a clock that begins before zero, which is where that file sits', async (t) => {
