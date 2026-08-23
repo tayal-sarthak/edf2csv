@@ -8,6 +8,22 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.142
+
+### two claims sent to the wrong runner, one to none
+
+The page numbers eleven claims and then says which runner checks each. Two lines below the
+eighth, which reads "Checked by `npm run narrowing`", the accounting said the eighth is what
+`npm test` runs — and never mentioned the ninth at all:
+
+> The second and eighth are what `npm test` runs; the third through seventh and the eleventh
+> are the fuzz, estimate, round-trip, layout and stream commands.
+
+The ninth — *the executable behaves as documented* — is the one `npm test` runs beside the
+second. The eighth is a sweep, and so is the third, which the list of commands also left out.
+A reader following this sentence to find out how a claim is checked was sent to the wrong
+command for two of the eleven and to none for a third.
+
 ## 0.7.141
 
 ### the seventh sweep, passing over nothing
