@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.122
+
+### advice on the grepped line in one refusal and under it in its neighbour
+
+Two refusals six lines apart in the same function answer the same mistake — a `#N` that does
+not resolve — and both end with the same sentence naming the positions the file does have. One
+put it on the continuation line and one on the first:
+
+```
+error: "#0x2" is not a channel position: a position is #0, #1, #2 and so on.
+       This file has signal channels at #0, #1, #2, #3, #4, #5, #6, #7 and 32 more.
+error: No channel at position #99. This file has signal channels at #0, #1, #2, #3, #4, #5, #6, #7 and 32 more.
+```
+
+The first line is the one a log gets grepped for, and `printableLines` leaves it whole at
+whatever width it runs to — deliberately, since a break in the middle of it costs more than the
+overrun. So a list the header controls does not belong there. On a 40-channel recording this
+refusal ran to 111 columns where its neighbour ran to 74, and 0.6.113 already capped that list
+because a 200-channel montage is a file people have.
+
+The sentence moved to where the other one puts it. The test that measures the cap was reading
+the whole message for `and 32 more`, which now falls across the wrap, so it flattens first —
+what it is about is the cap, not where the line breaks.
+
 ## 0.7.121
 
 ### a leading plus on a time value answered as if the value were unreadable

@@ -188,8 +188,16 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       const index = Number(position);
       const signal = candidates.find((s) => s.index === index);
       if (!signal) {
+        /*
+          The list of positions is advice, and advice goes on the continuation line.
+
+          It sat on the first line here and on the second in the refusal six lines up, which
+          is the same sentence about the same thing. The first line is the one a log gets
+          grepped for and the one `printableLines` leaves whole at any width, so on a
+          40-channel recording this refusal ran to 111 columns where its neighbour ran to 74.
+        */
         throw new ChannelSelectionError(
-          `No channel at position ${term}. ${positions}`,
+          `No channel at position ${term}.\n${positions}`,
         );
       }
       chosen.set(signal.index, signal);

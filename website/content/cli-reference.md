@@ -256,7 +256,8 @@ edf2csv recording.edf --channels "#0,#3"
 Use this to reach one specific channel when two share a label. If no channel sits at that position, the error lists the positions that do exist:
 
 ```
-error: No channel at position #9. This file has signal channels at #0, #1, #2.
+error: No channel at position #9.
+       This file has signal channels at #0, #1, #2.
 ```
 
 The listed positions are signal channels only, so an annotation channel's index isn't offered even though it consumes a number.

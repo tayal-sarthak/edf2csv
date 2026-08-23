@@ -345,6 +345,16 @@ describe('argument errors exit 2', () => {
     const missing = await cli([fixture('mixed-rates.edf'), '--stdout', '--channels', '#99']);
     assert.equal(missing.code, 2);
     assert.match(missing.stderr, /No channel at position #99/u);
+    /*
+      With the positions on the continuation line, where the refusal six lines up in the
+      source already puts the same sentence. The first line is the one a log gets grepped for
+      and the one `printableLines` leaves whole at any width, so keeping a file-controlled
+      list on it meant a 40-channel recording refused at 111 columns where its neighbour
+      refused at 74.
+    */
+    const [head, ...rest] = missing.stderr.trimEnd().split('\n');
+    assert.equal(head, 'error: No channel at position #99.', missing.stderr);
+    assert.match(rest.join(' '), /^\s+This file has signal channels at/u, missing.stderr);
 
     // Both messages name the positions there are, and a file may have none: `listed([])` is
     // the empty string, so an annotations-only recording was refused with "This file has
@@ -3577,7 +3587,9 @@ describe('messages that enumerate what the file contains', () => {
 
     const missing = await cli([many, '--channels', '#999']);
     assert.ok(oneLine(missing.stderr).length < 200, `position list: ${oneLine(missing.stderr)}`);
-    assert.match(missing.stderr, /and 32 more/u);
+    // Flattened: the list is on the wrapped continuation line now, so "and 32 more" can fall
+    // across the break. The cap is what this is about, not where the wrap lands.
+    assert.match(missing.stderr.replace(/\s+/gu, ' '), /and 32 more/u);
 
     const malformed = await cli([many, '--channels', '#0x2']);
     assert.ok(malformed.stderr.split('\n')[1].length < 200, 'the position hint is capped too');
