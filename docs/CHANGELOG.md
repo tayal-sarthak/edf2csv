@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.131
+
+### a documented limit of --info that costs a warning, and also the clock
+
+`--info` finds where a continuous recording begins by reading the annotation slot of at most
+sixteen records, stopping at the first that states a time. Six pages give that bound, and both
+that describe what it costs describe a missing warning: a timekeeping entry that cannot be read
+*after* the record that answered the question, which the conversion reports and `--info` does
+not. The source says the same, with the mitigation attached — "converting it raises
+ANNOTATION_DECODE_FAILED for every one of them".
+
+That holds for records that could not be read. It does not hold for records that said nothing.
+An empty annotation slot is not a TAL that failed, so nothing is counted and nothing is raised,
+and the cost is not a warning at all — it is the clock:
+
+```
+$ edf2csv rec.edf --info --json | jq .first_sample_seconds
+0
+$ edf2csv rec.edf --out ./converted --quiet && head -2 ./converted/signals.csv
+time_s,EEG
+5.500,0.061
+```
+
+Twenty records of one second whose only timekeeping entry is in record 16, saying `+21.5`.
+Neither run raises anything, and `--start` and `--end` are read against that same clock, so the
+window `--info` places against zero is not the window converted.
+
+The bound stays — it is what makes `--info` a header read on a file of any size, which is its
+whole purpose and stated in as many words on five pages. What was wrong is the account of what
+it costs. Both pages say it now, the source comment says it beside the constant, and a check
+builds the file and holds all three to it.
+
 ## 0.7.130
 
 ### a recording whose end overflows, refused the window nobody asked for

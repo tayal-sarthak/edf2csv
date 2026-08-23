@@ -414,6 +414,14 @@ export class EdfFile {
    * timekeeping entries are all unreadable reports an origin of zero here, and converting it
    * raises ANNOTATION_DECODE_FAILED for every one of them.
    *
+   * That mitigation covers records that could not be read, and not records that said nothing:
+   * an empty annotation slot is not a TAL that failed, so nothing is counted and nothing is
+   * raised. Twenty records whose only timekeeping entry is in record 16 therefore convert with
+   * `time_s` from the origin it states and are reported here as beginning at zero, in silence
+   * on both sides — and `--start` and `--end` are read against that same clock. The bound
+   * stays, since it is what makes `--info` a header read on a file of any size; what was
+   * wrong was the account of what it costs, which every page giving it said was a warning.
+   *
    * Returns null when there is nothing to read it from, in which case the origin is zero.
    */
   async readOrigin(): Promise<number | null> {

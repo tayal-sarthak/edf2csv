@@ -1828,6 +1828,65 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(shown[2].printed.filter(rates).length, 1, 'two rates, one rate warning');
   });
 
+  it('says what the origin search costs when nothing inside it states a time', async () => {
+    /*
+      The sixteen-record bound is documented on six pages, and both pages that describe what
+      it costs describe a missing warning: an unreadable timekeeping entry after the record
+      that answered the question, which the conversion reports and `--info` does not. The
+      source says the same, and adds the mitigation — "converting it raises
+      ANNOTATION_DECODE_FAILED for every one of them".
+
+      That holds when the records inside the bound are unreadable. It does not hold when they
+      simply say nothing: no TAL is not a TAL that failed, so nothing is counted, nothing is
+      raised, and the two halves of the tool disagree about the clock in silence. `--info`
+      reports the recording as beginning at zero; the conversion reads on, finds an origin,
+      and times every row from it — and `--start` and `--end` are read against that same
+      clock, so the window `--info` placed is not the window converted.
+
+      Pinned rather than fixed: the bound is what keeps `--info` a header read on a file of
+      any size, which is its whole purpose and stated in as many words on five pages. What
+      was wrong is the account of what it costs.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-origin-'));
+    try {
+      const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      const recording = path.join(work, 'late-origin.edf');
+      writeEdf({
+        path: recording, reserved: 'EDF+C', numRecords: 20, recordDuration: 1,
+        talsForRecord: (r) => (r === 16 ? '+21.5\u0014\u0014\u0000' : '\u0000'),
+        signals: [
+          { label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+            digMax: 2047, samplesPerRecord: 2, gen: (r, sample) => r * 2 + sample },
+          { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+            digMax: 32767, samplesPerRecord: 30, annotations: true },
+        ],
+      });
+
+      const survey = await run(process.execPath, [CLI, recording, '--info', '--json']);
+      const described = JSON.parse(survey.stdout);
+      assert.equal(described.first_sample_seconds, 0, 'the survey finds no origin');
+      assert.equal(survey.stderr, '', 'and raises nothing about it');
+
+      const out = path.join(work, 'converted');
+      const converted = await run(process.execPath, [CLI, recording, '--out', out, '--quiet']);
+      assert.equal(converted.stderr, '', 'and neither does the conversion');
+      const rows = (await readFile(path.join(out, 'signals.csv'), 'utf8')).split('\n');
+      assert.equal(rows[1]?.split(',')[0], '5.500', 'which times the file from the origin');
+
+      // Both pages that describe the bound have to describe this, not only the warning.
+      for (const page of ['warnings-and-errors.md', 'cli-reference.md']) {
+        const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
+        assert.match(
+          text,
+          /none of the (?:first )?sixteen[^.]*(?:states|carries) a (?:timekeeping entry|start time)/u,
+          `${page} does not say what happens when nothing inside the bound states a time`,
+        );
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('lists exactly the warnings --info cannot raise', async () => {
     /*
       The page said `--info` "also raises ANNOTATION_DECODE_FAILED", unqualified, and listed

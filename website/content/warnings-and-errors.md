@@ -40,6 +40,17 @@ It reads the annotation channel too, for an EDF+ recording: the whole of it for 
 
 It raises them for what it read, which on a continuous file is however many records it took to find one stating a start time — the search stops there, so usually that is the first record and only ever at most sixteen. A timekeeping entry that cannot be read *after* that point is not seen: give the second record of a three-record continuous file a corrupt TAL and the conversion raises `ANNOTATION_DECODE_FAILED` while `--info` says nothing, even though record 1 is well inside the sixteen. An unreadable *event* further into a continuous recording is not seen either, so `two-annotation-channels.edf` raises `ANNOTATION_DECODE_FAILED` when converted and nothing under `--info`. Its byte-identical discontinuous twin raises it either way, because there the whole channel is read.
 
+The bound costs more than a warning when nothing inside it states a time at all. A continuous
+recording is timed from its first record's start, and any one record settles it — but if none of
+the first sixteen carries a timekeeping entry, `--info` finds no origin and reports the recording
+as beginning at zero, while a conversion reads every record, finds one further in and times every
+row from it. Twenty records of one second whose only timekeeping entry is in record 16, saying
+`+21.5`, convert with `time_s` running from 5.500; `--info` on the same file prints no
+`Timed from` line and puts `first_sample_seconds` at `0`. That is not a missing warning, and
+neither side raises one: the records before it are not unreadable, they simply say nothing, so
+there is no `ANNOTATION_DECODE_FAILED` to notice. `--start` and `--end` are read against that
+clock, so a window `--info` places against zero lands elsewhere in the conversion.
+
 What it cannot raise is the handful that need a conversion to exist:
 
 - `STALE_OUTPUT`, which is noticed after `metadata.json` has been written and so needs there to be an output directory to be stale.
