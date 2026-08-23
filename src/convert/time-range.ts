@@ -266,6 +266,16 @@ export function countSamplesInRange(options: {
   startSeconds: number;
   endSeconds: number;
 }): number {
+  /*
+    A record with no place on the clock contributes no rows, which is what the conversion
+    already does with one: its sample times are non-finite, so every one of them fails the
+    range test and none is written. The arithmetic below reached `Infinity - Infinity` and
+    answered `NaN`, which `--info` then printed — "Would write NaN rows, roughly NaN B." on a
+    recording that goes on to write eight. Reachable from a header: a record duration of 1e308
+    is five characters in an eight-character field, and the third record of one is past what a
+    double can hold.
+  */
+  if (!Number.isFinite(options.recordStart)) return 0;
   const slack = toleranceFor(options.rate);
   const lower = Math.ceil(
     (options.startSeconds - slack - options.recordStart) * options.rate,
@@ -288,6 +298,26 @@ export function countSamplesInRange(options: {
  * prints as.
  */
 function sameInstant(a: number, b: number): boolean {
+  /*
+    A relative tolerance has nothing to be relative to at infinity.
+
+    `Math.abs(a - Infinity)` is Infinity, and so is the allowance beside it, so
+    `Infinity <= Infinity` made every instant the same instant as an infinite one. A
+    recording whose end overflows a double — three records of 1e308 seconds, which an
+    8-character record-duration field can state and a timekeeping TAL can place — was
+    therefore refused the window nobody asked for:
+
+        $ edf2csv rec.edf --info
+        error: --start 0s is at or past the end of this unknown recording.
+
+    Exit 2 for a file, naming a flag the command did not carry, quoting a length that is
+    `formatDuration`'s word for a number it will not print. `--info` is the one command that
+    would have explained the file and it is the one that could not run.
+
+    Finite or equal, which is the only reading that means anything: two infinities are the
+    same non-instant, and a real offset is not one of them.
+  */
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return a === b;
   return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-12;
 }
 

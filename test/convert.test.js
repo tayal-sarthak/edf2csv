@@ -318,6 +318,59 @@ describe('column naming', () => {
     }
   });
 
+  it('describes a recording whose end runs past what a double can hold', async () => {
+    /*
+      Three records of 1e308 seconds. Both halves of that are a header a conforming writer can
+      produce — the record-duration field is eight characters and `1e308` is five, and an EDF+D
+      timekeeping TAL states an onset in plain digits of any length — and the third record is
+      past what a double can hold, so the recording's end is Infinity.
+
+      `sameInstant` compared against it with a relative tolerance, and a relative tolerance has
+      nothing to be relative to at infinity: `Math.abs(0 - Infinity)` is Infinity, the
+      allowance beside it is Infinity, and `Infinity <= Infinity` made every instant the same
+      instant as the end. So the default window — the one nobody asks for — was refused:
+
+          $ edf2csv rec.edf --info
+          error: --start 0s is at or past the end of this unknown recording.
+
+      Exit 2 for a file, naming a flag the command did not carry, quoting the word
+      `formatDuration` uses for a number it will not print. `--info` is the command that would
+      have explained the file, and it was the one that could not run.
+
+      Underneath it, the estimate: a record whose start is itself non-finite reached
+      `Infinity - Infinity` and answered `NaN`, so the line read "Would write NaN rows,
+      roughly NaN B." for a conversion that goes on to write eight. Eight is right — a record
+      with no place on the clock has no sample that passes the range test, which is what the
+      conversion already did with it — and the estimate is documented as exact.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-overflow-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const file = path.join(scratch, 'overflowing.edf');
+    const starts = ['+0', '+1e308', '+2e308'];
+    writeEdf({
+      path: file, reserved: 'EDF+D', numRecords: 3, recordDuration: 1e308,
+      talsForRecord: (r) => `${starts[r]}\u0014\u0014\u0000`,
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 30, annotations: true },
+      ],
+    });
+
+    const dir = await outDir();
+    const result = await convert(file, { outputDir: dir });
+    try {
+      assert.equal(result.plan.estimate.rows, 8, 'the two placeable records, four samples each');
+      assert.ok(Number.isFinite(result.plan.estimate.bytes), 'and a size, not a NaN');
+      const written = (await readFile(path.join(dir, 'signals.csv'), 'utf8')).trimEnd().split('\n');
+      assert.equal(written.length - 1, result.plan.estimate.rows, 'which is what it writes');
+    } finally {
+      await result.file.close();
+    }
+  });
+
   it('reports records stored out of chronological order, in the singular too', async () => {
     /*
       An EDF+D recording may store its records in any order, and the rows are written in file

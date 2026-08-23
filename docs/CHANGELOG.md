@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.130
+
+### a recording whose end overflows, refused the window nobody asked for
+
+Three records of 1e308 seconds. Both halves of that are a header a conforming writer can
+produce — the record-duration field is eight characters and `1e308` is five, and an EDF+D
+timekeeping annotation states its onset in plain digits of any length — and the third record
+lands past what a double can hold, so the recording's end is `Infinity`.
+
+`sameInstant` decided whether `--start` had reached that end, with a relative tolerance. A
+relative tolerance has nothing to be relative to at infinity: `Math.abs(0 - Infinity)` is
+Infinity, the allowance beside it is Infinity, and `Infinity <= Infinity` made every instant
+the same instant as the end. So the window nobody asked for was refused:
+
+```
+$ edf2csv rec.edf --info
+error: --start 0s is at or past the end of this unknown recording.
+```
+
+Exit 2 for a file, naming a flag the command did not carry, quoting the word `formatDuration`
+uses for a number it declines to print — and `--info` is the one command that would have
+explained the recording.
+
+Finite or equal now, which is the only reading that means anything: two infinities are the same
+non-instant and a real offset is not one of them. Underneath that was the second half, which
+the refusal had been hiding: a record whose own start is non-finite reached `Infinity -
+Infinity` in the row estimate and answered `NaN`, so the line read "Would write NaN rows,
+roughly NaN B." for a conversion that goes on to write eight. A record with no place on the
+clock has no sample that passes the range test — which is what the conversion already did with
+it — so it counts none, and the estimate is exact again.
+
 ## 0.7.129
 
 ### the byte order mark on the one destination the page did not name
