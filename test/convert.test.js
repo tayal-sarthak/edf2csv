@@ -1417,7 +1417,7 @@ describe('option checking', () => {
     });
   });
 
-  it('makes the same check in the function underneath, which is exported too', async () => {
+  it('makes the same check in the functions underneath, which are exported too', async () => {
     /*
       `assertOptions` runs at the top of `buildPlan`, so `convert` was covered and
       `resolveRange` — which has its own signature block on the API page — was not.
@@ -1447,6 +1447,35 @@ describe('option checking', () => {
     const range = resolveRange({ start: 1, end: 2, recordDuration: 1, recordCount: 3 });
     assert.equal(range.startSeconds, 1);
     assert.equal(range.endSeconds, 2);
+
+    /*
+      `selectChannels` is the other one. `'ECG'` was iterated character by character and
+      answered `No channel named "E". Did you mean "ECG"?`, which reads like a real answer
+      about the file rather than about the call; `[1]`, a position written the way a position
+      is written, came back as `TypeError: rawTerm.trim is not a function`.
+    */
+    const file = await EdfFile.open(fixture('mixed-rates.edf'));
+    try {
+      for (const [terms, expected] of [
+        ['ECG', /channels must be a list of channel names, got "ECG"/u],
+        [[1], /channels must be a list of channel names, got \[1\]/u],
+        [[], /channels was given but lists no channel names/u],
+      ]) {
+        assert.throws(
+          () => selectChannels(file.header.signals, terms),
+          (error) => {
+            assert.ok(error instanceof OptionError, `${JSON.stringify(terms)} threw ${error}`);
+            assert.match(error.message, expected);
+            return true;
+          },
+        );
+      }
+      // And a real selection still selects.
+      const picked = selectChannels(file.header.signals, ['#0', 'ECG']);
+      assert.deepEqual(picked.signals.map((s) => s.label), ['EEG Fpz-Cz', 'ECG']);
+    } finally {
+      await file.close();
+    }
   });
 
   it('leaves the values it should accept alone', async () => {

@@ -10,6 +10,7 @@
 
 import type { EdfSignal } from '../edf/header.js';
 import { listed } from '../format/list.js';
+import { assertOptions } from './options.js';
 
 /**
  * The name of the column the writer puts in front of the channels, which no channel may take.
@@ -132,6 +133,18 @@ export interface ChannelSelection {
  * hand the user a CSV that is missing data they explicitly asked for.
  */
 export function selectChannels(signals: readonly EdfSignal[], terms: readonly string[]): ChannelSelection {
+  /*
+    The same check `buildPlan` makes, made here too, because this is exported on its own.
+
+    `assertOptions` covers `convert`; a caller holding a header and calling this directly got
+    the shapes it names in full. `'ECG'` was iterated character by character and answered `No
+    channel named "E". Did you mean "ECG"?` — which reads like a real answer about the file —
+    and `[1]`, a position written the way a position is written, came back as `TypeError:
+    rawTerm.trim is not a function` from the loop below. Both are the argument being the wrong
+    shape, which is the case that checker exists for, and both now say so.
+  */
+  assertOptions({ channels: terms });
+
   const candidates = signals.filter((s) => !s.isAnnotations);
   const byLabel = new Map<string, EdfSignal[]>();
   for (const signal of candidates) {

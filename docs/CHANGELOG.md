@@ -8,6 +8,23 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.151
+
+### a string iterated into a suggestion of itself
+
+The same gap as 0.7.150, in the other function `buildPlan` calls. `selectChannels` is exported,
+documented, and reachable by anyone holding a header — and `assertOptions` sat above it:
+
+```js
+selectChannels(signals, 'ECG')  // ChannelSelectionError: No channel named "E". Did you mean "ECG"?
+selectChannels(signals, [1])    // TypeError: rawTerm.trim is not a function
+```
+
+The first is the worse of the two: it reads like an answer about the file, and the suggestion is
+the very string that was passed. The second is the case `assertOptions` names in its own comment
+— "`[1]` — a position, reasonably enough". Both are the argument being the wrong shape, and both
+now say so before a label is looked at.
+
 ## 0.7.150
 
 ### the option check one function above where it was needed
