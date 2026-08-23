@@ -96,6 +96,46 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('says which of the --info JSON fields are not always numbers', async () => {
+    /*
+      `rows` and `bytes` are `null` when no signal table would be written, which is right —
+      there is nothing to count, and the text output says so in words on the same line. The
+      field table described them as numbers and said nothing about it, so a survey summing
+      `estimate.rows` across a folder gets `null` for every annotations-only recording in it:
+      zero in JavaScript, a TypeError in Python, and in neither case the "no signal data"
+      the text form would have shown.
+
+      Both routes to it, since they are different code paths: the flag, and a recording whose
+      header declares no signal channel at all.
+    */
+    const generated = (name) => path.join(ROOT, 'test/fixtures/generated', name);
+    {
+      const both = [
+        [generated('annotations-only.edf'), []],
+        [generated('annotations.edf'), ['--annotations-only']],
+      ];
+      for (const [recording, flags] of both) {
+        const { stdout } = await run(process.execPath, [CLI, recording, '--info', '--json', ...flags]);
+        const { estimate } = JSON.parse(stdout);
+        assert.deepEqual(
+          estimate,
+          { rows: null, bytes: null, exceeds_spreadsheet_limit: false },
+          `${path.basename(recording)} ${flags.join(' ')}`,
+        );
+      }
+      // And a recording that does write one still reports numbers.
+      const { stdout } = await run(process.execPath, [CLI, generated('tiny.edf'), '--info', '--json']);
+      const { estimate } = JSON.parse(stdout);
+      assert.equal(typeof estimate.rows, 'number');
+      assert.equal(typeof estimate.bytes, 'number');
+
+      const reference = await read('website/content/cli-reference.md');
+      const row = /\n\| `estimate` \|([^\n]*)\n/u.exec(reference);
+      assert.ok(row, 'the estimate row is gone from the field table');
+      assert.match(row[1], /`null`/u, 'the field table does not say when they are null');
+    }
+  });
+
   it('publishes no diagnostic severity it never raises', async () => {
     /*
       `severity: 'warning' | 'info'` was the published type, and nothing in this codebase has

@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.128
+
+### two JSON fields documented as numbers that are null where it matters
+
+`--info --json` is documented field by field, and the estimate row read:
+
+> | `estimate` | `rows`, `bytes` and `exceeds_spreadsheet_limit`, as above |
+
+Two of those three are `null` when no signal table would be written — under
+`--annotations-only`, or on a recording whose header declares no signal channel at all:
+
+```json
+"estimate": { "rows": null, "bytes": null, "exceeds_spreadsheet_limit": false }
+```
+
+Which is the right answer. `--info` exists to say what a conversion will do, and 0.4.51
+removed "Would write 0 rows, roughly 0 B." from the text form for exactly this case, because
+the conversion goes on to write an annotations.csv with events in it. The JSON says the same
+thing with `null`, and the page said it was a number.
+
+A survey summing `estimate.rows` across a folder therefore gets `null` for every
+annotations-only recording in it: zero in JavaScript, a `TypeError` in Python, and in neither
+case the "no signal data" a reader of the text form would have seen. The row says so now, and
+a check holds both routes to it — the flag and the header — against the shape.
+
 ## 0.7.127
 
 ### a published severity nothing raises, under a third name if it did
