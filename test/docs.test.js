@@ -399,6 +399,22 @@ describe('documentation and source agree on their lists', () => {
       'the registry is asked only after the first publish attempt, so a version that was ' +
         'already there is reported as a write this run made',
     );
+
+    /*
+      And says nothing about a retry it will not make. The loop runs three attempts and the
+      third has nothing after it, but every failing attempt printed "retrying in <n>s" and then
+      slept for it — so a run that ended in failure spent its last minute waiting and its last
+      log line before the verdict promised something that never happened.
+    */
+    const loop = /for attempt in ([\d ]+); do\n([\s\S]*?)\n\s*done/u.exec(step);
+    assert.ok(loop, 'the publish retry loop is gone');
+    const attempts = loop[1].trim().split(/\s+/u);
+    assert.ok(attempts.length > 1, `read ${attempts.length} attempts out of the loop`);
+    const last = attempts.at(-1);
+    assert.ok(
+      new RegExp(`-eq ${last} \\][^\\n]*break`, 'u').test(loop[2]),
+      `the last attempt (${last}) still announces a retry and sleeps for it:\n${loop[2]}`,
+    );
   });
 
   it('names every conversion error code in the API reference', async () => {

@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.135
+
+### a publish log announcing a retry there is nothing left to retry
+
+The publish job retries three times, because the two failures seen so far were the registry
+refusing a concurrent write and Sigstore declining a certificate — neither of them the code's.
+The third attempt has nothing after it, and the log said it did:
+
+```
+Attempt 3 failed with nothing published; retrying in 60s.
+Three attempts failed and 0.7.134 is not on the registry.
+```
+
+Between those two lines the job slept a minute of a runner and retried nothing. Every failing
+attempt printed the retry line before sleeping, including the one there is no retry after — so
+the last thing a publish log says before its verdict is an action the job does not take, on the
+one workflow whose account of what it did is the reason the rest of its comments exist.
+
+It breaks out after the last attempt now, and a check reads the loop's own attempt list and
+requires the break to name the last of them, so adding a fourth cannot leave the third
+announcing a sleep again.
+
 ## 0.7.134
 
 ### the one refusal that was not a sentence, and had no advice either

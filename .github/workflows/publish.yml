@@ -121,6 +121,11 @@ jobs:
               echo "edf2csv@${version} is on the registry and was not before this job started; the write landed and the failure came after it."
               exit 0
             fi
+            # The last attempt has nothing after it, and said it did: the log read "Attempt 3
+            # failed with nothing published; retrying in 60s." and then never retried — it slept
+            # a minute of a runner and printed the failure. A line that announces an action this
+            # job does not take is the one thing a publish log must not do.
+            if [ "${attempt}" -eq 3 ]; then break; fi
             echo "Attempt ${attempt} failed with nothing published; retrying in $((attempt * 20))s."
             sleep $((attempt * 20))
           done
