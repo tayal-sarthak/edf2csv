@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.141
+
+### the seventh sweep, passing over nothing
+
+0.7.137 put a zero-work guard on six sweeps. There are eight, and the one it did not reach is
+the one behind the correctness page's fourth claim — *a damaged file is reported, never a crash*:
+
+```
+$ npm run fuzz -- 42 0
+
+0 runs over 0 corrupted recordings (seed 42).
+Every one exited cleanly with something to say.
+$ echo $?
+0
+```
+
+`npm run fuzz -- 42 typo` is the same run with `NaN` in the count. The guard is now on it, and
+the test that held the other six holds seven — it was a literal list, which is why one sweep
+could sit beside them without being asked the question. `terminal` stays out deliberately: its
+five runs are fixed rather than counted out of a directory, and it already says what it could
+not check.
+
 ## 0.7.140
 
 ### a first argument nothing checked

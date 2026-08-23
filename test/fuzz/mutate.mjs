@@ -149,6 +149,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { runs, failures } = fuzz(seed, files);
 
   process.stdout.write(`\n${runs} runs over ${files} corrupted recordings (seed ${seed}).\n`);
+  // `npm run fuzz -- 42 0`, and `npm run fuzz -- 42 typo`, which is NaN files and the same
+  // empty loop, both announced that every one exited cleanly over nothing at all.
+  if (runs === 0) {
+    process.stdout.write('Nothing was corrupted, so nothing was checked.\n');
+    process.exit(1);
+  }
   if (failures.length > 0) {
     process.stdout.write(`${failures.length} escaped instead of being reported:\n`);
     for (const failure of failures.slice(0, 10)) process.stdout.write(`  ${failure}\n`);

@@ -3811,7 +3811,15 @@ describe('documentation and source agree on their lists', () => {
       Held at the source rather than by running each: a sweep that reports its own size has to
       refuse the size zero.
     */
-    const sweeps = ['estimate', 'layouts', 'roundtrip', 'narrowing', 'stream', 'trees'];
+    /*
+      Seven now. "Six of the sweeps" above was the six this list was built from, and `mutate` —
+      the one behind the correctness page's fourth claim, "a damaged file is reported, never a
+      crash" — was not asked the question: `npm run fuzz -- 42 0` printed "0 runs over 0
+      corrupted recordings" and then "Every one exited cleanly with something to say", exit 0.
+      `terminal` stays out on purpose: its five runs are fixed rather than counted from a
+      directory, and it already reports what it could not check.
+    */
+    const sweeps = ['estimate', 'layouts', 'roundtrip', 'narrowing', 'stream', 'trees', 'mutate'];
     const missing = [];
     for (const name of sweeps) {
       const source = await read(`test/fuzz/${name}.mjs`);
