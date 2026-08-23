@@ -46,6 +46,11 @@ export const UNIT_SECONDS: Record<string, number> = {
 const CLOCK = /^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/u;
 const UNIT_TOKEN = /(\d+(?:\.\d+)?)\s*([a-z]+)/giu;
 
+/** How the value reads in a refusal: numbers bare, everything else quoted so its type shows. */
+function describeValue(value: unknown): string {
+  return typeof value === 'number' ? String(value) : JSON.stringify(value) ?? String(value);
+}
+
 /**
  * Parse a duration or offset into seconds.
  *
@@ -67,6 +72,23 @@ const UNIT_TOKEN = /(\d+(?:\.\d+)?)\s*([a-z]+)/giu;
  * A length below zero is still a different thing, and `--duration` still refuses one.
  */
 export function parseTimeSpec(input: string, optionName: string, allowNegative = false): number {
+  /*
+    Text, because this is the function the API page points other people's users at: "Use
+    `parseTimeSpec` if you want to accept those forms from your own users."
+
+    A value arriving from a JSON config or a form field is a number as often as a string, and
+    `{ "start": 30 }` came back as `TypeError: input.trim is not a function` — a variable name
+    from inside this file, thrown past a caller who had done exactly what the page told them
+    to. Every other refusal here is a TimeRangeError quoting the value and the option. The
+    number is not coerced, for the reason `channels: 'ECG'` is not iterated: a shape that
+    happens to work for 30 also swallows NaN, and the CLI already writes `String(raw)`.
+  */
+  if (typeof input !== 'string') {
+    throw new TimeRangeError(
+      `${optionName} must be given as text, not ${describeValue(input)}. ` +
+        `Seconds are written "30", and the other forms are "30s", "5m", "1h30m", "00:30:00".`,
+    );
+  }
   const trimmed = input.trim().toLowerCase();
   if (trimmed === '') {
     throw new TimeRangeError(`${optionName} is empty. Try a value like 30s, 5m, or 00:30:00.`);

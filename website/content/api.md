@@ -763,7 +763,12 @@ parseTimeSpec('00:30:00', '--start'); // 1800
 parseTimeSpec('250ms', '--start');    // 0.25
 parseTimeSpec('90', '--start');       // 90, a bare number is seconds
 parseTimeSpec('-1h30m', '--start', true); // -5400, the sign applies to the whole value
+parseTimeSpec(30, '--start');         // TimeRangeError: --start must be given as text, not 30
 ```
+
+The last is the shape a JSON config or a form field arrives in, and it is refused rather than
+coerced, for the same reason `channels: 'ECG'` is: an accepting `Number(input)` also accepts
+`NaN`. Everything this function refuses is a `TimeRangeError` naming the option and the value.
 
 Header parsing, for bytes you already have in memory:
 

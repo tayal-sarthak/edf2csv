@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.149
+
+### a TypeError from the function the page hands your users
+
+The API page points other people's users at this function, in as many words: "Use
+`parseTimeSpec` if you want to accept those forms from your own users." A value out of a JSON
+config or a form field is a number as often as a string, and `{ "start": 30 }` came back as
+
+```
+TypeError: input.trim is not a function
+```
+
+a variable name from inside the parser, thrown past a caller doing exactly what the page said.
+Everything else this function refuses is a `TimeRangeError` naming the option and quoting the
+value; a non-string now is too. Not coerced, for the reason `channels: 'ECG'` is not iterated —
+a `Number(input)` that reads 30 also reads `NaN`, and the command line already writes
+`String(raw)` before it calls this.
+
 ## 0.7.148
 
 ### Infinitys, in the one message that still printed it

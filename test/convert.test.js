@@ -73,6 +73,24 @@ describe('time specifications', () => {
     }
 
     /*
+      And input that is not text at all. The API page points other people's users at this
+      function — "use `parseTimeSpec` if you want to accept those forms from your own users" —
+      and a value out of a JSON config or a form field is a number as often as a string.
+      `{ "start": 30 }` came back as `TypeError: input.trim is not a function`, a variable name
+      from inside the parser thrown past a caller doing what the page said.
+    */
+    for (const bad of [30, null, undefined, {}, ['30s'], true]) {
+      assert.throws(
+        () => parseTimeSpec(bad, '--start'),
+        (error) => {
+          assert.ok(error instanceof TimeRangeError, `${JSON.stringify(bad)} threw ${error}`);
+          assert.match(error.message, /^--start must be given as text, not /u);
+          return true;
+        },
+      );
+    }
+
+    /*
       A space between a number and its unit is refused on purpose, and it is not input this
       only partly understands: the number parsed and the unit was found in the table. It came
       back as "is not a time I understand. Try 30s, 5m, 1h30m ..." — the message for something
