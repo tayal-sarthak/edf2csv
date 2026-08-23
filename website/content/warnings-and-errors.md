@@ -578,7 +578,7 @@ warning: 1 of 3 data records carries no readable timekeeping annotation (record 
 
 Up to eight record indices are listed by number, and the rest are counted rather than elided — `... 8, 9 and 2 more`, the same cut every other list in a message here takes. The affected records are timed arithmetically as a fallback, and this warning exists precisely because that fallback produces a timestamp indistinguishable from a real one.
 
-**An event's duration couldn't be read.** A TAL may state a duration after its onset, separated by `0x15`. When that text isn't a number — `abc`, or `1e400`, which overflows to infinity — the event is kept whole apart from that one field, and `duration_s` is written empty.
+**An event's duration couldn't be read.** A TAL may state a duration after its onset, separated by `0x15`. When that text isn't a number — `abc`, `1e400`, which overflows to infinity, or `0x10`, which JavaScript reads as sixteen and EDF+ never writes — the event is kept whole apart from that one field, and `duration_s` is written empty.
 
 ```
 warning: 1 annotation states a duration that is not a number, so its duration_s cell is empty.

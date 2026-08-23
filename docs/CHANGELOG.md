@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.117
+
+### an annotation duration in hex read as the number it is not
+
+A TAL may state a duration after its onset. Reading it was `Number(text)`, which accepts a great
+deal more than EDF+ writes: a duration of `0x10` came out as sixteen seconds, `0b11` as three,
+`0o20` as sixteen again. Those are numbers no writer wrote, in the column `output-files.md`
+defines as the length the file stated, exit 0 and no diagnostic — the one thing this tool exists
+not to do.
+
+The header parser settled this for its own fields in 0.6.104, and the comment there lists the
+four other places the same `Number()` had already been narrowed: `--channels #0x2` reaching
+channel 2, `--decimals 0o5` writing five places, `--jobs 0x10` running sixteen, and a physical
+maximum of `0x64` setting the calibration every sample on a channel is scaled by. The annotation
+duration is the field it did not reach.
+
+It now takes the same grammar — a sign, digits, an optional fraction, an optional exponent — and
+anything else goes where an unreadable duration already went: the cell is left empty, the row is
+counted, and ANNOTATION_DECODE_FAILED says how many. `2.5`, `.5`, `1e2` and `-3` are unchanged.
+
 ## 0.7.116
 
 ### a memory bound and the promise that makes it safe, both unchecked

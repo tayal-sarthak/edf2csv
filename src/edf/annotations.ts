@@ -22,6 +22,23 @@ const TAL_END = 0x00;
 const TEXT_SEP_CHAR = String.fromCharCode(SEP_TEXT);
 const DURATION_SEP_CHAR = String.fromCharCode(SEP_DURATION);
 
+/**
+ * What EDF+ allows a TAL duration to look like, which is less than `Number()` allows.
+ *
+ * The header parser's DECIMAL_FIELD makes this argument at length and lists where the same
+ * mistake had already been fixed: `#0x2` reaching channel 2 through `--channels`,
+ * `--decimals 0o5` writing five places, `--jobs 0x10` running sixteen, a physical maximum of
+ * `0x64` setting a whole calibration to 100. The annotation duration is the one field it did
+ * not reach. `+1<0x15>0x10<0x14>Seizure` was exported with a duration_s of 16 — sixteen
+ * seconds no writer wrote, in a column the documentation defines as the length the file
+ * stated, exit 0 and no diagnostic. `0b11` is three the same way.
+ *
+ * A duration this cannot read is already a thing the parser knows how to say: the field is
+ * left empty, counted, and reported. Sending these there costs nothing and states the truth,
+ * which is that the file wrote something that is not a number of seconds.
+ */
+const DECIMAL_DURATION = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
+
 export interface Annotation {
   /** Seconds from the start of the recording. */
   onset: number;
@@ -279,7 +296,8 @@ function parseTal(chunk: Uint8Array, recordIndex: number): ParsedTal | null {
   let duration: number | null = null;
   let durationUnreadable = false;
   if (durationText !== null && durationText.trim() !== '') {
-    const d = Number(durationText);
+    const stated = durationText.trim();
+    const d = DECIMAL_DURATION.test(stated) ? Number(stated) : NaN;
     if (Number.isFinite(d)) duration = d;
     else durationUnreadable = true;
   }

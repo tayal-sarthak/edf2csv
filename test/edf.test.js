@@ -978,6 +978,46 @@ describe('EDF+ annotations', () => {
     assert.deepEqual(quiet.annotations.map((a) => a.duration), [null, 1.5]);
   });
 
+  it('reads a duration only where the file wrote a decimal number', async () => {
+    /*
+      `Number()` reads `0x10` as sixteen, and this took it. An event written
+      `+1<0x15>0x10<0x14>Seizure` was exported with a duration_s of 16 — sixteen seconds no
+      writer wrote, in the column the documentation defines as the length the file stated,
+      exit 0 and nothing said. `0b11` is three the same way, and `0o20` sixteen again.
+
+      The header parser answered this for its own fields in 0.6.104 and its comment lists the
+      four other places the same `Number()` had already been narrowed: `--channels #0x2`,
+      `--decimals 0o5`, `--jobs 0x10`, and the physical bounds every sample is scaled by. The
+      annotation duration is the one it did not reach.
+
+      Unreadable rather than refused: the onset and the text are fine, and the parser already
+      has a way to say a duration was stated and could not be read.
+    */
+    const { decodeRecordAnnotations } = await import('../dist/index.js');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const bytes = (text) => new TextEncoder().encode(text);
+
+    for (const written of ['0x10', '0b11', '0o20', 'Infinity', '1_0']) {
+      const parsed = decodeRecordAnnotations(bytes(`+1${D}${written}${T}event${T}${Z}`), 0);
+      assert.deepEqual(
+        parsed.annotations.map((a) => a.duration),
+        [null],
+        `a duration written "${written}" is not a number of seconds`,
+      );
+      assert.equal(parsed.unreadableDurations, 1, `"${written}" is counted rather than read`);
+    }
+
+    // The decimal forms EDF+ does write, including the exponent one the physical bounds use.
+    const good = decodeRecordAnnotations(
+      bytes(`+1${D}2.5${T}a${T}${Z}+2${D}.5${T}b${T}${Z}+3${D}1e2${T}c${T}${Z}+4${D}-3${T}d${T}${Z}`),
+      0,
+    );
+    assert.deepEqual(good.annotations.map((a) => a.duration), [2.5, 0.5, 100, -3]);
+    assert.equal(good.unreadableDurations, 0);
+  });
+
   it('reads a header number only where the header wrote one', async () => {
     /*
       `Number()` accepts a great deal more than EDF writes, and every one of those forms was a
