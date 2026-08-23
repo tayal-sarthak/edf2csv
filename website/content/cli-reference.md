@@ -852,7 +852,7 @@ The `code` values are stable identifiers meant for programmatic checks: `MIXED_S
 | `time_span_seconds` | How long the recording covers, which exceeds the above by the length of any gaps. `null` on the same overflow, and for the same reason |
 | `first_sample_seconds` | Where `time_s` begins, and the clock `--start` and `--end` are read against. Usually 0 |
 | `annotation_channels` | How many `EDF Annotations` channels the file declares |
-| `channels` | One object per signal channel, with `signal_index`, `column`, `label`, `unit`, the rates and bounds, and `output_file` (`null` when it wouldn't be converted) |
+| `channels` | One object per signal channel, with `signal_index`, `column`, `label`, `unit`, the rates and bounds, and `output_file` (`null` when it wouldn't be converted). `sampling_rate_hz` is `samples_per_record / record_duration_seconds`, and is `null` when that is not a number JSON can hold — a record duration too small to divide into makes it infinite, which is the same overflow the time fields above take. The text table prints `Infinity Hz` there and `channels.csv` writes `Infinity`, so this is the one document of the three that cannot say it |
 | `estimate` | `rows`, `bytes` and `exceeds_spreadsheet_limit`, as above. `rows` and `bytes` are `null` when no signal table would be written — under `--annotations-only`, or on a recording that has no signal channels — since there is nothing to count. The text output says the same thing in words on that line. `exceeds_spreadsheet_limit` is `false`, which no file exceeding it can make true |
 | `warnings` | Same shape as the conversion summary's |
 

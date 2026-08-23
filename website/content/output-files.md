@@ -325,7 +325,7 @@ Temp rectal,2,Temp rectal,degC,1,1,34,40,-2048,2047,,,signals_1hz.csv,yes
 | `signal_index` | Position of the channel in the file, counting from 0 and counting the annotation channel if present. This is the identifier `--channels "#2"` addresses, and the only stable one when labels collide. |
 | `label` | The label exactly as stored in the EDF header, with no disambiguating suffix. Where two rows share a `label` they'll differ in `column`. |
 | `unit` | The physical dimension from the header, verbatim: `uV`, `mV`, `degC`, `%`. Files vary in spelling and some leave it blank. Nothing is normalised. |
-| `sampling_rate_hz` | `samples_per_record / record_duration_seconds`. This decides which output file the channel lands in. |
+| `sampling_rate_hz` | `samples_per_record / record_duration_seconds`. This decides which output file the channel lands in. Written `Infinity` when the record duration is too small to divide into, where both JSON documents have to write `null`. |
 | `samples_per_record` | Samples this channel stores in each EDF data record, straight from the header. |
 | `physical_min`, `physical_max` | Calibration range in the unit above, as declared. |
 | `digital_min`, `digital_max` | Calibration range in raw converter counts, as declared. |
@@ -548,7 +548,9 @@ warning: The input changed while it was being converted, so this output covers t
   tells a pipeline which shape the signal table is in, since the two have different columns and
   nothing else in the archive distinguishes them.
 - `rate_groups` records the grouping decision: for each group, the file it was written to, its
-  sampling rate, its channels in order, and the decimal precision used for each. This is the
+  sampling rate, its channels in order, and the decimal precision used for each. Its
+  `sampling_rate_hz` is `null` when the rate is not a number JSON can hold, for the reason
+  `duration_seconds` above is; `channels.csv` writes `Infinity` in that cell instead. This is the
   machine-readable answer to "which file holds which channel", and it's the field to read if a
   pipeline needs to locate the output without knowing in advance whether the recording was
   single-rate or mixed.

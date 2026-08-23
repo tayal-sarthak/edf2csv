@@ -3712,7 +3712,7 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 1, `expected a metadata.json for this recording, found ${checked}`);
   });
 
-  it('says which of its time fields JSON cannot hold', async () => {
+  it('says which of its numeric fields JSON cannot hold', async () => {
     /*
       `JSON.stringify(Infinity)` is `null`, and a recording's length is
       `data_records * record_duration_seconds` — a product of two header fields, each of which
@@ -3758,10 +3758,39 @@ describe('documentation and source agree on their lists', () => {
       assert.equal(meta.recording.duration_seconds, null);
       assert.equal(meta.conversion.end_seconds, null);
 
+      /*
+        And the fifth, which is not a length but a rate: `samples_per_record /
+        record_duration_seconds` over a record duration too small to divide into. The text
+        table prints `Infinity Hz` and `channels.csv` writes `Infinity`; only the two JSON
+        documents have to say `null`, and they did so with the pages calling it a number.
+      */
+      const tiny = path.join(work, 'infinite-rate.edf');
+      writeEdf({
+        path: tiny, numRecords: 2, recordDuration: 1e-320,
+        signals: [
+          { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+            digMax: 1000, samplesPerRecord: 10, gen: (r, i) => r * 10 + i },
+        ],
+      });
+      const rates = JSON.parse(
+        (await run(process.execPath, [CLI, tiny, '--info', '--json'])).stdout,
+      );
+      assert.equal(rates.channels[0].sampling_rate_hz, null, 'the rate survived JSON after all');
+      const rateOut = path.join(work, 'rates');
+      await run(process.execPath, [CLI, tiny, '--out', rateOut]);
+      const rateMeta = JSON.parse(await readFile(path.join(rateOut, 'metadata.json'), 'utf8'));
+      assert.equal(rateMeta.conversion.rate_groups[0].sampling_rate_hz, null);
+      // The other two documents of the three can hold it, and do.
+      const table = (await run(process.execPath, [CLI, tiny, '--info'])).stdout;
+      assert.match(table, /Infinity Hz/u, table);
+      assert.match(await readFile(path.join(rateOut, 'channels.csv'), 'utf8'), /,Infinity,/u);
+
       for (const [page, needle] of [
         ['cli-reference.md', /`duration_seconds` \| Duration of the whole recording[^|]*`null`/u],
         ['cli-reference.md', /`time_span_seconds` \|[^|]*`null` on the same overflow/u],
         ['output-files.md', /`end_seconds` is `null` when the recording's end is not a number JSON can/u],
+        ['cli-reference.md', /`sampling_rate_hz` is `samples_per_record \/ record_duration_seconds`, and is `null`/u],
+        ['output-files.md', /Its `sampling_rate_hz` is `null` when the rate is not a number JSON can hold/u],
       ]) {
         assert.match((await read(`website/content/${page}`)).replace(/\s+/gu, ' '), needle, page);
       }

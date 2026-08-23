@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.143
+
+### a fifth field JSON cannot hold, and two documents that can
+
+0.7.139 found four fields whose value JSON has no room for and documented them. There is a
+fifth, and it is not a length: a sampling rate is `samples_per_record / record_duration_seconds`,
+and a record duration too small to divide into makes it infinite. On such a recording the three
+documents that carry it disagree:
+
+```
+--info table     Infinity Hz
+channels.csv     ch1,0,ch1,uV,Infinity,10,...
+--info --json    "sampling_rate_hz": null
+metadata.json    "rate_groups": [ { "sampling_rate_hz": null, ... } ]
+```
+
+Only the JSON pair has to say `null`, and the pages describing them called the field a
+quotient. All three now say which one they are, and the check that reads the other four back
+reads this one too, in both JSON documents and in the two that can hold it.
+
 ## 0.7.142
 
 ### two claims sent to the wrong runner, one to none
