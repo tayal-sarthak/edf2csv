@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.123
+
+### a position named without the character that makes it selectable
+
+`warnings-and-errors.md` prints the two halves of DUPLICATE_LABEL one after the other:
+
+```
+warning: 2 signals share the label "T8-P8" (positions 0, 1).
+warning: "T8-P8" matches 2 channels (positions #0, #1); all of them were selected.
+```
+
+and then, two lines below them: "If you only want one of the duplicates, address it by position
+with `#N`." One of the two writes the position in the form that does that, and one writes a bare
+number.
+
+`#N` is how a position is written everywhere in this tool that it is meant to be typed —
+`--channels "#0"`, "This file has signal channels at #0, #1, #2", the hint under the selection
+warning above. The header's version is the message a reader meets first, on a montage that
+really does ship two channels labelled `T8-P8`, and it is the one that named the number without
+the character that makes it an argument.
+
 ## 0.7.122
 
 ### advice on the grepped line in one refusal and under it in its neighbour

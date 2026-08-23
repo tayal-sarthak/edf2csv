@@ -357,7 +357,7 @@ This code is raised in two different situations.
 edf2csv preserves labels verbatim in output and only disambiguates when the file itself is ambiguous. When a label is duplicated, every channel carrying it gets a `_ch<index>` suffix on its column name, where the index is the channel's position in the file. One warning is raised per duplicated label, naming all of the positions involved.
 
 ```
-warning: 2 signals share the label "T8-P8" (positions 0, 1).
+warning: 2 signals share the label "T8-P8" (positions #0, #1).
          Their columns are suffixed with the signal number so they stay
          distinguishable.
 ```

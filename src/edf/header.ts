@@ -878,7 +878,15 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         Two positions render identically either way, so the ordinary duplicate reads as it
         always has.
       */
-      message: `${indices.length} signals share the label "${label}" (positions ${listed(indices.map(String))}).`,
+      /*
+        Positions written `#N`, which is how a position is written everywhere it is meant to be
+        typed: `--channels "#0"`, "This file has signal channels at #0, #1, #2", and this
+        warning's own namesake from channel selection — "(positions #0, #1); all of them were
+        selected". This one said "(positions 0, 1)", two paragraphs above the page that tells
+        the reader to "address it by position with #N". The number is the same; the form that
+        works is not.
+      */
+      message: `${indices.length} signals share the label "${label}" (positions ${listed(indices.map((i) => `#${i}`))}).`,
       hint: 'Their columns are suffixed with the signal number so they stay distinguishable.',
     });
   }

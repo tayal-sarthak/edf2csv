@@ -311,9 +311,15 @@ describe('diagnostics', () => {
     try {
       const of = (file) =>
         file.diagnostics.find((d) => d.code === 'DUPLICATE_LABEL').message;
-      assert.match(of(two), /\(positions 0, 1\)/u, of(two));
-      assert.match(of(twenty), /\(positions 0, 1, 2, 3, 4, 5, 6, 7 and 12 more\)/u, of(twenty));
-      assert.ok(of(twenty).length < 120, `the message runs to ${of(twenty).length} characters`);
+      // `#N`, the form a position has to be written in to be typed back — the same warning
+      // raised from channel selection says "(positions #0, #1)" and this one said "0, 1".
+      assert.match(of(two), /\(positions #0, #1\)/u, of(two));
+      assert.match(
+        of(twenty),
+        /\(positions #0, #1, #2, #3, #4, #5, #6, #7 and 12 more\)/u,
+        of(twenty),
+      );
+      assert.ok(of(twenty).length < 130, `the message runs to ${of(twenty).length} characters`);
     } finally {
       await two.close();
       await twenty.close();

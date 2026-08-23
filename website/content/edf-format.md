@@ -445,7 +445,7 @@ just wrong. `edf2csv` keeps both, disambiguates the columns with a `_ch<index>` 
 the channel's position in the file, and tells you:
 
 ```
-warning: 2 signals share the label "T8-P8" (positions 0, 1).
+warning: 2 signals share the label "T8-P8" (positions #0, #1).
          Their columns are suffixed with the signal number so they stay
          distinguishable.
 ```
