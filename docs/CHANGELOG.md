@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.156
+
+### nine accounted for, eleven skipped
+
+The page accounted for nine tests CI does not run — `stdout-audit.test.js`, which builds a small
+filesystem with `hdiutil`. CI's own summary read
+
+```
+ℹ tests 437
+ℹ pass 427
+ℹ skipped 10
+```
+
+The tenth is in `cli.test.js`: a refusal that needs a filesystem folding Unicode normalisation,
+HFS+ or APFS and not ext4. The eleventh is the case-folding refusal 0.7.155 stopped reporting as
+a pass. Neither needs a tool the runner lacks, which is why neither joined the nine — they need
+a filesystem that behaves a particular way, and the page grouped by tool.
+
+Eleven now, named by what they need, and counted from the guards themselves rather than written
+down here, so the next macOS-only case moves the number instead of quietly joining it.
+
 ## 0.7.155
 
 ### a platform guard that returned where it should have skipped

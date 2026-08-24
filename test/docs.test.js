@@ -3849,6 +3849,25 @@ describe('documentation and source agree on their lists', () => {
       }
     }
     assert.deepEqual(silent, [], `a platform guard that returns is reported as a pass:\n  ${silent.join('\n  ')}`);
+
+    /*
+      And how many there are. `hdiutil` is one reason a case is macOS-only; a filesystem that
+      folds case is another, and one that folds Unicode normalisation a third — both in
+      cli.test.js, neither counted. The page said nine while CI's summary said more. Counted
+      from the guards, so a new macOS-only case moves the number rather than quietly joining it.
+    */
+    let macOnly = 0;
+    for (const file of ['cli.test.js', 'convert.test.js', 'edf.test.js', 'large.test.js',
+      'stdout-audit.test.js']) {
+      const source = await read(path.join('test', file));
+      macOnly += (source.match(/needs hdiutil, which only macOS has/gu) ?? []).length;
+      for (const [, guard] of source.matchAll(/if \(process\.platform[^)]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
+        if (/t\.skip\(/u.test(guard)) macOnly += 1;
+      }
+    }
+    assert.equal(macOnly, 11, `the guards say ${macOnly} macOS-only cases, not eleven`);
+    assert.match(page, /Eleven of the numbers below are a laptop's/u,
+      'the page does not say how many of its numbers CI does not produce');
   });
 
   it('has no sweep that passes by comparing nothing', async () => {
