@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.154
+
+### a security scope pointing at the wrong mechanism
+
+`SECURITY.md` tells a reporter where to look, and one bullet pointed at a mechanism this tool
+does not have: "Anything that writes outside the output directory, including through channel
+labels, since those are attacker-controlled text that reaches filenames."
+
+Labels are attacker-controlled, and they do not reach filenames. A signal file is named from the
+input's own name and the channel's sampling rate; the label reaches the column header and the
+cells of `channels.csv`. A recording whose channels are labelled `../escape` and `/etc/passwd`
+writes `signals_2hz.csv` and `signals_4hz.csv`, with those strings in the header row.
+
+Naming the wrong mechanism also missed the real one: in a batch a destination is the input's
+path relative to the folder that was named, joined onto `--out`, so the text that reaches a path
+is the recording's own name and the shape of the tree it sits in. Both are now stated, and a
+check writes the hostile labels and reads back the four files.
+
 ## 0.7.153
 
 ### seventeen digits of float noise past where the rounding reached

@@ -1720,6 +1720,41 @@ describe('--info', () => {
     assert.ok(said <= wrote * 3, `said ${said}, wrote ${wrote}`);
   });
 
+  it('keeps a hostile channel label out of every path it writes', async () => {
+    /*
+      SECURITY.md's scope list said channel labels are "attacker-controlled text that reaches
+      filenames". They are attacker-controlled and they do not reach a filename: a signal file
+      is named from the input's own name and the channel's sampling rate, and the label reaches
+      the column header and the cells of channels.csv. The bullet named the wrong mechanism and
+      in doing so missed the real one, which is the input's path in a batch.
+    */
+    const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-labels-'));
+    temporaries.push(work);
+    const recording = path.join(work, 'evil-labels.edf');
+    const range = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000, digMax: 1000 };
+    writeEdf({
+      path: recording, numRecords: 2, recordDuration: 1,
+      signals: [
+        { label: '../escape', ...range, samplesPerRecord: 2, gen: (r, i) => r + i },
+        { label: '/etc/passwd', ...range, samplesPerRecord: 4, gen: (r, i) => r + i },
+      ],
+    });
+    const dir = path.join(work, 'out');
+    assert.equal((await cli([recording, '--out', dir, '--quiet'])).code, 0);
+
+    assert.deepEqual(
+      (await readdir(dir)).sort(),
+      ['channels.csv', 'metadata.json', 'signals_2hz.csv', 'signals_4hz.csv'],
+      'a label reached a filename',
+    );
+    // Nothing beside the destination either, which is where `..` would have landed.
+    assert.deepEqual((await readdir(work)).sort(), ['evil-labels.edf', 'out']);
+    // And the labels are where they belong: verbatim, in the column headers.
+    const slow = await readFile(path.join(dir, 'signals_2hz.csv'), 'utf8');
+    assert.equal(slow.split('\n')[0], 'time_s,../escape');
+  });
+
   it('stays under the wall on a recording whose every cell is empty', async () => {
     /*
       The other half of the contract: never more than three times the truth, which the

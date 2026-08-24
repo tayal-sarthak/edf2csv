@@ -26,8 +26,13 @@ filesystem work around it:
   or 2 with something to say, and an input that produces a stack trace instead is a bug worth
   reporting even when it is not exploitable.
 - Unbounded memory or disk use from header fields that claim more than the file contains.
-- Anything that writes outside the output directory, including through channel labels, since
-  those are attacker-controlled text that reaches filenames.
+- Anything that writes outside the output directory. In a batch a destination is the input's
+  path relative to the folder that was named, joined onto `--out`, so the attacker-controlled
+  text that reaches a path is the recording's own name and the shape of the tree it sits in —
+  a symlink leading out of it, a name that normalises oddly. Channel labels are not that text:
+  they reach the column headers of every signal file and the cells of `channels.csv`, while a
+  filename comes from the input's name and the channel's sampling rate. A label of `../escape`
+  is a column called `../escape`.
 - A way for header text to reach something that executes it. The label, unit, transducer and
   prefiltering fields are free text and are written into the CSV verbatim, which is deliberate;
   what is not acceptable is the tool being silent about where that lands. The known case — a
