@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.164
+
+### a progress byte count that never reaches the end
+
+The API page explains why `onProgress`'s `bytesWritten` starts at zero — it is counted as the
+signal writers flush — and stops there. The same mechanism runs at the other end:
+
+```
+400 records, six channels        signals.csv is 6,251,463 bytes
+last onProgress callback         bytesWritten 5,243,023
+```
+
+Just under a megabyte was still in the buffer when the final batch ended, which is one flush
+threshold, and there is one buffer per signal file. A caller driving a bar from
+`bytesWritten / estimate.bytes` stops at 84% and never reaches the end — while `recordsDone`,
+in the same object, does.
+
+The page now says both ends of it and what to read instead when the number has to be exact.
+
 ## 0.7.163
 
 ### six of the eight flags the estimate honours

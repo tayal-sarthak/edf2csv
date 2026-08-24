@@ -464,7 +464,7 @@ interface ConversionProgress {
 
 `start`, `duration` and `end` are plain numbers of seconds here, not the `5m` or `00:30:00` strings the CLI accepts. `start` and `end` may be negative, because they name a position on the recording's own clock and that clock can begin before zero; `duration` is a length and may not. Use `parseTimeSpec` if you want to accept those forms from your own users. Passing both `duration` and `end` throws a `TimeRangeError`, as does a window that starts at or past the end of the recording.
 
-`onProgress` fires once per batch of records read, not once per record, so on a small file it may fire only once. `bytesWritten` counts characters pushed to the signal writers, so it's zero until the first flush.
+`onProgress` fires once per batch of records read, not once per record, so on a small file it may fire only once. `bytesWritten` counts characters as the signal writers flush them, so it's zero until the first flush — and, for the same reason, the last value it reports is short of the finished file by whatever was still in the buffers when the final batch ended: up to one flush threshold per signal file, which is a megabyte each. A 400-record recording that writes 6,251,463 bytes reports 5,243,023. It is a progress signal, not a byte count; `ConvertResult.files` carries the rows actually written, and the files on disk carry the bytes.
 
 `defaultOutputDir(inputPath)` gives the directory `convert` would choose on its own: the input filename with its extension replaced by `_csv`, next to the input. `defaultOutputDir('/data/recordings/sleep-study.edf')` is `/data/recordings/sleep-study_csv`.
 

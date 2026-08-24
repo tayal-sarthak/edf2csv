@@ -1478,6 +1478,41 @@ describe('option checking', () => {
     }
   });
 
+  it('reports progress bytes that lag the file, and says so', async () => {
+    /*
+      `bytesWritten` is counted as the writers flush, so it is zero until the first flush —
+      which the page said — and short by whatever is still buffered when the last batch ends,
+      which it did not. A caller driving a bar from `bytesWritten / estimate.bytes` stops at
+      84% on a six-megabyte conversion and never reaches the end.
+    */
+    const { writeEdf } = await import(path.join(FIXTURES, '..', 'edf-writer.mjs'));
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-progress-'));
+    temporaries.push(work);
+    const recording = path.join(work, 'big.edf');
+    writeEdf({
+      path: recording, numRecords: 400, recordDuration: 1,
+      signals: Array.from({ length: 6 }, (unused, i) => ({
+        label: `ch${i}`, dimension: 'uV', physMin: -250, physMax: 250, digMin: -2048,
+        digMax: 2047, samplesPerRecord: 256, gen: (r, sample) => ((r * 256 + sample + i * 7) % 4000) - 2000,
+      })),
+    });
+    const dir = path.join(work, 'out');
+    const seen = [];
+    await convert(recording, { outputDir: dir, quiet: true, onProgress: (p) => seen.push({ ...p }) });
+    assert.ok(seen.length > 0, 'onProgress never fired');
+    const last = seen[seen.length - 1];
+    const size = (await stat(path.join(dir, 'signals.csv'))).size;
+    assert.ok(last.bytesWritten < size, `it reached the end after all: ${last.bytesWritten} of ${size}`);
+    // Short by less than one flush per file, which is what bounds the lag.
+    assert.ok(size - last.bytesWritten < 1024 * 1024 + 4096, `${size - last.bytesWritten} is more than a flush`);
+    assert.equal(last.recordsDone, last.recordsTotal, 'the record count does reach the end');
+
+    const page = (await readFile(path.join(FIXTURES, '..', '..', '..', 'website/content/api.md'), 'utf8'))
+      .replace(/\s+/gu, ' ');
+    assert.match(page, /the last value it reports is short of the finished file/u,
+      'the API page does not say that the byte count lags');
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.
