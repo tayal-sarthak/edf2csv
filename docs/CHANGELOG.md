@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.157
+
+### two more tests that passed by not running, as root
+
+0.7.155 widened the standard to platform guards. The same shape sits over two conditions that
+have nothing to do with the platform, and both are about being root:
+
+```js
+if (readable) return;                                    // edf.test.js
+if (process.getuid?.() === 0) return;                    // cli.test.js
+```
+
+The first covers a mode-000 recording, which root reads regardless; the second an unreadable
+folder, which root also reads. Both comments are right that there is nothing left to assert.
+Both are reported as passes, so a suite run as root — a container, most CI images that do not
+drop privileges — counts two checks among the ones that held while neither ran, one of them the
+`UNREADABLE` code the API page tells consumers to branch on.
+
+Both skip now, and the check reads any statement-level guard rather than only a platform one: a
+bare `return` ending a test, with no `t.skip` beside it, fails the suite. The deeper returns
+inside `onProgress` and comparison callbacks are values and are left alone.
+
 ## 0.7.156
 
 ### nine accounted for, eleven skipped

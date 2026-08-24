@@ -3835,12 +3835,21 @@ describe('documentation and source agree on their lists', () => {
       promises the numbers never do. Its neighbour, macOS-only for a different reason, had
       always used `t.skip`.
     */
+    /*
+      Any condition, not only the platform. The same shape sat in edf.test.js over a permission
+      failure — "Root reads a mode-000 file regardless, so there would be nothing to assert",
+      followed by `if (readable) return;` — which is true of the assertion and false of the
+      report: a suite run as root counted that test among the ones that held.
+
+      Statement level in the test body, four spaces in, which is where a test ends itself; the
+      deeper ones are inside `onProgress` and comparison callbacks, where a return is a value.
+    */
     const silent = [];
     // Not this file, whose own source holds the pattern below as a string.
     for (const file of ['cli.test.js', 'convert.test.js', 'edf.test.js', 'large.test.js',
       'stdout-audit.test.js']) {
       const source = await read(path.join('test', file));
-      for (const [, guard] of source.matchAll(/if \(process\.platform[^)]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
+      for (const [, guard] of source.matchAll(/\n {4}if \([^\n]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
         // `return <value>` hands the answer to a caller that decides; a bare `return` ends the
         // test where it stands, and that is the one the runner counts as a pass.
         if (/\breturn;/u.test(guard) && !/t\.skip\(/u.test(guard)) {

@@ -2374,12 +2374,17 @@ describe('converting several recordings at once', () => {
     );
   });
 
-  it('reports a folder it could not read instead of stepping over it', async () => {
+  it('reports a folder it could not read instead of stepping over it', async (t) => {
     // Skipping it in silence meant a folder holding three recordings, one inside a
     // sub-directory without read permission, converted two and said "Converted 2 of 2
     // recordings" — a total that agreed with itself and with nothing else. That is the
     // failure 0.4.4 fixed for symbolic links, arriving by a different route.
-    if (process.getuid?.() === 0) return; // root reads everything; nothing to test
+    // Skipped, not returned: a return is reported as a pass, and a suite run as root would
+    // have counted this among the tests that held over a check that never ran.
+    if (process.getuid?.() === 0) {
+      t.skip('root reads every folder, so there is no unreadable one to report');
+      return;
+    }
 
     const dir = await stage({
       'study/open/a.edf': 'tiny.edf',

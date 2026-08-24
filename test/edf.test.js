@@ -500,7 +500,7 @@ describe('errors', () => {
     );
   });
 
-  it('reports a recording it is not allowed to read as one it cannot read', async () => {
+  it('reports a recording it is not allowed to read as one it cannot read', async (t) => {
     /*
       `stat` needs the parent directory searchable and says nothing about the file's own mode,
       so a recording with no read permission passed it and failed at the open two lines later,
@@ -518,12 +518,19 @@ describe('errors', () => {
     await copyFile(fixture('annotations.edf'), denied);
     await chmod(denied, 0o000);
 
-    // Root reads a mode-000 file regardless, so there would be nothing to assert.
+    // Root reads a mode-000 file regardless, so there would be nothing to assert — and a
+    // return is reported as a pass, which is the one thing a check that did not run must not
+    // do. Skipped instead, so a suite run as root says so rather than counting this among
+    // the tests that held.
     const readable = await EdfFile.open(denied).then(
       (file) => file.close().then(() => true),
       () => false,
     );
-    if (readable) return;
+    if (readable) {
+      t.skip('this user reads a mode-000 file, so there is no permission failure to report');
+      await chmod(denied, 0o644);
+      return;
+    }
 
     await assert.rejects(() => EdfFile.open(denied), (error) => {
       assert.ok(error instanceof EdfError, `${error.name}: not an EdfError`);
