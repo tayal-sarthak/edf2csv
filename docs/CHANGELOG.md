@@ -8,6 +8,23 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.163
+
+### six of the eight flags the estimate honours
+
+The `--info` section says the estimate honours the flags you typed, and lists them:
+
+> The row and byte estimates honour `--channels`, `--start`, `--duration`, `--end`, `--decimals`
+> and `--annotations-only`, so the figures describe the command you actually typed.
+
+Six of the eight. `--layout long` has its own row and byte arithmetic — the same recording is
+33,141 bytes against 22,749 — and `--bom` is three bytes a file, which the estimator's own
+comment calls "the difference between an estimate that holds and one that reads under" on a
+one-row conversion. Both were missing from the sentence whose subject is completeness.
+
+All eight are listed now, and the check runs thirteen flags against a fixture and compares the
+estimate with a plain one, so the list has to match the tool in both directions.
+
 ## 0.7.162
 
 ### a size five times the file, under a bound that excludes it

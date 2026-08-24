@@ -3879,6 +3879,38 @@ describe('documentation and source agree on their lists', () => {
       'the page does not say how many of its numbers CI does not produce');
   });
 
+  it('names every flag the estimate honours, and no others', async () => {
+    /*
+      The list read `--channels`, `--start`, `--duration`, `--end`, `--decimals` and
+      `--annotations-only` — six of the eight that move it. `--layout long` has its own row
+      and byte arithmetic and `--bom` is three bytes a file, and both were missing from a
+      sentence whose point is that "the figures describe the command you actually typed".
+
+      Measured rather than read: every flag is run against a fixture and the estimate compared
+      with a plain one, so the list has to match what the tool does in both directions.
+    */
+    const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+    const estimate = async (extra) => {
+      const { stdout } = await run(process.execPath, [CLI, recording, '--info', '--json', ...extra]);
+      return JSON.stringify(JSON.parse(stdout).estimate);
+    };
+    const plain = await estimate([]);
+    const moves = [];
+    for (const extra of [['--channels', 'ECG'], ['--start', '0.5'], ['--duration', '1'],
+      ['--end', '2'], ['--decimals', '0'], ['--annotations-only'], ['--layout', 'long'],
+      ['--bom'], ['--gzip'], ['--checksum'], ['--quiet'], ['--jobs', '2'], ['--force']]) {
+      if ((await estimate(extra)) !== plain) moves.push(extra[0]);
+    }
+    assert.ok(moves.length > 4, `nothing moved the estimate: ${moves.join(', ')}`);
+
+    const page = (await read('website/content/cli-reference.md')).replace(/\s+/gu, ' ');
+    const sentence = /The row and byte estimates honour ([^.]*)\./u.exec(page);
+    assert.ok(sentence, 'the page no longer lists what the estimate honours');
+    const listed = new Set([...sentence[1].matchAll(/`(--[a-z-]+)`/gu)].map((m) => m[1]));
+    assert.deepEqual([...listed].sort(), [...moves].sort(),
+      `the page lists ${[...listed].sort()}; these move the estimate: ${[...moves].sort()}`);
+  });
+
   it('says which flags do nothing under --annotations-only', async () => {
     /*
       The page named `--start`, `--duration`, `--end` and `--channels` and stopped. Six flags
