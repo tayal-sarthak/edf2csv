@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.159
+
+### an empty failure list over an empty measurement
+
+The same question as 0.7.158, asked of the test that holds the half of the estimate's contract
+the correctness page calls the one it never breaks — no byte count under what gets written:
+
+```js
+const { code, stdout } = await cli([fixture(name), '--info', '--json']);
+if (code !== 0) continue;
+const { code: convert } = await cli([fixture(name), '--out', dir]);
+if (convert !== 0) continue;
+```
+
+Both steps skip a recording without saying so, and the failure list stays empty when nothing was
+measured. The only count asserted was of fixtures on disk. It measures 48 of the 50 — two are
+deliberately damaged headers — and now says so if it measures fewer than 40.
+
+Every fixture-crossing test in the suite has been through this: the other seven already counted
+what they compared.
+
 ## 0.7.158
 
 ### the broadest check in the suite, over no runs at all

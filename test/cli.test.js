@@ -1675,12 +1675,21 @@ describe('--info', () => {
     assert.ok(names.length > 10, `expected the generated fixtures, got ${names.length}`);
 
     const short = [];
+    /*
+      Counted, because both skips below step past a recording without saying so. `short` stays
+      empty when nothing was measured, and the count at the top is of fixtures on disk rather
+      than of predictions checked — so a change that made `--info` or the conversion refuse
+      every fixture left this test, which holds the half of the estimate's contract the
+      correctness page calls the one it never breaks, passing over nothing.
+    */
+    let checked = 0;
     for (const name of names) {
       const { code, stdout } = await cli([fixture(name), '--info', '--json']);
       if (code !== 0) continue;
       const dir = await outDir();
       const { code: convert } = await cli([fixture(name), '--out', dir]);
       if (convert !== 0) continue;
+      checked += 1;
 
       let actual = 0;
       for (const file of await readdir(dir)) {
@@ -1690,6 +1699,7 @@ describe('--info', () => {
       if (estimate < actual) short.push(`${name}: said ${estimate}, wrote ${actual}`);
     }
     assert.deepEqual(short, [], `the estimate under-reported:\n  ${short.join('\n  ')}`);
+    assert.ok(checked > 40, `only ${checked} of ${names.length} recordings were measured`);
 
     /*
       And a recording no fixture is: `latest` is `recordCount * recordDuration`, so a header
