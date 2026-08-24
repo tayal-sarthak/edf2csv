@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.155
+
+### a platform guard that returned where it should have skipped
+
+0.7.138 established that a test the suite counts must say where it does not run. One of them
+opened with a bare return:
+
+```js
+it('refuses two recordings whose names differ only in case, where that matters', async () => {
+  if (process.platform !== 'darwin' && process.platform !== 'win32') return;
+```
+
+The runner reports that as a pass. On every machine CI has — `ubuntu-latest`, on all six jobs —
+this counted itself among the tests that ran, having asserted nothing about the case-folding
+refusal it is named for. Its neighbour one row down, macOS-only for a different reason, has
+always used `t.skip`.
+
+It skips now, and the check that holds the page's account of what CI skips reads the guards
+too: a `process.platform` test whose body is a bare `return`, with no `t.skip` beside it, fails
+the suite.
+
 ## 0.7.154
 
 ### a security scope pointing at the wrong mechanism

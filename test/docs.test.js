@@ -3823,6 +3823,32 @@ describe('documentation and source agree on their lists', () => {
     assert.match(page, /`hdiutil`, which only macOS has/u, 'the page does not say what it needs');
     assert.match(page, /skips rather than pretends anywhere else — including in CI/u,
       'the page does not say those tests are skipped where CI runs');
+
+    /*
+      And a platform guard has to skip, not return. `refuses two recordings whose names differ
+      only in case, where that matters` opened with
+
+          if (process.platform !== 'darwin' && process.platform !== 'win32') return;
+
+      which the runner reports as a pass. On every machine CI has, that test counted itself
+      among the ones that ran while asserting nothing — the one thing the sentence above
+      promises the numbers never do. Its neighbour, macOS-only for a different reason, had
+      always used `t.skip`.
+    */
+    const silent = [];
+    // Not this file, whose own source holds the pattern below as a string.
+    for (const file of ['cli.test.js', 'convert.test.js', 'edf.test.js', 'large.test.js',
+      'stdout-audit.test.js']) {
+      const source = await read(path.join('test', file));
+      for (const [, guard] of source.matchAll(/if \(process\.platform[^)]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
+        // `return <value>` hands the answer to a caller that decides; a bare `return` ends the
+        // test where it stands, and that is the one the runner counts as a pass.
+        if (/\breturn;/u.test(guard) && !/t\.skip\(/u.test(guard)) {
+          silent.push(`${file}: ${guard.trim().split('\n')[0].slice(0, 60)}`);
+        }
+      }
+    }
+    assert.deepEqual(silent, [], `a platform guard that returns is reported as a pass:\n  ${silent.join('\n  ')}`);
   });
 
   it('has no sweep that passes by comparing nothing', async () => {

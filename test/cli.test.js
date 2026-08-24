@@ -1890,13 +1890,20 @@ describe('converting several recordings at once', () => {
     }
   });
 
-  it('refuses two recordings whose names differ only in case, where that matters', async () => {
+  it('refuses two recordings whose names differ only in case, where that matters', async (t) => {
     // On a filesystem that does not distinguish case — macOS by default, Windows always —
     // <out>/REC and <out>/rec are one directory. Compared exactly they are different, so
     // both went through, and with --force the second wrote into the first's directory: one
     // recording's signals.csv beside the other's signals_256hz.csv, under a single
     // metadata.json naming only one of them, reported as "Converted 2 of 2 recordings".
-    if (process.platform !== 'darwin' && process.platform !== 'win32') return;
+    // Skipped rather than returned. A bare `return` is reported as a pass, so on every Linux
+    // machine — which is every machine CI has — this counted itself among the tests that ran
+    // while asserting nothing. Its neighbour below, macOS-only for a different reason, has
+    // always said so; this one said nothing and the summary read one test better than it was.
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+      t.skip('only macOS and Windows fold case; elsewhere these are two directories');
+      return;
+    }
 
     const dir = await stage({ 'a/REC.edf': 'tiny.edf', 'b/rec.edf': 'mixed-rates.edf' });
     const out = path.join(dir, 'out');
