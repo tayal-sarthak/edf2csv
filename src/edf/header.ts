@@ -1076,7 +1076,21 @@ export function describeFormat(header: EdfHeader): string {
 
 /** Render a sampling rate without trailing noise: 256, 0.5, 12.5. */
 export function formatRate(hz: number): string {
-  if (Number.isInteger(hz)) return String(hz);
+  if (Number.isInteger(hz)) {
+    /*
+      The same six decimals, in the notation `toFixed` cannot reach.
+
+      Every double past 2^53 is an integer, so this branch takes every large rate — and
+      `String` switches to exponent form at 1e21 and carries the full seventeen digits with
+      it. Four samples in a record of 1e-300s is 3.9999999999999996e+300, which is exactly the
+      float noise the rounding below exists to remove, printed in a `RATE` column of otherwise
+      plain numbers and pasted into an output filename by `rateSlug`. Below 1e21 `String` is
+      already exact and is left alone, so an integer rate a file can really state — 2^53
+      samples in a second — is not rounded to something it is not.
+    */
+    const text = String(hz);
+    return text.includes('e') ? String(Number(hz.toExponential(6))) : text;
+  }
   const rounded = Number(hz.toFixed(6));
   // A rate below 5e-7 rounds away to "0", which reads as "this channel has no sampling
   // rate" and made the mixed-rate warning contradict itself: it announced two different

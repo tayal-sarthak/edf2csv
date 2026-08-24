@@ -1,0 +1,96 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.152"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/mixed-rates.edf",
+    "bytes": 3334,
+    "modified": "2026-08-23T14:06:49.238Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "EDF",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 3,
+    "data_records_declared": 3,
+    "record_duration_seconds": 1,
+    "duration_seconds": 3,
+    "signal_count": 3,
+    "annotation_channels": 0
+  },
+  "conversion": {
+    "converted_at": "2026-08-23T23:56:22.532Z",
+    "start_seconds": 0,
+    "end_seconds": 3,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      3
+    ],
+    "annotations_written": 0,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "signals_256hz.csv",
+        "rows": 768
+      },
+      {
+        "name": "signals_128hz.csv",
+        "rows": 384
+      },
+      {
+        "name": "signals_1hz.csv",
+        "rows": 3
+      },
+      {
+        "name": "channels.csv",
+        "rows": 3
+      }
+    ],
+    "rate_groups": [
+      {
+        "file": "signals_256hz.csv",
+        "sampling_rate_hz": 256,
+        "channels": [
+          "EEG Fpz-Cz"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_128hz.csv",
+        "sampling_rate_hz": 128,
+        "channels": [
+          "ECG"
+        ],
+        "decimals": [
+          5
+        ]
+      },
+      {
+        "file": "signals_1hz.csv",
+        "sampling_rate_hz": 1,
+        "channels": [
+          "Temp rectal"
+        ],
+        "decimals": [
+          5
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "code": "MIXED_SAMPLING_RATES",
+      "severity": "warning",
+      "message": "Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz)."
+    }
+  ]
+}

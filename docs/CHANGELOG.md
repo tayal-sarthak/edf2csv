@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.153
+
+### seventeen digits of float noise past where the rounding reached
+
+`formatRate` rounds to six decimals for a stated reason: 30 samples in a 0.1-second record is
+299.99999999999994 as a double, and belongs on screen as 300. Every double past 2^53 is an
+integer, so the integer fast path above that rounding took every large rate and handed back
+`String(hz)` — which switches to exponent notation at 1e21 and carries all seventeen digits:
+
+```
+#  COLUMN  LABEL  UNIT  RATE                        RANGE
+0  ch1     ch1    uV    3.9999999999999996e+300 Hz  -100 to 100
+```
+
+Four samples in a record of 1e-300 seconds. The same string reached `rateSlug`, so a mixed-rate
+file of that shape named a table after it. The six decimals now apply in exponent notation too,
+which reads `4e+300 Hz`. Below 1e21 `String` is already exact and is left alone, so an integer
+rate a file can really state — 2^53 samples in a second — is not rounded to something it is not.
+
 ## 0.7.152
 
 ### one digit budgeted for a bound that is not a number

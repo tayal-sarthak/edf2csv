@@ -162,6 +162,27 @@ describe('header parsing', () => {
     assert.equal(file.dataSignals[0].samplingRate, 250);
   });
 
+  it('keeps a rate free of float noise at both ends of the range it can take', async () => {
+    /*
+      `formatRate` rounds to six decimals so an ordinary rate reads as the number it means:
+      30 samples in a 0.1s record is 299.99999999999994 as a double and belongs on screen as
+      300. Every double past 2^53 is an integer, though, so the integer fast path took every
+      large rate and handed back `String(hz)` — which switches to exponent notation at 1e21
+      and carries all seventeen digits with it. Four samples in a record of 1e-300s printed as
+      `3.9999999999999996e+300 Hz`, in a column of otherwise plain numbers, and `rateSlug` put
+      it in a filename.
+    */
+    const { formatRate, rateSlug } = await import('../dist/index.js');
+    assert.equal(formatRate(299.99999999999994), '300');
+    assert.equal(formatRate(4 / 1e-300), '4e+300');
+    assert.equal(rateSlug(4 / 1e-300), '4e+300hz');
+    // Below 1e21 `String` is exact, so an integer rate a file can really state is left alone.
+    assert.equal(formatRate(2 ** 53), '9007199254740992');
+    assert.equal(formatRate(256), '256');
+    // And the small end still takes the exponent form it was given for.
+    assert.equal(formatRate(1e-7), '1.000e-7');
+  });
+
   it('reads labels, units and calibration for every signal', async () => {
     const file = await load('mixed-rates.edf');
     assert.deepEqual(

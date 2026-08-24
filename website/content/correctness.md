@@ -421,17 +421,17 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up — with `hdiutil`, so those nine run on macOS and are skipped on Linux, CI included. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 440
+ℹ tests 441
 ℹ suites 57
-ℹ pass 440
+ℹ pass 441
 ℹ fail 0
 ```
 
-The 440 tests are split across six files by what they exercise:
+The 441 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
-| `test/edf.test.js` | 58 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
+| `test/edf.test.js` | 59 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 119 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 164 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does |
 | `test/docs.test.js` | 84 | That this documentation and the source agree on their lists of codes, flags and exit codes |
