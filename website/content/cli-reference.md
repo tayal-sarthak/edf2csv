@@ -634,6 +634,8 @@ CSV of sampled signal data compresses well — long runs of similar values in a 
 
 `metadata.json` is left as plain text. It is small, and it is the file you read to find out what the directory contains, which is awkward if reading it requires decompressing it first.
 
+`--info` reports the uncompressed size when `--gzip` is given. How well a recording compresses is a fact about its samples, not about its header, and the estimate is taken from the header without reading a data record — so the figure is what the CSV would be, and the file on disk is several times smaller. The ratio above is the one to apply by eye; the sweep that holds the estimate to within three times the truth measures the runs that write CSV for the same reason.
+
 The contents are byte-for-byte what an uncompressed run produces, so anything that reads gzip reads the output directly:
 
 ```bash

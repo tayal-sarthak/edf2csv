@@ -1787,6 +1787,48 @@ describe('--info', () => {
     assert.equal(slow.split('\n')[0], 'time_s,../escape');
   });
 
+  it('reports the uncompressed size under --gzip, and says so', async () => {
+    /*
+      The estimate is taken from the header without reading a data record, and how well a
+      recording compresses is a fact about its samples. So `--info --gzip` predicts what the
+      CSV would be, and the file on disk is several times smaller — 22,749 bytes predicted
+      against 4,598 written on `mixed-rates.edf`, a factor of five.
+
+      The sweep excludes the compressed runs from its three-times bound for exactly that
+      reason, in a comment; the correctness page stated the bound over all thirteen option
+      sets, `--gzip` among them, and neither page told a reader asking "will this fit" which
+      number they were being given.
+    */
+    const dir = await outDir();
+    const { stdout } = await cli([fixture('mixed-rates.edf'), '--info', '--json', '--gzip']);
+    await cli([fixture('mixed-rates.edf'), '--out', dir, '--gzip', '--quiet']);
+    let wrote = 0;
+    for (const file of await readdir(dir)) {
+      if (file.startsWith('signals')) wrote += (await stat(path.join(dir, file))).size;
+    }
+    const plain = await outDir();
+    await cli([fixture('mixed-rates.edf'), '--out', plain, '--quiet']);
+    let uncompressed = 0;
+    for (const file of await readdir(plain)) {
+      if (file.startsWith('signals')) uncompressed += (await stat(path.join(plain, file))).size;
+    }
+    const said = JSON.parse(stdout).estimate.bytes;
+    assert.ok(said > wrote * 3, `the compressed case no longer needs saying: ${said} vs ${wrote}`);
+    assert.ok(said >= uncompressed, `${said} is under the CSV it describes, ${uncompressed}`);
+    assert.ok(said <= uncompressed * 3, `${said} is more than three times ${uncompressed}`);
+
+    for (const [page, needle] of [
+      ['cli-reference.md', /`--info` reports the uncompressed size when `--gzip` is given/u],
+      ['correctness.md', /sizes on the runs that write CSV/u],
+    ]) {
+      assert.match(
+        (await readFile(path.join(ROOT, 'website/content', page), 'utf8')).replace(/\s+/gu, ' '),
+        needle,
+        `${page} does not say which size --info reports under --gzip`,
+      );
+    }
+  });
+
   it('stays under the wall on a recording whose every cell is empty', async () => {
     /*
       The other half of the contract: never more than three times the truth, which the

@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.162
+
+### a size five times the file, under a bound that excludes it
+
+`--info` answers "will this fit". Under `--gzip` it answers with a number five times too large:
+
+```
+$ edf2csv mixed-rates.edf --info --gzip     Would write ... roughly 22.7 KB.
+$ edf2csv mixed-rates.edf --out csv --gzip  signals*.csv.gz total 4,598 bytes
+```
+
+That is right, and unavoidable: the estimate is taken from the header without reading a data
+record, and how well a recording compresses is a fact about its samples. The sweep knows it —
+it excludes the compressed runs from the three-times bound, in a comment giving this reason —
+and the correctness page stated that bound over all thirteen option sets with `--gzip` among
+them. Neither page told a reader which of the two numbers they were holding.
+
+Both say it now: `--info` reports the uncompressed size and the `--gzip` section gives the ratio
+to apply by eye, and the correctness page states that its size figures are measured on the runs
+that write CSV. A check reads the two numbers off `mixed-rates.edf` and both pages back.
+
 ## 0.7.161
 
 ### six flags left off a list of four
