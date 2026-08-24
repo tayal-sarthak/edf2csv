@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.158
+
+### the broadest check in the suite, over no runs at all
+
+0.7.137 asked every sweep what it does when it measures zero. The same question belongs to the
+unit tests, and one of them — the widest invariant in the file, "what the run says it produced
+must match what is on disk", over every fixture crossed with four modes — could not answer it:
+
+```js
+try {
+  result = await convert(path.join(FIXTURES, name), { outputDir: dir, ...options });
+} catch {
+  continue;   // a fixture that legitimately refuses this mode
+}
+```
+
+The only count it asserted was of files on disk. A change making `convert` throw for every
+fixture in every mode — an option check applied one argument too widely, say — left this test
+green over nothing at all. It compares 199 runs, and now says so if it compares fewer than 150.
+
 ## 0.7.157
 
 ### two more tests that passed by not running, as root

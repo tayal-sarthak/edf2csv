@@ -3353,6 +3353,14 @@ describe('converting', () => {
     const fixtures = (await readdir(FIXTURES)).filter((n) => /\.(edf|bdf)$/u.test(n));
     assert.ok(fixtures.length > 10, 'fixtures should be generated before this runs');
 
+    /*
+      Counted, because the loop below steps past a fixture that refuses a mode and there was
+      nothing to say how often that happened. The count above is of files on disk, not of runs
+      compared — so a change that made `convert` throw for every fixture in every mode left
+      this test, the one holding the broadest invariant here, passing over nothing at all.
+    */
+    let compared = 0;
+
     for (const name of fixtures) {
       for (const [mode, options] of [
         ['plain', {}],
@@ -3369,6 +3377,7 @@ describe('converting', () => {
         } catch {
           continue; // a fixture that legitimately refuses this mode
         }
+        compared += 1;
         const where = `${name} [${mode}]`;
         const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
 
@@ -3415,6 +3424,11 @@ describe('converting', () => {
         }
       }
     }
+
+    // A fixture refusing a mode is ordinary; every fixture refusing every mode is not, and
+    // that is the shape this test could not tell from a clean run. Fifty recordings over four
+    // modes, less the ones that legitimately refuse one.
+    assert.ok(compared > 150, `only ${compared} runs were compared against what they wrote`);
   });
 
   it('records provenance in metadata.json', async () => {
