@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.160
+
+### a repeated flag, and the wrong half quoted back
+
+`parseArgs` refuses a value beginning with a dash, and this tool rewrites Node's message to
+quote what was typed. It read the value from the first occurrence of the flag rather than from
+the one Node stopped at, so a flag given twice put the wrong half in the sentence:
+
+```
+$ edf2csv recording.edf --end 1e3 --end -5
+error: --end was given "1e3", which begins with a dash and so reads as another flag rather
+       than as its value.
+       Write it as one argument instead: --end=1e3
+```
+
+`1e3` does not begin with a dash, and the advised rewrite changes the half that was already
+fine while leaving `-5` exactly as it was. `--channels` is repeatable, so two of them is an
+ordinary command rather than a mistake — and there the message quotes a channel name and calls
+it a flag. Found by fuzzing the command line, which nothing had done: the file fuzzer corrupts
+recordings, and every argv case under test was written by hand.
+
 ## 0.7.159
 
 ### an empty failure list over an empty measurement

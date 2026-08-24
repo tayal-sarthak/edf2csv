@@ -1,0 +1,2 @@
+column,signal_index,label,unit,sampling_rate_hz,samples_per_record,physical_min,physical_max,digital_min,digital_max,transducer,prefiltering,output_file,converted
+EEG,0,EEG,uV,1024,1024,-250,250,-2048,2047,,,signals.csv,yes

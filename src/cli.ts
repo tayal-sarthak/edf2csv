@@ -2186,9 +2186,27 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
   if (!ambiguous) return asError(raw);
 
   const flag = ambiguous[1] as string;
-  // The value is whatever followed the flag. Read from argv rather than from the message,
-  // which does not carry it — and if it is not there after all, Node's text is still true.
-  const at = argv.indexOf(flag);
+  /*
+    The value is whatever followed the flag. Read from argv rather than from the message,
+    which does not carry it — and if it is not there after all, Node's text is still true.
+
+    The occurrence Node stopped at, which is the first one whose value begins with a dash and
+    not simply the first occurrence of the flag. A flag given twice put the wrong value in the
+    sentence: `--end 1e3 --end -5` was refused with `--end was given "1e3", which begins with
+    a dash`, over a value that does not, advising `--end=1e3` — a rewrite of the half that was
+    already fine, leaving the half that was not exactly as it was. `--channels` is repeatable,
+    so two of them is an ordinary command rather than a mistake, and that is where it reads
+    worst: the message quotes a channel name and calls it a flag.
+  */
+  let at = -1;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] !== flag) continue;
+    const next = argv[i + 1];
+    if (next !== undefined && next.startsWith('-')) {
+      at = i;
+      break;
+    }
+  }
   const value = at >= 0 ? argv[at + 1] : undefined;
   if (value === undefined) return asError(raw);
 

@@ -1,0 +1,4 @@
+onset_s,duration_s,description,record_index
+0.5,1,Sleep stage W,0
+1.25,,Lights off,1
+2,0.5,Seizure onset,2

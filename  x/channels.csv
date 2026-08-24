@@ -1,0 +1,2 @@
+column,signal_index,label,unit,sampling_rate_hz,samples_per_record,physical_min,physical_max,digital_min,digital_max,transducer,prefiltering,output_file,converted
+MEG 0113,0,MEG 0113,T,8,8,-1e-16,1e-16,-32768,32767,,,signals.csv,yes

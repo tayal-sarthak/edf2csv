@@ -1,0 +1,72 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/zero-first-annotation.edf",
+    "bytes": 1408,
+    "modified": "2026-08-24T00:18:22.932Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "EDF+ (discontinuous)",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 3,
+    "data_records_declared": 3,
+    "record_duration_seconds": 1,
+    "duration_seconds": 3,
+    "signal_count": 3,
+    "annotation_channels": 2
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:07:09.255Z",
+    "start_seconds": 0,
+    "end_seconds": 5,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      3
+    ],
+    "annotations_written": 1,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "signals.csv",
+        "rows": 12
+      },
+      {
+        "name": "annotations.csv",
+        "rows": 1
+      },
+      {
+        "name": "channels.csv",
+        "rows": 1
+      }
+    ],
+    "rate_groups": [
+      {
+        "file": "signals.csv",
+        "sampling_rate_hz": 4,
+        "channels": [
+          "ch"
+        ],
+        "decimals": [
+          4
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "code": "DISCONTINUOUS",
+      "severity": "warning",
+      "message": "This is a discontinuous (EDF+D) recording: its data records are not contiguous in time."
+    }
+  ]
+}

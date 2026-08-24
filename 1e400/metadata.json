@@ -1,0 +1,62 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/rounding-bound.edf",
+    "bytes": 712,
+    "modified": "2026-08-24T00:18:22.936Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "EDF",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 5,
+    "data_records_declared": 5,
+    "record_duration_seconds": 1,
+    "duration_seconds": 5,
+    "signal_count": 1,
+    "annotation_channels": 0
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:07:42.572Z",
+    "start_seconds": 2,
+    "end_seconds": 5,
+    "whole_recording": false,
+    "records_converted": [
+      2,
+      5
+    ],
+    "annotations_written": 0,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "signals.csv.gz",
+        "rows": 60
+      },
+      {
+        "name": "channels.csv.gz",
+        "rows": 1
+      }
+    ],
+    "rate_groups": [
+      {
+        "file": "signals.csv.gz",
+        "sampling_rate_hz": 20,
+        "channels": [
+          "unsigned"
+        ],
+        "decimals": [
+          2
+        ]
+      }
+    ]
+  },
+  "notes": []
+}

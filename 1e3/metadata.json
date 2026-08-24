@@ -1,0 +1,614 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/many-rates.edf",
+    "bytes": 12136,
+    "modified": "2026-08-24T00:18:22.935Z",
+    "sha256": "f42242a8df6fa0ae6c51798a40a9ad9c876d5d11ceca8029c3a39029b0fd12e2"
+  },
+  "recording": {
+    "format": "EDF",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 1,
+    "data_records_declared": 1,
+    "record_duration_seconds": 1,
+    "duration_seconds": 1,
+    "signal_count": 40,
+    "annotation_channels": 0
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:08:05.896Z",
+    "start_seconds": 0,
+    "end_seconds": 1,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      1
+    ],
+    "annotations_written": 0,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "signals_40hz.csv",
+        "rows": 40
+      },
+      {
+        "name": "signals_39hz.csv",
+        "rows": 39
+      },
+      {
+        "name": "signals_38hz.csv",
+        "rows": 38
+      },
+      {
+        "name": "signals_37hz.csv",
+        "rows": 37
+      },
+      {
+        "name": "signals_36hz.csv",
+        "rows": 36
+      },
+      {
+        "name": "signals_35hz.csv",
+        "rows": 35
+      },
+      {
+        "name": "signals_34hz.csv",
+        "rows": 34
+      },
+      {
+        "name": "signals_33hz.csv",
+        "rows": 33
+      },
+      {
+        "name": "signals_32hz.csv",
+        "rows": 32
+      },
+      {
+        "name": "signals_31hz.csv",
+        "rows": 31
+      },
+      {
+        "name": "signals_30hz.csv",
+        "rows": 30
+      },
+      {
+        "name": "signals_29hz.csv",
+        "rows": 29
+      },
+      {
+        "name": "signals_28hz.csv",
+        "rows": 28
+      },
+      {
+        "name": "signals_27hz.csv",
+        "rows": 27
+      },
+      {
+        "name": "signals_26hz.csv",
+        "rows": 26
+      },
+      {
+        "name": "signals_25hz.csv",
+        "rows": 25
+      },
+      {
+        "name": "signals_24hz.csv",
+        "rows": 24
+      },
+      {
+        "name": "signals_23hz.csv",
+        "rows": 23
+      },
+      {
+        "name": "signals_22hz.csv",
+        "rows": 22
+      },
+      {
+        "name": "signals_21hz.csv",
+        "rows": 21
+      },
+      {
+        "name": "signals_20hz.csv",
+        "rows": 20
+      },
+      {
+        "name": "signals_19hz.csv",
+        "rows": 19
+      },
+      {
+        "name": "signals_18hz.csv",
+        "rows": 18
+      },
+      {
+        "name": "signals_17hz.csv",
+        "rows": 17
+      },
+      {
+        "name": "signals_16hz.csv",
+        "rows": 16
+      },
+      {
+        "name": "signals_15hz.csv",
+        "rows": 15
+      },
+      {
+        "name": "signals_14hz.csv",
+        "rows": 14
+      },
+      {
+        "name": "signals_13hz.csv",
+        "rows": 13
+      },
+      {
+        "name": "signals_12hz.csv",
+        "rows": 12
+      },
+      {
+        "name": "signals_11hz.csv",
+        "rows": 11
+      },
+      {
+        "name": "signals_10hz.csv",
+        "rows": 10
+      },
+      {
+        "name": "signals_9hz.csv",
+        "rows": 9
+      },
+      {
+        "name": "signals_8hz.csv",
+        "rows": 8
+      },
+      {
+        "name": "signals_7hz.csv",
+        "rows": 7
+      },
+      {
+        "name": "signals_6hz.csv",
+        "rows": 6
+      },
+      {
+        "name": "signals_5hz.csv",
+        "rows": 5
+      },
+      {
+        "name": "signals_4hz.csv",
+        "rows": 4
+      },
+      {
+        "name": "signals_3hz.csv",
+        "rows": 3
+      },
+      {
+        "name": "signals_2hz.csv",
+        "rows": 2
+      },
+      {
+        "name": "signals_1hz.csv",
+        "rows": 1
+      },
+      {
+        "name": "channels.csv",
+        "rows": 40
+      }
+    ],
+    "rate_groups": [
+      {
+        "file": "signals_40hz.csv",
+        "sampling_rate_hz": 40,
+        "channels": [
+          "ch40"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_39hz.csv",
+        "sampling_rate_hz": 39,
+        "channels": [
+          "ch39"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_38hz.csv",
+        "sampling_rate_hz": 38,
+        "channels": [
+          "ch38"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_37hz.csv",
+        "sampling_rate_hz": 37,
+        "channels": [
+          "ch37"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_36hz.csv",
+        "sampling_rate_hz": 36,
+        "channels": [
+          "ch36"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_35hz.csv",
+        "sampling_rate_hz": 35,
+        "channels": [
+          "ch35"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_34hz.csv",
+        "sampling_rate_hz": 34,
+        "channels": [
+          "ch34"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_33hz.csv",
+        "sampling_rate_hz": 33,
+        "channels": [
+          "ch33"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_32hz.csv",
+        "sampling_rate_hz": 32,
+        "channels": [
+          "ch32"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_31hz.csv",
+        "sampling_rate_hz": 31,
+        "channels": [
+          "ch31"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_30hz.csv",
+        "sampling_rate_hz": 30,
+        "channels": [
+          "ch30"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_29hz.csv",
+        "sampling_rate_hz": 29,
+        "channels": [
+          "ch29"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_28hz.csv",
+        "sampling_rate_hz": 28,
+        "channels": [
+          "ch28"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_27hz.csv",
+        "sampling_rate_hz": 27,
+        "channels": [
+          "ch27"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_26hz.csv",
+        "sampling_rate_hz": 26,
+        "channels": [
+          "ch26"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_25hz.csv",
+        "sampling_rate_hz": 25,
+        "channels": [
+          "ch25"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_24hz.csv",
+        "sampling_rate_hz": 24,
+        "channels": [
+          "ch24"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_23hz.csv",
+        "sampling_rate_hz": 23,
+        "channels": [
+          "ch23"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_22hz.csv",
+        "sampling_rate_hz": 22,
+        "channels": [
+          "ch22"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_21hz.csv",
+        "sampling_rate_hz": 21,
+        "channels": [
+          "ch21"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_20hz.csv",
+        "sampling_rate_hz": 20,
+        "channels": [
+          "ch20"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_19hz.csv",
+        "sampling_rate_hz": 19,
+        "channels": [
+          "ch19"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_18hz.csv",
+        "sampling_rate_hz": 18,
+        "channels": [
+          "ch18"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_17hz.csv",
+        "sampling_rate_hz": 17,
+        "channels": [
+          "ch17"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_16hz.csv",
+        "sampling_rate_hz": 16,
+        "channels": [
+          "ch16"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_15hz.csv",
+        "sampling_rate_hz": 15,
+        "channels": [
+          "ch15"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_14hz.csv",
+        "sampling_rate_hz": 14,
+        "channels": [
+          "ch14"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_13hz.csv",
+        "sampling_rate_hz": 13,
+        "channels": [
+          "ch13"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_12hz.csv",
+        "sampling_rate_hz": 12,
+        "channels": [
+          "ch12"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_11hz.csv",
+        "sampling_rate_hz": 11,
+        "channels": [
+          "ch11"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_10hz.csv",
+        "sampling_rate_hz": 10,
+        "channels": [
+          "ch10"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_9hz.csv",
+        "sampling_rate_hz": 9,
+        "channels": [
+          "ch9"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_8hz.csv",
+        "sampling_rate_hz": 8,
+        "channels": [
+          "ch8"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_7hz.csv",
+        "sampling_rate_hz": 7,
+        "channels": [
+          "ch7"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_6hz.csv",
+        "sampling_rate_hz": 6,
+        "channels": [
+          "ch6"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_5hz.csv",
+        "sampling_rate_hz": 5,
+        "channels": [
+          "ch5"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_4hz.csv",
+        "sampling_rate_hz": 4,
+        "channels": [
+          "ch4"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_3hz.csv",
+        "sampling_rate_hz": 3,
+        "channels": [
+          "ch3"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_2hz.csv",
+        "sampling_rate_hz": 2,
+        "channels": [
+          "ch2"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_1hz.csv",
+        "sampling_rate_hz": 1,
+        "channels": [
+          "ch1"
+        ],
+        "decimals": [
+          3
+        ]
+      }
+    ]
+  },
+  "notes": [
+    {
+      "code": "MIXED_SAMPLING_RATES",
+      "severity": "warning",
+      "message": "Channels use 40 different sampling rates (40 Hz, 39 Hz, 38 Hz, 37 Hz, 36 Hz, 35 Hz, 34 Hz, 33 Hz and 32 more)."
+    }
+  ]
+}

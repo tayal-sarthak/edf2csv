@@ -170,6 +170,28 @@ describe('argument errors exit 2', () => {
     assert.doesNotMatch(dashed.stderr, /Did you forget/u, 'they did not forget it');
 
     /*
+      And the occurrence Node stopped at, when a flag appears more than once. The value was
+      read from the *first* occurrence, so `--end 1e3 --end -5` was refused with `--end was
+      given "1e3", which begins with a dash` — over a value that does not — advising
+      `--end=1e3`, a rewrite of the half that was already fine, leaving the half that was not
+      exactly as it was. `--channels` is repeatable, so two of them is an ordinary command
+      rather than a mistake, and there the sentence quotes a channel name and calls it a flag.
+    */
+    for (const [args, quoted] of [
+      [['--end', '1e3', '--end', '-5'], '-5'],
+      [['--channels', '#0', '--channels', '-5'], '-5'],
+      [['--out', 'abc', '--out', '--'], '--'],
+      [['-j', '2', '-j', '-1'], '-1'],
+    ]) {
+      const twice = await cli([fixture('tiny.edf'), ...args]);
+      assert.equal(twice.code, 2, twice.stderr);
+      assert.ok(
+        twice.stderr.includes(`was given "${quoted}", which begins with a dash`),
+        `${args.join(' ')} named the wrong value:\n${twice.stderr}`,
+      );
+    }
+
+    /*
       A short option joins differently, and getting this wrong would be worse than the message
       it replaces: parseArgs reads `-o=-nightly` as the value "=-nightly" and converts happily
       into a directory of that name. So the advice must be `-o-nightly`, and it is checked by

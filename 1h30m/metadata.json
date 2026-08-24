@@ -1,0 +1,53 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/biosemi.bdf",
+    "bytes": 864,
+    "modified": "2026-08-24T00:18:22.961Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "BDF",
+    "version": "BIOSEMI",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 2,
+    "data_records_declared": 2,
+    "record_duration_seconds": 1,
+    "duration_seconds": 2,
+    "signal_count": 2,
+    "annotation_channels": 0
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:07:46.133Z",
+    "start_seconds": 0,
+    "end_seconds": 2,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      2
+    ],
+    "annotations_written": 0,
+    "layout": "long",
+    "files": [
+      {
+        "name": "channels.csv",
+        "rows": 2
+      }
+    ],
+    "rate_groups": []
+  },
+  "notes": [
+    {
+      "code": "NO_ANNOTATIONS",
+      "severity": "warning",
+      "message": "--annotations-only was requested but this recording has no annotation channel, so there are no events to export."
+    }
+  ]
+}

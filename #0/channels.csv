@@ -1,0 +1,4 @@
+column,signal_index,label,unit,sampling_rate_hz,samples_per_record,physical_min,physical_max,digital_min,digital_max,transducer,prefiltering,output_file,converted
+T8_ch0_ch0,0,T8,uV,2,2,-100,100,-1000,1000,,,signals.csv,yes
+T8_ch1,1,T8,uV,2,2,-100,100,-1000,1000,,,signals.csv,yes
+T8_ch0_ch2,2,T8_ch0,uV,2,2,-100,100,-1000,1000,,,signals.csv,yes

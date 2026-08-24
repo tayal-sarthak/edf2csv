@@ -1,0 +1,51 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/contiguous-fractional.edf",
+    "bytes": 1472,
+    "modified": "2026-08-24T00:18:22.931Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "EDF+ (continuous)",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate 01-JAN-2020 X X X",
+    "start_datetime_local": "2020-01-01T00:00:00",
+    "start_date_raw": "01.01.20",
+    "start_time_raw": "00.00.00",
+    "data_records": 8,
+    "data_records_declared": 8,
+    "record_duration_seconds": 0.1,
+    "duration_seconds": 0.8,
+    "signal_count": 2,
+    "annotation_channels": 1
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:08:03.521Z",
+    "start_seconds": 0.1,
+    "end_seconds": 0.9,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      8
+    ],
+    "annotations_written": 0,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "annotations.csv",
+        "rows": 0
+      },
+      {
+        "name": "channels.csv",
+        "rows": 1
+      }
+    ],
+    "rate_groups": []
+  },
+  "notes": []
+}

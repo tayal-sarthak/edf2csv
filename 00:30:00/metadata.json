@@ -1,0 +1,66 @@
+{
+  "tool": {
+    "name": "edf2csv",
+    "version": "0.7.159"
+  },
+  "source": {
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/latin1-labels.edf",
+    "bytes": 944,
+    "modified": "2026-08-24T00:18:22.960Z",
+    "sha256": null
+  },
+  "recording": {
+    "format": "EDF+ (continuous)",
+    "version": "0",
+    "patient_id": "X X X X",
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 2,
+    "data_records_declared": 2,
+    "record_duration_seconds": 1,
+    "duration_seconds": 2,
+    "signal_count": 2,
+    "annotation_channels": 1
+  },
+  "conversion": {
+    "converted_at": "2026-08-24T21:07:19.371Z",
+    "start_seconds": 0,
+    "end_seconds": 2,
+    "whole_recording": true,
+    "records_converted": [
+      0,
+      2
+    ],
+    "annotations_written": 1,
+    "layout": "wide",
+    "files": [
+      {
+        "name": "signals.csv",
+        "rows": 8
+      },
+      {
+        "name": "annotations.csv",
+        "rows": 1
+      },
+      {
+        "name": "channels.csv",
+        "rows": 1
+      }
+    ],
+    "rate_groups": [
+      {
+        "file": "signals.csv",
+        "sampling_rate_hz": 4,
+        "channels": [
+          "EEG Céz-A1"
+        ],
+        "decimals": [
+          4
+        ]
+      }
+    ]
+  },
+  "notes": []
+}
