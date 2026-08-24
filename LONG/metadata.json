@@ -1,12 +1,12 @@
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.7.159"
+    "version": "0.7.160"
   },
   "source": {
-    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/single-rate-empty-channel.edf",
-    "bytes": 784,
-    "modified": "2026-08-24T00:18:22.928Z",
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/rate-decimal-collision.edf",
+    "bytes": 804,
+    "modified": "2026-08-24T00:18:22.936Z",
     "sha256": null
   },
   "recording": {
@@ -19,15 +19,15 @@
     "start_time_raw": "00.00.00",
     "data_records": 2,
     "data_records_declared": 2,
-    "record_duration_seconds": 1,
-    "duration_seconds": 2,
+    "record_duration_seconds": 4000000,
+    "duration_seconds": 8000000,
     "signal_count": 2,
     "annotation_channels": 0
   },
   "conversion": {
-    "converted_at": "2026-08-24T21:08:07.828Z",
+    "converted_at": "2026-08-24T21:17:02.325Z",
     "start_seconds": 0,
-    "end_seconds": 2,
+    "end_seconds": 8000000,
     "whole_recording": true,
     "records_converted": [
       0,
@@ -37,7 +37,11 @@
     "layout": "wide",
     "files": [
       {
-        "name": "signals.csv",
+        "name": "signals_0_00000125hz.csv",
+        "rows": 10
+      },
+      {
+        "name": "signals_0_000001hz.csv",
         "rows": 8
       },
       {
@@ -47,10 +51,20 @@
     ],
     "rate_groups": [
       {
-        "file": "signals.csv",
-        "sampling_rate_hz": 4,
+        "file": "signals_0_00000125hz.csv",
+        "sampling_rate_hz": 0.00000125,
         "channels": [
-          "real"
+          "slower"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_0_000001hz.csv",
+        "sampling_rate_hz": 0.000001,
+        "channels": [
+          "slow"
         ],
         "decimals": [
           3
@@ -60,9 +74,9 @@
   },
   "notes": [
     {
-      "code": "NO_SAMPLES",
+      "code": "MIXED_SAMPLING_RATES",
       "severity": "warning",
-      "message": "Signal 1 (\"unused\") carries no samples at all (0 per data record)."
+      "message": "Channels use 2 different sampling rates (0.00000125 Hz, 0.000001 Hz)."
     }
   ]
 }

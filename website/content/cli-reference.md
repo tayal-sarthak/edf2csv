@@ -417,6 +417,15 @@ Writes the EDF+ event list and nothing else. The output directory gets `annotati
 
 `--start`, `--duration` and `--end` still filter the events. `--channels` is ignored, as described above.
 
+The rest of the flags divide the same way, and it is worth saying which side each falls on, since
+nothing in a run reports a flag that did nothing. `--gzip` and `--bom` act on the two files that
+are written, so `annotations.csv.gz` and a byte order mark on `annotations.csv` are both what you
+get. `--checksum` records the input's SHA-256 in `metadata.json` as usual. `--decimals` and
+`--layout` have nothing to act on — both describe the signal table, and there is none — so they
+are accepted and do nothing rather than being refused, for the same reason `--channels` is: a
+batch converting a folder passes one set of flags for every recording in it. `--stdout` is the
+exception that is refused outright, because it writes no files at all and this mode is only files.
+
 `--info --annotations-only` names the files rather than estimating rows, since the estimate describes the signal tables and there are none:
 
 ```

@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.161
+
+### six flags left off a list of four
+
+`--annotations-only` writes the event list and nothing else, and the page said which flags still
+apply: `--start`, `--duration`, `--end`, and `--channels` ignored. That is four of ten. Of the
+six it left out, two do nothing at all:
+
+```
+edf2csv recording.edf --annotations-only --decimals 0     # accepted, no effect
+edf2csv recording.edf --annotations-only --layout long    # accepted, no effect
+```
+
+Both describe the signal table, and this mode writes none. Nothing in a run reports a flag that
+had nothing to act on — `--stdout` is refused for exactly that reason, in as many words — so a
+reader passing `--decimals 0` to keep the output small has no way to learn it did not.
+
+All ten are on the page now, sorted by which side they fall on and why, and a check runs the
+four that matter: `--gzip` and `--bom` against the files they change, `--decimals` and
+`--layout` against a plain run they must match exactly.
+
 ## 0.7.160
 
 ### a repeated flag, and the wrong half quoted back

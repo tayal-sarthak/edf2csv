@@ -1,60 +1,70 @@
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.7.159"
+    "version": "0.7.160"
   },
   "source": {
-    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/negative-origin.edf",
-    "bytes": 1152,
-    "modified": "2026-08-24T00:18:22.929Z",
-    "sha256": null
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/rate-decimal-collision.edf",
+    "bytes": 804,
+    "modified": "2026-08-24T00:18:22.936Z",
+    "sha256": "e89cb06ebe5a5b5c5267ad1255f8245bfefa31a31699f036b9198c4d3a035766"
   },
   "recording": {
-    "format": "EDF+ (discontinuous)",
+    "format": "EDF",
     "version": "0",
     "patient_id": "X X X X",
-    "recording_id": "Startdate 02-MAR-2002 X X X",
-    "start_datetime_local": "2002-03-02T22:15:00",
-    "start_date_raw": "02.03.02",
-    "start_time_raw": "22.15.00",
-    "data_records": 3,
-    "data_records_declared": 3,
-    "record_duration_seconds": 1,
-    "duration_seconds": 3,
+    "recording_id": "Startdate X X X X",
+    "start_datetime_local": "1985-01-01T00:00:00",
+    "start_date_raw": "01.01.85",
+    "start_time_raw": "00.00.00",
+    "data_records": 2,
+    "data_records_declared": 2,
+    "record_duration_seconds": 4000000,
+    "duration_seconds": 8000000,
     "signal_count": 2,
-    "annotation_channels": 1
+    "annotation_channels": 0
   },
   "conversion": {
-    "converted_at": "2026-08-24T21:08:01.967Z",
-    "start_seconds": -100,
-    "end_seconds": -97,
+    "converted_at": "2026-08-24T21:17:22.113Z",
+    "start_seconds": 0,
+    "end_seconds": 8000000,
     "whole_recording": true,
     "records_converted": [
       0,
-      3
+      2
     ],
     "annotations_written": 0,
     "layout": "wide",
     "files": [
       {
-        "name": "signals.csv",
-        "rows": 12
+        "name": "signals_0_00000125hz.csv",
+        "rows": 10
       },
       {
-        "name": "annotations.csv",
-        "rows": 0
+        "name": "signals_0_000001hz.csv",
+        "rows": 8
       },
       {
         "name": "channels.csv",
-        "rows": 1
+        "rows": 2
       }
     ],
     "rate_groups": [
       {
-        "file": "signals.csv",
-        "sampling_rate_hz": 4,
+        "file": "signals_0_00000125hz.csv",
+        "sampling_rate_hz": 0.00000125,
         "channels": [
-          "ch1"
+          "slower"
+        ],
+        "decimals": [
+          3
+        ]
+      },
+      {
+        "file": "signals_0_000001hz.csv",
+        "sampling_rate_hz": 0.000001,
+        "channels": [
+          "slow"
         ],
         "decimals": [
           3
@@ -64,9 +74,9 @@
   },
   "notes": [
     {
-      "code": "DISCONTINUOUS",
+      "code": "MIXED_SAMPLING_RATES",
       "severity": "warning",
-      "message": "This is a discontinuous (EDF+D) recording: its data records are not contiguous in time."
+      "message": "Channels use 2 different sampling rates (0.00000125 Hz, 0.000001 Hz)."
     }
   ]
 }

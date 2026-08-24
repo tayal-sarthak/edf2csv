@@ -3879,6 +3879,43 @@ describe('documentation and source agree on their lists', () => {
       'the page does not say how many of its numbers CI does not produce');
   });
 
+  it('says which flags do nothing under --annotations-only', async () => {
+    /*
+      The page named `--start`, `--duration`, `--end` and `--channels` and stopped. Six flags
+      were left for a reader to guess at, and two of them — `--decimals` and `--layout` — are
+      accepted and do nothing, silently: both describe the signal table, and that mode writes
+      none. Nothing in a run reports a flag that had nothing to act on, which is what makes it
+      the page's job. Checked by running them rather than by reading the sentence.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-annonly-'));
+    try {
+      const recording = path.join(ROOT, 'test/fixtures/generated/annotations.edf');
+      const run4 = async (extra) => {
+        const dir = path.join(work, `out-${extra.join('-').replace(/\W/gu, '') || 'plain'}`);
+        await run(process.execPath, [CLI, recording, '--annotations-only', '--out', dir, ...extra]);
+        return (await readdir(dir)).sort();
+      };
+      // The two that act, and the shape they leave behind.
+      assert.deepEqual(await run4(['--gzip']),
+        ['annotations.csv.gz', 'channels.csv.gz', 'metadata.json']);
+      const bom = path.join(work, 'bom');
+      await run(process.execPath, [CLI, recording, '--annotations-only', '--bom', '--out', bom]);
+      assert.equal((await readFile(path.join(bom, 'annotations.csv'), 'utf8'))[0], '\ufeff');
+      // And the two that do not, which have to leave exactly what a plain run leaves.
+      const plain = await run4([]);
+      assert.deepEqual(await run4(['--decimals', '0']), plain);
+      assert.deepEqual(await run4(['--layout', 'long']), plain);
+
+      const page = (await read('website/content/cli-reference.md')).replace(/\s+/gu, ' ');
+      assert.match(page, /`--decimals` and `--layout` have nothing to act on/u,
+        'the page does not say which flags this mode ignores');
+      assert.match(page, /`--gzip` and `--bom` act on the two files that are written/u,
+        'the page does not say which flags this mode honours');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('has no sweep that passes by comparing nothing', async () => {
     /*
       `npm run estimate -- typo` — the name filter that harness documents two lines into its own

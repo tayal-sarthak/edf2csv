@@ -4,9 +4,9 @@
     "version": "0.7.160"
   },
   "source": {
-    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/late-start.edf",
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/fractional-start-d.edf",
     "bytes": 1152,
-    "modified": "2026-08-24T00:18:22.935Z",
+    "modified": "2026-08-24T00:18:22.929Z",
     "sha256": null
   },
   "recording": {
@@ -25,9 +25,9 @@
     "annotation_channels": 1
   },
   "conversion": {
-    "converted_at": "2026-08-24T21:16:38.831Z",
-    "start_seconds": 30,
-    "end_seconds": 33,
+    "converted_at": "2026-08-24T21:17:48.769Z",
+    "start_seconds": 0.5,
+    "end_seconds": 3.5,
     "whole_recording": true,
     "records_converted": [
       0,

@@ -4,14 +4,14 @@
     "version": "0.7.160"
   },
   "source": {
-    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/biosemi.bdf",
-    "bytes": 864,
-    "modified": "2026-08-24T00:18:22.961Z",
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/biosemi-rate.edf",
+    "bytes": 4608,
+    "modified": "2026-08-24T00:18:22.930Z",
     "sha256": null
   },
   "recording": {
-    "format": "BDF",
-    "version": "BIOSEMI",
+    "format": "EDF",
+    "version": "0",
     "patient_id": "X X X X",
     "recording_id": "Startdate X X X X",
     "start_datetime_local": "1985-01-01T00:00:00",
@@ -21,11 +21,11 @@
     "data_records_declared": 2,
     "record_duration_seconds": 1,
     "duration_seconds": 2,
-    "signal_count": 2,
+    "signal_count": 1,
     "annotation_channels": 0
   },
   "conversion": {
-    "converted_at": "2026-08-24T21:16:25.335Z",
+    "converted_at": "2026-08-24T21:17:30.607Z",
     "start_seconds": 0,
     "end_seconds": 2,
     "whole_recording": true,
@@ -38,24 +38,22 @@
     "files": [
       {
         "name": "signals.csv",
-        "rows": 16
+        "rows": 2048
       },
       {
         "name": "channels.csv",
-        "rows": 2
+        "rows": 1
       }
     ],
     "rate_groups": [
       {
         "file": "signals.csv",
-        "sampling_rate_hz": 8,
+        "sampling_rate_hz": 1024,
         "channels": [
-          "A1",
-          "A2"
+          "EEG"
         ],
         "decimals": [
-          4,
-          4
+          3
         ]
       }
     ]

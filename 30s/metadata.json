@@ -1,13 +1,13 @@
 {
   "tool": {
     "name": "edf2csv",
-    "version": "0.7.159"
+    "version": "0.7.160"
   },
   "source": {
-    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/sub-nanosecond.edf",
-    "bytes": 552,
-    "modified": "2026-08-24T00:18:22.931Z",
-    "sha256": "6de38cd75050a0bb6eef90527ffa19bf3165fa5998cd060de056395f77cf2b65"
+    "path": "/Users/tayasavvysarthak/Documents/coding/edf2csv/test/fixtures/generated/biosemi-rate.edf",
+    "bytes": 4608,
+    "modified": "2026-08-24T00:18:22.930Z",
+    "sha256": null
   },
   "recording": {
     "format": "EDF",
@@ -19,15 +19,15 @@
     "start_time_raw": "00.00.00",
     "data_records": 2,
     "data_records_declared": 2,
-    "record_duration_seconds": 1e-9,
-    "duration_seconds": 2e-9,
+    "record_duration_seconds": 1,
+    "duration_seconds": 2,
     "signal_count": 1,
     "annotation_channels": 0
   },
   "conversion": {
-    "converted_at": "2026-08-24T21:07:20.228Z",
+    "converted_at": "2026-08-24T21:14:33.026Z",
     "start_seconds": 0,
-    "end_seconds": 2e-9,
+    "end_seconds": 2,
     "whole_recording": true,
     "records_converted": [
       0,
@@ -38,7 +38,7 @@
     "files": [
       {
         "name": "signals.csv",
-        "rows": 20
+        "rows": 2048
       },
       {
         "name": "channels.csv",
@@ -48,9 +48,9 @@
     "rate_groups": [
       {
         "file": "signals.csv",
-        "sampling_rate_hz": 10000000000,
+        "sampling_rate_hz": 1024,
         "channels": [
-          "ch1"
+          "EEG"
         ],
         "decimals": [
           3
