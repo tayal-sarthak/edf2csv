@@ -1,4 +1,0 @@
-column,signal_index,label,unit,sampling_rate_hz,samples_per_record,physical_min,physical_max,digital_min,digital_max,transducer,prefiltering,output_file,converted
-EEG Fpz-Cz,0,EEG Fpz-Cz,uV,256,256,-250,250,-2048,2047,,,signals.csv,yes
-ECG,1,ECG,mV,128,128,-5,5,-2048,2047,,,signals.csv,yes
-Temp rectal,2,Temp rectal,degC,1,1,34,40,-2048,2047,,,signals.csv,yes
