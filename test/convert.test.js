@@ -1332,8 +1332,13 @@ describe('option checking', () => {
         a recording timed from its first record's timekeeping annotation may sit before zero,
         and negative-origin.edf's first sample is at -100 — so `start` and `end` take one,
         as of 0.5.120, and only `duration` still refuses.
+
+        And it refuses it for being a negative length rather than for not being a number,
+        which was the sentence it used to give: "duration must be a number of seconds, got
+        -5" states the one thing about -5 that is not the problem, in a call that accepts the
+        same value for the two options beside it.
       */
-      [{ duration: -5 }, /duration must be a number of seconds, got -5/u],
+      [{ duration: -5 }, /duration is a length of time, so it cannot be -5\./u],
       [{ duration: Infinity }, /duration must be a number of seconds/u],
       [{ end: NaN }, /end must be a number of seconds/u],
       /*

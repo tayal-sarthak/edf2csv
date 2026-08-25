@@ -70,9 +70,21 @@ export function assertOptions(options: {
   for (const name of ['start', 'duration', 'end'] as const) {
     const value = options[name];
     if (value === undefined) continue;
-    const positive = name === 'duration';
-    if (typeof value !== 'number' || !Number.isFinite(value) || (positive && value < 0)) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
       throw new OptionError(`${name} must be a number of seconds, got ${describe(value)}.`);
+    }
+    /*
+      A length below zero is refused for what it is, rather than for not being a number.
+
+      `duration: -1` came back as "duration must be a number of seconds, got -1", which is
+      not the reason and not true: -1 is a number of seconds, and this same call accepts it
+      for `start` and for `end`, where a recording timed from before zero makes it an
+      ordinary position. What is wrong is that a duration is a length, and no length is
+      negative — which is what the command line says for the same value, and what the API
+      reference has always said this check enforces.
+    */
+    if (name === 'duration' && value < 0) {
+      throw new OptionError(`duration is a length of time, so it cannot be ${describe(value)}.`);
     }
   }
 

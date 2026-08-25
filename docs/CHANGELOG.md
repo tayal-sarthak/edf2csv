@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.170
+
+### a negative length refused for not being a number, beside two options that take one
+
+`convert(file, { duration: -1 })` was refused with
+
+```
+OptionError: duration must be a number of seconds, got -1.
+```
+
+which names the one thing about `-1` that is not the problem. It is a number of seconds, and
+the same call accepts it as one: `start: -1` and `end: -1` are ordinary, since a recording
+timed from its first record's timekeeping annotation may sit before zero, and 0.5.120 made
+positions take a sign for exactly that reason. What is wrong is that a duration is a length,
+and no length is negative.
+
+The command line has always said so — `--duration "-5" is not a valid non-negative time` —
+and the API reference has always described this check as refusing "a `duration` that is not a
+non-negative one". Only the message a library caller actually reads said otherwise, because
+one branch covered two rejections and had one sentence for them.
+
+Non-finite still answers as before, for all three: `NaN` reaches a comparison as false and
+would take the whole recording without saying so.
+
 ## 0.7.169
 
 ### one page, two answers about a flag that does nothing and can still fail
