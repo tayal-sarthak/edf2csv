@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.165
+
+### two answers to what a mode that writes no files should do
+
+`--stdout` refuses three flags on the grounds that it writes no files, and says so:
+
+```
+error: --stdout and --checksum cannot be combined: --stdout writes no files, and --checksum
+       has nothing to act on.
+```
+
+`--info` writes no files either — not even the directory `--out` names — and accepted all three
+silently, along with `--jobs` and `--quiet`. Two answers to one question, and neither page said
+there were two.
+
+Both answers stay. `--stdout` replaces the destination, so a flag about files contradicts the
+request; `--info` is the same command with a word added to preview it, and refusing a flag would
+mean editing the command line before you could ask what it would do. The `--info` section now
+names the five it ignores and gives that reason, and a check runs all five against the survey and
+the two refusals against `--stdout`.
+
+Found by crossing every flag with every other and asking which pairs changed nothing at all.
+
 ## 0.7.164
 
 ### a progress byte count that never reaches the end

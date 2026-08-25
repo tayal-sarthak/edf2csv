@@ -3911,6 +3911,47 @@ describe('documentation and source agree on their lists', () => {
       `the page lists ${[...listed].sort()}; these move the estimate: ${[...moves].sort()}`);
   });
 
+  it('says which flags --info ignores, where --stdout refuses them', async () => {
+    /*
+      Both modes write no files. `--stdout` refuses `--checksum`, `--force` and `--out` for
+      exactly that reason, quoting it — "`--stdout` writes no files, and `--checksum` has
+      nothing to act on" — and `--info` accepted all three and did nothing, along with
+      `--jobs` and `--quiet`. Two answers to one question, with neither page saying there
+      were two.
+
+      The difference is worth keeping: `--info` is the same command with a word added, so
+      refusing a flag would mean editing the command line before you could preview it.
+    */
+    const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+    const survey = async (extra) =>
+      (await run(process.execPath, [CLI, recording, '--info', '--json', ...extra])).stdout;
+    const plain = await survey([]);
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-infoignores-'));
+    try {
+      const ignored = ['--checksum', '--force', ['--out', path.join(work, 'never')], ['--jobs', '2'], '--quiet'];
+      for (const flag of ignored) {
+        const extra = Array.isArray(flag) ? flag : [flag];
+        assert.equal(await survey(extra), plain, `--info ${extra.join(' ')} changed the survey`);
+      }
+      // Not even the directory --out names.
+      await assert.rejects(readdir(path.join(work, 'never')), '--info created a destination');
+
+      // And the same three, refused by the mode that does say so.
+      for (const flag of ['--checksum', '--force']) {
+        const refused = await run(process.execPath, [CLI, recording, '--stdout', flag])
+          .then(() => ({ code: 0, stderr: '' }), (error) => ({ code: error.code, stderr: String(error.stderr ?? '') }));
+        assert.equal(refused.code, 2, `--stdout ${flag} was not refused`);
+        assert.match(refused.stderr, /has nothing to act on/u, refused.stderr);
+      }
+
+      const page = (await read('website/content/cli-reference.md')).replace(/\s+/gu, ' ');
+      assert.match(page, /Five flags are accepted and ignored: `--checksum`, `--force`, `--out`, `--jobs` and `--quiet`/u,
+        'the page does not say which flags --info ignores');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says which flags do nothing under --annotations-only', async () => {
     /*
       The page named `--start`, `--duration`, `--end` and `--channels` and stopped. Six flags
