@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.167
+
+### a suggestion that names a different signal, ranked above the right one
+
+`--channels` ranks its suggestions by edit distance, which charges one edit for every
+character a label has and the term does not. Writing part of a channel's name — the
+commonest way to get one wrong — therefore scores worse the more of the label it leaves
+out, and loses to any unrelated label that happens to be the term's own length.
+
+`mixed-rates.edf` holds `EEG Fpz-Cz` and `ECG`. `--channels EEG` is seven edits from the
+channel it names and one from the other, so the answer was:
+
+```
+error: No channel named "EEG". Did you mean "ECG"?
+```
+
+A suggestion that is retypeable, close, and about the wrong signal. Following it converts a
+heart trace under the belief that it is an EEG, exits 0, and puts nothing in the output to
+say which channel was asked for. `--channels Fpz` got no suggestion at all, on a file with
+exactly one channel it could have meant.
+
+A label that contains the term now scores 0, so it is offered first, ahead of a near-miss on
+another channel — which is still offered, second. A term the file has nothing for keeps the
+bare error and the pointer to `--info`, which is the case that branch exists for.
+
 ## 0.7.166
 
 ### the interrupt code a script actually meets, on neither summary

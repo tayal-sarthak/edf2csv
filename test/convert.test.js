@@ -1582,6 +1582,41 @@ describe('channel selection', () => {
     await file.close();
   });
 
+  it('offers the label an abbreviation is part of, ahead of a near-miss on another channel', async () => {
+    /*
+      Edit distance charges one edit per character the label has and the term does not, so the
+      commonest way to get a channel name wrong — writing part of it — scores worse the more of
+      the label it leaves out. `mixed-rates.edf` holds `EEG Fpz-Cz` and `ECG`, and `--channels
+      EEG` is seven edits from the one it names and one from the other. The answer was
+
+          error: No channel named "EEG". Did you mean "ECG"?
+
+      which is retypeable, close, and about the wrong signal: taking it converts a heart trace
+      believing it to be an EEG, with a zero exit code and nothing in the output saying so. A
+      term the file has no answer for is the case the bare error exists for; this was not it.
+    */
+    const file = await EdfFile.open(fixture('mixed-rates.edf'));
+    const refusal = (term) => {
+      try {
+        selectChannels(file.header.signals, [term]);
+        return null;
+      } catch (error) {
+        assert.ok(error instanceof ChannelSelectionError, `${term} threw ${error}`);
+        return error.message;
+      }
+    };
+
+    // The channel it is part of comes first; the near-miss is still offered, second.
+    assert.match(refusal('EEG'), /Did you mean "EEG Fpz-Cz", "ECG"\?/u);
+    // Case folds, and a term from the middle of a label counts as much as one from the front.
+    assert.match(refusal('fpz'), /Did you mean "EEG Fpz-Cz"\?/u);
+    assert.match(refusal('rectal'), /Did you mean "Temp rectal"\?/u);
+    // A term nothing contains and nothing is close to still gets the bare error.
+    assert.ok(!refusal('XYZZY').includes('Did you mean'), refusal('XYZZY'));
+
+    await file.close();
+  });
+
   it('counts the channels it did not name rather than stopping at three', async () => {
     /*
       `.slice(0, 3)` said nothing about what it left. On a recording with ECG1 through ECG5,

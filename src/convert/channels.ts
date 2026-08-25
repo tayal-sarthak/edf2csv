@@ -297,8 +297,23 @@ function suggest(term: string, candidates: readonly EdfSignal[]): string {
   // Duplicated labels would otherwise be suggested twice, which reads like two
   // different options while naming the same thing.
   const unique = [...new Set(candidates.map((s) => s.label))];
+  /*
+    A label that contains the term is the answer, however many edits away it is.
+
+    Edit distance charges one edit per character the label has and the term does not, so an
+    abbreviation — the commonest way to get this wrong — scores worse the more of the label it
+    leaves out. On a recording whose channels are `EEG Fpz-Cz` and `ECG`, `--channels EEG` is
+    seven edits from the channel it names and one from the other, and the answer was `Did you
+    mean "ECG"?`: a suggestion that is retypeable, close, and about the wrong signal. Taking it
+    converts a heart trace under the belief it is an EEG, and the run succeeds.
+  */
+  const needle = term.toLowerCase();
   const scored = unique
-    .map((label) => ({ label, distance: editDistance(term.toLowerCase(), label.toLowerCase()) }))
+    .map((label) => {
+      const lower = label.toLowerCase();
+      const distance = needle !== '' && lower.includes(needle) ? 0 : editDistance(needle, lower);
+      return { label, distance };
+    })
     .filter((c) => c.label !== '' && c.distance <= Math.max(2, Math.floor(term.length / 3)))
     .sort((a, b) => a.distance - b.distance);
   if (scored.length === 0) return '';

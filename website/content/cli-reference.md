@@ -300,7 +300,7 @@ error: No channel named "ECQ". Did you mean "ECG"?
        Run with --info to list the channels in this file.
 ```
 
-Suggestions appear only when a label is close enough: within an edit distance of 2, or one third of the term's length for longer terms. A term with nothing similar in the file gets the bare error and the pointer to `--info`.
+Suggestions appear only when a label is close enough: within an edit distance of 2, or one third of the term's length for longer terms. A label that *contains* the term counts as close whatever its length, so `--channels EEG` on a recording holding `EEG Fpz-Cz` offers that channel — edit distance alone charges one edit per character the term leaves out, which ranks an abbreviation below an unrelated label of the same length as the term. A term with nothing similar in the file gets the bare error and the pointer to `--info`.
 
 ### The annotation channel
 
