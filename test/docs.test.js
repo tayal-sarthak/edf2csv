@@ -2537,6 +2537,55 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('holds the three summary fields metadata.json carries under other names', async () => {
+    /*
+      The reference names three: the summary's `records` is `recording.data_records`, its
+      `annotations` is `conversion.annotations_written`, and its `warnings` is `notes`. Two of
+      those hold. The third does not, and warnings-and-errors says so on its own last line —
+      `notes` is the same list *minus* `STALE_OUTPUT` — while this page asserted a plain
+      equality, on the paragraph a script author reads when choosing which document to consume.
+
+      STALE_OUTPUT is the one that matters for that choice. It says the destination holds files
+      from a different recording, which is exactly what someone auditing an archive six months
+      later would want, and it is the single warning the archived document never carries.
+
+      Raised by converting a mixed-rate recording and then a single-rate one into the same
+      directory: the first writes `signals_256hz.csv` and friends, the second writes
+      `signals.csv`, and the older files are left beside it.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-notes-'));
+    try {
+      const out = path.join(work, 'out');
+      const fixture = (n) => path.join(ROOT, 'test/fixtures/generated', n);
+      await run(process.execPath, [CLI, fixture('mixed-rates.edf'), '--out', out, '--quiet']);
+      const { stdout } = await run(process.execPath, [
+        CLI, fixture('tiny.edf'), '--out', out, '--force', '--quiet', '--json',
+      ]);
+      const summary = JSON.parse(stdout);
+      const archived = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+
+      assert.equal(summary.records, archived.recording.data_records);
+      assert.equal(summary.annotations, archived.conversion.annotations_written);
+
+      const reported = summary.warnings.map((w) => w.code);
+      const kept = archived.notes.map((w) => w.code);
+      assert.ok(reported.includes('STALE_OUTPUT'), `this run raised ${reported.join(', ')}`);
+      assert.deepEqual(kept, reported.filter((code) => code !== 'STALE_OUTPUT'));
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    // And the page says which of the three is the one with an exception.
+    const page = await read('website/content/cli-reference.md');
+    const claim = /the `warnings` both documents here carry is `notes` there\.([^\n]*)/u.exec(page);
+    assert.ok(claim, 'the paragraph naming the three fields is gone');
+    assert.match(
+      claim[1],
+      /STALE_OUTPUT/u,
+      'the page states the three as plain equalities, and one of them is not',
+    );
+  });
+
   it('says the same thing in both places about --channels under --annotations-only', async () => {
     /*
       The reference answered this twice, and the two answers disagreed.

@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.173
+
+### two of three fields equal, promised as three
+
+The reference names three fields the run summary and `metadata.json` share under different
+names: `records` is `recording.data_records`, `annotations` is `conversion.annotations_written`,
+and "the `warnings` both documents here carry is `notes` there". Two of those hold exactly.
+
+The third does not. `notes` is that list minus `STALE_OUTPUT`, which warnings-and-errors states
+correctly on its own last line — and this page, the one a script author reads when choosing
+which document to consume, asserted a plain equality:
+
+```
+--json     warnings: ["STALE_OUTPUT"]
+metadata   notes:    []
+```
+
+STALE_OUTPUT is the worst one to be wrong about here. It says the destination holds files from a
+different recording, which is exactly what someone auditing an archived conversion months later
+would want to find — and it is the single warning the archived document never carries. The
+exclusion is right: it is a fact about the destination at the moment of the run rather than about
+the conversion, and an archive should not go on asserting it. Only the sentence promising
+otherwise was wrong.
+
+The page now names the exception and why it exists, and a check converts a mixed-rate recording
+and then a single-rate one into one directory — the run that raises it — and holds all three
+relationships, the exception included.
+
 ## 0.7.172
 
 ### the link checker's regex, blind to the links likeliest to break
