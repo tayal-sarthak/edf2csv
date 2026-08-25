@@ -8,6 +8,23 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.166
+
+### the interrupt code a script actually meets, on neither summary
+
+The FAQ has a section headed *How do I check whether a conversion had problems from a script?*
+It enumerates the codes a pipeline has to handle — 0, 1, 2, the `--strict` 1 that means the
+output was written anyway, "and an interrupted run exits 130" — and stops there.
+
+143 is missing, and it is the one an automated pipeline is likelier to meet: `timeout`, systemd,
+a CI runner and a container stop all send SIGTERM, where 130 needs somebody at a keyboard. A
+script testing only for 130 reads a killed run as an ordinary failure. getting-started's summary
+line had the same gap; the two full tables, in cli-reference and warnings-and-errors, have always
+had both.
+
+Both now name both, and a check reads the codes out of the CLI and requires that a page naming
+either names the other.
+
 ## 0.7.165
 
 ### two answers to what a mode that writes no files should do

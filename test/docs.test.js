@@ -3911,6 +3911,32 @@ describe('documentation and source agree on their lists', () => {
       `the page lists ${[...listed].sort()}; these move the estimate: ${[...moves].sort()}`);
   });
 
+  it('names the other signal wherever it names one', async () => {
+    /*
+      The FAQ section headed "How do I check whether a conversion had problems from a script?"
+      listed 0, 1, 2 and 130 and stopped. 143 is the one a script is likelier to meet — it is
+      what `timeout`, systemd, a CI runner and a container stop all send — so the page that
+      set out to enumerate the codes a pipeline handles left out the one an automated pipeline
+      actually produces. getting-started's summary line did the same.
+
+      Both codes come from the CLI, so both are read from it: a page naming either has to name
+      both.
+    */
+    const cli = await read('src/cli.ts');
+    for (const code of ['130', '143']) {
+      assert.match(cli, new RegExp(`\\b${code}\\b`, 'u'), `the CLI no longer exits ${code}`);
+    }
+    const wrong = [];
+    for (const page of ['website/content/faq.md', 'website/content/getting-started.md',
+      'website/content/cli-reference.md', 'website/content/warnings-and-errors.md', 'README.md']) {
+      const text = await read(page);
+      const has130 = /\b130\b/u.test(text);
+      const has143 = /\b143\b/u.test(text);
+      if (has130 !== has143) wrong.push(`${page}: 130 ${has130}, 143 ${has143}`);
+    }
+    assert.deepEqual(wrong, [], `a page names one interrupt code and not the other:\n  ${wrong.join('\n  ')}`);
+  });
+
   it('says which flags --info ignores, where --stdout refuses them', async () => {
     /*
       Both modes write no files. `--stdout` refuses `--checksum`, `--force` and `--out` for
