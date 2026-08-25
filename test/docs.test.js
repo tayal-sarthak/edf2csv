@@ -863,10 +863,28 @@ describe('documentation and source agree on their lists', () => {
       );
     }
 
+    /*
+      Same-page links are matched too, which the pattern here did not do.
+
+      It required an href beginning with `/`, so `[described above](#some-heading)` — a link
+      to a heading in the file being edited — was not examined at all. That is the form most
+      exposed to the rename this check exists to catch: the heading and the link to it sit in
+      one file, and renaming the heading is the edit that breaks the link, with nothing
+      between them to notice. Eleven of them were going unread while the comment above said
+      anchors were checked.
+    */
     const broken = [];
+    let sameFile = 0;
     for (const name of names) {
       const text = await read(path.join('website/content', name));
-      for (const [, label, href] of text.matchAll(/\[([^\]]+)\]\((\/[^)]*)\)/gu)) {
+      for (const [, label, href] of text.matchAll(/\[([^\]]+)\]\(([/#][^)]*)\)/gu)) {
+        if (href.startsWith('#')) {
+          sameFile++;
+          if (!anchors.get(name.slice(0, -3)).has(href.slice(1))) {
+            broken.push(`${name}: [${label}](${href}) names no heading on its own page`);
+          }
+          continue;
+        }
         const [route, fragment] = href.split('#');
         const slug = route.replace(/^\/docs\//u, '').replace(/\/$/u, '');
         if (!route.startsWith('/docs/')) {
@@ -879,6 +897,7 @@ describe('documentation and source agree on their lists', () => {
       }
     }
     assert.deepEqual(broken, [], broken.join('\n'));
+    assert.ok(sameFile >= 8, `expected the pages to link within themselves, found ${sameFile}`);
   });
 
   it('cites the version being released', async () => {

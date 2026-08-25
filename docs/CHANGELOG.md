@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.172
+
+### the link checker's regex, blind to the links likeliest to break
+
+The link checker's own comment says "Anchors are checked too, since a heading can be renamed
+without the links to it moving." It matched hrefs with `/\[([^\]]+)\]\((\/[^)]*)\)/` — an href
+beginning with a slash — so a link written `[described above](#some-heading)` was not examined
+at all. Eleven of those sit in the content, and none of them was being read.
+
+That is the form most exposed to the rename the check exists to catch. A cross-page link and
+its heading live in different files, so a rename is at least an edit in one place and a link in
+another. A same-page link and its heading live in the file being edited, which is exactly where
+a heading gets renamed and the sentence pointing at it does not.
+
+Both forms are matched now, and the count of same-page links is asserted rather than assumed,
+so the half that was silently unread cannot go back to zero without the check saying so. Nothing
+was broken today — all eleven resolve, checked against the site's own `slugify` rather than a
+copy of the rule, as this test has done since 0.5.1.
+
 ## 0.7.171
 
 ### a run of nines called negative, on the two options that take a sign
