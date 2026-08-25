@@ -2518,6 +2518,68 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('says the same thing in both places about --channels under --annotations-only', async () => {
+    /*
+      The reference answered this twice, and the two answers disagreed.
+
+      Under `--channels`, "Interaction with --annotations-only" says the selection has nothing
+      to act on but the names are still checked, and a term matching no channel is a usage
+      error in this mode too. That is what the tool does, on purpose — 0.5.x made it so,
+      because a mistyped name had been the one form of bad input this mode accepted quietly.
+
+      Under `--annotations-only`, the same page said `--channels` "is ignored, as described
+      above", and grouped it with `--decimals` and `--layout` as accepted-and-doing-nothing
+      "for the same reason": that a batch passes one set of flags for every recording in it.
+      That reason is real and it is exactly where the claim breaks — a folder where only some
+      recordings carry the named channel fails on the rest, which is what a reader following
+      that paragraph would have written the command believing could not happen.
+
+      Both halves are checked here against a run, so the page cannot go back to promising the
+      one behaviour on the page that documents the flag and the other on the page that
+      documents the mode.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-annot-channels-'));
+    try {
+      const input = path.join(ROOT, 'test/fixtures/generated/annotations.edf');
+      const typo = await run(process.execPath, [
+        CLI, input, '--annotations-only', '--channels', 'NOT A CHANNEL', '--out', path.join(work, 'typo'),
+      ]).then(() => ({ code: 0, stderr: '' }), (error) => error);
+      assert.equal(typo.code, 2, '--annotations-only no longer checks the names it is given');
+      assert.match(typo.stderr, /No channel named "NOT A CHANNEL"/u);
+
+      // And a name that does match changes nothing about what the run writes.
+      for (const [dir, extra] of [['plain', []], ['picked', ['--channels', 'EEG Fpz-Cz']]]) {
+        await run(process.execPath, [
+          CLI, input, '--annotations-only', '--out', path.join(work, dir), '--quiet', ...extra,
+        ]);
+      }
+      const names = (await readdir(path.join(work, 'plain'))).sort();
+      assert.deepEqual(names, (await readdir(path.join(work, 'picked'))).sort());
+      for (const name of names.filter((n) => n.endsWith('.csv'))) {
+        assert.equal(
+          await readFile(path.join(work, 'plain', name), 'utf8'),
+          await readFile(path.join(work, 'picked', name), 'utf8'),
+          `${name} differs, so --channels does select something in this mode after all`,
+        );
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    const page = await read('website/content/cli-reference.md');
+    const section = /\n## --annotations-only\n([\s\S]*?)\n## /u.exec(page);
+    assert.ok(section, 'the --annotations-only section is gone');
+    assert.ok(
+      !/`--channels` is ignored/u.test(section[1]),
+      'the --annotations-only section calls --channels ignored, and a typo in it fails the run',
+    );
+    assert.match(
+      section[1],
+      /`--channels`[\s\S]*?names are still checked/u,
+      'the --annotations-only section no longer says --channels is checked',
+    );
+  });
+
   it('lists every flag whose value the command line refuses on its own', async () => {
     /*
       "**Exit 2** covers anything decided before touching data", says the reference, and then

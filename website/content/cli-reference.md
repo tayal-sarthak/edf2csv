@@ -416,16 +416,20 @@ edf2csv sleep-study.edf --start 00:30:00 --end 00:35:00
 
 Writes the EDF+ event list and nothing else. The output directory gets `annotations.csv`, `channels.csv` and `metadata.json`, with no signal files. It's fast, since no data records are converted, and it's what you want when you need a scoring or event file out of a large recording without the samples.
 
-`--start`, `--duration` and `--end` still filter the events. `--channels` is ignored, as described above.
+`--start`, `--duration` and `--end` still filter the events. `--channels` selects nothing here, since
+no signal table is written — but its names are still checked, as [described above](#interaction-with---annotations-only):
+a term matching no channel is a usage error in this mode too. It is the one flag that does nothing
+and can still stop the run, which matters most in a batch, where a term naming a channel only some
+of the recordings carry fails on the rest.
 
 The rest of the flags divide the same way, and it is worth saying which side each falls on, since
 nothing in a run reports a flag that did nothing. `--gzip` and `--bom` act on the two files that
 are written, so `annotations.csv.gz` and a byte order mark on `annotations.csv` are both what you
 get. `--checksum` records the input's SHA-256 in `metadata.json` as usual. `--decimals` and
 `--layout` have nothing to act on — both describe the signal table, and there is none — so they
-are accepted and do nothing rather than being refused, for the same reason `--channels` is: a
-batch converting a folder passes one set of flags for every recording in it. `--stdout` is the
-exception that is refused outright, because it writes no files at all and this mode is only files.
+are accepted and do nothing rather than being refused: a batch converting a folder passes one set
+of flags for every recording in it, and neither can be wrong about a particular one. `--stdout` is
+the exception that is refused outright, because it writes no files at all and this mode is only files.
 
 `--info --annotations-only` names the files rather than estimating rows, since the estimate describes the signal tables and there are none:
 

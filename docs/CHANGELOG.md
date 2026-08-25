@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.169
+
+### one page, two answers about a flag that does nothing and can still fail
+
+The reference answers this twice, and the two answers disagreed.
+
+Under `--channels`, "Interaction with --annotations-only" says the selection has nothing to act
+on but the names are still checked, and that a term matching no channel is a usage error in this
+mode too. That is what the tool does, deliberately: a mistyped name had been the one form of bad
+input this mode accepted in silence.
+
+Under `--annotations-only`, the same page said `--channels` "is ignored, as described above" —
+pointing at the passage that says the opposite — and grouped it with `--decimals` and `--layout`
+as accepted-and-doing-nothing "for the same reason": that a batch passes one set of flags for
+every recording in it.
+
+That reason is real, and it is exactly where the claim breaks. A folder converted with
+`--annotations-only --channels "EEG Fpz-Cz"` converts the recordings that carry the channel and
+fails on the ones that do not:
+
+```
+error: other.edf: No channel named "EEG Fpz-Cz".
+Converted 1 of 2 recordings; 1 failed.
+```
+
+which is the run a reader following that paragraph would have written believing it could not
+fail. The mode section now says what the flag section says, and names the batch case as the place
+it is felt. A check runs both halves — the typo refused, and a name that does match changing not
+one byte of what is written — so the page cannot go back to giving one answer beside the flag and
+another beside the mode.
+
 ## 0.7.168
 
 ### the one batch summary written in the singular, quoted in the plural
