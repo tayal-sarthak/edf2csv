@@ -133,7 +133,7 @@ recordings is unknown.
 When some recordings *were* found alongside it, the closing line counts the unreadable paths beside the conversions, since how many recordings they held is the thing nobody knows:
 
 ```
-Converted 1 of 1 recordings; 1 path could not be read.
+Converted 1 of 1 recording; 1 path could not be read.
 ```
 
 Anything that is not a directory is passed to the reader as given, so a missing path or a special file reports itself rather than being skipped.

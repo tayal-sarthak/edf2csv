@@ -2456,6 +2456,68 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
   });
 
+  it('closes a batch with the count in the number the tool would use', async () => {
+    /*
+      The batch summary counts recordings, and the noun after the count agrees with it. Every
+      quoted example on the pages had a plural count and so read correctly, except the one
+      example written to show a *single* recording converted beside a path that could not be
+      read, which was quoted as
+
+          Converted 1 of 1 recordings; 1 path could not be read.
+
+      a sentence no run produces. It is the one line on the page a reader would match against
+      to recognise this case in a log, and the only place any page quotes the singular.
+
+      Generated rather than listed, like the record-order warnings above: a batch of one and a
+      batch of three, and every quoted summary has to open with one of the two phrasings. The
+      unreadable-path clause is not reproduced — that needs a directory the process cannot
+      open, which is not a fact about this tool and is not true when the suite runs as root —
+      so the comparison is of the counted phrase, which is the part that has a plural in it.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-batch-count-'));
+    const spoken = new Set();
+    try {
+      const pool = ['tiny.edf', 'annotations.edf', 'mixed-rates.edf'];
+      for (const count of [1, 3]) {
+        const folder = path.join(work, `n${count}`);
+        for (const name of pool.slice(0, count)) {
+          await cp(path.join(ROOT, 'test/fixtures/generated', name), path.join(folder, name));
+        }
+        const { stderr } = await run(process.execPath, [
+          CLI, folder, '--out', path.join(work, `n${count}-out`),
+        ]);
+        const line = /^Converted \d+ of \d+ recordings?/mu.exec(stderr);
+        assert.ok(line, `a batch of ${count} printed no summary: ${stderr}`);
+        spoken.add(line[0]);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.deepEqual(
+      [...spoken].sort(),
+      ['Converted 1 of 1 recording', 'Converted 3 of 3 recordings'],
+      'the summary no longer says what this check compares the pages against',
+    );
+
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) =>
+      n.endsWith('.md'),
+    );
+    let checked = 0;
+    for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      for (const [quoted] of (await read(page)).matchAll(/^Converted \d+ of \d+ recordings?/gmu)) {
+        checked++;
+        const [, converted, found] = /^Converted (\d+) of (\d+)/u.exec(quoted);
+        const plural = found === '1' ? 'recording' : 'recordings';
+        assert.equal(
+          quoted,
+          `Converted ${converted} of ${found} ${plural}`,
+          `${page} quotes a summary the tool does not print: "${quoted}"`,
+        );
+      }
+    }
+    assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
+  });
+
   it('lists every flag whose value the command line refuses on its own', async () => {
     /*
       "**Exit 2** covers anything decided before touching data", says the reference, and then

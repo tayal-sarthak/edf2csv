@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.168
+
+### the one batch summary written in the singular, quoted in the plural
+
+A batch closes with a line counting what it converted, and the noun agrees with the count:
+`Converted 3 of 3 recordings.`, `Converted 1 of 1 recording.` Every example on the pages had
+a plural count and so read correctly, except the one written to show the case that needs the
+singular — a batch where one recording converted and one path could not be read:
+
+```
+Converted 1 of 1 recordings; 1 path could not be read.
+```
+
+No run produces that sentence. It is the only place any page quotes the singular, and it is
+the line a reader would match a log against to recognise this case, which is the whole reason
+the example is there.
+
+The pages are now checked against the tool rather than against a list kept beside them: a
+batch of one and a batch of three are converted, and every quoted `Converted N of M ...` line
+has to carry the plural the count calls for. The unreadable-path clause is not reproduced,
+since that needs a directory the process cannot open — not a fact about this tool, and not
+true when the suite runs as root.
+
 ## 0.7.167
 
 ### a suggestion that names a different signal, ranked above the right one
