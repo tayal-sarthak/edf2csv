@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.171
+
+### a run of nines called negative, on the two options that take a sign
+
+The same shape as 0.7.170, one layer up, and worse for being on the command line.
+
+`assertFinite` guarded two rejections with one condition and one sentence:
+`!Number.isFinite(value) || (!allowNegative && value < 0)`, answered by
+`"…" is not a valid non-negative time`. A four-hundred-digit number is a positive value that
+`Number` returns as `Infinity`, so a run of nines was refused for being negative:
+
+```
+error: --start "999…" is not a valid non-negative time.
+```
+
+On `--start` and `--end` that was not a rule at all. Both are parsed with the sign allowed —
+a recording timed from before zero has no other way to be addressed, which is what 0.5.120
+was for — so overflow is the *only* way either of them reaches this check, and the only answer
+either could give was about the one thing they permit.
+
+Overflow now says what it is, whichever option it was given to and whichever sign it carries,
+and the sentence about signs stays where it belongs, on `--duration`. All three forms reach it:
+the bare number, the clock form's deliberately unbounded hours field, and a unit token.
+
 ## 0.7.170
 
 ### a negative length refused for not being a number, beside two options that take one

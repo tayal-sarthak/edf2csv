@@ -224,7 +224,22 @@ function assertFinite(
   input: string,
   allowNegative: boolean,
 ): number {
-  if (!Number.isFinite(value) || (!allowNegative && value < 0)) {
+  /*
+    Overflow answers for itself, rather than borrowing the sentence about signs.
+
+    One branch covered two rejections. `--start` with four hundred nines is a positive value
+    that `Number` returns as `Infinity`, and the answer was `is not a valid non-negative
+    time` — which names the one thing about it that is not the problem. Worse on the two
+    options this is called with `allowNegative` for: `--start` and `--end` take a sign on
+    purpose, since a recording timed from before zero has no other way to be addressed, so
+    "non-negative" is not their rule at all and overflow is the only way they reach here.
+  */
+  if (!Number.isFinite(value)) {
+    throw new TimeRangeError(
+      `${optionName} "${input}" is further from zero than a number of seconds can hold.`,
+    );
+  }
+  if (!allowNegative && value < 0) {
     throw new TimeRangeError(`${optionName} "${input}" is not a valid non-negative time.`);
   }
   return value;

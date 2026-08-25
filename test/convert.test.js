@@ -167,7 +167,57 @@ describe('time specifications', () => {
       );
     }
   });
+
+  it('refuses a value that overflows for overflowing, not for having a sign', async () => {
+    /*
+      One branch covered two rejections and had one sentence for them: `!Number.isFinite(value)
+      || (!allowNegative && value < 0)` answered `is not a valid non-negative time`.
+
+      A four-hundred-digit number is a positive value that `Number` returns as `Infinity`, so
+      that sentence named the one thing about it that was not the problem. On `--start` and
+      `--end` it was not a rule at all — both are parsed with the sign allowed, because a
+      recording timed from before zero has no other way to be addressed, so overflow is the
+      only way either of them reaches this check. `--start` answered a run of nines by calling
+      it negative.
+
+      All three forms overflow, so all three are checked: the bare number, the clock form's
+      unbounded hours field, and a unit token.
+    */
+    const nines = '9'.repeat(400);
+    for (const [option, allowNegative] of [['--start', true], ['--end', true], ['--duration', false]]) {
+      for (const text of [nines, `${nines}:00:00`, `${nines}h`]) {
+        assert.throws(
+          () => parseTimeSpec(text, option, allowNegative),
+          (error) => {
+            assert.ok(error instanceof TimeRangeError, `${option} ${text.slice(0, 8)} threw ${error}`);
+            assert.match(error.message, /is further from zero than a number of seconds can hold\./u);
+            return true;
+          },
+        );
+      }
+    }
+    // Negative and overflowing is still the overflow, on an option that takes a sign.
+    assert.match(
+      refusalOf(() => parseTimeSpec(`-${nines}`, '--start', true)),
+      /is further from zero than a number of seconds can hold\./u,
+    );
+    // And a length below zero keeps the sentence that is about signs.
+    assert.match(
+      refusalOf(() => parseTimeSpec('-5', '--duration')),
+      /--duration "-5" is not a valid non-negative time\./u,
+    );
+  });
 });
+
+/** The message a call refuses with, for comparing two refusals side by side. */
+function refusalOf(call) {
+  try {
+    call();
+  } catch (error) {
+    return error.message;
+  }
+  return assert.fail('expected a refusal, and the call returned');
+}
 
 describe('column naming', () => {
   it('keeps EDF labels verbatim, spaces included', async () => {

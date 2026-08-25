@@ -366,7 +366,11 @@ error: --start "1h banana" is not a time I understand. Try 30s, 5m, 1h30m, 00:30
 error: --start "5 min" puts a space between a number and its unit. Write them together: 5min
 error: --start "+5s" begins with a plus. Write the number on its own: 5s
 error: --duration is empty. Try a value like 30s, 5m, or 00:30:00.
+error: --duration "-5" is not a valid non-negative time.
+error: --start "999…" is further from zero than a number of seconds can hold.
 ```
+
+The last two are separate answers because they are separate problems. A value that overflows to infinity is refused whichever option it was given to, sign included; a value below zero is refused only for `--duration`, which is a length. Until 0.7.171 both came back as the sentence about signs, so `--start` — an option that takes a sign on purpose — answered a four-hundred-digit number by calling it negative.
 
 ### How the window is resolved
 
