@@ -2537,6 +2537,56 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('lists the whole of EdfFile in the block that lists EdfFile', async () => {
+    /*
+      The `class EdfFile` block is what a reader consults to know what the class offers, and it
+      was missing three members — while the same page used them below it. Its own worked
+      example calls `file.sha256()`, and the paragraph under that names `changedSinceOpen()`
+      and `modifiedAtOpenMs`, which is the value `metadata.json` records as `source.modified`
+      and the one `INPUT_CHANGED` is decided against. A reader working from the signatures had
+      no way to know any of the three existed; a reader working from the prose could not tell
+      what they returned.
+
+      Read off an instance rather than kept as a list here: every own property and every
+      prototype member has to appear in the block, so the next one added fails this until it
+      does.
+    */
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+    const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/annotations.edf'));
+    let surface;
+    try {
+      surface = [
+        ...Object.keys(file),
+        ...Object.getOwnPropertyNames(Object.getPrototypeOf(file)).filter((n) => n !== 'constructor'),
+      ];
+    } finally {
+      await file.close();
+    }
+    assert.ok(surface.length >= 20, `read ${surface.length} members off EdfFile`);
+
+    const page = await read('website/content/api.md');
+    const block = /^class EdfFile \{\n([\s\S]*?)^\}/mu.exec(page);
+    assert.ok(block, 'the class EdfFile block is gone from the API page');
+    const missing = surface.filter((name) => !new RegExp(`\\b${name}\\b`, 'u').test(block[1]));
+    assert.deepEqual(missing, [], `EdfFile has these and the block does not list them: ${missing.join(', ')}`);
+
+    /*
+      And nothing invented. `readAnnotations` declares its return type inline, so the members
+      of that object are indented past the class's own and are read off separately — they are
+      checked against a real call rather than assumed.
+    */
+    const own = block[1].replace(/readAnnotations\(\): Promise<\{[\s\S]*?\n {2}\}>;/u, '');
+    const declared = [...own.matchAll(/^ {2}(?:readonly |get )?([A-Za-z_][A-Za-z0-9_]*)\s*[(:]/gmu)]
+      .map((m) => m[1])
+      .filter((name) => name !== 'open');
+    assert.ok(declared.length >= 15, `read ${declared.length} names out of the block`);
+    assert.deepEqual(
+      declared.filter((name) => !surface.includes(name)),
+      [],
+      'the block declares members EdfFile does not have',
+    );
+  });
+
   it('names every shape of signals file the rate slug can produce', async () => {
     /*
       sampling-rates prints a table of rate to file name and then the rule behind it: "a

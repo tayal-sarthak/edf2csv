@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.180
+
+### three members used on the page and absent from its own signature block
+
+The `class EdfFile` block on the API page is the listing a reader consults to learn what the
+class offers. It was missing three of its members — `sha256()`, `changedSinceOpen()` and
+`modifiedAtOpenMs` — while the same page used all three below it.
+
+Its own worked example calls `file.sha256()`. The paragraph under that example names
+`changedSinceOpen()` and explains `modifiedAtOpenMs` at length: the file's modification time at
+open, kept as a raw number rather than a `Date` because truncating to whole milliseconds
+reported every undisturbed conversion as one whose input had changed. It is also the value
+`metadata.json` records as `source.modified`, so a caller writing their own metadata beside
+`convert()` needs it and had no signature to work from.
+
+A reader working from the block did not know the three existed; a reader working from the prose
+could not tell what they returned or took.
+
+All three are in the block now, and a check reads the class's own properties and prototype
+members off an instance and requires each to appear there — and each name in the block to be a
+member the class really has.
+
 ## 0.7.179
 
 ### a callback promised at least once, silent on four ordinary runs

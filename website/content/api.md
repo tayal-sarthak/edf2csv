@@ -37,6 +37,8 @@ class EdfFile {
 
   readonly path: string;
   readonly fileSize: number;
+  /** Last-modified time when the file was opened, in ms; `metadata.json`'s `source.modified`. */
+  readonly modifiedAtOpenMs: number;
   readonly header: EdfHeader;
   /** Records actually present in the file, which may differ from the header's claim. */
   readonly recordCount: number;
@@ -54,6 +56,8 @@ class EdfFile {
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number;
   offsetOf(batch: RecordBatch, recordOffset: number, signal: EdfSignal): number;
   annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Uint8Array;
+  sha256(): Promise<string>;           // hex digest over fileSize bytes; see below
+  changedSinceOpen(): Promise<boolean>;  // against fileSize and modifiedAtOpenMs
   readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
