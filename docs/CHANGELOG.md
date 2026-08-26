@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.184
+
+### a promise about type declarations, checked with lib checking off
+
+"TypeScript declarations ship with the package, so `import type` works without installing
+anything else — including `@types/node`, which the declarations deliberately avoid needing. Raw
+bytes are typed as `Uint8Array` rather than `Buffer` for that reason."
+
+The suite's type-checking test could not see that kept. It compiles its probe with
+`skipLibCheck: true` — the one setting that suppresses errors *inside* a `.d.ts` — and with
+`types` unset, so `@types/node` from this repository's own `node_modules` is ambient the whole
+way through. Both halves of the claim are exactly what those two settings hide.
+
+The leak is one re-export away rather than hypothetical. `dist/format/csv.d.ts` imports
+`Writable` from `node:stream` today; nothing in the public graph reaches it, which is why the
+promise still holds. Point a compiler at it with lib checking on and no ambient types and it
+says so immediately:
+
+```
+dist/format/csv.d.ts(9,31): error TS2307: Cannot find module 'node:stream'
+```
+
+That is the error a consumer would get, and the check that looked like it was watching for it
+was configured so it never could. A second probe now compiles the reachable declaration graph
+with `skipLibCheck: false` and `types: []`, naming every exported type and asserting
+`batch.data` is assignable to `Uint8Array` — the specific thing the sentence gives as its
+reason. It passes today, which is the point: nothing was establishing that.
+
 ## 0.7.183
 
 ### one constant, called 8 MiB on one page and 8 MB by the tool

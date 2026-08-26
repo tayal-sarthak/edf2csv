@@ -1268,6 +1268,88 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('type-checks against the declarations with no @types/node installed', async () => {
+    /*
+      "TypeScript declarations ship with the package, so `import type` works without
+      installing anything else — including `@types/node`, which the declarations deliberately
+      avoid needing. Raw bytes are typed as `Uint8Array` rather than `Buffer` for that
+      reason." That is the promise, and the test below it could not see it kept.
+
+      That one compiles a probe with `skipLibCheck: true`, which is the single setting that
+      suppresses errors *inside* a `.d.ts`, and with `types` unset, so `@types/node` from this
+      repository's own node_modules is ambient throughout. Both halves of the claim are
+      exactly what those two settings hide.
+
+      The leak is one re-export away rather than hypothetical: `dist/format/csv.d.ts` imports
+      `Writable` from `node:stream` today. Nothing in the public graph reaches it, which is
+      why the promise holds — but only until something does, and the check that looked like it
+      was watching was not.
+
+      So: lib checking on, no ambient types at all, and the whole reachable declaration graph
+      walked from the entry point.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-notypes-'));
+    try {
+      await writeFile(
+        path.join(work, 'tsconfig.json'),
+        JSON.stringify({
+          compilerOptions: {
+            module: 'nodenext',
+            moduleResolution: 'nodenext',
+            target: 'es2022',
+            strict: true,
+            noEmit: true,
+            skipLibCheck: false,
+            types: [],
+            baseUrl: work,
+            paths: { edf2csv: [path.join(ROOT, 'dist/index.d.ts')] },
+          },
+          files: ['probe.ts'],
+        }),
+      );
+      await writeFile(
+        path.join(work, 'probe.ts'),
+        [
+          "import { EdfFile, convert, parseHeader, selectChannels, buildPlan } from 'edf2csv';",
+          'import type {',
+          '  EdfHeader, EdfSignal, Annotation, Diagnostic, ConversionPlan, ConvertResult,',
+          '  OutputEstimate, ChannelSelection, ResolvedRange, RecordBatch, Scaler,',
+          "} from 'edf2csv';",
+          'declare const file: EdfFile;',
+          'declare const plan: ConversionPlan;',
+          'declare const result: ConvertResult;',
+          'const header: EdfHeader = file.header;',
+          'const signal: EdfSignal | undefined = file.dataSignals[0];',
+          'const estimate: OutputEstimate = plan.estimate;',
+          'const range: ResolvedRange = plan.range;',
+          'const picked: ChannelSelection = selectChannels([], []);',
+          '// The bytes the page says are Uint8Array and not Buffer, which is the reason given.',
+          'declare const batch: RecordBatch;',
+          'const bytes: Uint8Array = batch.data;',
+          'declare const event: Annotation;',
+          'declare const notes: Diagnostic[];',
+          'declare const scaler: Scaler;',
+          'declare const parsed: ReturnType<typeof parseHeader>;',
+          'declare const made: ReturnType<typeof buildPlan>;',
+          'declare const conv: ReturnType<typeof convert>;',
+          'export { header, signal, estimate, range, picked, bytes, event, notes, scaler, parsed, made, conv, result };',
+        ].join('\n'),
+      );
+
+      const tsc = path.join(ROOT, 'node_modules/.bin/tsc');
+      const { stdout, stderr } = await run(tsc, ['-p', path.join(work, 'tsconfig.json')]).catch(
+        (error) => ({ stdout: error.stdout ?? '', stderr: error.stderr ?? String(error) }),
+      );
+      assert.equal(
+        `${stdout}${stderr}`.trim(),
+        '',
+        `the declarations need something a bare TypeScript project does not have:\n${stdout}${stderr}`,
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('lets a TypeScript caller name every type the API hands them', async () => {
     /*
       Types vanish at runtime, so the import test above — which loads dist/index.js and reads
