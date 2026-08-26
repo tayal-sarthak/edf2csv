@@ -616,7 +616,28 @@ export async function main(argv: readonly string[]): Promise<number> {
       }
       if (unreadable.length > 0) failures.push(EXIT_ERROR);
       if (failures.length > 0) return worstOf(failures);
-      return strict && warnings > 0 ? EXIT_ERROR : EXIT_OK;
+      /*
+        And it says that --strict is why, as a conversion does.
+
+        This returned the code and printed nothing. Exit 1 out of `--info` otherwise means the
+        recording could not be read, so a screening script — the use this combination is
+        documented for, "a cheap way to screen a directory before anyone converts them" —
+        could not tell a broken file from one that merely raised a warning. Under `--json` it
+        was worse: a well-formed report on stdout, an empty stderr, and a 1.
+
+        The sentence the conversion path writes is the one that was missing, minus its closing
+        clause: there is no output to say was still written.
+      */
+      if (strict && warnings > 0) {
+        process.stderr.write(
+          `\n${wrap(
+            `--strict: ${warnings} warning${warnings === 1 ? '' : 's'} raised, so this run is ` +
+              `reported as a failure. Nothing was written either way, since --info converts nothing.`,
+          )}\n`,
+        );
+        return EXIT_ERROR;
+      }
+      return EXIT_OK;
     }
 
     // The meter redraws one line in place, which two conversions cannot share. Running them

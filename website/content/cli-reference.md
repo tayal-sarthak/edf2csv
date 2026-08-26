@@ -939,7 +939,7 @@ Pass `--strict` to turn any warning into exit 1:
 edf2csv recording.edf --strict || echo "check the warnings before using this"
 ```
 
-The output is still written. A warning describes the recording rather than a failure to convert it, so discarding the work would be the wrong response — the exit code is the signal, and the files are there to inspect. `--strict` works with `--info` too, which makes it a cheap way to screen a directory for recordings that need a closer look before anyone converts them.
+The output is still written. A warning describes the recording rather than a failure to convert it, so discarding the work would be the wrong response — the exit code is the signal, and the files are there to inspect. Either way the verdict is stated rather than left to the exit code: `--strict: 1 warning raised, so this run is reported as a failure.` `--strict` works with `--info` too, which makes it a cheap way to screen a directory for recordings that need a closer look before anyone converts them — and it says the same thing there, since exit 1 out of `--info` otherwise means the recording could not be read, and a screening script has to be able to tell those apart.
 
 Errors are printed as a single `error:` line plus an optional indented hint. Node stack traces are never printed for any of the conditions above.
 

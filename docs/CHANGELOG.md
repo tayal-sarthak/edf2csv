@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.177
+
+### the mode documented for screening, exiting 1 without saying why
+
+A conversion under `--strict` states its verdict, because a run that exits 1 having written
+every file it meant to is not something the exit code says on its own:
+
+```
+--strict: 1 warning raised, so this run is reported as a failure. The output was
+still written.
+```
+
+`--info --strict` returned the same code and printed nothing at all.
+
+Which matters more there, not less. Exit 1 out of `--info` otherwise means the recording could
+not be read — and screening a directory is exactly what the reference recommends this
+combination for, "a cheap way to screen a directory for recordings that need a closer look".
+A script doing that had no way to separate a file it could not read from one that merely raised
+a warning. Under `--info --strict --json` there was nothing to go on whatsoever: a well-formed
+report on stdout, an empty stderr, and a 1.
+
+It now says the same sentence, without the closing clause it has no right to: nothing was
+written either way, since `--info` converts nothing.
+
 ## 0.7.176
 
 ### an empty stderr promised absolutely, with one flag writing to it

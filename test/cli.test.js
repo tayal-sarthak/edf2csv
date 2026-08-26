@@ -2899,6 +2899,46 @@ describe('converting several recordings at once', () => {
     assert.ok(!quiet.has('ANNOTATION_DECODE_FAILED'), [...quiet].join());
   });
 
+  it('says --strict is why it failed in the mode that writes nothing, too', async () => {
+    /*
+      A conversion under `--strict` states its verdict — "--strict: 1 warning raised, so this
+      run is reported as a failure" — because a run that exits 1 having written every file it
+      meant to is not something the exit code says on its own. `--info --strict` returned the
+      same code and printed nothing.
+
+      Which matters more there, not less. Exit 1 out of `--info` otherwise means the recording
+      could not be read, and screening a directory is what this combination is documented for,
+      so a script had no way to tell a broken file from one that merely raised a warning. Under
+      `--json` there was nothing at all to go on: a well-formed report on stdout, an empty
+      stderr, and a 1.
+    */
+    const noisy = fixture('mixed-rates.edf');
+    const verdict = /--strict: 1 warning raised, so this run is reported as a failure\./u;
+
+    // The sentence is wrapped to the terminal width, so it is read with runs of space collapsed.
+    const unwrapped = (text) => text.replace(/\s+/gu, ' ').trim();
+
+    for (const extra of [[], ['--json'], ['--quiet']]) {
+      const { code, stderr } = await cli([noisy, '--info', '--strict', ...extra]);
+      assert.equal(code, 1, `--info --strict ${extra.join(' ')} exited ${code}`);
+      assert.match(unwrapped(stderr), verdict, stderr);
+      assert.match(
+        unwrapped(stderr),
+        /Nothing was written either way, since --info converts nothing\./u,
+        'it claims output that never existed',
+      );
+    }
+
+    // The conversion keeps its own closing clause, which is the half that differs.
+    const converted = await cli([noisy, '--out', await outDir(), '--strict']);
+    assert.equal(converted.code, 1);
+    assert.match(unwrapped(converted.stderr), /The output was still written\./u);
+
+    // And a recording with nothing to say still exits 0 in both modes.
+    assert.equal((await cli([fixture('tiny.edf'), '--info', '--strict'])).code, 0);
+    assert.equal((await cli([fixture('tiny.edf'), '--out', await outDir(), '--strict'])).code, 0);
+  });
+
   it('does not promise nothing for a recording that has no signal channels', async () => {
     /*
       0.4.51 removed "Would write 0 rows, roughly 0 B." for `--annotations-only`. A recording
