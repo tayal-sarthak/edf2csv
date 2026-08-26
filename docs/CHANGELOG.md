@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.176
+
+### an empty stderr promised absolutely, with one flag writing to it
+
+`--json`'s contract is that stdout is the whole report: the summary, warnings included, and
+nothing on stderr for a wrapper to have to read. The reference put it as an absolute — "warnings
+travel inside the document and stderr stays empty" — and a sweep over every fixture crossed with
+six option sets confirms it, 297 runs with not a byte on stderr.
+
+`--strict` is the exception, and nothing said so:
+
+```
+$ edf2csv recording.edf --out ./out --json --strict >summary.json
+--strict: 1 warning raised, so this run is reported as a failure. The output was
+still written.
+```
+
+97 bytes, `--quiet` or not. It is not a warning, so the neighbouring claim on
+warnings-and-errors — warnings are not also printed as text in this mode — is untouched. But a
+wrapper written to "stderr stays empty" reads that as the run having gone wrong, on a run that
+exited 1 for exactly the reason it was asked to.
+
+The sentence stays: a run that exits 1 having written every file it meant to needs to say why,
+and that is `--strict` doing its job. The page now names it as the one thing that reaches stderr
+here, and a check holds it to being the only one — under `--quiet` too — so "one exception" does
+not quietly become two.
+
 ## 0.7.175
 
 ### the exported slug function, naming files the tool does not write

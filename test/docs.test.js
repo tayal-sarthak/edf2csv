@@ -2537,6 +2537,59 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('leaves stderr to one sentence under --json, and names which one', async () => {
+    /*
+      "warnings travel inside the document and stderr stays empty" is what the page said, and
+      it is what happens — until `--strict`, which writes its verdict there:
+
+          --strict: 1 warning raised, so this run is reported as a failure. The output was
+          still written.
+
+      Not a warning, so the neighbouring claim on warnings-and-errors ("warnings aren't also
+      printed as text in this mode") survives it; but "empty" is an absolute, and this is a
+      mode whose whole contract is that stdout is the complete report and stderr is the error
+      channel. A wrapper written to that promise reads 97 bytes and calls a run failed that
+      exited 1 for the reason it asked for.
+
+      The sentence stays — a run that exits 1 having written every file it meant to needs to
+      say why, and `--strict` announcing itself is the flag doing its job. What is checked
+      here is that it is the only thing there, `--quiet` included, so "one exception" does not
+      quietly become two.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-json-stderr-'));
+    try {
+      const noisy = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+      for (const extra of [[], ['--quiet']]) {
+        const { stderr } = await run(process.execPath, [
+          CLI, noisy, '--out', path.join(work, `clean${extra.length}`), '--json', ...extra,
+        ]);
+        assert.equal(stderr, '', `--json ${extra.join(' ')} put "${stderr.trim()}" on stderr`);
+      }
+      for (const extra of [[], ['--quiet']]) {
+        const failed = await run(process.execPath, [
+          CLI, noisy, '--out', path.join(work, `strict${extra.length}`), '--json', '--strict', ...extra,
+        ]).then(() => assert.fail('--strict did not report the warning as a failure'), (error) => error);
+        assert.equal(failed.code, 1);
+        JSON.parse(failed.stdout);
+        const lines = failed.stderr.trim().split('\n');
+        assert.match(lines[0], /^--strict: \d+ warnings? raised, so this run is reported as a failure\./u);
+        assert.ok(lines.length <= 2, `--strict wrote ${lines.length} lines to stderr: ${failed.stderr}`);
+        assert.ok(!failed.stderr.includes('warning:'), 'a warning was printed as text under --json');
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+
+    const page = await read('website/content/cli-reference.md');
+    const claim = /warnings travel inside the document and stderr stays empty([^.]*)/u.exec(page);
+    assert.ok(claim, 'the sentence about stderr under --json is gone');
+    assert.match(
+      claim[1],
+      /--strict/u,
+      'the page calls stderr empty under --json, and --strict writes to it',
+    );
+  });
+
   it('accounts for every measurement the narrowing sweep reports', async () => {
     /*
       The correctness page is the project's statement of what is checked, and item 8 is its
