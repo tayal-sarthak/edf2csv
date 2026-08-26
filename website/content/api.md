@@ -116,7 +116,7 @@ warning: [MIXED_SAMPLING_RATES] Channels use 3 different sampling rates (256 Hz,
 
 `describeFormat(header)` returns `"EDF"`, `"BDF"`, or one of `"EDF+ (continuous)"`, `"EDF+ (discontinuous)"`, `"BDF+ (continuous)"`, `"BDF+ (discontinuous)"` — a BDF+ file reports its own spelling, even though `continuity` normalises to the `EDF+` form. `formatRate(hz)` renders a rate without floating point noise: `256`, `0.5`, `12.5`.
 
-`formatRates(rates)` renders several at once and guarantees that rates which differ read as differing. `formatRate` rounds to six decimals, which is what keeps 30 samples in a 0.1-second record on screen as `300` rather than `299.99999999999994` — but it also collapses `1e-6` and `1.25e-6` onto one string. When that happens every rate in the group switches to its shortest exact form. Use it wherever more than one rate is shown together; `--info` and the output filenames both do.
+`formatRates(rates)` renders several at once and guarantees that rates which differ read as differing. `formatRate` rounds to six decimals, which is what keeps 30 samples in a 0.1-second record on screen as `300` rather than `299.99999999999994` — but it also collapses `1e-6` and `1.25e-6` onto one string. When that happens every rate in the group switches to its shortest exact form. Use it wherever more than one rate is shown together; `--info` and the output filenames both do. `rateSlug` renders one rate with no set to separate it from, so it collapses that pair too and answers `0_000001hz` for both — while a recording carrying both is converted into `signals_0_000001hz.csv` and `signals_0_00000125hz.csv`. It is the spelling rule, not a prediction of a filename: to name the files a conversion writes, run the group's rates through `formatRates` first, which is what `buildPlan` does. Both go through one line, so a rendered rate is spelled the same way in either.
 
 ### EdfHeader
 
@@ -798,7 +798,7 @@ const BDF_ANNOTATIONS_LABEL: string;    // 'BDF Annotations'
 function formatRate(hz: number): string;             // 256, 0.5, 12.5
 function formatRates(rates: readonly number[]): string[];  // distinct rates render distinctly
 function describeFormat(header: EdfHeader): string;  // 'EDF+ (discontinuous)'
-function rateSlug(rate: number): string;             // '256hz', '12_5hz'
+function rateSlug(rate: number): string;             // '256hz', '12_5hz' — one rate, alone
 function defaultOutputDir(inputPath: string): string;
 function formatWallClock(date: Date | null): string | null;  // '2002-03-02T23:10:00'
 ```

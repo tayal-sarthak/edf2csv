@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.175
+
+### the exported slug function, naming files the tool does not write
+
+`rateSlug` is exported, documented, and described in its own doc comment as the name that is
+"safe in a filename on every platform". A conversion never calls it. `buildPlan` writes the
+same expression out again — `formatRates(rates).map((text) => text.replace('.', '_') + 'hz')` —
+so the exported function and the names on disk were two copies of one spelling rule, and a
+change to either moved one of them.
+
+They also disagree, and on the pair the reference already warns about. Filenames are rendered
+from the whole set of rates at once, which widens the precision until rates that differ read as
+differing; `rateSlug` is handed one rate and has no set to separate it from:
+
+```
+rateSlug(1e-6)     -> 0_000001hz
+rateSlug(1.25e-6)  -> 0_000001hz
+```
+
+while a recording carrying both is converted into `signals_0_000001hz.csv` and
+`signals_0_00000125hz.csv`. A caller reaching for the exported slug function to predict or match
+an output filename got a name the tool does not write, with nothing on the page saying so.
+
+Both now go through one line, so the spelling cannot drift, and the reference says what
+`rateSlug` answers: the rule for one rate, not a prediction of a filename — run the group's
+rates through `formatRates` first for that, which is what `buildPlan` does.
+
 ## 0.7.174
 
 ### a sweep that counts five things, on a page that named three

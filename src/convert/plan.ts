@@ -447,7 +447,7 @@ function groupByRate(
     rate it holds. The suffix stays as the backstop for anything this still cannot separate.
   */
   const suffix = gzip ? '.csv.gz' : '.csv';
-  const slugs = formatRates(rates).map((text) => `${text.replace('.', '_')}hz`);
+  const slugs = formatRates(rates).map(slugFor);
   const used = new Set<string>();
   const uniqueName = (index: number): string => {
     const base = `signals_${slugs[index]}`;
@@ -491,8 +491,25 @@ export function withoutFileRateWarning(diagnostics: readonly Diagnostic[]): Diag
 }
 
 /** `256hz`, `12_5hz` — safe in a filename on every platform. */
+function slugFor(rendered: string): string {
+  return `${rendered.replace('.', '_')}hz`;
+}
+
+/**
+ * One rate's slug, rendered on its own.
+ *
+ * The names a conversion writes come from `formatRates` over the whole set, which widens the
+ * precision until rates that differ read as differing — so on a recording carrying both,
+ * 1e-6 Hz and 1.25e-6 Hz are `0_000001hz` and `0_00000125hz`. This renders one rate with no
+ * set to separate it from, and both of those come back `0_000001hz`.
+ *
+ * Which is right for the question it is asked, and was worth saying: a caller reaching for the
+ * exported slug function to predict a filename got a name the tool does not write, on exactly
+ * the rates the reference warns `formatRate` collapses. The two now spell a rendered rate the
+ * same way, through the line above, so only the rendering differs and nothing can drift.
+ */
 export function rateSlug(rate: number): string {
-  return `${formatRate(rate).replace('.', '_')}hz`;
+  return slugFor(formatRate(rate));
 }
 
 /**

@@ -183,6 +183,45 @@ describe('header parsing', () => {
     assert.equal(formatRate(1e-7), '1.000e-7');
   });
 
+  it('spells a rendered rate the same way in the slug and in the file a conversion writes', async () => {
+    /*
+      Two copies of one rule. `rateSlug` built its name with `formatRate(rate).replace('.',
+      '_') + 'hz'` and `buildPlan` built the file names with the same expression written out
+      again over `formatRates`, so a change to the spelling moved one and not the other — the
+      failure the flag list in cli.ts carries a comment about, on the strings that become
+      filenames.
+
+      They differ in the rendering on purpose, and that is worth holding too. A conversion
+      names files from the whole set of rates at once, which widens the precision until rates
+      that differ read as differing; `rateSlug` is handed one rate and has no set to separate
+      it from. So `1e-6` and `1.25e-6` are one slug alone and two files together, and a caller
+      reaching for the exported function to predict a filename gets a name the tool does not
+      write on exactly the pair the reference warns `formatRate` collapses.
+    */
+    const { rateSlug, formatRates, buildPlan, EdfFile } = await import('../dist/index.js');
+
+    // The spelling: one rate's slug is its rendering with the dot swapped and `hz` appended.
+    for (const rate of [256, 12.5, 1e-6, 1.25e-6, 1e-7, 4 / 1e-300]) {
+      assert.equal(rateSlug(rate), `${formatRates([rate])[0].replace('.', '_')}hz`);
+    }
+    // Alone, the pair the reference names collapses; that is this function's whole scope.
+    assert.equal(rateSlug(1e-6), rateSlug(1.25e-6));
+
+    // And a conversion carrying both separates them, through the same spelling rule.
+    const file = await load('rate-decimal-collision.edf');
+    const plan = buildPlan({
+      signals: file.header.signals,
+      recordDuration: file.header.recordDuration,
+      recordCount: file.recordCount,
+      hasAnnotationChannel: file.header.signals.some((s) => s.isAnnotations),
+    });
+    const names = plan.groups.map((g) => g.fileName).sort();
+    assert.deepEqual(names, ['signals_0_00000125hz.csv', 'signals_0_000001hz.csv']);
+    assert.equal(new Set(names).size, names.length, 'two rates shared one file name');
+    assert.ok(file instanceof EdfFile);
+    await file.close();
+  });
+
   it('reads labels, units and calibration for every signal', async () => {
     const file = await load('mixed-rates.edf');
     assert.deepEqual(

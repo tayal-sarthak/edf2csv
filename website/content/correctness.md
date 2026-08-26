@@ -421,17 +421,17 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up — with `hdiutil`, so those nine run on macOS and are skipped on Linux, CI included. Two more in `cli.test.js` go with them, for filesystem behaviour rather than for a tool: one needs a filesystem that folds case, the other one that folds Unicode normalisation, and Linux does neither. Eleven of the numbers below are a laptop's; CI's own summary says which. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 454
+ℹ tests 455
 ℹ suites 57
-ℹ pass 454
+ℹ pass 455
 ℹ fail 0
 ```
 
-The 454 tests are split across six files by what they exercise:
+The 455 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
-| `test/edf.test.js` | 59 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
+| `test/edf.test.js` | 60 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 122 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 166 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does. Two cases need a filesystem that folds case or Unicode normalisation and skip where there is none, which is everywhere CI runs |
 | `test/docs.test.js` | 92 | That this documentation and the source agree on their lists of codes, flags and exit codes |
