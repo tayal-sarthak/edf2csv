@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.185
+
+### a count of every problem above a list of the distinct ones
+
+The batch sweep's failure report printed a count of one thing and a list of another:
+
+```js
+process.stdout.write(`${problems.length} problems:\n`);
+for (const problem of [...new Set(problems)].slice(0, 10)) ...
+```
+
+`problems.length` is every problem; the list is the *distinct* ones, cut to ten. So "37
+problems:" above four lines left a reader unable to tell whether four kinds had been found or
+fourteen, and a run producing eleven distinct kinds dropped the eleventh with nothing to say so.
+
+Every other sweep here does one of the two honest things. `estimate`, `layouts`, `roundtrip` and
+`mutate` state the total the list is drawn from, so what is missing is a subtraction; `narrowing`
+and `stream` count what they drop outright. This was the one that did neither — on the only
+output anyone reads, since a passing run prints two lines and exits.
+
+It now states both numbers and counts the kinds it left:
+
+```
+37 problems, 14 of them distinct:
+  ...
+  ... and 4 more kinds
+```
+
 ## 0.7.184
 
 ### a promise about type declarations, checked with lib checking off

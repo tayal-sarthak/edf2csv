@@ -330,10 +330,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.stdout.write('No recording was converted, so nothing was compared.\n');
     process.exit(1);
   }
+  /*
+    The count and the list count the same thing, and the list says what it left.
+
+    This printed `problems.length` — every problem — and then listed `new Set(problems)` cut
+    to ten. Two different populations under one number: "37 problems:" above four lines left
+    a reader unable to tell whether four kinds had been found or fourteen, and a run with
+    eleven distinct kinds hid the eleventh with nothing to say so. Every other sweep here
+    either states the total the list is drawn from or counts what it drops; this was the one
+    that did neither, on the only report anyone reads when it fails.
+  */
   if (problems.length > 0) {
-    process.stdout.write(`${problems.length} problems:\n`);
-    for (const problem of [...new Set(problems)].slice(0, 10)) {
-      process.stdout.write(`  ${problem}\n`);
+    const distinct = [...new Set(problems)];
+    const shown = distinct.slice(0, 10);
+    process.stdout.write(`${problems.length} problems, ${distinct.length} of them distinct:\n`);
+    for (const problem of shown) process.stdout.write(`  ${problem}\n`);
+    if (distinct.length > shown.length) {
+      process.stdout.write(`  ... and ${distinct.length - shown.length} more kinds\n`);
     }
     process.exit(1);
   }
