@@ -2537,6 +2537,81 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('names every shape of signals file the rate slug can produce', async () => {
+    /*
+      sampling-rates prints a table of rate to file name and then the rule behind it: "a
+      fractional rate has its decimal point replaced by an underscore, so the name is a safe
+      filename on every platform". Two shapes a real recording produces are not that rule.
+
+      A rate the formatter writes in exponent notation carries the exponent into the name, so
+      `rate-slug-collision.edf` — a fixture this repository ships — is converted into
+      `signals_1_000e-7hz.csv`, and four samples in a record of 1e-300 s give
+      `signals_4e+300hz.csv`. There is no decimal point in either rate to replace, and the
+      names hold a `-` and a `+` that the rule does not mention. A reader building a glob from
+      the table would have matched neither.
+
+      Checked against the plan rather than against a list here: every rate below is converted
+      and the name it produces has to appear on the page.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-slug-shapes-'));
+    const written = new Set();
+    try {
+      const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      // Four samples over each duration: 256 Hz, 12.5 Hz, 1e-7 Hz and 4e+300 Hz.
+      for (const [name, recordDuration] of [
+        ['plain', '0.015625'], ['fractional', '0.32'], ['tiny', '40000000'], ['huge', '1e-300'],
+      ]) {
+        const input = path.join(work, `${name}.edf`);
+        // Two rates, since a recording with one is converted into a plain `signals.csv`
+        // and the suffix under test never appears.
+        writeEdf({
+          path: input, numRecords: 2, recordDuration,
+          signals: [4, 2].map((samplesPerRecord, i) => ({
+            label: `ch${i}`, dimension: 'uV', physMin: -100, physMax: 100,
+            digMin: -100, digMax: 100, samplesPerRecord,
+            gen: (r, s) => r * samplesPerRecord + s,
+          })),
+        });
+        const out = path.join(work, `${name}-out`);
+        await run(process.execPath, [CLI, input, '--out', out, '--quiet']);
+        for (const file of await readdir(out)) {
+          if (file.startsWith('signals')) written.add(file);
+        }
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+    assert.ok(written.size >= 3, `expected several shapes of name, got ${[...written].join(', ')}`);
+
+    /*
+      Compared by shape, not by name. The page gives examples rather than an index of every
+      rate, so what it owes a reader is one name of each form the slug can take — the four
+      being a plain integer, a decimal with the point swapped for an underscore, and the two
+      exponent forms, which are the pair the rule as written does not describe.
+    */
+    const shapeOf = (file) => {
+      const rate = /^signals_(.*)hz\./u.exec(file)?.[1] ?? '';
+      if (rate.includes('e-')) return 'negative exponent';
+      if (rate.includes('e+')) return 'positive exponent';
+      return rate.includes('_') ? 'underscored decimal' : 'plain integer';
+    };
+    const page = await read('website/content/sampling-rates.md');
+    const shown = new Set(
+      [...page.matchAll(/`(signals_[^`]*\.csv)`/gu)].map((m) => shapeOf(m[1])),
+    );
+    for (const file of written) {
+      assert.ok(
+        shown.has(shapeOf(file)),
+        `a conversion writes ${file}, and the file-name table shows no name of that shape ` +
+          `(${shapeOf(file)}); it shows ${[...shown].join(', ')}`,
+      );
+    }
+    const produced = new Set([...written].map(shapeOf));
+    for (const shape of ['negative exponent', 'positive exponent']) {
+      assert.ok(produced.has(shape), `this check produced no ${shape}: ${[...written].join(', ')}`);
+    }
+  });
+
   it('leaves stderr to one sentence under --json, and names which one', async () => {
     /*
       "warnings travel inside the document and stderr stays empty" is what the page said, and

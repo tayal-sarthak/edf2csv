@@ -76,8 +76,10 @@ Each file is a complete, self-contained CSV: a `time_s` column followed by one c
 | 1 Hz | `signals_1hz.csv` |
 | 12.5 Hz | `signals_12_5hz.csv` |
 | 0.5 Hz | `signals_0_5hz.csv` |
+| 1e-7 Hz | `signals_1_000e-7hz.csv` |
+| 4e+300 Hz | `signals_4e+300hz.csv` |
 
-A fractional rate has its decimal point replaced by an underscore, so the name is a safe filename on every platform.
+A fractional rate has its decimal point replaced by an underscore, so the name is a safe filename on every platform. The last two rows are the rest of that rule, and they are reachable: a rate the tool writes in exponent notation carries the exponent into the name, `e` and sign included. Nothing else is substituted, so those names hold a `-` or a `+` — both legal in a filename everywhere, and both worth knowing about before a script builds a glob. `conversion.rate_groups` in `metadata.json` names every file the run wrote, which is the way to get them without matching on a shape.
 
 The `time_s` column is seconds from the start of the recording and means the same thing in every file. That shared clock is what makes the separate files joinable later. The number of decimal places is chosen per rate so sample times are written exactly rather than rounded: 256 Hz gets 8 places because 1/256 terminates at 8 decimal places, 128 Hz gets 7, and 1 Hz gets 3. Multiplying `time_s` by the rate gives back a whole sample index rather than something like 8191.99999.
 

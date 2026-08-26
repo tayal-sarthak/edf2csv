@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.178
+
+### a naming rule about decimal points, on two names that have none
+
+The mixed-rates page gives a table of rate to file name and the rule behind it: "a fractional
+rate has its decimal point replaced by an underscore, so the name is a safe filename on every
+platform." Five examples, all of them decimal.
+
+Two shapes a real recording produces are not that rule. A rate the formatter writes in exponent
+notation carries the exponent into the name:
+
+```
+signals_1_000e-7hz.csv     4 samples in a 40,000,000-second record
+signals_4e+300hz.csv       4 samples in a record of 1e-300 seconds
+```
+
+The first is `rate-slug-collision.edf`, a fixture this repository ships and converts in its own
+test suite. Neither rate has a decimal point to replace, and both names carry a character the
+rule never mentions — a `-` in one and a `+` in the other. A reader building a glob from the
+table would have matched neither, on a page whose whole subject is that the number of files
+depends on the recording.
+
+The table now carries both, the sentence says the exponent goes into the name sign and all, and
+a check converts recordings at four rates and requires the page to show a name of every shape
+the slug can take.
+
 ## 0.7.177
 
 ### the mode documented for screening, exiting 1 without saying why
