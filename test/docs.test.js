@@ -2537,6 +2537,57 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('accounts for every measurement the narrowing sweep reports', async () => {
+    /*
+      The correctness page is the project's statement of what is checked, and item 8 is its
+      account of `npm run narrowing`. The sweep counts five things and prints all five; the
+      page named three. The two it left out are not more of the same — they are the other
+      half of the question.
+
+      Everything the page did describe asks whether a window is a *slice* of the full
+      conversion. A bound that dropped the sample sitting exactly on it, or wrote it into both
+      halves, is a slice either way: each half is still consecutive rows in order, and neither
+      is asked about the other. `--end t` and `--start t` together is the arrangement that
+      catches it, and it runs 174 times on rows and 41 more on events. A reader asking the most
+      likely off-by-one in the tool — what happens to the sample on a window bound — would have
+      read item 8 and concluded nothing looked.
+
+      Checked by deriving the counter names from the sweep rather than listing them here, so a
+      sixth measurement added tomorrow fails this until the page accounts for it too.
+    */
+    const sweep = await read('test/fuzz/narrowing.mjs');
+    const counters = [...sweep.matchAll(/^let (\w+) = 0;$/gmu)].map((m) => m[1]);
+    assert.ok(counters.length >= 5, `found ${counters.length} counters in the sweep`);
+
+    const summary = /console\.log\(\n?([\s\S]*?)\n {2}\);/u.exec(
+      sweep.slice(sweep.lastIndexOf('} else {')),
+    );
+    assert.ok(summary, 'the sweep no longer prints a summary this can read');
+    const reported = counters.filter((name) => summary[1].includes(`${name}.toLocaleString`));
+    assert.ok(reported.length >= 5, `the sweep prints ${reported.length} of its counters`);
+
+    /* What each counted thing is called on the page. Every reported counter needs an entry. */
+    const named = {
+      columns: 'single-channel selections',
+      windows: 'windows',
+      longs: 'single-channel selections',
+      partitions: 'pairs of windows meeting at a bound',
+      annotationCuts: 'compared as annotations',
+    };
+    const unaccounted = reported.filter((name) => named[name] === undefined);
+    assert.deepEqual(unaccounted, [], `the sweep reports ${unaccounted.join(', ')} and this check does not`);
+
+    const page = await read('website/content/correctness.md');
+    const item = /^8\. \*\*Asking for part of a recording([\s\S]*?)\n\n/mu.exec(page);
+    assert.ok(item, 'the narrowing item is gone from the correctness page');
+    for (const name of reported) {
+      assert.ok(
+        item[1].includes(named[name]),
+        `the sweep counts "${name}" and item 8 does not mention it (${named[name]})`,
+      );
+    }
+  });
+
   it('holds the three summary fields metadata.json carries under other names', async () => {
     /*
       The reference names three: the summary's `records` is `recording.data_records`, its

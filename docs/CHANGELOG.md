@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.174
+
+### a sweep that counts five things, on a page that named three
+
+The correctness page is this project's statement of what is checked, and item 8 is its account
+of `npm run narrowing`. The sweep counts five things and prints all five. The page named three.
+
+The two it left out are not more of the same. Everything item 8 described asks whether a window
+is a *slice* of the full conversion — same rows, same order, same bytes. A bound that dropped
+the sample sitting exactly on it, or wrote it into both halves, passes every one of those
+checks: each half is still a run of consecutive rows in the right order, and neither half is
+ever asked about the other.
+
+What catches it is `--end t` and `--start t` together, the one arrangement where the half-open
+rule has to be read both ways at once, and the sweep runs it 174 times on rows and 41 more on
+events, comparing the halves against the whole as multisets. A reader asking the single most
+likely off-by-one in this tool — what becomes of the sample on a window bound — would have read
+item 8 and concluded that nothing looked.
+
+The item now names both, and a check derives the counter list from the sweep itself rather than
+keeping a copy, so a sixth measurement added tomorrow fails until the page accounts for it.
+
 ## 0.7.173
 
 ### two of three fields equal, promised as three
