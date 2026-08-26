@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.183
+
+### one constant, called 8 MiB on one page and 8 MB by the tool
+
+Every size `--info` prints — the `Size` line and the `roughly N MB` beside the row estimate —
+divides by 1024 and writes the decimal name. That is what `ls -lh` does, and it is not what
+`ls -l` reports, and no page said so.
+
+So a recording a file listing gives as 42,399,744 bytes reads `Size 40.4 MB`, and a gigabyte of
+CSV reads `954 MB`. A reader checking whether they have the whole file finds two numbers five
+percent apart with nothing to explain the gap.
+
+The project already writes both conventions, one line apart in its own output and its own
+reference: `DEFAULT_CHUNK_BYTES` is 8,388,608, which the API page calls **8 MiB** and `--info`
+prints as **8 MB**.
+
+The `--info` section now states the base, gives both worked examples, and points a script at
+`bytes` and `estimate.bytes` under `--json`, which are exact counts and are rounded by nothing.
+A check pins the base against 1e9 and against the constant the other page names in MiB, so the
+two cannot drift apart again without saying so.
+
 ## 0.7.182
 
 ### what the search saw, two of three counts short

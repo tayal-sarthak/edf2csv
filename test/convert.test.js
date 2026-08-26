@@ -1907,6 +1907,26 @@ describe('formatting a byte size', () => {
     assert.equal(formatBytes(KB * KB * 1.5), '1.5 MB');
 
     /*
+      The base is 1024 and the names are the decimal ones, which is what `ls -lh` does and not
+      what `ls -l` reports — so `--info` calls a 42,399,744-byte recording 40.4 MB and a
+      gigabyte of CSV 954 MB. Worth pinning because the project writes both conventions: the
+      API page calls `DEFAULT_CHUNK_BYTES` 8 MiB, and this prints the same number as 8 MB.
+      A reader comparing the `Size` line against a file listing needs the page to say which.
+    */
+    assert.equal(formatBytes(1e9), '954 MB', 'the base is not 1000');
+    assert.equal(formatBytes(42_399_744), '40.4 MB');
+    const { DEFAULT_CHUNK_BYTES } = await import('../dist/index.js');
+    assert.equal(formatBytes(DEFAULT_CHUNK_BYTES), '8 MB');
+    const reference = await readFile(
+      path.join(FIXTURES, '..', '..', '..', 'website/content/cli-reference.md'), 'utf8',
+    );
+    assert.match(
+      reference.replace(/\s+/gu, ' '),
+      /counts in powers of 1024 while writing `KB`, `MB`, `GB` and `TB`/u,
+      'the reference does not say which convention the printed sizes use',
+    );
+
+    /*
       And no size at all prints a figure that belongs to the unit above it, except at the top
       of the table, where there is no unit above to carry into.
     */
