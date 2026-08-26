@@ -418,7 +418,21 @@ It always scans the entire file, even when you only care about a window. Writers
 
 The returned annotations are sorted by `onset`, then by `recordIndex`. `recordStarts` has one entry per data record, `null` where the record carried no readable timekeeping annotation. The timekeeping entry itself is never returned as an annotation, because it has an onset and no text.
 
-For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel and returns `{ recordStart, annotations, malformed }`. Pair it with `file.annotationBytes(batch, recordOffset, signal)` if you're already streaming records and would rather not make a second pass.
+For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel. Pair it with `file.annotationBytes(batch, recordOffset, signal)` if you're already streaming records and would rather not make a second pass. It returns a `DecodedRecordAnnotations`:
+
+```ts
+interface DecodedRecordAnnotations {
+  recordStart: number | null;   // from the leading timekeeping TAL, null when unreadable
+  annotations: Annotation[];
+  malformed: number;                     // chunks that were not valid TALs at all
+  malformedTimekeeping: number;          // of those, ones in first position
+  malformedTimekeepingWithText: number;  // of those, ones that also carried events
+  unreadableDurations: number;           // events kept whose duration is not a number
+  negativeDurations: number;             // events kept whose duration is below zero
+}
+```
+
+The five counts are what the warnings are raised from, and they are per record here: summing them across the records you decode gives what `readAnnotations` reports for the whole file.
 
 ## convert: run a full conversion
 

@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.181
+
+### three fields named of the seven a decoder hands back
+
+"`decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel and
+returns `{ recordStart, annotations, malformed }`."
+
+It returns seven fields. The four missing ones are the counts every annotation warning is raised
+from: unreadable TALs in first position, the ones among those that also carried event text,
+durations stated as something that is not a number, and durations stated below zero.
+
+That sentence exists for exactly one reader — someone decoding the annotation channel
+themselves, pairing it with `annotationBytes` to avoid a second pass — and it told them the
+tool's own tallies were not in the object they already had. `DecodedRecordAnnotations` is
+offered for import at the foot of the same page, and this sentence was the closest the page came
+to showing its shape.
+
+The shape is written out now, tied to the type name, with a line on what the counts mean per
+record against what `readAnnotations` reports for the file. A check decodes a record and requires
+the page's block and the returned object to hold the same field names in both directions.
+
 ## 0.7.180
 
 ### three members used on the page and absent from its own signature block

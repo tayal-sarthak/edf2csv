@@ -2537,6 +2537,49 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('shows what decodeRecordAnnotations really hands back', async () => {
+    /*
+      The page said it "returns `{ recordStart, annotations, malformed }`". It returns seven
+      fields. The four missing ones are the counts the annotation warnings are raised from —
+      unreadable TALs in first position, ones that also carried events, durations that are not
+      numbers, and durations below zero — so a caller decoding the channel themselves, which is
+      the only reason that sentence exists, had no way to know the tool's own tallies come back
+      in the same object.
+
+      `DecodedRecordAnnotations` is also offered for import at the foot of the page, and this
+      was the closest the page came to showing its shape.
+    */
+    const { EdfFile, decodeRecordAnnotations } = await import(path.join(ROOT, 'dist/index.js'));
+    const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/annotations.edf'));
+    let fields;
+    try {
+      const signal = file.annotationSignals[0];
+      assert.ok(signal, 'the fixture has no annotation channel');
+      for await (const batch of file.readRecords()) {
+        fields = Object.keys(decodeRecordAnnotations(file.annotationBytes(batch, 0, signal), 0));
+        break;
+      }
+    } finally {
+      await file.close();
+    }
+    assert.ok(fields && fields.length >= 7, `decoded ${fields?.length} fields`);
+
+    const page = await read('website/content/api.md');
+    const block = /^interface DecodedRecordAnnotations \{\n([\s\S]*?)^\}/mu.exec(page);
+    assert.ok(block, 'the page shows no shape for DecodedRecordAnnotations');
+    const shown = [...block[1].matchAll(/^ {2}([A-Za-z]+)\s*:/gmu)].map((m) => m[1]);
+    assert.deepEqual(
+      fields.filter((name) => !shown.includes(name)),
+      [],
+      'the decoded object carries fields the page does not show',
+    );
+    assert.deepEqual(
+      shown.filter((name) => !fields.includes(name)),
+      [],
+      'the page shows fields the decoded object does not carry',
+    );
+  });
+
   it('lists the whole of EdfFile in the block that lists EdfFile', async () => {
     /*
       The `class EdfFile` block is what a reader consults to know what the class offers, and it
