@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.182
+
+### what the search saw, two of three counts short
+
+The `class EdfFile` block declared:
+
+```ts
+scanOrigin(): Promise<{ origin: number | null; malformedTimekeeping: number }>;
+```
+
+It returns four fields. The source's own comment calls the method "the origin, and what the
+search saw on the way to it", and two of the three things it saw were missing from the page:
+`malformed`, every TAL the search could not parse, and `malformedTimekeepingWithText`, the ones
+among those that also carried event text and so lost events as well as a position.
+
+Those two are the distinction the warnings themselves draw — "1 annotation entry was unreadable
+and could not be exported" against "1 data record carries a timekeeping annotation that could
+not be read" — and `scanOrigin` is the API route to what `--info` saw on a continuous recording,
+where the search stops at the first record stating a time and the counts are of what it read.
+A caller reproducing that had two of the three numbers.
+
+The return is written out in full now, and the check added in 0.7.180 goes further: the two
+methods whose return shape the block writes inline are compared field for field, in both
+directions, against what a real call hands back.
+
 ## 0.7.181
 
 ### three fields named of the seven a decoder hands back

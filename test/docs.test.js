@@ -2628,6 +2628,39 @@ describe('documentation and source agree on their lists', () => {
       [],
       'the block declares members EdfFile does not have',
     );
+
+    /*
+      And the two methods whose return shape is written inline are held to what they return.
+
+      `scanOrigin` was declared as `{ origin, malformedTimekeeping }` and returns four fields:
+      the source's own comment calls it "the origin, and what the search saw on the way to
+      it", and the two the page dropped are what separate a TAL that failed entirely from one
+      that lost events with it — the distinction the warnings themselves make. `--info` on a
+      continuous recording takes this route, so it is the API answer to what that mode saw.
+    */
+    const second = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/annotations.edf'));
+    try {
+      for (const [method, returned] of [
+        ['scanOrigin', Object.keys(await second.scanOrigin())],
+        ['readAnnotations', Object.keys(await second.readAnnotations())],
+      ]) {
+        const shape = new RegExp(`^ {2}${method}\\(\\): Promise<\\{\\n([\\s\\S]*?)^ {2}\\}>;`, 'mu').exec(block[1]);
+        assert.ok(shape, `${method}'s return shape is no longer written out in the block`);
+        const shown = [...shape[1].matchAll(/^ {4}([A-Za-z]+)\s*:/gmu)].map((m) => m[1]);
+        assert.deepEqual(
+          returned.filter((name) => !shown.includes(name)),
+          [],
+          `${method} returns fields the block does not declare`,
+        );
+        assert.deepEqual(
+          shown.filter((name) => !returned.includes(name)),
+          [],
+          `the block declares fields ${method} does not return`,
+        );
+      }
+    } finally {
+      await second.close();
+    }
   });
 
   it('names every shape of signals file the rate slug can produce', async () => {

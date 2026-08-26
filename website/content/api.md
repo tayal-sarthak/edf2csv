@@ -49,7 +49,12 @@ class EdfFile {
   get annotationSignals(): EdfSignal[];
   get timekeepingSignal(): EdfSignal | undefined;   // the first with room to hold a TAL
   readOrigin(): Promise<number | null>;
-  scanOrigin(): Promise<{ origin: number | null; malformedTimekeeping: number }>;
+  scanOrigin(): Promise<{
+    origin: number | null;
+    malformed: number;                     // TALs the search could not parse at all
+    malformedTimekeeping: number;          // of those, ones in first position
+    malformedTimekeepingWithText: number;  // of those, ones that also carried events
+  }>;
   get durationSeconds(): number;       // recordCount * header.recordDuration
 
   readRecords(options?: ReadRecordsOptions): AsyncGenerator<RecordBatch>;
