@@ -1568,6 +1568,41 @@ describe('option checking', () => {
       'the API page does not say that the byte count lags');
   });
 
+  it('says nothing through onProgress on the runs that read no records for signals', async () => {
+    /*
+      "fires once per batch of records read, not once per record, so on a small file it may
+      fire only once" reads as a floor of one, and it is not one. Four ordinary runs never
+      fire it at all: `annotationsOnly`, a recording with no signal channels, a window landing
+      where the recording has no data, and a `channels` selection whose channels carry none.
+
+      The behaviour is right — there is no work in flight to report — but a caller told the
+      callback fires at least once has no completion event for any of those four, and cannot
+      tell "finished immediately" from "never started". What ends them is the promise
+      resolving, which is what the page now says.
+    */
+    const fired = async (input, options) => {
+      const seen = [];
+      await convert(fixture(input), {
+        outputDir: await outDir(), quiet: true, onProgress: () => seen.push(1), ...options,
+      });
+      return seen.length;
+    };
+
+    assert.ok(await fired('mixed-rates.edf', {}) > 0, 'an ordinary conversion reports nothing');
+    for (const [why, input, options] of [
+      ['annotationsOnly', 'annotations.edf', { annotationsOnly: true }],
+      ['no signal channels', 'annotations-only.edf', {}],
+      ['a window with no data in it', 'discontinuous.edf', { start: 3.5, end: 3.6 }],
+      ['channels carrying no samples', 'single-rate-empty-channel.edf', { channels: ['unused'] }],
+    ]) {
+      assert.equal(await fired(input, options), 0, `${why} reported progress after all`);
+    }
+
+    const page = (await readFile(path.join(FIXTURES, '..', '..', '..', 'website/content/api.md'), 'utf8'))
+      .replace(/\s+/gu, ' ');
+    assert.match(page, /it never fires at all/u, 'the API page still promises it always fires');
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.

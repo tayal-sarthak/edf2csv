@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.179
+
+### a callback promised at least once, silent on four ordinary runs
+
+"`onProgress` fires once per batch of records read, not once per record, so on a small file it
+may fire only once." A floor of one, is how that reads. There is no floor.
+
+Four ordinary runs never fire it at all, because none of them reads a data record for signals:
+
+* `annotationsOnly`, which converts the event list and no samples
+* a recording with no signal channels
+* a window landing where the recording has no data
+* a `channels` selection whose channels carry none
+
+The behaviour is right — there is no work in flight to report, and inventing a call at 100%
+would be reporting work that never happened. What was wrong is that a caller driving a progress
+display was told the callback fires at least once, so on any of those four it waits for a
+completion event that never arrives and cannot tell "finished immediately" from "never started".
+
+The page now says so and names the four, and points at the thing that does end every run: the
+promise `convert` returns, with `ConvertResult` as the account of what was written. Checked by
+running all four and the ordinary case beside them.
+
 ## 0.7.178
 
 ### a naming rule about decimal points, on two names that have none
