@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.197
+
+### four headline figures, guarded by a substring any document contains
+
+The landing page ends with four figures in large type, and one check exists to stop them drifting
+from the measurements behind them. Its own comment says why:
+
+> That has already happened twice on this site to numbers that did have a source: a row count in
+> 0.4.67 and a byte count in 0.5.150. These are the figures with no source at all, which makes
+> them the ones most able to go stale quietly.
+
+It searched correctness.md for the bare digits — `page.includes('48')`, `page.includes('1.4')` —
+over a 470-line document full of version numbers, byte counts and row counts. Nearly any short
+numeral is in there somewhere, so the guard was satisfied by coincidence:
+
+```
+48 MB -> 4 MB     passed        ("a 4 GB file and a 4 MB file use the same working set")
+48 MB -> 8 MB     passed        (the tail of "48 MB" itself)
+1.4s  -> 1.5s     passed
+```
+
+Three silent drifts on the page a first-time reader sees, through the check written to catch
+them.
+
+The figure now has to appear with its unit, bounded at both ends so `8 MB` cannot match inside
+`48 MB`, and within sixty characters of a word from its own label — which is what makes the match
+about this claim rather than about that numeral. Confirmed on five drifts that previously passed:
+`4 MB`, `8 MB`, `49 MB`, `1.5s` and `16,944` are all reported now.
+
 ## 0.7.196
 
 ### a seed offered to nine sweeps, taken by two, and misread by a third

@@ -518,11 +518,42 @@ describe('documentation and source agree on their lists', () => {
         );
         continue;
       }
-      // "1.4s" on the page, "1.4 seconds" in the prose; the digits are the claim.
-      const digits = value.replace(/[^\d.,]/gu, '');
+      /*
+        The digits with their unit, not the digits alone.
+
+        This searched correctness.md for the bare numerals, which a 470-line document full of
+        version numbers, row counts and byte counts contains by accident: `48 MB` cut to `4
+        MB` passed, `8 MB` passed, and `1.4s` moved to `1.5s` passed. The one guard against
+        the drift its own comment describes — "a row count in 0.4.67 and a byte count in
+        0.5.150" — was being satisfied by coincidence.
+
+        So the unit comes too. "1.4s" on the page is "1.4 seconds" in the prose and "48 MB" is
+        "48 MB", which is enough to make the match about the claim rather than about the
+        digits appearing somewhere.
+      */
+      const [, digits, unit] = /^([\d.,]+)\s*([A-Za-z]*)$/u.exec(value) ?? [];
+      assert.ok(digits, `the landing page shows "${value}", which is not a figure and a unit`);
+      const spelled = { s: 's(?:econds?)?', MB: 'MB', KB: 'KB', GB: 'GB' }[unit] ?? unit;
+      const wanted = new RegExp(
+        `\\b${digits.replace(/[.]/gu, '\\.')}${unit === '' ? '\\b' : `\\s*${spelled}\\b`}`,
+        'gu',
+      );
+      /*
+        Near a word from its own label, which is what makes it this figure rather than that
+        one. The unit alone is not enough: correctness.md says "a 4 GB file and a 4 MB file
+        use the same working set", so `48 MB` cut to `4 MB` matched, and the page holds a
+        `1.5` somewhere too.
+      */
+      const words = [...new Set(label.match(/[A-Za-z]{4,}|\d[\d,.]{2,}/gu) ?? [])];
+      assert.ok(words.length > 0, `"${label}" has no word to look for`);
+      const supported = [...page.matchAll(wanted)].some((m) => {
+        const around = page.slice(Math.max(0, m.index - 60), m.index + 60);
+        return words.some((word) => around.includes(word));
+      });
       assert.ok(
-        page.includes(digits),
-        `the landing page shows "${value}" (${label}) and correctness.md never states ${digits}`,
+        supported,
+        `the landing page shows "${value}" (${label}) and correctness.md never states it ` +
+          `anywhere near ${words.join(', ')}`,
       );
     }
   });
