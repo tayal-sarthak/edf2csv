@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.187
+
+### the quietest of the build's refusals, on neither list of them
+
+`website/README.md` heads a section "What the build refuses to ship" and says "each of these
+exists because the failure it catches is invisible in a browser". CONTRIBUTING repeats the list
+and points at it for the reasons. Both named four refusals. The build has five.
+
+The missing one is the one that fits the section's own criterion best. SVG reaches a gradient,
+mask, clip path, filter or marker through `url(#id)` rather than through an href, so the
+`href="#..."` check does not see them — and the prerenderer's own comment says why it exists:
+
+> nothing throws, nothing 404s, the property simply resolves to none. The hero's edge fade is a
+> `url(#...)` — mistype it and the traces stop looking like they continue past the border, which
+> is a thing you have to already know to notice.
+
+The landing page ships exactly one, `url(#fade)`. A contributor reading either list would have
+had no reason to expect the build to catch a typo in it, which is the one case where knowing the
+build is watching actually changes what you do.
+
+Both lists now carry it, and a check derives the refusals from `prerender.mjs` and requires each
+to be accounted for on both pages — so a sixth added tomorrow fails until they are.
+
 ## 0.7.186
 
 ### two counts called nested, disjoint in three of this repo's own fixtures

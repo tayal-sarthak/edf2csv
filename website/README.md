@@ -71,6 +71,11 @@ Each of these exists because the failure it catches is invisible in a browser:
   the header, the footer, the skip target, the 404's list — are the ones no test reads back.
 - An id used twice on one page, or an `href="#..."` matching no element. Neither throws
   and neither 404s; the browser simply scrolls to the wrong paragraph.
+- A `url(#...)` matching no element. SVG reaches a gradient, mask, clip path, filter or
+  marker that way rather than through an href, so the check above does not see them, and
+  this is the quietest failure of the set: nothing throws, nothing 404s, and the property
+  simply resolves to none. The hero's edge fade is one — mistype it and the traces stop
+  looking like they continue past the border, which you have to already know to notice.
 
 The `/docs/<slug>.md` mirrors and `llms-full.txt` are served with `X-Robots-Tag: noindex`
 (see the repository root's `vercel.json`). They are the same prose as the HTML pages they

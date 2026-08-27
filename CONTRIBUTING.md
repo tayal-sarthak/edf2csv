@@ -51,7 +51,8 @@ cd website && npm install && npm run build && npm run preview
 
 The build refuses to emit a page that is quietly wrong — one that rendered with almost no
 text, an internal link pointing at a file the build did not write, an id used twice, an
-`href="#..."` matching no element. See `website/README.md` for why each of those exists.
+`href="#..."` matching no element, or a `url(#...)` matching no element, which is how an SVG
+reaches a gradient or a mask. See `website/README.md` for why each of those exists.
 
 ## Changes that are welcome
 

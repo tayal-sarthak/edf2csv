@@ -2619,6 +2619,52 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('lists every failure the site build refuses to ship', async () => {
+    /*
+      `website/README.md` heads a section "What the build refuses to ship" and explains that
+      "each of these exists because the failure it catches is invisible in a browser".
+      CONTRIBUTING repeats the list and points at it. Both named four; the build has five.
+
+      The missing one is the one that fits the section's own criterion best. SVG reaches a
+      gradient, mask, clip path, filter or marker through `url(#id)` rather than through an
+      href, so the anchor check does not see them, and the prerenderer's comment says why it
+      was added: "nothing throws, nothing 404s, the property simply resolves to none. The
+      hero's edge fade is a `url(#...)` — mistype it and the traces stop looking like they
+      continue past the border, which is a thing you have to already know to notice." The
+      landing page uses exactly one, `url(#fade)`.
+
+      Derived from the prerenderer, so a sixth refusal added tomorrow fails this until both
+      pages account for it.
+    */
+    const script = await read('website/scripts/prerender.mjs');
+    /* What each refusal is called on the pages. Every message below needs an entry. */
+    const named = {
+      'rendered with almost no text': 'almost no text',
+      'these links point at files the build did not write': 'did not write',
+      'appears': 'id used twice',
+      'matches no element': 'href="#..." matching no element',
+      'url(#': 'url(#...) matching no element',
+      'server-rendered to': 'almost no text',
+      'the server-rendered homepage is missing': 'landing page missing its',
+    };
+    const raised = Object.keys(named).filter((phrase) => script.includes(phrase));
+    assert.ok(raised.length >= 6, `found ${raised.length} of the build's refusals in the script`);
+
+    for (const page of ['website/README.md', 'CONTRIBUTING.md']) {
+      // Backticks come out, since the pages mark up the phrases and the build does not.
+      const text = (await read(page)).replace(/`/gu, '').replace(/\s+/gu, ' ');
+      for (const phrase of raised) {
+        const wanted = named[phrase];
+        // CONTRIBUTING keeps the short form and points at the README for the rest.
+        if (page === 'CONTRIBUTING.md' && wanted === 'landing page missing its') continue;
+        assert.ok(
+          text.includes(wanted),
+          `the build refuses "${phrase}" and ${page} does not mention it (${wanted})`,
+        );
+      }
+    }
+  });
+
   it('does not call the annotation counts nested when two of them are disjoint', async () => {
     /*
       Three places on the API page described `malformedTimekeeping` as "of those" —
