@@ -29,15 +29,25 @@ npm run narrowing    # --channels and --start return exactly the part they name
 npm run fuzz         # a damaged file is reported, never a crash
 npm run fuzz:batch   # a batch converts each recording as converting it alone would
 npm run stream       # --stdout writes the file it replaces, byte for byte
-npm run terminal     # every error: and warning: begins its own line on a terminal
+npm run terminal     # every error:, warning: and interrupted ( begins its own line
 npm run crossvalidate  # values are bit-identical to pyEDFlib (needs `pip install pyedflib`;
                        # exits 2 without it, since a check that did not run has not passed)
 ```
 
 CI runs the first eight on every push, at their default seed. A weekly job runs the two that
 generate their own inputs at a seed taken from the date, which is where a genuinely new
-input comes from. Every one of them takes `<seed> <count>` if you want more:
-`npm run fuzz -- 42 2000`.
+input comes from — and those same two are the only ones that take `<seed> <count>`:
+
+```bash
+npm run fuzz -- 42 2000        # 2,000 corrupted recordings from seed 42
+npm run fuzz:batch -- 42 40    # 40 folder trees from seed 42
+```
+
+The rest convert the fixture set, so there is no seed to give them and no count to raise.
+Six ignore extra arguments entirely. `npm run estimate` is the one that does not: its single
+argument is a name filter, so `npm run estimate -- biosemi` narrows the sweep to the three
+BioSemi recordings — and `npm run estimate -- 42 2000`, on the reading that it takes a seed,
+matches no fixture at all and exits 1 saying that nothing was checked.
 
 ## The website
 

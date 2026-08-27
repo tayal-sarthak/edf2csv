@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.196
+
+### a seed offered to nine sweeps, taken by two, and misread by a third
+
+CONTRIBUTING lists nine sweeps and closes with:
+
+> Every one of them takes `<seed> <count>` if you want more: `npm run fuzz -- 42 2000`.
+
+Two of the nine do. Six ignore extra arguments entirely, so a contributor asking for more gets
+exactly what they got before and no sign that nothing changed. The ninth is worse: `estimate`
+reads its first argument as a **name filter**, so following that sentence gives
+
+```
+$ npm run estimate -- 42 2000
+0 predictions over 0 recordings.
+Nothing was predicted, so nothing was checked.
+```
+
+exit 1, no coverage at all, from a reader who asked for more of it.
+
+The two that do take a seed are the two that generate their own inputs, which the weekly
+workflow's own header already says in as many words — "the byte corrupter and the folder-tree
+builder". The page now says the same, shows both invocations, and says what `estimate` really
+takes: `npm run estimate -- biosemi` narrows the sweep to the three BioSemi recordings.
+
+A check derives the set from the sweeps themselves — a sweep that reads `argv[3]` as a count is
+one that takes `<seed> <count>` — so the page cannot offer a seed to a sweep that has none. The
+`terminal` line in the same block also picks up the third prefix 0.7.194 added.
+
 ## 0.7.195
 
 ### the second of two pages a type narrowing was made for

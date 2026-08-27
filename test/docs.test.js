@@ -2864,6 +2864,44 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(Object.keys(manifest.dependencies ?? {}), []);
   });
 
+  it('offers a seed only to the sweeps that take one', async () => {
+    /*
+      "Every one of them takes `<seed> <count>` if you want more: `npm run fuzz -- 42 2000`."
+      Two of the nine do. Six ignore extra arguments, and the ninth reads its first argument
+      as something else entirely: `estimate` takes a name filter, so following that sentence
+      with `npm run estimate -- 42 2000` matches no fixture, checks nothing at all and exits 1
+      saying so — the reader having asked for *more* coverage.
+
+      The two that take a seed are the two that generate their own inputs, which is what the
+      weekly workflow's own header says it runs: "the byte corrupter and the folder-tree
+      builder". The rest convert the fixture set, so there is no seed to give them.
+
+      Derived from the sources: a sweep reading `process.argv[2]` is one that takes an
+      argument, and the page may only offer `<seed> <count>` to the ones that read `argv[3]`
+      as a count.
+    */
+    const sweeps = (await readdir(path.join(ROOT, 'test/fuzz'))).filter((n) => n.endsWith('.mjs'));
+    assert.ok(sweeps.length >= 8, `found ${sweeps.length} sweeps`);
+
+    const seeded = [];
+    for (const name of sweeps) {
+      const source = await read(path.join('test/fuzz', name));
+      const takesCount = /process\.argv\[3\]/u.test(source);
+      if (takesCount) seeded.push(name.replace(/\.mjs$/u, ''));
+    }
+    assert.deepEqual(seeded.sort(), ['mutate', 'trees'], 'a different set of sweeps takes a count');
+
+    const page = (await read('CONTRIBUTING.md')).replace(/\s+/gu, ' ');
+    assert.match(
+      page,
+      /those same two are the only ones that take `<seed> <count>`/u,
+      'CONTRIBUTING offers a seed to sweeps that do not take one',
+    );
+    // And it has to say what the odd one out really does with its argument.
+    assert.match(page, /its single argument is a name filter/u,
+      'CONTRIBUTING does not say what estimate takes');
+  });
+
   it('lists every failure the site build refuses to ship', async () => {
     /*
       `website/README.md` heads a section "What the build refuses to ship" and explains that
