@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.190
+
+### a guard against unenumerated call sites, kept as an unenumerated list
+
+The check that stops a raw number of seconds reaching a message — five separate defects were
+fixed for it, each one printing `3e+21s` where a length belonged — scanned ten source files
+named in an array.
+
+Ten was every file that had such an interpolation on the day it was written, which is not the
+rule the comment above it states. That rule is "outside `src/format/`, where the formatters
+live", and four files satisfy it while sitting outside the scan: `src/convert/options.ts`,
+`src/edf/scale.ts`, `src/edf/errors.ts` and `src/index.ts`. A `${seconds}s` added to any of them
+passed.
+
+Which is this check's own subject one level up. Its comment says the five defects happened
+because "each fix left the other call sites alone because nothing enumerated them" — and the
+enumeration it introduced to fix that was itself a hand-kept list nobody was keeping. 0.7.170
+rewrote a message in `options.ts` five days ago and was never looked at by it.
+
+The list is now `src` walked with `src/format` excluded, which is the rule as written, with a
+floor on the number of files reached so the walk cannot quietly return none. Confirmed capable
+of failing: rewriting that same `options.ts` message as `${value}s` is reported rather than
+passing.
+
 ## 0.7.189
 
 ### an invariant that holds for eleven of the first forty rates, stated for all

@@ -306,11 +306,31 @@ describe('documentation and source agree on their lists', () => {
       interpolation ending in `s` has to go through one — `plain`, `fixed`, `toFixed`,
       `formatDuration`. A bare identifier is the shape every one of those defects had.
     */
-    const files = [
-      'src/cli.ts', 'src/cli/report.ts', 'src/convert/plan.ts', 'src/convert/run.ts',
-      'src/convert/time-range.ts', 'src/convert/timing.ts', 'src/convert/channels.ts',
-      'src/edf/header.ts', 'src/edf/reader.ts', 'src/edf/annotations.ts',
-    ];
+    /*
+      The list is `src` minus `src/format`, walked, rather than ten paths written out here.
+
+      Ten was every file that had one of these when the check was written, which is not the
+      same rule as the comment above it: `src/convert/options.ts`, `src/edf/scale.ts`,
+      `src/edf/errors.ts` and `src/index.ts` are outside `src/format/` and were outside the
+      scan, so a `${seconds}s` added to any of them would have passed. 0.7.170 rewrote a
+      message in `options.ts` and would not have been looked at.
+
+      That is the failure this very test exists for, one level up — "each fix left the other
+      call sites alone because nothing enumerated them" — with the enumeration itself as the
+      thing nobody was keeping.
+    */
+    const files = [];
+    const collect = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) {
+          if (relative !== 'src/format') await collect(relative);
+        } else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await collect('src');
+    assert.ok(files.length >= 12, `walked ${files.length} source files outside src/format`);
+
     let checked = 0;
     for (const where of files) {
       const text = await read(where);
