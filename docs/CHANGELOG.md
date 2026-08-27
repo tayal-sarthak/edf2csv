@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.191
+
+### an exception no fixture reaches, for a reason the page did not give
+
+The correctness page states one exception to "the byte count never reads low": a recording whose
+samples leave the digital range its own header declares. It closed with
+
+> No fixture does it, which is why the sweep asserts the contract strictly rather than carrying
+> an allowlist.
+
+which reads as an observation about the fixture set. It is a property of the fixture *writer*.
+`test/fixtures/edf-writer.mjs` clamps every sample into the declared range as it writes:
+
+```js
+if (value > signal.digMax) value = signal.digMax;
+if (value < signal.digMin) value = signal.digMin;
+```
+
+Two lines that make the case unconstructible. No fixture does it because none can — and every
+sweep and every test in this repository builds its recordings through that writer, so nothing
+had ever reached the exception at all. The strictness the sentence justifies rests on the clamp,
+and relaxing it would quietly start producing recordings the estimate sweep refuses.
+
+The page now says so, and a check reaches the case the only way it can be reached: write the
+header through the writer, then put the sample bytes in by hand. Codes running to ±32000 under a
+header bounded at ±100 convert about 5% over the estimate at those magnitudes — the row count
+staying exact, since the exception is about bytes. It holds the clamp in place too, so the claim
+and the reason for it cannot drift apart.
+
 ## 0.7.190
 
 ### a guard against unenumerated call sites, kept as an unenumerated list

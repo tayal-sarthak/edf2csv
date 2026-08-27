@@ -2639,6 +2639,75 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('reaches the one case the estimate reads low on, which no fixture can', async () => {
+    /*
+      The correctness page states an exception to "the byte count never reads low": a file
+      whose samples leave the digital range its own header declares. It explained the absence
+      of that case from the fixtures as an observation — "No fixture does it" — offered as the
+      reason the estimate sweep asserts the contract strictly rather than carrying an
+      allowlist.
+
+      No fixture *can* do it. `edf-writer.mjs` clamps every sample into the declared range as
+      it writes, two lines that make the case unconstructible, so the strictness rests on the
+      clamp rather than on the fixtures happening to behave. Relaxing it would start producing
+      recordings the sweep refuses, and nothing said so.
+
+      The exception itself had nothing reaching it either — every sweep and every test in the
+      repository builds recordings through that writer. This builds one by hand and holds both
+      halves: that the writer clamps, and that a recording it could not have written really
+      does convert larger than the estimate.
+    */
+    const writer = await read('test/fixtures/edf-writer.mjs');
+    assert.match(
+      writer.replace(/\s+/gu, ' '),
+      /if \(value > signal\.digMax\) value = signal\.digMax; if \(value < signal\.digMin\) value = signal\.digMin;/u,
+      'the fixture writer no longer clamps, so a fixture can now leave the declared range',
+    );
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-outside-'));
+    try {
+      const { writeEdf } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      const records = 20;
+      const perRecord = 256;
+      const input = path.join(work, 'outside.edf');
+      writeEdf({
+        path: input, numRecords: records, recordDuration: 1,
+        signals: [{
+          label: 'wide', dimension: 'uV', physMin: -100, physMax: 100,
+          digMin: -100, digMax: 100, samplesPerRecord: perRecord, gen: () => 0,
+        }],
+      });
+
+      // Past the writer, straight into the sample bytes: codes running to ±32000.
+      const bytes = await readFile(input);
+      for (let i = 0; i < records * perRecord; i++) {
+        bytes.writeInt16LE((i % 2 === 0 ? 1 : -1) * (26000 + (i % 6001)), 512 + i * 2);
+      }
+      await writeFile(input, bytes);
+
+      const { stdout } = await run(process.execPath, [CLI, input, '--info', '--json']);
+      const { estimate } = JSON.parse(stdout);
+      const out = path.join(work, 'out');
+      await run(process.execPath, [CLI, input, '--out', out, '--quiet']);
+      const written = (await stat(path.join(out, 'signals.csv'))).size;
+
+      // The row count is exact even here; it is only the byte count the exception is about.
+      assert.equal(estimate.rows, records * perRecord);
+      assert.ok(
+        written > estimate.bytes,
+        `the estimate did not read low: ${estimate.bytes} estimated, ${written} written`,
+      );
+      const page = await read('website/content/correctness.md');
+      assert.match(
+        page.replace(/\s+/gu, ' '),
+        /No fixture does it, and none can/u,
+        'the correctness page calls this absence an observation rather than a property of the writer',
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('qualifies the whole-sample-index claim wherever a page makes it', async () => {
     /*
       `output-files.md` has this right, with the rule, a table carrying an "Exact?" column and
