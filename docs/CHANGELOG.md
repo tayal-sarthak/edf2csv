@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.188
+
+### a privacy promise made in six places and read in none
+
+Six places promise this, and nothing was reading any of them.
+
+The FAQ gives it a section of its own — "no upload, no download, no update check, no crash
+reporting, no telemetry, no usage counter" — and says why it matters: "clinical and research
+recordings frequently can't leave the machine or the network they're on". `SECURITY.md` opens
+its scope with it. getting-started says it, the README says it twice, and the site's `llms.txt`
+leads with "runs locally with no network access".
+
+It is also the cheapest claim in the project to check. The package has no dependencies, so the
+entire surface is what its own modules import, and every one of those is a relative path or one
+of twelve Node builtins. A check now reads every specifier out of the built `dist/` — what
+actually runs and what npm ships — and requires each to be on that list, with the empty
+`dependencies` asserted beside it so nothing can hide behind one.
+
+Confirmed capable of failing: appending `import 'node:https'` to a shipped module is reported as
+`dist/version.js: node:https` rather than passing.
+
+The matcher is anchored to a statement rather than to the word `from`, which the first version
+was not: `cli.js` explains that an exit code "cannot separate 'converted, and raised warnings'
+from 'did not convert'", and that comment came back as an import of a module called
+`did not convert`.
+
 ## 0.7.187
 
 ### the quietest of the build's refusals, on neither list of them

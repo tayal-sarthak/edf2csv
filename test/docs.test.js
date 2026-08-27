@@ -2619,6 +2619,75 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('imports nothing that could reach the network', async () => {
+    /*
+      Six places promise this, and nothing was reading any of them. The FAQ gives it a section
+      of its own — "no upload, no download, no update check, no crash reporting, no telemetry,
+      no usage counter" — and says why it matters: "clinical and research recordings frequently
+      can't leave the machine or the network they're on". SECURITY.md opens its scope with it.
+      getting-started, the README twice, and the site's `llms.txt` repeat it.
+
+      It is also the cheapest claim in the project to check. The package has no dependencies,
+      so the whole surface is what its own modules import, and every one of those is either a
+      relative path or a Node builtin this list names. A `node:https` added tomorrow, or a
+      first dependency, fails here rather than at the point someone converts a recording that
+      was not allowed to leave the building.
+
+      Read off the built `dist/`, which is what actually runs and what npm ships, rather than
+      off `src/` — a claim about what the code does belongs to the code that gets executed.
+    */
+    const allowed = new Set([
+      'node:child_process', 'node:crypto', 'node:fs', 'node:fs/promises', 'node:os',
+      'node:path', 'node:process', 'node:stream', 'node:stream/promises', 'node:url',
+      'node:util', 'node:zlib',
+    ]);
+
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(full);
+        else if (entry.name.endsWith('.js')) files.push(full);
+      }
+    };
+    await walk(path.join(ROOT, 'dist'));
+    assert.ok(files.length >= 10, `found ${files.length} modules in dist`);
+
+    const foreign = [];
+    let specifiers = 0;
+    for (const file of files) {
+      const source = await readFile(file, 'utf8');
+      /*
+        Anchored to a statement, not to the word `from`. A bare /\bfrom ['"]…['"]/ reads
+        prose: cli.js explains that an exit code "cannot separate 'converted, and raised
+        warnings' from 'did not convert'", and that comment came back as an import of a
+        module called `did not convert`.
+      */
+      const found = [
+        ...source.matchAll(/^\s*(?:import|export)\b[^;'"]*\bfrom\s*['"]([^'"]+)['"]/gmu),
+        ...source.matchAll(/^\s*import\s*['"]([^'"]+)['"]/gmu),
+        ...source.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/gu),
+        ...source.matchAll(/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/gu),
+      ].map((m) => m[1]);
+      for (const specifier of found) {
+        specifiers++;
+        if (specifier.startsWith('.')) continue;
+        if (allowed.has(specifier)) continue;
+        foreign.push(`${path.relative(ROOT, file)}: ${specifier}`);
+      }
+    }
+    assert.ok(specifiers >= 30, `read ${specifiers} import specifiers out of dist`);
+    assert.deepEqual(
+      foreign,
+      [],
+      'the shipped code imports something outside the list this claim rests on',
+    );
+
+    // And the package really has no dependencies for one of them to hide behind.
+    const manifest = JSON.parse(await read('package.json'));
+    assert.deepEqual(Object.keys(manifest.dependencies ?? {}), []);
+  });
+
   it('lists every failure the site build refuses to ship', async () => {
     /*
       `website/README.md` heads a section "What the build refuses to ship" and explains that
