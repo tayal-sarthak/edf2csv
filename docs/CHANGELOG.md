@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.195
+
+### the second of two pages a type narrowing was made for
+
+`Diagnostic.severity` was narrowed from `'warning' | 'info'` to `'warning'`, and `errors.ts` says
+exactly why:
+
+> A published union is a promise about what a caller may receive, so **the two pages that print
+> this interface** told them to expect a second value and handle it — a branch that cannot run,
+> in the type a `--json` consumer reads `severity` out of.
+
+api.md was updated. The other page was not. warnings-and-errors opened by telling a reader:
+
+> The severity field can be `warning` or `info`. A `warning` prints with a `warning:` prefix; an
+> `info` would print with a `note:` prefix.
+
+Both halves are wrong now. The type forbids `info`, and no code maps anything to `note:` —
+`formatDiagnostics` interpolates the field straight into the prefix, so an `info`, if one could
+exist, would print `info: `. The label that produced `note:` went when that interpolation
+replaced it, leaving the page describing a value that cannot arrive under a prefix that cannot
+be printed, on the field a script branches on.
+
+The paragraph now says what the type says, keeps the history that explains why the field is
+still there at all, and a check ties it to the declared union: the page has to state the one
+value the type allows, and may not name a `note:` prefix anywhere.
+
 ## 0.7.194
 
 ### the one message that always meets the meter, on neither the promise nor the sweep

@@ -19,7 +19,7 @@ warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
 ```
 
-The severity field can be `warning` or `info`. A `warning` prints with a `warning:` prefix; an `info` would print with a `note:` prefix. Every diagnostic the current code raises is a warning, so `note:` lines don't appear in practice.
+The severity field is `warning`, and only `warning`. It was declared `warning | info`, and nothing has ever raised an `info` — a published union is a promise about what a caller may receive, so a `--json` consumer branching on `severity` was told to handle a second value that cannot arrive. The type says one value now, and this field is kept rather than dropped because `metadata.json`, both JSON streams and the `Diagnostic` interface all carry it, and removing it from a document people have archived is a worse change than narrowing what it can say. The prefix a diagnostic prints is that field, so a `warning:` line is the only one there is.
 
 Four places show you the same diagnostics in different forms.
 

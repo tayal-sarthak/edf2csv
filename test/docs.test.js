@@ -171,6 +171,35 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(block, 'api.md no longer shows the Diagnostic interface');
     const shown = [...block[1].matchAll(/'([a-z]+)'/gu)].map((m) => m[1]);
     assert.deepEqual(shown.sort(), [...declared].sort(), `api.md shows ${shown}`);
+
+    /*
+      And the other page the narrowing was made for.
+
+      `errors.ts` says the union was cut to one value because "the two pages that print this
+      interface told them to expect a second value and handle it". api.md was updated; the
+      other one was not. warnings-and-errors opened by telling a reader the field "can be
+      `warning` or `info`" and that an `info` "would print with a `note:` prefix" — a value the
+      type forbids, under a prefix no code produces. `formatDiagnostics` interpolates the field
+      directly, so an `info`, if one could exist, would print `info: `; the label that mapped
+      it to `note:` went when that interpolation replaced it.
+
+      Held to the union rather than to the words: the page has to say the field is what the
+      type says it is, and may not name a prefix the tool cannot print. It is free to explain
+      what the value used to be, which is why this reads the claim rather than every mention.
+    */
+    const prose = await read('website/content/warnings-and-errors.md');
+    const paragraph = /^The severity field[^\n]*$/mu.exec(prose);
+    assert.ok(paragraph, 'warnings-and-errors no longer describes the severity field');
+    assert.equal(declared.length, 1, `the union now has ${declared.length} members`);
+    assert.match(
+      paragraph[0],
+      new RegExp(`is \`${declared[0]}\`, and only \`${declared[0]}\``, 'u'),
+      'warnings-and-errors does not say the severity field is the one value the type allows',
+    );
+    assert.ok(
+      !/\bnote:/u.test(prose),
+      'warnings-and-errors names a `note:` prefix, which nothing in the tool prints',
+    );
   });
 
   it('shows the message every section it writes about is written about', async () => {
