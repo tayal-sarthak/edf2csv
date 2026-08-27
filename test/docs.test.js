@@ -2619,6 +2619,64 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('qualifies the whole-sample-index claim wherever a page makes it', async () => {
+    /*
+      `output-files.md` has this right, with the rule, a table carrying an "Exact?" column and
+      a paragraph on the case that falls outside it. Two other pages stated the conclusion flat:
+
+          Multiplying `time_s` by the rate gives back a whole sample index rather than
+          something like 8191.99999.
+
+      It comes back whole when `1 / rate` terminates in decimal, and not otherwise. Of the
+      integer rates 1 to 40, eleven terminate and twenty-nine do not — 3 Hz and 7 Hz among
+      them — and `many-rates.edf`, a fixture this repository ships, writes 29 files whose times
+      multiply out to 0.99996 and the like. The three examples the sentence gave were 256, 128
+      and 1, all of which terminate, which is how it survived.
+
+      The classes are derived from `timeDecimals` here rather than listed, so the rates this
+      calls rounded are the rates the formatter rounds.
+    */
+    const { timeDecimals } = await import(path.join(ROOT, 'dist/format/number.js'));
+    const terminates = (rate) => {
+      for (let d = 0; d <= 15; d++) if (Number.isInteger(10 ** d / rate)) return true;
+      return false;
+    };
+    const rounded = [];
+    for (let rate = 1; rate <= 40; rate++) {
+      if (terminates(rate)) continue;
+      rounded.push(rate);
+      // And the formatter really does round it: sample 1 does not land on index 1.
+      const decimals = timeDecimals(rate);
+      const index = Number((1 / rate).toFixed(decimals)) * rate;
+      assert.notEqual(index, 1, `${rate} Hz was written exactly after all`);
+    }
+    assert.ok(rounded.length >= 20, `only ${rounded.length} of 1..40 Hz are rounded`);
+
+    /*
+      Any page that states the conclusion has to state the condition near it. Checked over the
+      paragraph the claim sits in rather than the whole page, so a qualification three sections
+      away does not count as one.
+    */
+    const names = (await readdir(path.join(ROOT, 'website/content'))).filter((n) => n.endsWith('.md'));
+    const claim = /(?:gives back|comes back as|comes back) a whole (?:sample index|number|row number)/gu;
+    let stated = 0;
+    for (const name of [...names.map((n) => `website/content/${n}`), 'README.md']) {
+      const text = (await read(name)).replace(/\s+/gu, ' ');
+      for (const match of text.matchAll(claim)) {
+        stated++;
+        // The qualification has to be near the claim, either side of it, not three sections
+        // away — output-files states the rule before drawing the conclusion, the other two after.
+        const nearby = text.slice(Math.max(0, match.index - 400), match.index + 400);
+        assert.match(
+          nearby,
+          /terminat|rounded/u,
+          `${name} says time_s times the rate is whole and does not say when that holds`,
+        );
+      }
+    }
+    assert.ok(stated >= 3, `expected the pages to make this claim, found ${stated}`);
+  });
+
   it('imports nothing that could reach the network', async () => {
     /*
       Six places promise this, and nothing was reading any of them. The FAQ gives it a section

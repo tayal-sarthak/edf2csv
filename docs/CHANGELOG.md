@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.189
+
+### an invariant that holds for eleven of the first forty rates, stated for all
+
+`output-files.md` has this right: the rule, a table with an "Exact?" column, and a paragraph on
+the rates that fall outside it. Two other pages stated the conclusion flat.
+
+```
+Multiplying `time_s` by the rate gives back a whole sample index rather than
+something like 8191.99999.
+```
+
+It comes back whole when `1 / rate` terminates in decimal, and not otherwise. Of the integer
+rates 1 to 40, eleven terminate and **twenty-nine do not** — 3 Hz, 7 Hz and 30 Hz among them.
+`many-rates.edf`, a fixture this repository ships and converts in its own suite, writes 29 files
+whose times multiply out to 0.99996, 1.00016 and the like.
+
+The three examples the sentence offered were 256 Hz, 128 Hz and 1 Hz, every one of which
+terminates, which is how it survived. A reader with a 3 Hz channel — sampling-rates being the
+page they would go to — was told an invariant their file does not have, and getting-started says
+it on the first page anyone reads.
+
+Both now state the condition and link the page that gives the rule. The check derives the two
+classes from `timeDecimals` itself, asserts the formatter really rounds each rate it calls
+rounded, and requires any page drawing the conclusion to state the condition beside it.
+
 ## 0.7.188
 
 ### a privacy promise made in six places and read in none

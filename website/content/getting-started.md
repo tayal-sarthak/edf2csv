@@ -83,7 +83,7 @@ time_s,EEG Fpz-Cz
 0.020,30.464
 ```
 
-The number of decimals in `time_s` is chosen so the sample interval is written exactly rather than rounded. At 100 Hz that's three places, as above. At 256 Hz it's eight, so a row reads `0.00390625` and multiplying `time_s` by the rate gives back a whole number instead of something like 8191.999999.
+The number of decimals in `time_s` is chosen so the sample interval is written exactly rather than rounded. At 100 Hz that's three places, as above. At 256 Hz it's eight, so a row reads `0.00390625` and multiplying `time_s` by the rate gives back a whole number instead of something like 8191.999999. That works whenever `1 / rate` terminates in decimal, which covers every rate a recording is likely to use; a rate whose reciprocal does not terminate, such as 3 Hz, is rounded instead, and [Output files](/docs/output-files#how-many-decimals-time_s-carries) says which rates those are.
 
 If two channels in the file share a label, both column names get a `_ch` suffix carrying the channel's position — `T8-P8_ch0`, `T8-P8_ch1` — since position is the only thing that reliably tells them apart.
 
