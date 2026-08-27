@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.194
+
+### the one message that always meets the meter, on neither the promise nor the sweep
+
+The terminal sweep exists because 0.7.9 shipped
+
+```
+converting… 96%error: Expected 317440 bytes of data at record 1638 but only 0 …
+```
+
+and `grep '^error:'` over that run came back empty. It checks `error: ` and nothing else.
+
+The tool prints a third prefix: `interrupted (SIGINT): `. Arranging a *failure* while the meter
+is up takes the sweep three attempts at cutting a recording out from under the reader, and it
+says so when a fast machine outruns it. An *interrupt* needs no arranging at all — Ctrl-C is
+pressed by someone looking at the meter, so the meter is on the screen by construction. The one
+message guaranteed to meet it was the one nothing here met, and the claim on the correctness
+page named only the two prefixes that were checked.
+
+The sweep now interrupts a conversion under the pseudo terminal, on a recording of its own
+rather than the one already cut to a third, and holds the same property: exit 130, and
+`interrupted (` preceded by nothing or by a carriage return and an erase. Confirmed capable of
+failing — offsetting the search by three characters reports `preceded by "int"` rather than
+passing. Six runs now, and the page names the third prefix.
+
 ## 0.7.193
 
 ### eleven skips accounted for, and three more nobody counted

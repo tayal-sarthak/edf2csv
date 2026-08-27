@@ -61,17 +61,18 @@ if (!havePython()) {
  * The first bytes a conversion puts on a terminal are the meter, which is drawn from inside
  * the read loop. Waiting for them and cutting then is the event the sleep was standing in for.
  */
-function underTty(args, shrink) {
+function underTty(args, shrink, interrupt = false) {
   const script = `
-import os, pty, select, subprocess, sys
+import os, pty, select, subprocess, sys, signal, time
 args = sys.argv[1:]
 shrink = os.environ.get('SHRINK') or ''
+interrupt = os.environ.get('INTERRUPT') == '1'
 whole = os.path.getsize(shrink) if shrink else 0
 master, slave = pty.openpty()
 p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=slave, stderr=slave, close_fds=True)
 os.close(slave)
 buf = bytearray()
-shrunk = not shrink
+shrunk = not (shrink or interrupt)
 while True:
     r, _, _ = select.select([master], [], [], 20)
     if not r:
@@ -84,7 +85,12 @@ while True:
         break
     buf.extend(d)
     if not shrunk:
-        os.truncate(shrink, whole // 3)
+        if interrupt:
+            # Ctrl-C arrives while the meter is on the screen, which is the whole case.
+            time.sleep(0.05)
+            p.send_signal(signal.SIGINT)
+        else:
+            os.truncate(shrink, whole // 3)
         shrunk = True
 p.wait()
 sys.stdout.write(bytes(buf).decode('latin1'))
@@ -92,7 +98,7 @@ sys.stderr.write(str(p.returncode))
 `;
   const run = spawnSync('python3', ['-c', script, process.execPath, ...args], {
     encoding: 'latin1',
-    env: { ...process.env, SHRINK: shrink ?? '' },
+    env: { ...process.env, SHRINK: shrink ?? '', INTERRUPT: interrupt ? '1' : '' },
     maxBuffer: 64 * 1024 * 1024,
   });
   const output = run.stdout ?? '';
@@ -158,6 +164,9 @@ try {
   const shrinking = write('shrinking.edf', 5000);
   // The rest never need a meter, so they keep the smaller file and the sweep keeps its speed.
   const steady = write('steady.edf', 1700);
+  // Its own copy for the interrupt, since `shrinking` is a third of its size by then and a
+  // run that short can finish before the signal lands.
+  const stopping = write('stopping.edf', 5000);
 
   /*
     A conversion that fails while the meter is up. Every `error: ` and `warning: ` this tool
@@ -194,6 +203,37 @@ try {
       if (!/\r\[K$/u.test(before) && before !== '') {
         problems.push(
           `"error: " does not start its line — preceded by ${JSON.stringify(before)}`,
+        );
+      }
+    }
+  }
+
+  /*
+    An interrupt, which is the one message that always arrives while the meter is up.
+
+    This sweep exists because 0.7.9 printed `converting… 96%error: …` and `grep '^error:'`
+    came back empty. It checked `error: ` and nothing else — and the tool prints a third
+    prefix, `interrupted (SIGINT): `, which a failing conversion has to be arranged to
+    produce but which Ctrl-C produces by definition, at the moment the meter is on the screen
+    because that is what the person was looking at when they pressed it. The one message
+    guaranteed to meet the meter was the one nothing here met.
+
+    Sent once the first meter bytes arrive, the same trigger the shrink above uses.
+    Interrupting is arranged rather than raced, so there is no attempt loop and no note.
+  */
+  const stopped = underTty([CLI, stopping, '--out', path.join(work, 'stopped'), '--channels', 'ch0'], null, true);
+  checked++;
+  if (stopped.code !== 130) {
+    problems.push(`an interrupt at a terminal exited ${stopped.code}, expected 130`);
+  } else {
+    const at = stopped.output.indexOf('interrupted (');
+    if (at === -1) {
+      problems.push('an interrupted run said nothing about being interrupted');
+    } else {
+      const before = stopped.output.slice(stopped.output.lastIndexOf('\n', at) + 1, at);
+      if (!/\r\x1b\[K$/u.test(before) && before !== '') {
+        problems.push(
+          `"interrupted (" does not start its line — preceded by ${JSON.stringify(before)}`,
         );
       }
     }
