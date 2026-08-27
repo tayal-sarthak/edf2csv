@@ -4722,6 +4722,36 @@ describe('documentation and source agree on their lists', () => {
       'the page does not say those tests are skipped where CI runs');
 
     /*
+      And the ones conditional on the machine rather than on the platform.
+
+      The paragraph accounted for eleven — nine for `hdiutil` and two for a filesystem that
+      folds — and its whole argument is the reader's ability to tell which of the numbers in
+      front of them their own machine will produce. `large.test.js` guards three of its six on
+      `totalmem() < 8 GiB`, which no page mentioned: on a small machine three more of the
+      numbers are not that reader's either, for a reason nothing told them.
+
+      Counted from the harness, so a fourth added tomorrow has to be accounted for too.
+    */
+    const large = await read('test/large.test.js');
+    const gated = [...large.matchAll(/if \(totalmem\(\) < (\d+) \* 1024 \*\* 3\)/gu)];
+    assert.ok(gated.length > 0, 'large.test.js no longer guards on memory');
+    assert.ok(
+      gated.every((m) => m[1] === gated[0][1]),
+      'the memory guards no longer agree on a floor',
+    );
+    assert.match(
+      page,
+      new RegExp(`skip below ${gated[0][1]} GiB of RAM`, 'u'),
+      'the page does not give the memory floor those tests skip below',
+    );
+    const words = ['one', 'two', 'three', 'four', 'five', 'six'][gated.length - 1];
+    assert.match(
+      page,
+      new RegExp(`${words.charAt(0).toUpperCase()}${words.slice(1)} of \`large.test.js\`'s six`, 'u'),
+      `${gated.length} of large.test.js's tests are gated on memory and the page says otherwise`,
+    );
+
+    /*
       And a platform guard has to skip, not return. `refuses two recordings whose names differ
       only in case, where that matters` opened with
 

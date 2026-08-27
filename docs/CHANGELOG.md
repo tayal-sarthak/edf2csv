@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.193
+
+### eleven skips accounted for, and three more nobody counted
+
+The correctness page accounts for eleven tests a reader's own machine may not run: nine that
+need `hdiutil` and two that need a filesystem which folds case or normalisation. Its argument for
+naming them is explicit — "A skip is reported as a skip, so nothing here claims to have passed —
+what was missing is the reader's ability to tell which nine of the numbers in front of them their
+own machine will produce."
+
+By that argument it owed three more. `large.test.js` guards half its tests on the machine rather
+than on the platform:
+
+```js
+if (totalmem() < 8 * 1024 ** 3) {
+  t.skip('needs room to build a 32 MB recording and write the 283 MB CSV it becomes');
+```
+
+One builds a 32 MB recording into a 283 MB CSV; two more hold a single record of over two
+gigabytes. On a laptop with less than 8 GiB, three of the six numbers beside `large.test.js` are
+not that reader's either, and no page said so — the one thing the paragraph exists to prevent.
+
+The page now names them and gives the floor, and the check counts the guards in the harness and
+requires the floor and the count to match what is written, so a fourth has to be accounted for
+too.
+
 ## 0.7.192
 
 ### two checks in one suite disagreeing, the wrong one never reaching its case
