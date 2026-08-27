@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.192
+
+### two checks in one suite disagreeing, the wrong one never reaching its case
+
+0.7.173 established that `metadata.json`'s `notes` is the run's warnings **minus
+`STALE_OUTPUT`**, corrected the reference, which had promised plain equality, and added a check
+that converts a mixed-rate recording and then a single-rate one into one directory — the run
+that raises it — and holds the real relationship.
+
+It left an older check behind still asserting the equality it had just disproved:
+
+```js
+assert.deepEqual(
+  summary.warnings.map((w) => w.code),
+  metadata.notes.map((n) => n.code),
+);
+```
+
+That one passes because each of its four recordings is converted once into a directory of its
+own, where nothing is ever stale. So the suite held two checks that disagree about one pair, and
+the one that was wrong survived only by never reaching the case — which is the shape this file's
+own header calls "a guard that quietly measures less than it claims", with the guard measuring
+something that is not true instead.
+
+It now asserts what 0.7.173 established, and the comment above it says which of the three pairs
+is exact and which is exact minus one code.
+
 ## 0.7.191
 
 ### an exception no fixture reaches, for a reason the page did not give

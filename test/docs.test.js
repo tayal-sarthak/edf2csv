@@ -5150,14 +5150,15 @@ describe('documentation and source agree on their lists', () => {
           annotations           conversion.annotations_written
           warnings              notes
 
-      Every one carries the same value — checked below rather than asserted — so somebody who
-      took the sentence at its word and reached for `doc["notes"]` after reading a summary, or
-      for `data_records` after reading one, gets a KeyError from a document that has the number
-      under another name. The sentence is what was wrong, since the field names are published
-      in tables on this page and moving one would break every reader that has them.
+      The first two carry the same value, and the third carries it minus `STALE_OUTPUT` — both
+      checked below rather than asserted — so somebody who took the sentence at its word and
+      reached for `doc["notes"]` after reading a summary, or for `data_records` after reading
+      one, gets a KeyError from a document that has the number under another name. The sentence
+      is what was wrong, since the field names are published in tables on this page and moving
+      one would break every reader that has them.
 
-      The guard is in two halves. The values of the three pairs have to stay equal, because the
-      mapping the page now prints is only useful while they describe the same thing. And a
+      The guard is in two halves. The values of the three pairs have to stay in the
+      relationship the page prints, because the mapping is only useful while they do. And a
       field appearing in the JSON that `metadata.json` has no name for at all must be one of
       the handful that genuinely has no counterpart — so a new field cannot slip in and quietly
       become a fourth mismatch.
@@ -5195,10 +5196,21 @@ describe('documentation and source agree on their lists', () => {
           metadata.conversion.annotations_written,
           `${name}: annotations`,
         );
+        /*
+          Minus `STALE_OUTPUT`, which is the relationship rather than plain equality.
+
+          This asserted the two lists were equal, and passed because each recording here is
+          converted once into a directory of its own, where nothing is ever stale. 0.7.173
+          corrected the page to say `notes` is the same list without that one code — a fact
+          about the destination at the moment of the run, not about the conversion — and left
+          this assertion behind still claiming the two always match. Two checks in one suite
+          disagreeing about one pair, with the older one passing only because it never reaches
+          the case.
+        */
         assert.deepEqual(
-          summary.warnings.map((w) => w.code),
           metadata.notes.map((n) => n.code),
-          `${name}: warnings against notes`,
+          summary.warnings.map((w) => w.code).filter((code) => code !== 'STALE_OUTPUT'),
+          `${name}: notes against warnings`,
         );
 
         const named = leaves(metadata, new Set());
