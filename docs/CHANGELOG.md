@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.198
+
+### a check explaining a tolerance it has never had
+
+The check that the changelog has an entry for the version being released explained itself like
+this:
+
+> Checked against package.json rather than against git tags, so the file may be one entry ahead
+> — the release being prepared writes its entry before the version is published — and no further
+> behind than that.
+
+The assertion under it is `assert.equal(newest, version)`. It has never allowed the file to be
+one entry ahead, or anything other than exactly equal.
+
+So the comment describes a workflow the check forbids. Anyone cutting a release by hand who
+followed it — write the entry, then bump — was failed by a guard whose own explanation said they
+were fine, and told `package.json is at 0.7.197 and the newest changelog entry is 0.7.198`, which
+reads as the changelog being behind when it is ahead.
+
+Equality is the right rule and the one everything else already describes: `release.sh` writes the
+entry and the bump in one commit, and CONTRIBUTING says "the suite checks all four agree, so a
+partial bump fails before it can be published." Half a release is precisely what this catches.
+The tolerance was the part that was wrong, so the comment now says what the code does, and the
+failure names the rule rather than leaving the reader to infer a direction from two numbers.
+
 ## 0.7.197
 
 ### four headline figures, guarded by a substring any document contains

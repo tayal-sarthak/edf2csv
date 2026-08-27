@@ -1031,9 +1031,19 @@ describe('documentation and source agree on their lists', () => {
       while the package was at 0.4.64. Forty-five releases had notes on GitHub and nothing in
       the one place the repository presents as the record.
 
-      Checked against package.json rather than against git tags, so the file may be one entry
-      ahead — the release being prepared writes its entry before the version is published —
-      and no further behind than that.
+      Checked against package.json rather than against git tags, and for equality rather than
+      for "no further behind": the entry and the bump belong to one commit, which is what
+      `release.sh` does and what CONTRIBUTING describes — "the version appears in
+      `package.json`, `package-lock.json` and `CITATION.cff`, and `docs/CHANGELOG.md` needs an
+      entry headed with it. The suite checks all four agree, so a partial bump fails before it
+      can be published."
+
+      This comment used to say the file "may be one entry ahead — the release being prepared
+      writes its entry before the version is published", which the assertion below has never
+      allowed. Anyone who took it at its word and wrote the entry first was failed by a check
+      whose own explanation said they were fine, and told the changelog was behind while it was
+      ahead. Half a release is exactly what this is for; the tolerance was the part that was
+      wrong.
     */
     const changelog = await read('docs/CHANGELOG.md');
     const newest = /^## (\d+\.\d+\.\d+)$/mu.exec(changelog);
@@ -1043,7 +1053,8 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(
       newest[1],
       version,
-      `package.json is at ${version} and the newest changelog entry is ${newest[1]}`,
+      `package.json is at ${version} and the newest changelog entry is ${newest[1]}; ` +
+        'a release bumps both in one commit',
     );
   });
 
