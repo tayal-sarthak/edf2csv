@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.186
+
+### two counts called nested, disjoint in three of this repo's own fixtures
+
+The API page described the annotation failure counts as nested, in four places:
+
+```ts
+malformed: number;             // TALs that could not be parsed at all
+malformedTimekeeping: number;  // of those, ones carrying a record's start time
+```
+
+`malformedTimekeeping` is not a subset of `malformed`, and three of this repository's own
+fixtures say so: `annotations-bad-timekeeping.edf`, `lost-timekeeping.edf` and
+`lost-timekeeping-d.edf` each report `malformed: 0` beside `malformedTimekeeping: 1`.
+
+The two count different losses. `malformed` counts unreadable TALs that cost **events**;
+`malformedTimekeeping` counts unreadable TALs in first position, which cost a record's
+**start time**. A bare timekeeping TAL that fails costs no event, so it lands only in the
+second — and a caller subtracting one from the other to get "failures that were not
+timekeeping" is handed **-1**.
+
+What genuinely overlaps is the third. A first-position TAL may carry events after the start
+time, and one that fails loses both, so it is counted in both of the others and never in only
+one. The page had that half right and said it a sentence after getting the first half wrong.
+
+All four places are corrected, the arithmetic that does hold is written down —
+`malformed + malformedTimekeeping - malformedTimekeepingWithText` is the number of TALs that
+failed — and a check reads every fixture, requires the overlap that exists in both directions,
+requires at least three where the two counts are disjoint, and refuses any "of those" going
+back onto that pair.
+
 ## 0.7.185
 
 ### a count of every problem above a list of the distinct ones

@@ -2619,6 +2619,62 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 2, `expected the pages to quote batch summaries, found ${checked}`);
   });
 
+  it('does not call the annotation counts nested when two of them are disjoint', async () => {
+    /*
+      Three places on the API page described `malformedTimekeeping` as "of those" —
+      a subset of `malformed`. It is not one, and three of this repository's own fixtures
+      prove it: `annotations-bad-timekeeping.edf`, `lost-timekeeping.edf` and
+      `lost-timekeeping-d.edf` each report `malformed: 0` beside `malformedTimekeeping: 1`.
+
+      The two count different losses. `malformed` counts unreadable TALs that cost events;
+      `malformedTimekeeping` counts unreadable TALs in first position, which cost a record's
+      start time. A bare timekeeping TAL that fails costs no event, so it lands only in the
+      second — and `malformed - malformedTimekeeping` comes out at -1 rather than at a count
+      of anything.
+
+      What genuinely overlaps is the third: a first-position TAL that carried events after
+      the start time loses both, and is counted in both. So the number of TALs that failed is
+      `malformed + malformedTimekeeping - malformedTimekeepingWithText`, which is what the
+      page says now and what this holds the fixtures to.
+    */
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+    const names = (await readdir(path.join(ROOT, 'test/fixtures/generated')))
+      .filter((n) => n.endsWith('.edf') || n.endsWith('.bdf'));
+
+    let disjoint = 0;
+    for (const name of names) {
+      const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated', name));
+      try {
+        const r = await file.readAnnotations();
+        // The one nesting that does hold, in both directions of the pair it belongs to.
+        assert.ok(
+          r.malformedTimekeepingWithText <= r.malformedTimekeeping,
+          `${name}: withText ${r.malformedTimekeepingWithText} exceeds malformedTimekeeping`,
+        );
+        assert.ok(
+          r.malformedTimekeepingWithText <= r.malformed,
+          `${name}: withText ${r.malformedTimekeepingWithText} exceeds malformed`,
+        );
+        if (r.malformedTimekeeping > r.malformed) disjoint++;
+      } finally {
+        await file.close();
+      }
+    }
+    assert.ok(
+      disjoint >= 3,
+      `expected fixtures where malformedTimekeeping exceeds malformed, found ${disjoint}`,
+    );
+
+    // And no page may go back to calling that pair nested.
+    const page = await read('website/content/api.md');
+    for (const [, comment] of page.matchAll(/malformedTimekeeping: number;([^\n]*)/gu)) {
+      assert.ok(
+        !/of those/u.test(comment),
+        `the page calls malformedTimekeeping a subset of malformed: "${comment.trim()}"`,
+      );
+    }
+  });
+
   it('shows what decodeRecordAnnotations really hands back', async () => {
     /*
       The page said it "returns `{ recordStart, annotations, malformed }`". It returns seven

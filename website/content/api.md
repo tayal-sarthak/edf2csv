@@ -51,9 +51,9 @@ class EdfFile {
   readOrigin(): Promise<number | null>;
   scanOrigin(): Promise<{
     origin: number | null;
-    malformed: number;                     // TALs the search could not parse at all
-    malformedTimekeeping: number;          // of those, ones in first position
-    malformedTimekeepingWithText: number;  // of those, ones that also carried events
+    malformed: number;                     // unreadable TALs that cost events
+    malformedTimekeeping: number;          // unreadable TALs in first position, costing a record's time
+    malformedTimekeepingWithText: number;  // counted in both of the above, never only one
   }>;
   get durationSeconds(): number;       // recordCount * header.recordDuration
 
@@ -66,9 +66,9 @@ class EdfFile {
   readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
-    malformed: number;             // TALs that could not be parsed at all
-    malformedTimekeeping: number;  // of those, ones carrying a record's start time
-    malformedTimekeepingWithText: number;  // of those, ones that also carried events
+    malformed: number;             // unreadable TALs that cost events
+    malformedTimekeeping: number;  // unreadable TALs in first position, costing a record's time
+    malformedTimekeepingWithText: number;  // counted in both of the above, never only one
     unreadableDurations: number;   // events kept whose stated duration is not a number
     negativeDurations: number;     // events kept whose stated duration is below zero
   }>;
@@ -382,7 +382,7 @@ interface Annotation {
 }
 ```
 
-`readAnnotations()` returns every event in the file, the start time each record declares, and five counts of what could not be decoded — kept apart because each is a different loss. `malformed` counts TALs that could not be parsed at all, so their events are gone; `malformedTimekeeping` counts the ones of those that sat in first position, where a record's start time is stored; `malformedTimekeepingWithText` counts the ones of *those* that carried events after the start time as well, which the format allows and writers do — so the first two of these can be read as "a position was lost" only when the third is zero, and an entry counted in it is counted in `malformed` too, because both losses happened; `unreadableDurations` counts events that were kept whole except for a duration the file stated and this could not read; and `negativeDurations` counts events whose duration read as a number below zero, which is not a length of time — the value is written out as the file gave it, so nothing about the row looks wrong.
+`readAnnotations()` returns every event in the file, the start time each record declares, and five counts of what could not be decoded — kept apart because each is a different loss. `malformed` counts unreadable TALs that cost events; `malformedTimekeeping` counts unreadable TALs that sat in first position, where a record's start time is stored, so what they cost is a position. Those two are **not** nested, and neither contains the other: a bare timekeeping TAL that fails is counted only in the second, so `malformed` can be 0 while `malformedTimekeeping` is 1 — which is what three of this repository's own fixtures do, and it makes `malformed - malformedTimekeeping` a negative number rather than a count of anything. What overlaps is `malformedTimekeepingWithText`: TALs in first position that carried events after the start time as well, which the format allows and writers do. Those lost both, so they are counted in *both* of the other two, and never in only one — `malformed + malformedTimekeeping - malformedTimekeepingWithText` is the number of TALs that failed; `unreadableDurations` counts events that were kept whole except for a duration the file stated and this could not read; and `negativeDurations` counts events whose duration read as a number below zero, which is not a length of time — the value is written out as the file gave it, so nothing about the row looks wrong.
 
 `unreadableDurations` is why `duration` being `null` is not by itself the same as the file giving no duration. An event written with a duration of `abc` comes back with `duration: null`, indistinguishable from one that never had a duration — the count is what tells you it happened, and the conversion raises `ANNOTATION_DECODE_FAILED` for it.
 
@@ -429,9 +429,9 @@ For decoding annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIn
 interface DecodedRecordAnnotations {
   recordStart: number | null;   // from the leading timekeeping TAL, null when unreadable
   annotations: Annotation[];
-  malformed: number;                     // chunks that were not valid TALs at all
-  malformedTimekeeping: number;          // of those, ones in first position
-  malformedTimekeepingWithText: number;  // of those, ones that also carried events
+  malformed: number;                     // unreadable TALs that cost events
+  malformedTimekeeping: number;          // unreadable TALs in first position, costing a record's time
+  malformedTimekeepingWithText: number;  // counted in both of the above, never only one
   unreadableDurations: number;           // events kept whose duration is not a number
   negativeDurations: number;             // events kept whose duration is below zero
 }
