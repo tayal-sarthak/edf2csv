@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.216
+
+### three regexes and an indent still waiting for a severity the type removed
+
+`Diagnostic.severity` is the literal type `'warning'`, and the comment on it spends a
+paragraph on why:
+
+> It was `'warning' | 'info'`, and nothing in this codebase has ever built an `'info'`. ...
+> The terminal was worse: `formatDiagnostics` labelled anything that was not `'warning'` as
+> `note:`, so the one thing the type said could arrive would have arrived under a third name
+> again.
+
+Four places still expect that third name. Two regexes prefix a batch's warnings with the
+recording that raised them under `--quiet`, and both match `^(warning|note): `; a third does
+the same for a child process's output; and `HINT_INDENT` calls itself "the continuation indent
+under a `warning: ` / `note: ` prefix", which is nine spaces — the width of `warning: ` and
+three more than `note: ` needs, so the one alternative it names would have been misaligned by
+it.
+
+Dead alternatives are not free here. These run over whole message bodies, so a line inside a
+warning that happens to begin `note: ` — a hint quoting one, say — gets the recording's name
+spliced into the middle of the message, which is the failure the `$&` comment two lines up is
+already about.
+
 ## 0.7.215
 
 ### ten of fourteen examples, under a test that says every

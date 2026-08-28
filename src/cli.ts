@@ -1067,7 +1067,7 @@ async function showInfo(
       */
       const where = batch ? `${printable(input)}: ` : '';
       process.stderr.write(
-        `\n${formatDiagnostics(diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n`,
+        `\n${formatDiagnostics(diagnostics).replace(/^warning: /gmu, (m) => `${m}${where}`)}\n`,
       );
     }
     return diagnostics.length;
@@ -1209,7 +1209,7 @@ async function convertOne(
       */
       emit(
         'err',
-        `${formatDiagnostics(result.diagnostics).replace(/^(warning|note): /gmu, (m) => `${m}${where}`)}\n${quiet ? '' : '\n'}`,
+        `${formatDiagnostics(result.diagnostics).replace(/^warning: /gmu, (m) => `${m}${where}`)}\n${quiet ? '' : '\n'}`,
       );
     }
     if (asJson) {
@@ -1916,7 +1916,8 @@ function named(text: string, input: string, alsoWarnings = false): string {
   // A function, not a string: `$&`, `$\'`, `` $` `` and `$1` in a replacement string are
   // patterns, and a file may legitimately be called any of them. `bad$&name.edf` re-injected
   // the text it had just matched and reported itself as `baderror: name.edf`.
-  const heads = alsoWarnings ? /^(error|warning|note): /gmu : /^error: /gmu;
+  // `note:` was a third head until severity narrowed to the one value; see Diagnostic.
+  const heads = alsoWarnings ? /^(error|warning): /gmu : /^error: /gmu;
   return text.replace(heads, (head) => `${head}${printable(input)}: `);
 }
 

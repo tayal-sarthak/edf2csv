@@ -18,7 +18,7 @@ import { VERSION } from '../version.js';
 /** Where terminal prose wraps. The width --help is written to, and the ANSI default. */
 const WRAP_COLUMNS = 80;
 
-/** The continuation indent under a `warning: ` / `note: ` prefix. */
+/** The continuation indent under a `warning: ` prefix, which is the only one there is. */
 const HINT_INDENT = ' '.repeat(9);
 
 /**
