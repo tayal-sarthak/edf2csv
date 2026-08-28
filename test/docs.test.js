@@ -805,6 +805,23 @@ describe('documentation and source agree on their lists', () => {
     const table = section.slice(0, section.indexOf('\n## ', 1));
     const undescribed = files.filter((name) => !table.includes(`\`${name}\``)).sort();
     assert.deepEqual(undescribed, [], `fixtures with no row: ${undescribed.join(', ')}`);
+
+    /*
+      And the other direction, which nothing checked.
+
+      A row naming a fixture that has since been renamed or removed is a description of
+      evidence nobody can look up — the same failure this test exists for, pointing the other
+      way — and the sweep above cannot see it: a stale row only ever makes it easier to pass.
+      The exemption list for `--info` was fixed for exactly this at 0.7.92, one page over.
+
+      Every backticked `.edf` / `.bdf` name inside the table, since the table's whole subject
+      is which fixture covers what; a recording named in prose lives outside this section.
+    */
+    const gone = [...table.matchAll(/`([^`]+\.(?:edf|bdf))`/gu)]
+      .map((m) => m[1])
+      .filter((name, index, all) => all.indexOf(name) === index && !files.includes(name))
+      .sort();
+    assert.deepEqual(gone, [], `rows for fixtures that are not generated: ${gone.join(', ')}`);
   });
 
   it('counts its own claims correctly', async () => {

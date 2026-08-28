@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.222
+
+### a fixture table checked for absence and not for the other kind
+
+The correctness page's fixture table is guarded in one direction: every generated recording
+must have a row. Nothing checked the other — a row naming a recording that is no longer
+generated.
+
+That is the same failure the test exists for, pointing the other way. The section is headed
+"The fixtures and what each one covers", and a row for a file nobody can produce describes
+evidence nobody can look up, on the page whose subject is what has actually been verified. And
+the existing sweep cannot see it: a stale row only ever makes "every fixture has a row" easier
+to satisfy, exactly as the stale `--info` exemption did until 0.7.92 — the comment there says
+it in as many words, "a stale exemption only ever makes the sweep above more permissive".
+
+Checked over the backticked recording names inside that section, since the section's whole
+subject is which fixture covers what. Adding a row for `records-sideways.edf` now fails with
+"rows for fixtures that are not generated"; before, it passed.
+
 ## 0.7.221
 
 ### a bound described as one its own Math.min returns
