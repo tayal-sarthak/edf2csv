@@ -1001,6 +1001,36 @@ describe('EDF+ annotations', () => {
     }
   });
 
+  it('decodes every byte as latin1 the way Buffer does, all 256 of them', async () => {
+    /*
+      `decodeLatin1` says of itself: "Verified byte-for-byte against `Buffer.toString('latin1')`
+      across all 256 values." Nothing verified it. The nearest test took five hand-picked byte
+      strings through the annotation decoder and asked that no U+FFFD appeared and that the
+      character count matched the byte count — which a decoder mapping 0x80-0x9F the
+      windows-1252 way would pass, since those are one character each too.
+
+      That is the exact mapping the function's own comment names as the risk: the WHATWG
+      Encoding Standard lists `latin1` as a label for windows-1252, which is not an identity
+      map over 0x80-0x9F, and the loop here exists so the identity holds by construction rather
+      than by whichever behaviour a runtime happens to give the label. A claim that the property
+      was checked, over a property nothing checked.
+    */
+    const { decodeLatin1 } = await import('../dist/edf/bytes.js');
+    const all = Uint8Array.from({ length: 256 }, (_, i) => i);
+    assert.equal(decodeLatin1(all), Buffer.from(all).toString('latin1'));
+    for (let byte = 0; byte < 256; byte++) {
+      assert.equal(
+        decodeLatin1(Uint8Array.of(byte)).codePointAt(0),
+        byte,
+        `byte ${byte} is not the code point of the same value`,
+      );
+    }
+
+    // Past the 4096-byte chunk the loop spreads in, so a boundary cannot drop or reorder one.
+    const long = Uint8Array.from({ length: 10_000 }, (_, i) => (i * 7) % 256);
+    assert.equal(decodeLatin1(long), Buffer.from(long).toString('latin1'));
+  });
+
   it('leaves duration null when the annotation did not specify one', async () => {
     const file = await load('annotations.edf');
     const { annotations } = await file.readAnnotations();

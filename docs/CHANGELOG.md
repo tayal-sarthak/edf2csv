@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.202
+
+### an identity map asserted in a comment and checked by nothing
+
+`decodeLatin1` is a hand-written loop rather than a `TextDecoder`, and its comment gives the
+reason and then the evidence:
+
+> The WHATWG Encoding Standard lists `latin1` as a label for windows-1252, which is not an
+> identity map over 0x80-0x9F; Node resolves the label to plain byte identity, so the two agree
+> here, but that is a runtime's behaviour rather than a guarantee to lean on for header bytes.
+>
+> Verified byte-for-byte against `Buffer.toString('latin1')` across all 256 values.
+
+Nothing verified it. The nearest thing in the suite takes five hand-picked byte strings through
+the annotation decoder and asserts that no U+FFFD appears and that the character count equals
+the byte count — both of which a windows-1252 decoder passes, since 0x80-0x9F are one character
+each there too. The one property the loop exists to hold is the one nothing looked at.
+
+So the check the comment describes now exists: all 256 single bytes against
+`Buffer.toString('latin1')`, each one's code point against its own value, and a 10,000-byte
+run across the 4,096-byte boundary the loop spreads in.
+
 ## 0.7.201
 
 ### a guarantee claimed by one comment and withdrawn by another twenty lines up
