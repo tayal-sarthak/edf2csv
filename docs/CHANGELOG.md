@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.212
+
+### a warning about two counts, agreeing with one of them
+
+`RECORD_COUNT_MISMATCH` prints two counts and pluralised one of them:
+
+```text
+warning: The header declares 1 data records but the file contains 3. Converting the 3
+         records that are present.
+```
+
+A header claiming one record over a file holding three is an ordinary way to reach this — it
+is what a writer that never updated the field leaves behind, and the hint under it, "The file
+is longer than its header claims", is written for exactly that. The second half of the same
+sentence has gone through `counted` since it was written, and even agrees its verb: "the 3
+records that are present", "the 1 record that is present". The first half never asked.
+
+Same slip as "1 rows", "2 annotation channel" and "1 records of 1s", each fixed where it was
+found; this is the one left, on the first line of a warning about counts.
+
 ## 0.7.211
 
 ### a tiebreak formatted on every row, for ties that mostly cannot happen

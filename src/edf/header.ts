@@ -956,9 +956,12 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'RECORD_COUNT_MISMATCH',
       severity: 'warning',
+      // Both counts through `counted`, not only the second. A header declaring one record
+      // over a file holding three read "declares 1 data records" — the slip the sentence
+      // beside it has been holding to since it was written.
       message:
-        `The header declares ${declaredRecordCount} data records but the file contains ` +
-        `${recordCount}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
+        `The header declares ${counted(declaredRecordCount, 'data record')} but the file ` +
+        `contains ${recordCount}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
       hint:
         declaredRecordCount > recordCount
           ? 'The recording looks truncated. It may have been cut short or copied incompletely.'
