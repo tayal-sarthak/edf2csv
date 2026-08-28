@@ -145,7 +145,12 @@ export interface EdfHeaderInfo {
 function startsFormula(text: string): boolean {
   if (/^[=@]/u.test(text)) return true;
   if (!/^[+-]./u.test(text)) return false;
-  return !/^[+-](?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
+  // `\.\d*` and not `\.\d+`, which is the spelling DECIMAL_FIELD and DECIMAL_DURATION both
+  // use for the same question. A trailing point is a number with nothing after it — Excel
+  // opens `+1.` as 1 — and one character of difference between three copies of one grammar
+  // had this warning firing on a field the paragraph above exempts by name, and failing
+  // --strict for it.
+  return !/^[+-](?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
 }
 
 /**

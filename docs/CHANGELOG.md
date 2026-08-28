@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.220
+
+### one grammar in three places, and one of them a character short
+
+`FORMULA_LABEL` exempts a header field that is entirely a number, and the comment says why: a
+channel labelled `+100` "opens as 100, which is what the header says", so warning about it
+would fire on files that are fine, "which is how a warning gets ignored".
+
+`+1.` was warned about. It is a number — Excel opens it as 1 — and this codebase has the
+grammar for that written down twice already: `DECIMAL_FIELD`, which decides whether a header
+number is a number, and `DECIMAL_DURATION`, which decides the same for an annotation's
+duration. Both spell the fractional part `\.\d*`. `startsFormula` spelled it `\.\d+`, one
+character apart, so a trailing point stopped being a number for this one question and the
+field was reported as something a spreadsheet would execute.
+
+The consequence is not only a line of noise: `--strict` exits 1 on any warning, so a recording
+whose only complaint is a trailing point in a field failed a screening run over a cell that
+opens as the number the header wrote.
+
+`+.` is still flagged, because it is still not a number.
+
 ## 0.7.219
 
 ### one signal file, described as several, by a warning holding the count
