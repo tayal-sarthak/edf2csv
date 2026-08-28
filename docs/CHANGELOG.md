@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.206
+
+### a precedent cited for doing the opposite of what it does
+
+`formatDuration` refuses to print a sub-millisecond recording as `0s`, and cites two siblings
+as the same shape:
+
+> Same shape as the other end of this function, which stops decomposing past 2^53 and prints
+> the seconds instead, and as the byte size above, which does not round 1023.999 KB into the
+> next unit.
+
+`formatBytes` rounds 1023.999 KB into the next unit, and its own comment eight lines up says
+so: "Rounding can carry into the next unit, and the unit was chosen before it: 1,048,575 bytes
+is 1023.999 KB, which printed as `1024 KB`." `formatBytes(1048575)` is `1 MB`. Carrying it up
+*is* the fix, and the comment beneath cites it as the counter-example.
+
+The property the three actually share is not about rounding at all: none of them will print a
+form the quantity cannot take — no "1024 KB", no "59m 60s", no "0s" for a file that converts to
+six rows. Said that way the analogy holds and the fact is right.
+
 ## 0.7.205
 
 ### a doc comment describing the function after the one it landed on

@@ -289,7 +289,9 @@ export function formatDuration(seconds: number): string {
     told the file holds nothing, on the line they look at first, about a file that converts to
     six rows; the record duration two columns over already contradicts it. Same shape as the
     other end of this function, which stops decomposing past 2^53 and prints the seconds
-    instead, and as the byte size above, which does not round 1023.999 KB into the next unit.
+    instead, and as the byte size above, which carries 1023.999 KB up rather than printing the
+    "1024 KB" no unit has. None of the three is a rounding rule; each one refuses to print a
+    form the quantity cannot take.
 
     Written through `plain` rather than interpolated, for the reason the comment above gives:
     `${1e-15}` is exponent notation, and the sentence this feeds is one whose whole job is to
