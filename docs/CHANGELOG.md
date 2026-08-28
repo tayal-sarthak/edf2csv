@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.213
+
+### a plural over a list of one, on the line that says what to type
+
+Both `--channels` position refusals end on the same advice line, and on a one-channel
+recording it read:
+
+```text
+error: No channel at position #9.
+       This file has signal channels at #0.
+```
+
+The zero-channel case was given its own sentence at 0.6.x, because `listed([])` is the empty
+string and the line came out "This file has signal channels at ." — "a sentence that states
+there are channels and then names none". One channel is the same sentence one item further
+along: a plural over a list of one, on the line whose whole job is to say what can be typed
+instead of what was.
+
+Single-channel recordings are not unusual — an ECG strip, an annotations-plus-one-signal
+EDF+, and two of this repository's own fixtures. It now reads "This file has one signal
+channel, at #0."
+
 ## 0.7.212
 
 ### a warning about two counts, agreeing with one of them

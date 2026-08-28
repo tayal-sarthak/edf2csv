@@ -168,10 +168,21 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
     fact was known one layer up; the message that a `--channels` user actually reaches was
     the one that did not have it.
   */
+  /*
+    And one channel is not "channels", which is the same sentence one item further on.
+
+    The zero case above was given its own wording because "signal channels at ." states there
+    are some and then names none. A file with exactly one got "This file has signal channels
+    at #0." — a plural over a list of one, on the line whose job is to say what may be typed
+    instead. Single-channel recordings are ordinary; two of this repository's own fixtures are
+    one.
+  */
   const positions =
     candidates.length === 0
       ? 'This file has no signal channels; it contains only annotations.'
-      : `This file has signal channels at ${listed(candidates.map((s) => `#${s.index}`))}.`;
+      : candidates.length === 1
+        ? `This file has one signal channel, at #${candidates[0]?.index ?? 0}.`
+        : `This file has signal channels at ${listed(candidates.map((s) => `#${s.index}`))}.`;
 
   for (const rawTerm of terms) {
     const term = rawTerm.trim();
