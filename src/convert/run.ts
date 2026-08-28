@@ -78,7 +78,11 @@ export class ConversionError extends Error {
 }
 
 export interface ConvertOptions extends PlanOptions {
-  /** Destination directory. Defaults to the input file's name without its extension. */
+  /**
+   * Destination directory. Defaults to `defaultOutputDir(inputPath)`: the input's name with
+   * its extension replaced by `_csv`, beside the input — `sleep-study.edf` gives
+   * `sleep-study_csv`, not `sleep-study`.
+   */
   outputDir?: string | undefined;
   /** Overwrite an existing output directory. */
   force?: boolean | undefined;

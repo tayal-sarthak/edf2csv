@@ -8,6 +8,22 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.207
+
+### a default directory named on the option without the suffix it has
+
+`ConvertOptions.outputDir` is documented as defaulting to "the input file's name without its
+extension". It defaults to `defaultOutputDir`, which is that name with `_csv` on the end:
+`sleep-study.edf` converts into `sleep-study_csv`.
+
+The difference is not cosmetic for the caller this line is written for. A script that omits
+`outputDir` and then reads the files back from the path the comment describes looks in
+`sleep-study/`, which does not exist — and a script that *creates* that path first has built a
+directory beside the one the conversion actually filled. Every other statement of the default
+is right: `--help` says `<recording>_csv, beside the input`, the API reference says the
+extension is "replaced by `_csv`", and `defaultOutputDir` is exported so a caller can ask
+rather than guess. This is the one place a caller reads it off the option itself.
+
 ## 0.7.206
 
 ### a precedent cited for doing the opposite of what it does
