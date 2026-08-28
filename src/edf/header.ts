@@ -910,7 +910,16 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
 
   const dataBytes = fileSize - expectedHeaderBytes;
   if (dataBytes < 0) {
-    throw new EdfError('FILE_TOO_SMALL', `File is smaller than its own header.`);
+    // With the two figures, like the other two FILE_TOO_SMALL messages and unlike this one,
+    // which named neither — the same thing the NO_DATA_RECORDS message below was fixed for:
+    // "the message carried no figures at all, so nothing in it could be checked against the
+    // file". Reached by a caller handing `parseHeader` a header and a smaller size than the
+    // one it came out of, which is a mismatch worth being able to see.
+    throw new EdfError(
+      'FILE_TOO_SMALL',
+      `File is ${counted(fileSize, 'byte')}, which is less than the ${expectedHeaderBytes} ` +
+        `its own header occupies.`,
+    );
   }
   const recordCount = Math.floor(dataBytes / recordBytes);
   const trailingBytes = dataBytes - recordCount * recordBytes;

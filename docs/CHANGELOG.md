@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.217
+
+### the one size error of three that names no size
+
+Three errors in the parser carry the code `FILE_TOO_SMALL`. Two of them say by how much:
+
+```text
+File is 100 bytes; an EDF header alone needs at least 256.
+File declares 2 signals, which needs a 768-byte header, but the file is only 100 bytes.
+```
+
+The third said `File is smaller than its own header.` — neither figure, and a template literal
+with nothing interpolated into it, which is what a sentence looks like when the numbers were
+meant to go in and never did.
+
+Ten lines below it sits the message that was fixed for exactly this, with the reasoning
+written out: a file "was told no data was written, and the message carried no figures at all,
+so nothing in it could be checked against the file". Same function, same kind of arithmetic,
+one branch earlier.
+
+It is reached by a library caller handing `parseHeader` a header buffer and a file size below
+it — `parseHeader` is exported, and the packaging check in CI asserts that it is — which is a
+mismatch between two arguments and exactly the case where seeing both numbers settles it. It
+now reads `File is 700 bytes, which is less than the 768 its own header occupies.`
+
 ## 0.7.216
 
 ### three regexes and an indent still waiting for a severity the type removed
