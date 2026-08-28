@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.199
+
+### a shared budget explained by a floor it stopped having
+
+The comment over the shared flush budget explained what the split buys:
+
+> Split evenly with a floor, so the single-rate case, which is nearly every recording, keeps
+> exactly the buffer it always had, and forty tables cost 2.5 MB rather than 40.
+
+Forty tables cost one megabyte. The budget is `1 << 20` and the split is
+`floor(DEFAULT_FLUSH_THRESHOLD / groups)`, so forty groups take 26,214 bytes each and
+1,048,560 between them — the whole budget, once, which is the point the sentence is making
+and not the number it gives. 2.5 MB is forty times the 64 KiB floor, which is what
+`MIN_FLUSH_THRESHOLD` was before it became 8 KiB; the arithmetic outlived the constant it
+was computed from.
+
+The floor is also the part the sentence gets backwards. It does not protect the sum, it
+breaks it: below 128 groups the split is what bounds the total at one megabyte, and above
+128 every table takes the minimum and the total starts growing again — 200 groups hold
+1.6 MB. Worth saying on a comment whose subject is a bound.
+
 ## 0.7.198
 
 ### a check explaining a tolerance it has never had

@@ -558,7 +558,9 @@ async function writeSignalFiles(
     while the site advertises 48 MB. The recording is small; it is the fan-out that is not.
 
     Split evenly with a floor, so the single-rate case, which is nearly every recording,
-    keeps exactly the buffer it always had, and forty tables cost 2.5 MB rather than 40.
+    keeps exactly the buffer it always had, and forty tables cost one megabyte between them
+    rather than forty. The floor is what the sum is bounded by rather than the split: past
+    128 groups every table takes the 8 KiB minimum, so the total grows again from there.
     The long layout shares one writer already and is unaffected either way.
   */
   const MIN_FLUSH_THRESHOLD = 8 * 1024;
