@@ -8,6 +8,22 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.221
+
+### a bound described as one its own Math.min returns
+
+`toleranceFor` returns `Math.min(BOUNDARY_TOLERANCE, 1 / rate / 2)` under a comment beginning
+"Never as much as half a sample interval". Half a sample interval is the second argument, so
+above 500 MHz — where the interval drops below two nanoseconds, which is the whole reason this
+function exists rather than a constant — the value returned is exactly the one the sentence
+says it never is.
+
+The bound is right; the sentence about it is off by the word "as". Half an interval of slack
+cannot reach a neighbouring sample, because the nearest sample below a window bound sits a
+whole interval away from it, so half is the largest slack that is still slack rather than the
+first one that is not. A reader checking the formula against the rule it is given finds them
+disagreeing at the only magnitude where the formula does anything.
+
 ## 0.7.220
 
 ### one grammar in three places, and one of them a character short

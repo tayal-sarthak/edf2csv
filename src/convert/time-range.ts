@@ -279,8 +279,11 @@ export const BOUNDARY_TOLERANCE = 1e-9;
 /**
  * The slack to use for a channel sampled this often.
  *
- * Never as much as half a sample interval, because slack that reaches the next sample stops
- * being slack. A fixed nanosecond was applied whatever the rate, and the format does not
+ * Never past half a sample interval, because slack that reaches the next sample stops being
+ * slack — half is the most that cannot, since the nearest sample below a bound sits a whole
+ * interval away from it. `Math.min` takes exactly half at rates above 500 MHz, which is where
+ * this said "never as much as half" of a formula that returns it. A fixed nanosecond was
+ * applied whatever the rate, and the format does not
  * oblige the interval to be larger than it: EDF's record duration is an 8-character field
  * that accepts `1e-9`. A recording of two 1 ns records holding ten samples each wrote ten of
  * its twenty rows — the window ends at 2e-9, the comparison asked for `time < 2e-9 - 1e-9`,
