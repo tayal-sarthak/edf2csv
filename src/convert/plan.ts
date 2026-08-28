@@ -14,7 +14,7 @@ import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal, makeScaler } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
-import { listed } from '../format/list.js';
+import { counted, listed } from '../format/list.js';
 import { fixed, timeDecimals } from '../format/number.js';
 import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions } from './options.js';
@@ -388,7 +388,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   */
   const untimeable = groups.some((group) => !Number.isFinite(group.rate));
   if (writeSignals && groups.length > 0 && estimate.rows === 0 && !untimeable) {
-    diagnostics.push(emptyWindow(range, input.recordCount));
+    diagnostics.push(emptyWindow(range, input.recordCount, groups.length));
   }
 
   if (estimate.exceedsSpreadsheetLimit) {
@@ -625,16 +625,26 @@ function widthOf(magnitude: number, decimals: number, signed = false): number {
  * happens to line up with the window; --strict turns it into a failure for those who want
  * that.
  */
-function emptyWindow(range: ResolvedRange, recordCount: number): Diagnostic {
+function emptyWindow(range: ResolvedRange, recordCount: number, fileCount: number): Diagnostic {
   const asked = !range.isWholeRecording;
+  /*
+    One rate is one file, which is nearly every recording, and this said "files" either way:
+    "so the signal files hold their headers and no data" over a single signals.csv. The count
+    is `plan.groups.length` and the caller has had it all along — it is the same number the
+    mixed-rate warning three functions up counts to decide whether to fire at all.
+  */
+  const tables =
+    fileCount === 1
+      ? 'the signal file holds its header and no data'
+      : 'the signal files hold their headers and no data';
   return {
     code: 'EMPTY_WINDOW',
     severity: 'warning',
     message: asked
       ? `No samples fall inside the requested window (${fixed(range.startSeconds, 3)}s to ` +
-        `${fixed(range.endSeconds, 3)}s), so the signal files hold their headers and no data.`
-      : `This recording's ${recordCount} data records carry no samples in range, so the ` +
-        `signal files hold their headers and no data.`,
+        `${fixed(range.endSeconds, 3)}s), so ${tables}.`
+      : `This recording's ${counted(recordCount, 'data record')} carry no samples in range, ` +
+        `so ${tables}.`,
     hint: asked
       ? /*
           Which of the two it was, rather than the second one always.

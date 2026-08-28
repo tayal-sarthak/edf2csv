@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.219
+
+### one signal file, described as several, by a warning holding the count
+
+`EMPTY_WINDOW` ends both of its sentences with "so the signal files hold their headers and no
+data", and nearly every recording has one signal file:
+
+```text
+warning: No samples fall inside the requested window (2.999s to 3.000s), so the signal files
+         hold their headers and no data.
+```
+
+One file, described as several, on the warning whose job is to say what is on disk. Its other
+branch had a second one — "This recording's 3 data records carry no samples in range" is the
+same interpolation `counted` exists for, and a one-record recording read "1 data records".
+
+The count was there to be asked for. `emptyWindow` is called from `buildPlan` with `groups`
+already built — the same array whose length decides whether the mixed-rate warning fires three
+functions above — and took the record count and not the file count.
+
 ## 0.7.218
 
 ### a record range ending one before it began
