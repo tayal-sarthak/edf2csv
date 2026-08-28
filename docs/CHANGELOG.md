@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.214
+
+### a bullet pointing at a paragraph that is four hundred lines below it
+
+The list of warnings `--info` cannot raise has three items, and the third read:
+
+> - The EDF+C contradiction above, which is noticed while the full record-start array is built
+>   rather than while the origin is found.
+
+There is no EDF+C contradiction above. The phrase appears nowhere earlier on the page — the
+warning itself is described four hundred lines further down, under `DISCONTINUOUS`. So the one
+bullet that names its warning by circumstance rather than by code pointed backwards at nothing,
+and a reader who has not already met it cannot tell which of the several things that code
+reports is meant.
+
+It now says which file shape it is about, links forward to the section that describes it, and
+gives the consequence, since that is what a list headed "what `--info` cannot tell you" is read
+for: `edf2csv liar.edf --info --strict` exits 0 and converting the same file exits 1. Still in
+prose rather than by code, deliberately — `--info` raises `DISCONTINUOUS` perfectly well for a
+file marked discontinuous, and the sweep that checks this list holds it to that.
+
 ## 0.7.213
 
 ### a plural over a list of one, on the line that says what to type

@@ -55,7 +55,7 @@ What it cannot raise is the handful that need a conversion to exist:
 
 - `STALE_OUTPUT`, which is noticed after `metadata.json` has been written and so needs there to be an output directory to be stale.
 - `INPUT_CHANGED`, which asks whether the recording moved while it was being converted. `--info` opens the file, reads a header and closes it, so there is no window for it to have moved during — and no output whose description of the file could have stopped being true.
-- The EDF+C contradiction above, which is noticed while the full record-start array is built rather than while the origin is found.
+- A file [marked continuous whose own records disagree with it](#discontinuous), which is noticed while the full record-start array is built rather than while the origin is found. `--info` on a continuous file stops at the first record that states a start time, so the records that would contradict it are never read at all. Converting such a file warns that some of its records start somewhere other than where continuity puts them; `edf2csv liar.edf --info --strict` exits 0 where converting the same file exits 1.
 
 `EMPTY_WINDOW` used to be on that list, and was not one of them: it is a fact about the plan, which `--info` builds. So was `NO_ANNOTATIONS`, until 0.7.101: whether a recording has an annotation channel is a header fact, and `--info --annotations-only` had been printing it in prose all along. So was the `NO_SAMPLES` that reports a signal file *not written*, until 0.7.84 made `--info` raise it — whether a conversion writes one is settled by the header and the plan, both of which `--info` has. The per-channel `NO_SAMPLES`, about a channel carrying no samples, has always come from the header and been raised.
 
