@@ -7,8 +7,10 @@
  *
  *   +<onset>[<0x15><duration>]<0x14><text><0x14>...<0x00>
  *
- * The first TAL of every data record must carry that record's start time and no
- * text; that is how an EDF+D file states where each record actually sits in time.
+ * The first TAL of every data record carries that record's start time; that is how an EDF+D
+ * file states where each record actually sits in time. It may carry event text after that,
+ * which the specification allows and writers use, so an unreadable one costs a position and
+ * whatever events went with it — see `malformedTimekeepingWithText`.
  *
  *   +1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
  */

@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.204
+
+### a module opening with the rule its own counters exist to disprove
+
+The annotations module opens by stating the rule the rest of the file spends three comments
+correcting:
+
+> The first TAL of every data record must carry that record's start time and no text.
+
+It may carry text. `malformedTimekeepingWithText` exists for exactly that case and says so:
+"A TAL in first position holds the record's start time, and may hold events after it — the
+specification allows both in the one entry, and writers use it." The counter was added because
+assuming otherwise let the warning beside it print "No event was lost" over a conversion that
+had just dropped four.
+
+So the first paragraph of the file asserts the belief the file's own machinery was built to
+undo, on the page a reader meets first. The `<0x00>`-terminated example printed two lines
+below it carries a `Seizure onset` after its onset and duration, which is the shape the
+sentence says cannot occur.
+
 ## 0.7.203
 
 ### thirty codes in three columns, laid out for a name two characters shorter
