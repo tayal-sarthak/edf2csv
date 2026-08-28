@@ -567,10 +567,21 @@ function selectRecords(
 ): { startRecord: number; endRecord: number } {
   const starts = options.recordStarts;
   if (!starts || starts.length === 0) {
-    return {
-      startRecord: Math.max(0, Math.floor(startSeconds / options.recordDuration)),
-      endRecord: Math.min(options.recordCount, Math.ceil(endSeconds / options.recordDuration)),
-    };
+    /*
+      An empty range is `[0, 0]` here as it is below, rather than whatever the arithmetic
+      produced. Each bound was clamped on one side only — the start up to zero, the end down
+      to the record count — so a window lying entirely before the recording came back as
+      `records_converted: [0, -1]` in metadata.json, over a `endRecord` documented as "one
+      past the last data record touching the window". A script differencing the pair read
+      minus one record converted, and `ConversionProgress.recordsTotal` reported the same.
+
+      The discontinuous branch below has always answered `[0, 0]` for exactly this request,
+      so the two halves of one function disagreed about how to say "none": the same window on
+      `annotations.edf` and on `discontinuous.edf` gave `[0, -1]` and `[0, 0]`.
+    */
+    const first = Math.max(0, Math.floor(startSeconds / options.recordDuration));
+    const last = Math.min(options.recordCount, Math.ceil(endSeconds / options.recordDuration));
+    return first < last ? { startRecord: first, endRecord: last } : { startRecord: 0, endRecord: 0 };
   }
 
   let first = options.recordCount;

@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.218
+
+### a record range ending one before it began
+
+A window lying entirely before a recording is an ordinary mistake — a clock offset applied the
+wrong way, a `--start` computed from the wrong origin — and it is one the tool handles well:
+`EMPTY_WINDOW` says so, quotes the bounds as asked for, and names where the recording actually
+begins. Then it wrote this into the provenance file:
+
+```json
+"records_converted": [0, -1]
+```
+
+`endRecord` is documented as "[o]ne past the last data record touching the window", and minus
+one is not one past anything. A script taking the difference is told the run converted minus
+one record.
+
+`selectRecords` clamps each bound on one side only: the start up to zero, the end down to the
+record count. Nothing pulls the end back up, so `Math.ceil(-1 / 1)` survives as the answer. Its
+other branch — the one a discontinuous file takes, which walks the real record starts — has
+always returned `[0, 0]` when nothing overlaps. So the same request produced `[0, -1]` on
+`annotations.edf` and `[0, 0]` on `discontinuous.edf`, two files that differ in whether record
+starts could be derived and in nothing that bears on this.
+
+`ConversionProgress.recordsTotal` is `endRecord - startRecord`, so a progress display over
+such a run counted down from minus one.
+
 ## 0.7.217
 
 ### the one size error of three that names no size
