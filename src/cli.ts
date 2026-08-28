@@ -36,7 +36,7 @@ import {
 import type { ConvertOptions } from './convert/run.js';
 import { ChannelSelectionError } from './convert/channels.js';
 // Shared with the library so a bad option is the same error whichever way it arrived.
-import { OptionError } from './convert/options.js';
+import { MAX_DECIMALS, OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson, wrap } from './cli/report.js';
@@ -2124,8 +2124,13 @@ function optionalDecimals(raw: unknown): number | undefined {
     the worst way to be wrong." A precision is the same kind of quiet.
   */
   const value = Number(text);
-  if (!/^\d+$/u.test(text) || !Number.isInteger(value) || value < 0 || value > 20) {
-    throw new OptionError(`--decimals must be a whole number between 0 and 20, got "${String(raw)}".`);
+  // The ceiling comes from the library's own constant rather than a second copy of 20 here.
+  // Both were 20 and the comment on that constant already claims to be "[t]he largest
+  // `--decimals` accepts" — a claim this function was in a position to falsify.
+  if (!/^\d+$/u.test(text) || !Number.isInteger(value) || value < 0 || value > MAX_DECIMALS) {
+    throw new OptionError(
+      `--decimals must be a whole number between 0 and ${MAX_DECIMALS}, got "${String(raw)}".`,
+    );
   }
   return value;
 }

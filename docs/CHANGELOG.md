@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.210
+
+### a constant named for the flag that never read it
+
+`MAX_DECIMALS` in `convert/options.ts` opens by saying what it is:
+
+> The largest `--decimals` accepts, and what both documentation pages state.
+
+`--decimals` never asked it. The command line checked `value > 20` against a literal and built
+its own message around a second literal 20, so the constant that describes the flag's ceiling
+governed only the library path, and the flag it is named for was bounded by two copies of the
+number in a different file.
+
+That constant's comment is a long argument about why the ceiling is 20 and not 100 — twenty
+being "a bound on a number a person types by hand, not on what the format can express" — which
+is reasoning about the command line specifically, written on a value the command line did not
+read. Raise or lower it and `convert(file, { decimals: n })` moves while `--decimals n` does
+not, and the two documentation pages the comment cites would agree with whichever half someone
+happened to check.
+
+Exported and imported, so there is one ceiling and one sentence quoting it.
+
 ## 0.7.209
 
 ### one flag pair, two comments, and only one of them describing the code

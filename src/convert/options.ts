@@ -35,7 +35,7 @@ export class OptionError extends Error {
  * Twenty is a bound on a number a person types by hand, not on what the format can express.
  * The derived precision, which nobody types, runs to 100 and says so.
  */
-const MAX_DECIMALS = 20;
+export const MAX_DECIMALS = 20;
 
 export function assertOptions(options: {
   decimals?: number | undefined;
