@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.211
+
+### a tiebreak formatted on every row, for ties that mostly cannot happen
+
+The long layout decides which channels share an instant by comparing the `time_s` each one
+would be written as, since two doubles a hair apart can print the same cell. The comment says
+what that costs:
+
+> The numeric pre-filter keeps the common case to one comparison; formatting happens only for
+> candidates already within a hair.
+
+The formatting of the instant itself happened on every row. `formatAt` was called
+unconditionally after the earliest time was found, and it walked every group over again
+looking for the one sitting exactly at that time — a search for something the scan directly
+above had just had in its hand and thrown away — and then formatted it, whether or not any
+near-tie ever came up. On a single-rate table, where a near-tie cannot happen at all, that is
+a whole extra pass and a `toFixed` per row for a string nothing reads.
+
+The group and sample that set the minimum are kept, and the text is formatted the first time a
+tie actually has to be decided. Captured rather than searched for, because the loop advances
+cursors as it emits and a later search would be reading a table that had already moved.
+
+A 400-record recording at twelve sampling rates, 462,000 rows through `--layout long`, goes
+from 0.49-0.65 s to 0.35-0.40 s. The CSV is byte-identical, here and on the mixed-rate fixture.
+
 ## 0.7.210
 
 ### a constant named for the flag that never read it

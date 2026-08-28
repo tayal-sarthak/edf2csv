@@ -744,25 +744,6 @@ function nearlyEqual(a: number, b: number): boolean {
   return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-12;
 }
 
-/** The chosen instant as it will be written, for deciding which channels share it. */
-function formatAt(
-  open: readonly OpenGroup[],
-  cursors: Int32Array,
-  recordStart: number,
-  earliest: number,
-): string {
-  for (let g = 0; g < open.length; g++) {
-    const entry = open[g];
-    if (!entry) continue;
-    const sample = cursors[g] ?? 0;
-    if (sample >= entry.group.samplesPerRecord) continue;
-    if (recordStart + sample / entry.group.rate === earliest) {
-      return entry.formatTime(recordStart, sample);
-    }
-  }
-  return '';
-}
-
 async function writeLongRecord(
   file: EdfFile,
   open: readonly OpenGroup[],
@@ -780,13 +761,19 @@ async function writeLongRecord(
 
   for (;;) {
     let earliest = Infinity;
+    let source = -1;
+    let sourceSample = 0;
     for (let g = 0; g < open.length; g++) {
       const entry = open[g];
       if (!entry) continue;
       const sample = cursors[g] ?? 0;
       if (sample >= entry.group.samplesPerRecord) continue;
       const time = recordStart + sample / entry.group.rate;
-      if (time < earliest) earliest = time;
+      if (time < earliest) {
+        earliest = time;
+        source = g;
+        sourceSample = sample;
+      }
     }
     if (earliest === Infinity) return;
 
@@ -809,7 +796,16 @@ async function writeLongRecord(
       definition a reader of the CSV can apply. The numeric pre-filter keeps the common case
       to one comparison; formatting happens only for candidates already within a hair.
     */
-    const earliestText = formatAt(open, cursors, recordStart, earliest);
+    let earliestText: string | null = null;
+    /*
+      Formatted on the first near-tie and not before, which on a single-rate table is never.
+
+      The group and sample that set `earliest` are captured above rather than searched for
+      again, since the loop below advances cursors as it goes and a later search would be
+      looking at a table that had already moved on.
+    */
+    const asWritten = (): string =>
+      (earliestText ??= open[source]?.formatTime(recordStart, sourceSample) ?? '');
     due.length = 0;
     for (let g = 0; g < open.length; g++) {
       const entry = open[g];
@@ -820,7 +816,7 @@ async function writeLongRecord(
       if (time !== earliest) {
         // Far away in the ordinary case; only a near-tie is worth formatting.
         if (!nearlyEqual(time, earliest)) continue;
-        if (entry.formatTime(recordStart, sample) !== earliestText) continue;
+        if (entry.formatTime(recordStart, sample) !== asWritten()) continue;
       }
       cursors[g] = sample + 1;
       // Same window rule as the wide layout, with the same per-rate slack.
