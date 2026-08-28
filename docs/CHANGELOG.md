@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.203
+
+### thirty codes in three columns, laid out for a name two characters shorter
+
+The API reference prints the thirty `DiagnosticCode` values as a three-column block, and it
+had stopped being one:
+
+```text
+RECORD_COUNT_MISMATCH  TRAILING_BYTES           DEGENERATE_DIGITAL_RANGE
+UNUSABLE_PHYSICAL_RANGE
+DEGENERATE_PHYSICAL_RANGE                       INVERTED_PHYSICAL_RANGE
+DUPLICATE_LABEL        EMPTY_LABEL
+```
+
+The columns were laid out for a widest name of twenty-three characters.
+`DEGENERATE_PHYSICAL_RANGE` is twenty-five, `ANNOTATION_DECODE_FAILED` twenty-four, and each
+one that outgrew the column pushed the rest of its row out of alignment or onto a line of its
+own — four rows carrying one or two names, a row with a gap in the middle where a name used to
+sit, and `MISSING_EDF_PLUS_MARKER FORMULA_LABEL` closed up to a single space. The list is
+still complete; it just cannot be read down a column, which is the only reason to set it in
+columns.
+
+Relaid at the width the longest name actually needs, in the order the union declares them, so
+the block and the type read in the same sequence.
+
 ## 0.7.202
 
 ### an identity map asserted in a comment and checked by nothing
