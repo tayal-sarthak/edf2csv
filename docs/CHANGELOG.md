@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.208
+
+### a rewrite that removed one of the two characters it was refusing
+
+`--start` refuses a leading plus and offers the value rewritten, which is the shape every
+hint in this tool is held to — the offered command has to work. It dropped one plus:
+
+```text
+error: --start "+1h+30m" begins with a plus. Write the number on its own: 1h+30m
+error: --start "1h+30m" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a
+       plain number of seconds.
+```
+
+Two errors, the second raised by following the first, from the same function twelve lines
+apart. `+ 5s` had the smaller version of it: the rewrite kept whatever followed the sign, so
+the line ended `on its own:  5s`, opening on a space.
+
+The refusal directly below this one — a space between a number and its unit — has always
+rewritten with a global regex, and `1 h 30 m` comes back as `1h30m` in full. Same rule here.
+
 ## 0.7.207
 
 ### a default directory named on the option without the suffix it has

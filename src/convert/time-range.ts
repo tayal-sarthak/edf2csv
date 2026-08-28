@@ -118,11 +118,16 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     see is the problem. 0.7.102 made this argument about a space; this is the same sentence
     about the other character that reaches it. `--decimals` and `--jobs` both quote the value
     back and say what is wrong with it.
+
+    Every plus, not the first one, and the leftover space with it — the same rule the spaced
+    refusal below applies to spaces, for the same reason: a hint whose command this function
+    refuses is worse than no hint. `+1h+30m` was answered with `1h+30m`, which comes straight
+    back as "is not a time I understand", and `+ 5s` with a value that opened on a space.
   */
   if (text.startsWith('+')) {
     throw new TimeRangeError(
       `${optionName} "${input}" begins with a plus. Write the number on its own: ` +
-        `${input.trim().replace('+', '')}`,
+        `${input.trim().replaceAll('+', '').trim()}`,
     );
   }
   const signed = (seconds: number): number =>
