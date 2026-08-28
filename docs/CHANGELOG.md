@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.209
+
+### one flag pair, two comments, and only one of them describing the code
+
+Two comments in `cli.ts`, a hundred and fifty lines apart, gave opposite accounts of
+`--stdout --jobs`. The list of flags `--stdout` refuses explains why this one is missing from
+it:
+
+> `--jobs` is deliberately not here. A job count is a property of the run rather than a
+> request about the output, `--stdout` clamping it to one is documented, and a wrapper that
+> passes `--jobs 4` to everything is not asking for something about this file.
+
+The comment over the clamp itself says:
+
+> What is refused is a number greater than one, which was accepted and dropped.
+
+Nothing is refused. The line under it is `const jobs = toStdout ? 1 : requestedJobs`, and
+`edf2csv rec.edf --stdout --jobs 4` writes the CSV and exits 0. The first comment is the one
+that matches the code, and cli-reference agrees with it twice — "`--jobs` is not refused — a
+job count is a property of the run rather than a request about this file's output". The second
+describes a behaviour that was argued against and never built.
+
 ## 0.7.208
 
 ### a rewrite that removed one of the two characters it was refusing

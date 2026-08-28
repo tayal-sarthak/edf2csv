@@ -582,16 +582,17 @@ export async function main(argv: readonly string[]): Promise<number> {
     // and accepting it in silence is the thing 0.4.2 fixed for --info.
     const requestedJobs = parseJobs(values['jobs'], inputs.length);
     /*
-      Asking for several at once, of a mode that converts one.
+      A mode that converts one recording, whatever count was asked for.
 
       After `parseJobs`, not before it: a malformed count is a fact about the value and gets
       the message about the value, which is what the check above this one has always done and
       what its own comment insists on — "a request that cannot be met is a usage error rather
       than something to accept in silence". So `--stdout --jobs 0x10` still reports the `0x10`.
 
-      `--jobs 1` is not refused. It asks for precisely what happens, and a script passing it
-      uniformly is not asking for anything it will not get; `auto` resolves to 1 on one
-      recording. What is refused is a number greater than one, which was accepted and dropped.
+      A well-formed count is then clamped rather than refused, whatever its size — which is
+      what the flag list a hundred lines up says of `--jobs` in as many words, and what
+      cli-reference says twice: a job count is a property of the run rather than a request
+      about this file's output, and `auto` resolves to 1 on one recording anyway.
     */
     const jobs = toStdout ? 1 : requestedJobs;
 
