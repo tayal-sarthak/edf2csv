@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.201
+
+### a guarantee claimed by one comment and withdrawn by another twenty lines up
+
+The line that adds the byte order mark to the size estimate justified itself with a promise
+the function does not make:
+
+> Small, but the estimate promises never to read under what gets written, and a one-row
+> conversion is small enough for it to matter.
+
+Twenty lines above it, the comment on the cell width says the opposite in detail: "nothing
+obliges a recording to keep its samples inside the digital range it declares, and one that
+does not maps outside the physical range too. Such a file can convert larger than the
+estimate." That is the estimate reading under what gets written, documented, and deliberately
+not fixed — "[c]lamping the data to make the estimate true is not a trade worth making".
+
+Two comments in one function, one asserting a guarantee the other spends a paragraph
+withdrawing. The reason to count three bytes is not a guarantee anyway: it is that the mark
+is a constant this knows exactly, which is a different thing from an overshoot that cannot be
+known until the samples are read.
+
 ## 0.7.200
 
 ### an estimate two callers call one thing and its own interface calls another

@@ -744,8 +744,10 @@ function estimateOutput(
       else is in a position to stay correct when the quoting rules change.
     */
     bytes += Buffer.byteLength(csvRow(['time_s', ...group.channels.map((c) => c.column)])) + 1;
-    // Three bytes per file under --bom. Small, but the estimate promises never to read
-    // under what gets written, and a one-row conversion is small enough for it to matter.
+    // Three bytes per file under --bom. Small, but exactly known — unlike the sample
+    // overshoot two paragraphs up, which is the one thing here that can read under what gets
+    // written and cannot be counted in advance. On a one-row conversion three bytes is a
+    // tenth of the file.
     if (bom) bytes += BOM_BYTES;
   }
 
