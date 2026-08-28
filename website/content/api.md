@@ -516,7 +516,9 @@ whatever answers to that name by then, which for a recording still being written
 open, so call it before `close()`.
 
 ```js
-const file = await EdfFile.open('sleep-study.edf');
+import { EdfFile } from 'edf2csv';
+
+const file = await EdfFile.open('/data/recordings/sleep-study.edf');
 const digest = await file.sha256();          // hex, over file.fileSize bytes
 await file.close();
 ```

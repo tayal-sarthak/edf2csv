@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.215
+
+### ten of fourteen examples, under a test that says every
+
+The test called "runs every JavaScript example in the API reference" ran ten of fourteen. Its
+filter drops any block that does not begin with an import or a destructure, and its comment
+accounts for two of the exclusions — "the two halves of the buffer-reuse warning". A third,
+the record-start arithmetic that reads `file`, `batch` and `r` out of the prose around it, is
+genuinely not a program either.
+
+The fourth was:
+
+```js
+const file = await EdfFile.open('sleep-study.edf');
+const digest = await file.sha256();          // hex, over file.fileSize bytes
+await file.close();
+```
+
+A whole program bar its import line — and the only call to `sha256` on the page, which is the
+method `--checksum` is built on and the one thing a reader hashing a recording will paste. It
+also names the recording differently from every other example on the page, which use
+`/data/recordings/sleep-study.edf`, so even the path rewrite would have missed it.
+
+Given its import and the page's own path it runs, which brings the count to eleven. The floor
+was `ran >= 7`, four below the truth, so this could have gone on being three examples rather
+than four with nothing to say so; it is now the count itself.
+
 ## 0.7.214
 
 ### a bullet pointing at a paragraph that is four hundred lines below it

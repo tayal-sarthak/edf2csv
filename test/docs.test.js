@@ -1331,7 +1331,13 @@ describe('documentation and source agree on their lists', () => {
     try {
       let ran = 0;
       for (const [index, block] of blocks.entries()) {
-        // Fragments — the two halves of the buffer-reuse warning — are not programs.
+        /*
+          Fragments — the two halves of the buffer-reuse warning, and the record-start
+          arithmetic that reads `file`, `batch` and `r` out of the prose around it — are not
+          programs. Three blocks, and the filter used to drop four: the `sha256` example was
+          a whole program bar its import line, so the one call on this page to the method
+          `--checksum` is built on ran nowhere, on a test whose name says every example runs.
+        */
         if (!/^import |^const \{/mu.test(block)) continue;
 
         const named = [...block.matchAll(/'([^']*)'/gu)].map((m) => m[1]);
@@ -1353,7 +1359,9 @@ describe('documentation and source agree on their lists', () => {
         await run(process.execPath, [file]);
         ran++;
       }
-      assert.ok(ran >= 7, `only ${ran} examples were runnable`);
+      // The count as it stands, not a floor three below it: the point of the number is to
+      // notice an example quietly ceasing to be one, and 7 could not see four of them go.
+      assert.ok(ran >= 11, `only ${ran} examples were runnable`);
     } finally {
       await rm(work, { recursive: true, force: true });
     }
