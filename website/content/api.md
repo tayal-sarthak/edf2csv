@@ -699,7 +699,7 @@ signals_1hz.csv  1 Hz  1 channels
 { rows: 1155, bytes: 22749, exceedsSpreadsheetLimit: false }
 ```
 
-`estimate.rows` is the total data rows across every signal file. `estimate.bytes` is an approximation of their combined size, good enough to warn on and not meant to be exact. `exceedsSpreadsheetLimit` is true when any single file would pass 1,048,576 rows including the header.
+`estimate.rows` is the total data rows across every signal file. `estimate.bytes` is an approximation of their combined size as CSV text, good enough to warn on and not meant to be exact — and under `gzip` not their size on disk at all, since it counts what the compressor is given rather than what it writes. `exceedsSpreadsheetLimit` is true when any single file would pass 1,048,576 rows including the header.
 
 One caveat when planning a window on a discontinuous file: pass `recordStarts`. Without it the planner assumes records sit end to end, and a recording with a 95 second gap in the middle would have its window clipped to the amount of data rather than the span of time it covers. `convert` derives this array itself from the timekeeping annotations.
 

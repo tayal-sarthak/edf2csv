@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.200
+
+### an estimate two callers call one thing and its own interface calls another
+
+`OutputEstimate.bytes` is documented, in the interface a library caller reads, as the
+"[a]pproximate size of the signal CSVs on disk". Both of its consumers say the opposite in
+as many words. `--info` writes `roughly 40.4 MB before compression` and explains itself:
+"Reporting it as the size on disk would overstate a compressed conversion several-fold."
+`infoJson` calls the same field a "[c]haracter count of the CSV. With --gzip the file on
+disk is smaller than this."
+
+So the one place a caller meets the field first is the one place that gets it wrong, and it
+is wrong in the direction that matters: a script sizing a destination from `plan.estimate`
+before a `--gzip` run over-reserves by whatever the CSV compresses to, which for a column of
+fixed-decimal numbers is most of it.
+
+The API reference said "an approximation of their combined size", which is the same
+omission a page further out.
+
 ## 0.7.199
 
 ### a shared budget explained by a floor it stopped having

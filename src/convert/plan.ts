@@ -109,7 +109,12 @@ export interface ConversionPlan {
 export interface OutputEstimate {
   /** Total data rows across every signal file. */
   rows: number;
-  /** Approximate size of the signal CSVs on disk. */
+  /**
+   * Approximate size of the signal CSVs as CSV text, which under `gzip` is not their size on
+   * disk: what is counted here is what the compressor is handed, and the file holds what it
+   * produces. `--info` writes "before compression" beside this number for that reason, and
+   * `infoJson` calls it a character count.
+   */
   bytes: number;
   /** True when any single file would exceed Excel's row limit. */
   exceedsSpreadsheetLimit: boolean;
