@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.205
+
+### a doc comment describing the function after the one it landed on
+
+Two doc comments sat back to back in the header parser with nothing between them:
+
+```ts
+/**
+ * A byte the terminal treats as an instruction rather than as text.
+ * ...
+ */
+/**
+ * Whether a spreadsheet reads this field as the start of a formula rather than as text.
+ * ...
+ */
+function startsFormula(text: string): boolean {
+```
+
+The first belongs to `isControlCharacter`, which is declared after `startsFormula` and had no
+comment of its own. A doc comment attaches to the declaration that follows it, so this one was
+attached to the wrong function — by TypeScript, by an editor's hover, and by anyone reading
+down the file, who meets a paragraph about C0, C1 and DEL and then a function about `=` and
+`@` and has to work out that the two are unrelated.
+
+They are the two questions the same four header fields are asked, one after the other, which
+is how they ended up adjacent and is exactly why the mix-up is easy to miss. Moved onto the
+function it describes.
+
 ## 0.7.204
 
 ### a module opening with the rule its own counters exist to disprove

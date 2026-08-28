@@ -120,13 +120,6 @@ export interface EdfHeaderInfo {
 }
 
 /**
- * A byte the terminal treats as an instruction rather than as text.
- *
- * C0 and C1, plus DEL. Tab is included deliberately: it is harmless to a terminal but it
- * makes a CSV column name that cannot be typed or matched reliably, which is the other half
- * of what this warning is for.
- */
-/**
  * Whether a spreadsheet reads this field as the start of a formula rather than as text.
  *
  * `=` and `@` unconditionally; every list of these characters names two more, and this had
@@ -155,6 +148,13 @@ function startsFormula(text: string): boolean {
   return !/^[+-](?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(text);
 }
 
+/**
+ * A byte the terminal treats as an instruction rather than as text.
+ *
+ * C0 and C1, plus DEL. Tab is included deliberately: it is harmless to a terminal but it
+ * makes a CSV column name that cannot be typed or matched reliably, which is the other half
+ * of what this warning is for.
+ */
 function isControlCharacter(character: string): boolean {
   const code = character.codePointAt(0) as number;
   return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
