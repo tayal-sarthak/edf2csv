@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.236
+
+### four characters promised a warning, two of them conditionally
+
+`SECURITY.md` describes the one known way header text reaches a program that executes it, and
+states the rule as four characters:
+
+> The known case — a field beginning `=`, `+`, `@` or `-`, which a spreadsheet reads as a
+> formula — raises `FORMULA_LABEL`.
+
+Two of the four are conditional, and the codebase argues for the condition at length. `=` and
+`@` are flagged unconditionally. `+` and `-` are Lotus compatibility, which makes a leading sign
+a formula only when what follows one parses as a formula — so `-2+3` is flagged and `-100` is
+not, because `-100` opens as -100, which is what the header says. A lone `-` is the conventional
+way to write "no unit", appears in this repository's own fixtures, and is never flagged.
+
+Checked against the tool: of `-`, `-100`, `-2+3`, `@SUM(1)`, `=1+1` and `+1+1`, the first two
+raise nothing and the last four raise `FORMULA_LABEL`.
+
+The warnings page has this right, and the header parser spends two paragraphs on why. The
+security document is the one place a reader is told what the tool guarantees to warn about, and
+it promised a warning on two shapes that never raise one.
+
 ## 0.7.235
 
 ### an exact count summarised as a lower bound

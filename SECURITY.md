@@ -36,11 +36,14 @@ filesystem work around it:
 - A way for header text to reach something that executes it. The label, unit, transducer and
   prefiltering fields are free text and are written into the CSV verbatim, which is deliberate;
   what is not acceptable is the tool being silent about where that lands. The known case — a
-  field beginning `=`, `+`, `@` or `-`, which a spreadsheet reads as a formula — raises
+  field a spreadsheet evaluates rather than displays — raises
   [`FORMULA_LABEL`](https://edf2csv.vercel.app/docs/warnings-and-errors#formula_label) rather
   than being rewritten, since rewriting it would mean the CSV no longer says what the recording
-  says. Another program these fields reach that treats them as instructions rather than as text
-  is worth reporting.
+  says. `=` and `@` always; `+` and `-` only when what follows them is not simply a number,
+  since Lotus compatibility is what makes those two a formula and `-100` opens as -100, which
+  is what the header says. A lone `-` is the conventional way to write "no unit" and is not
+  flagged. Another program these fields reach that treats them as instructions rather than as
+  text is worth reporting.
 
 ## What is not
 
