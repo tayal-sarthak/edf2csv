@@ -392,7 +392,7 @@ For discontinuous (EDF+D) recordings the window is resolved against real recordi
 A recording does not always begin at zero. The first data record's timekeeping annotation is what `time_s` is counted from, and a file whose first record says `+1000` writes its samples from `1000.000` — so `--start` and `--end` are read on that clock too. On such a file `--start 0 --end 1` converts nothing and says why, and a start past the end names both the recording's length and where it sits, rather than calling the end of its clock its length:
 
 ```
-warning: No samples fall inside the requested window (0.000s to 1.000s), so the signal files hold their headers and no data.
+warning: No samples fall inside the requested window (0.000s to 1.000s), so the signal file holds its header and no data.
          This recording starts at 1000.000s, so the whole window sits before it.
          --start and --end are read on the recording's own clock, which --info
          prints as "Timed from".

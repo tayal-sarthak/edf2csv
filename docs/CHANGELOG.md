@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.225
+
+### a warning quoted on the page in the wording it had two releases ago
+
+0.7.219 taught `EMPTY_WINDOW` to say "the signal file holds its header and no data" when the
+conversion writes one file, which is nearly every recording. The CLI reference quotes that
+warning verbatim, in the section on recordings whose clock does not begin at zero, and it was
+left saying:
+
+```text
+warning: No samples fall inside the requested window (0.000s to 1.000s), so the signal files
+         hold their headers and no data.
+```
+
+The recording that example is about is a single-channel file whose first record says `+1000`,
+so it writes one signal file and the tool now says so. The page has the older sentence, over
+the newer example, in a block presented as what the command prints.
+
+Found by reading the page rather than by anything in the suite: the quote is not checked. The
+two `DISCONTINUOUS` warnings a few sections over are — "quotes the out-of-order and overlap
+warnings as they are actually printed" — and this one sits under the same kind of fence with
+nothing holding it to the source.
+
 ## 0.7.224
 
 ### a reference opening with one recording per invocation, over a page about folders
