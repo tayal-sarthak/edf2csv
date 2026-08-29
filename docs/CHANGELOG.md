@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.237
+
+### the one paragraph on the site that opens against a closing fence
+
+One paragraph on the site opens against the closing fence of the block above it, with a space
+in front of it and no blank line between:
+
+```text
+       Convert them separately, or rename one of them.
+```
+ How much it reads depends on the file. A plain EDF is the header and nothing else.
+```
+
+Every other fenced block on the eleven pages is followed by a blank line — this is the only
+one, checked by walking the fences of all of them — and the paragraph carries a leading space
+no other does. A Markdown renderer will usually recover a paragraph from it, which is why it
+has survived; what it will not recover is the separation, and the `--info` section's longest
+paragraph currently begins as though it were part of the refusal quoted above it.
+
 ## 0.7.236
 
 ### four characters promised a warning, two of them conditionally
