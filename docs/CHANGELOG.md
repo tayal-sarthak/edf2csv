@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.243
+
+### a parameter for an exception the exception did not use
+
+`counted` takes an optional plural, and its comment says who uses it:
+
+> The plural is `<singular>s` unless given, since English mostly cooperates here and the
+> exceptions in this codebase — "entries" — are spelled out at the call site.
+
+Nothing was. The only three-argument call to `counted` in the repository is the one inside that
+comment's own example. The exception it names — the annotation-entry warning, the one place a
+message in this tool pluralises to "entries" — built its own:
+
+```ts
+`${n} annotation entr${n === 1 ? 'y was' : 'ies were'} unreadable and could not be exported.`
+```
+
+So the parameter existed for a case the case declined to use, and the comment described a
+convention with no instances. That is the shape of drift `counted` was written to end: two ways
+to pluralise one count, one of them the shared function and one of them a ternary next to it.
+
+The message is now built from the function, with the same words: "1 annotation entry was" and
+"3 annotation entries were", byte for byte what it printed before.
+
 ## 0.7.242
 
 ### seven codes summarised as three, missing the one that names a read

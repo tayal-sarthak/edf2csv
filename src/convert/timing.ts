@@ -58,9 +58,11 @@ export function deriveRecordStarts(
     diagnostics.push({
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
+      // Through `counted`, with the irregular plural spelled out — which is the case its
+      // own comment names and which nothing was using it for.
       message:
-        `${annotationData.malformed} annotation entr${annotationData.malformed === 1 ? 'y was' : 'ies were'} ` +
-        `unreadable and could not be exported.`,
+        `${counted(annotationData.malformed, 'annotation entry', 'annotation entries')} ` +
+        `${annotationData.malformed === 1 ? 'was' : 'were'} unreadable and could not be exported.`,
       hint: 'The rest were exported normally. The file may have been written by a non-conforming tool.',
     });
   }
