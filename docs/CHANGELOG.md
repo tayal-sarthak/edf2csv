@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.232
+
+### the commonest typo, costing twice what the bound allows
+
+The unknown-option message offers the flag you probably meant, within "a couple of edits,
+scaled to the name's length". For the eleven flag names shorter than six characters
+`Math.floor(length / 3)` is 1, so those admit one edit — which is the right allowance, since
+`--st` is two edits from `--out` and evidence of nothing.
+
+It left out the one typo that should have been inside it. A transposition costs two edits under
+plain Levenshtein, and it is the commonest typo there is:
+
+```text
+error: There is no --hlep option.
+       If it is the name of a file, pass it after -- instead:
+       edf2csv -- "--hlep"
+```
+
+Nothing offered, over `--help` with two letters swapped. Same for `--jsno`, `--gzpi`, `--ouy`
+and every other transposition of a short flag — 34 of the 95 transpositions of these twenty
+names got no suggestion at all.
+
+So the distance counts a swap of two adjacent characters as one edit, which is what Damerau's
+restricted form is for. All 95 are now named, none of them wrongly, and every single deletion
+and substitution is named as it was. The bound itself does not move, which is why `--st`,
+`--joc`, `--abc` and `--xyzzy` are still declined — the test that asserts they are is the one
+that caught a first attempt at this from the other end, raising the bound to two and offering
+`--out` for `--st`.
+
 ## 0.7.231
 
 ### an answer illustrated with the case it is not about

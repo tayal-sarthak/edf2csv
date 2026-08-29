@@ -2264,19 +2264,35 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
   );
 }
 
-/** Levenshtein distance, two rows at a time. Twenty names of under twenty characters. */
+/**
+ * Edit distance counting a swap of two adjacent characters as one edit, not two.
+ *
+ * Damerau's restricted form, which needs the row two back and so keeps three rather than the
+ * two plain Levenshtein needs. Twenty names of under twenty characters, so the extra row costs
+ * nothing worth measuring.
+ */
 function editDistance(a: string, b: string): number {
-  const row = Array.from({ length: b.length + 1 }, (_unused, i) => i);
+  let twoBack: number[] = [];
+  let previous = Array.from({ length: b.length + 1 }, (_unused, i) => i);
   for (let i = 1; i <= a.length; i++) {
-    let diagonal = row[0] as number;
-    row[0] = i;
+    const current = new Array<number>(b.length + 1).fill(0);
+    current[0] = i;
     for (let j = 1; j <= b.length; j++) {
-      const above = row[j] as number;
-      row[j] = Math.min(above + 1, (row[j - 1] as number) + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
-      diagonal = above;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let best = Math.min(
+        (previous[j] as number) + 1,
+        (current[j - 1] as number) + 1,
+        (previous[j - 1] as number) + cost,
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        best = Math.min(best, (twoBack[j - 2] as number) + 1);
+      }
+      current[j] = best;
     }
+    twoBack = previous;
+    previous = current;
   }
-  return row[b.length] as number;
+  return previous[b.length] as number;
 }
 
 /**
@@ -2289,6 +2305,15 @@ function editDistance(a: string, b: string): number {
  * `--decim` — and is only taken from three characters up, so `--c` does not become
  * `--channels` or `--checksum` by coin toss. A misspelt one is within a couple of edits,
  * scaled to the name's length so `--jobs` is not reached from three characters away.
+ *
+ * "A couple" is the bound for a long name; for the eleven flags shorter than six characters
+ * `Math.floor(length / 3)` is 1, so those admit a single edit. Which is the right allowance —
+ * `--st` is two edits from `--out` and evidence of nothing — and it left out the one typo it
+ * should not have: a transposition, which plain Levenshtein charges two for. `--hlep`,
+ * `--jsno` and `--gzpi` all came back "There is no --hlep option" with nothing offered.
+ * `editDistance` counts a swap of two adjacent characters as one edit for that reason, which
+ * names all 95 single transpositions of these twenty names and still declines `--st`,
+ * `--joc`, `--abc` and `--xyzzy`.
  */
 function nearestOption(flag: string): string | null {
   if (!flag.startsWith('--')) return null;
