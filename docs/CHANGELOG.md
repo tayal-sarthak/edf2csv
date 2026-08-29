@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.227
+
+### a flag said to leave three files alone, recorded in one of them
+
+The `--decimals` section listed the three files the flag leaves alone:
+
+> It doesn't affect `channels.csv`, `annotations.csv` or `metadata.json` either.
+
+It affects `metadata.json`. `conversion.rate_groups[].decimals` is the precision each channel
+was written at, and it is exactly what the flag sets: the same mixed-rate recording records
+`[3]`, `[5]`, `[5]` on a bare conversion and `[2]`, `[2]`, `[2]` under `--decimals 2`. Output
+files says so on its own page — "the decimal precision used for each" — so the two references
+disagree about the field one of them documents.
+
+It matters for the thing `metadata.json` exists for. A reader checking whether an archived
+conversion rounded its values by hand has one field to look at, and the CLI reference told them
+the flag never touches that file. The other two are right and worth keeping: `channels.csv`
+carries the header's own calibration figures and `annotations.csv` the file's own onsets, both
+written as the file states them.
+
 ## 0.7.226
 
 ### one file in the sentence above the block and several inside it

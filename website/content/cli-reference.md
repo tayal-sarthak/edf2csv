@@ -469,7 +469,7 @@ By default the precision is chosen per channel from its calibration. A channel's
 
 Use `--decimals` when you want a uniform column width across channels, or when you're willing to trade precision for file size. Note what you give up: `--decimals 2` on a channel whose step is 0.0076 uV maps several genuinely different digital codes onto the same printed value.
 
-`--decimals` doesn't affect the `time_s` column, whose precision is derived from the sampling rate so that sample times are exact rather than rounded. It doesn't affect `channels.csv`, `annotations.csv` or `metadata.json` either.
+`--decimals` doesn't affect the `time_s` column, whose precision is derived from the sampling rate so that sample times are exact rather than rounded. It doesn't change `channels.csv` or `annotations.csv` either — those carry the header's own calibration figures and the file's own onsets, written as the file states them. `metadata.json` does record it: `conversion.rate_groups[].decimals` is the precision each channel was actually written at, which is how an archived conversion says whether its values were rounded by hand or derived.
 
 Out-of-range and non-integer values are usage errors, and so is anything that is not written in plain digits: `0x3`, `0b11`, `0o5`, `3e0` and `+3` are all numbers to JavaScript and none of them is a count of decimals anyone typed, so accepting them would mean converting at a precision the command does not say. Same rule as `--jobs` and `--channels "#N"`. An empty value is rejected explicitly rather than read as zero, since `--decimals ""` would otherwise round every physical value to a whole number:
 
