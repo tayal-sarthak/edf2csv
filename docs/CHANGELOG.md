@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.235
+
+### an exact count summarised as a lower bound
+
+`CONTRIBUTING.md` lists the nine sweeps with a line each saying what each one checks. The
+estimate sweep's read:
+
+```text
+npm run estimate     # --info never predicts fewer rows or bytes than get written
+```
+
+Those are two different promises collapsed into the weaker one. The sweep's own header sets
+them apart and says why:
+
+> 1. The row count is EXACT. "Would write 1,155 rows" is arithmetic on the header, and a
+>    conversion doing the same arithmetic must land on the same number. A row estimate that is
+>    merely close is a row estimate that is wrong.
+> 2. The byte count NEVER UNDER-COUNTS.
+
+The correctness page keeps them apart too — "the row count is exact and the byte count never
+reads low". Only the contributor-facing summary treats rows as a lower bound, which is the one
+place a reader is deciding what their change is allowed to do to the number: someone who moved
+a row estimate two rows high would read this as within the contract and find the sweep red.
+
 ## 0.7.234
 
 ### one of four rationales, thirty-five lines from what it argues for

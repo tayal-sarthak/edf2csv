@@ -22,7 +22,7 @@ did not touch. That is the test working. Update the page.
 The nine sweeps are separate, because they take minutes rather than seconds:
 
 ```bash
-npm run estimate     # --info never predicts fewer rows or bytes than get written
+npm run estimate     # --info predicts the rows exactly and never fewer bytes than get written
 npm run layouts      # wide and long hold the same samples
 npm run roundtrip    # the digital code can be recovered from the CSV
 npm run narrowing    # --channels and --start return exactly the part they name
