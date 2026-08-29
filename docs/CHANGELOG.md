@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.224
+
+### a reference opening with one recording per invocation, over a page about folders
+
+The CLI reference opened with the tool as it was before batches:
+
+> `edf2csv` converts one EDF, EDF+, BDF or BDF+ recording per invocation into a directory of
+> CSV files.
+>
+> ## Synopsis
+>
+> ```bash
+> edf2csv <recording.edf> [options]
+> ```
+
+Both the first sentence and the synopsis under it say one recording, one invocation. The next
+paragraph begins "It can be a recording or a folder of them, and several can be given at
+once", and the twenty lines after that are about globs, folder walks, `--jobs`, per-recording
+output directories and a closing "Converted 3 of 3 recordings" line. The tool's own usage
+string has said `edf2csv <recording.edf | folder> [more ...] [options]` since batches existed.
+
+So the page contradicts itself between its second sentence and its fourth, and the half a
+reader meets first is the one that is out of date — on the page that is the reference for what
+the command takes. The synopsis now matches `--help` exactly.
+
 ## 0.7.223
 
 ### the other misplaced doc comment, on a method the package publishes

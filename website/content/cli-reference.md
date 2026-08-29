@@ -4,12 +4,12 @@ description: Every edf2csv flag, its default and its behaviour, plus exit codes 
 order: 2
 ---
 
-`edf2csv` converts one EDF, EDF+, BDF or BDF+ recording per invocation into a directory of CSV files. There's no configuration file and no environment variables — everything is on the command line.
+`edf2csv` converts EDF, EDF+, BDF and BDF+ recordings into directories of CSV files — one recording, several, or a folder of them in a single invocation. There's no configuration file and no environment variables — everything is on the command line.
 
 ## Synopsis
 
 ```bash
-edf2csv <recording.edf> [options]
+edf2csv <recording.edf | folder> [more ...] [options]
 ```
 
 At least one input is required, except with `--help` and `--version`. It can be a recording or a folder of them, and several can be given at once, so a glob does what a shell loop used to:
