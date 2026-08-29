@@ -2143,6 +2143,28 @@ function optionalDecimals(raw: unknown): number | undefined {
   screen on the way out.
 */
 /**
+ * A token as it has to be typed for a shell to hand it over unchanged.
+ *
+ * Every hint in this file that prints a command has to print one that works — the comment on
+ * the `--channels` advice in the header parser lists three separate times it did not. These
+ * two are the same failure at the command line rather than in a channel label. `--out "-my
+ * nightly"` was answered with `Write it as one argument instead: --out=-my nightly`, which is
+ * two arguments; `--chan"nels` was answered with `edf2csv -- "--chan"nels"`, whose quotes
+ * collapse into something else again.
+ *
+ * Left bare when a shell would read it as written, so the ordinary `--out=-nightly` reads as
+ * it always has. Otherwise single-quoted, the one POSIX form with no escapes inside it: a
+ * single quote in the token closes, escapes and reopens.
+ */
+function survivesBare(text: string): boolean {
+  return text !== '' && !/[^\w@%+=:,./-]/u.test(text);
+}
+
+function singleQuoted(text: string): string {
+  return `'${text.replaceAll("'", "'\\''")}'`;
+}
+
+/**
  * A `parseArgs` failure, in this tool's words where they are better than Node's.
  *
  * Node refuses `--out -nightly` with "Option '--out' argument is ambiguous. Did you forget to
@@ -2179,28 +2201,6 @@ function optionalDecimals(raw: unknown): number | undefined {
  * one keystroke away. This repository's own stdout audit picks errors out of stderr with
  * `line.startsWith('error:')`, so by its own reckoning these two runs printed no error and exited 2.
  */
-/**
- * A token as it has to be typed for a shell to hand it over unchanged.
- *
- * Every hint in this file that prints a command has to print one that works — the comment on
- * the `--channels` advice in the header parser lists three separate times it did not. These
- * two are the same failure at the command line rather than in a channel label. `--out "-my
- * nightly"` was answered with `Write it as one argument instead: --out=-my nightly`, which is
- * two arguments; `--chan"nels` was answered with `edf2csv -- "--chan"nels"`, whose quotes
- * collapse into something else again.
- *
- * Left bare when a shell would read it as written, so the ordinary `--out=-nightly` reads as
- * it always has. Otherwise single-quoted, the one POSIX form with no escapes inside it: a
- * single quote in the token closes, escapes and reopens.
- */
-function survivesBare(text: string): boolean {
-  return text !== '' && !/[^\w@%+=:,./-]/u.test(text);
-}
-
-function singleQuoted(text: string): string {
-  return `'${text.replaceAll("'", "'\\''")}'`;
-}
-
 function usageMessage(error: unknown, argv: readonly string[]): string {
   /** Node's own wording, carrying this tool's prefix. */
   const asError = (text: string): string => (text.startsWith('error:') ? text : `error: ${text}`);

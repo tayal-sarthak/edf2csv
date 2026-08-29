@@ -375,6 +375,56 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(checked >= 8, `only ${checked} seconds interpolations found; the scan has drifted`);
   });
 
+  it('attaches every doc comment to the declaration it describes', async () => {
+    /*
+      A JSDoc block binds to the declaration that follows it, so two of them in a row means
+      the first one describes nothing: it is dropped from the emitted `.d.ts`, an editor shows
+      the second for both, and a reader meets a paragraph about one function immediately above
+      another.
+
+      Fixed twice by hand — 0.7.205 in the header parser, 0.7.223 on `EdfFile.readOrigin`,
+      where the published declaration told a consumer it read every annotation in the file —
+      and never swept for. There were two more of the same kind: `usageMessage`'s rationale
+      sitting on `survivesBare`, and `decimalsForSignal`'s on `decimalsNeeded`. Both describe
+      a function declared further down, and in both cases the described function had no
+      comment left.
+
+      Only doc blocks, the ones opening with two stars. This codebase deliberately stacks
+      several plain rationale blocks above one declaration, which attach to nothing by design
+      and are the reason the accidental ones are easy to miss. A file-level block at the top of
+      a file is exempt for its own reason: it documents the module, and the declaration doc
+      under it is correct.
+    */
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(relative);
+        else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await walk('src');
+    assert.ok(files.length >= 19, `walked ${files.length} source files`);
+
+    const stacked = [];
+    for (const where of files) {
+      const lines = (await read(where)).split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].trim().startsWith('/**')) continue;
+        let close = i;
+        while (close < lines.length && !lines[close].trim().endsWith('*/')) close++;
+        let next = close + 1;
+        while (next < lines.length && lines[next].trim() === '') next++;
+        // The module's own block is the one at the top of the file.
+        if (i > 0 && next < lines.length && lines[next].trim().startsWith('/**')) {
+          stacked.push(`${where}:${i + 1}`);
+        }
+        i = close;
+      }
+    }
+    assert.deepEqual(stacked, [], `doc comments attached to nothing: ${stacked.join(', ')}`);
+  });
+
   it('shows only format strings describeFormat can return', async () => {
     /*
       `describeFormat` is a public export, so its doc comment is what a TypeScript consumer's

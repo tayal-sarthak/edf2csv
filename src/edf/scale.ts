@@ -104,17 +104,6 @@ export function quantizationStep(signal: EdfSignal): number {
 const MAX_DERIVED_DECIMALS = 100;
 
 /**
- * Decimal places needed so that two adjacent digital codes never round to the same
- * string. Two places past the quantization step keep rounding error far below the
- * resolution the hardware actually recorded, without padding the file with digits
- * that carry no information.
- *
- * Ordinary channels land at three or four: a ±800 µV channel over 12 bits steps by
- * 0.39 µV and needs three. The ceiling is only reached by calibrations whose step is
- * below 1e-98, which an 8-character physical bound can still express — `1e-99` is five
- * characters. Those get VALUE_RESOLUTION rather than silence.
- */
-/**
  * Places this channel needs before any ceiling, or null when it has no step to derive one from.
  *
  * One expression, because two functions depend on agreeing about it. `decimalsForSignal`
@@ -131,6 +120,17 @@ function decimalsNeeded(signal: EdfSignal): number | null {
   return Math.ceil(-Math.log10(step)) + 2;
 }
 
+/**
+ * Decimal places needed so that two adjacent digital codes never round to the same
+ * string. Two places past the quantization step keep rounding error far below the
+ * resolution the hardware actually recorded, without padding the file with digits
+ * that carry no information.
+ *
+ * Ordinary channels land at three or four: a ±800 µV channel over 12 bits steps by
+ * 0.39 µV and needs three. The ceiling is only reached by calibrations whose step is
+ * below 1e-98, which an 8-character physical bound can still express — `1e-99` is five
+ * characters. Those get VALUE_RESOLUTION rather than silence.
+ */
 export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS): number {
   const needed = decimalsNeeded(signal);
   if (needed === null) return 3;

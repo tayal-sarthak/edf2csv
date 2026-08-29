@@ -721,18 +721,6 @@ async function writeSignalFiles(
 }
 
 /**
- * One record's samples in the long layout: `time_s,channel,value`, in time order.
- *
- * The groups are merged rather than written one after another. Every sample in a record
- * falls inside that record's span, so taking the earliest next sample across the groups
- * each time leaves the whole file sorted by `time_s` — which is the only thing that makes a
- * mixed-rate long table useful, since sorting 3 million rows afterwards is the reader's
- * problem and a large one.
- *
- * Ties go to the group with the higher rate, which is the order the groups are already in.
- * Within a sample time the channels come out in the order the file declares them.
- */
-/**
  * Whether two sample times are close enough that only rounding could separate them.
  *
  * A relative epsilon, because the gap between doubles grows with magnitude. Well below any
@@ -744,6 +732,18 @@ function nearlyEqual(a: number, b: number): boolean {
   return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-12;
 }
 
+/**
+ * One record's samples in the long layout: `time_s,channel,value`, in time order.
+ *
+ * The groups are merged rather than written one after another. Every sample in a record
+ * falls inside that record's span, so taking the earliest next sample across the groups
+ * each time leaves the whole file sorted by `time_s` — which is the only thing that makes a
+ * mixed-rate long table useful, since sorting 3 million rows afterwards is the reader's
+ * problem and a large one.
+ *
+ * Ties go to the group with the higher rate, which is the order the groups are already in.
+ * Within a sample time the channels come out in the order the file declares them.
+ */
 async function writeLongRecord(
   file: EdfFile,
   open: readonly OpenGroup[],
@@ -1375,8 +1375,7 @@ function writeHint(cause: unknown, toStdout = false): string {
  * Only for a regular file — a pipe, a terminal or a socket has no size to compare, and on
  * those a short write cannot go unreported this way. Appending (`>>`) is fine, since the
  * starting size is taken before anything is written.
- */
-/**
+ *
  * Exported so `--info` can use the same audit a `--stdout` conversion does.
  *
  * `--info` wrote its description with `process.stdout.write` and looked at nothing: redirected

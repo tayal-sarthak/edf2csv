@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.228
+
+### two doc comments moved by hand, and the two nobody swept for
+
+0.7.205 moved a doc comment onto the function it described. 0.7.223 did it again, on
+`EdfFile.readOrigin`, where the published declaration told a consumer the method reads every
+annotation in the file. Neither looked for the rest. There were two more:
+
+- `usageMessage`'s rationale — forty lines on why Node's `parseArgs` messages are reworded —
+  sat on `survivesBare`, a five-line shell-quoting predicate, and `usageMessage` had nothing.
+- `decimalsForSignal`'s docstring sat on `decimalsNeeded`, and `decimalsForSignal`, the
+  exported one, had nothing.
+
+And a third shape: the `auditStdout` rationale was split into two doc blocks over one
+function, so only the second reached the emitted declaration and the paragraph explaining the
+whole defect it exists for was dropped. Merged.
+
+A doc block binds to the declaration after it, so two in a row means the first describes
+nothing — it vanishes from the `.d.ts`, an editor shows the second for both, and a reader
+meets a paragraph about one function directly above another. The suite now walks `src` and
+refuses it, exempting the module block at the top of a file, which is followed by a
+declaration's doc quite correctly. Plain rationale blocks stack as they always have; they
+attach to nothing by design, which is exactly why the accidental ones read as ordinary.
+
 ## 0.7.227
 
 ### a flag said to leave three files alone, recorded in one of them
