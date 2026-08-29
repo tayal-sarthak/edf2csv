@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.223
+
+### the other misplaced doc comment, on a method the package publishes
+
+0.7.205 moved a doc comment off the function that followed it and onto the one it described.
+It did not go looking for others. There is one more, and it is worse placed:
+
+```ts
+  /**
+   * Read every EDF+ annotation in the file, plus the start time each record declares.
+   * ...
+   */
+  /**
+   * Where this continuous recording begins, from the first record that says.
+   * ...
+   */
+  async readOrigin(): Promise<number | null> {
+```
+
+`readAnnotations` is declared sixty lines further down and carries no comment of its own. Both
+methods are on `EdfFile`, both are documented on the API reference, and both ship in
+`dist/edf/reader.d.ts` — where the published declaration for `readOrigin` opens with a
+paragraph about reading every annotation in the file and scanning the whole thing, which is
+the opposite of what `readOrigin` does and the reason `scanOrigin` exists. A consumer hovering
+`readOrigin` in an editor is told it reads the entire annotation channel; hovering
+`readAnnotations` tells them nothing.
+
+The two are adjacent because they read the same bytes for different reasons, which is how the
+comment ended up between them and why it reads plausibly where it landed.
+
 ## 0.7.222
 
 ### a fixture table checked for absence and not for the other kind

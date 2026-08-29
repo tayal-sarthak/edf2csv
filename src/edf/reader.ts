@@ -404,18 +404,6 @@ export class EdfFile {
   }
 
   /**
-   * Read every EDF+ annotation in the file, plus the start time each record declares.
-   *
-   * Only the annotation channel is read, seeking straight to it inside each record
-   * rather than pulling whole records through memory. On a multi-gigabyte recording
-   * that is the difference between a few kilobytes of I/O and all of it.
-   *
-   * The whole file is always scanned, never just the records inside a requested
-   * window: writers are not obliged to store an annotation in the record its onset
-   * falls in, and some put every annotation in the first record. Reading only the
-   * window's records would drop those entirely.
-   */
-  /**
    * Where this continuous recording begins, from the first record that says.
    *
    * A few records' worth of annotation bytes rather than the whole channel. A continuous
@@ -513,6 +501,18 @@ export class EdfFile {
     return { origin: null, ...counts };
   }
 
+  /**
+   * Read every EDF+ annotation in the file, plus the start time each record declares.
+   *
+   * Only the annotation channel is read, seeking straight to it inside each record
+   * rather than pulling whole records through memory. On a multi-gigabyte recording
+   * that is the difference between a few kilobytes of I/O and all of it.
+   *
+   * The whole file is always scanned, never just the records inside a requested
+   * window: writers are not obliged to store an annotation in the record its onset
+   * falls in, and some put every annotation in the first record. Reading only the
+   * window's records would drop those entirely.
+   */
   async readAnnotations(): Promise<{
     annotations: Annotation[];
     recordStarts: (number | null)[];
