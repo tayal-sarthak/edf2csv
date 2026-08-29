@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.239
+
+### the estimate's overshoot, quoted as the size of the output
+
+The recipe for checking a recording before converting it ends by saying how much bigger the CSV
+will be:
+
+> CSV runs several times the size of the EDF — about six times here [...] so the estimate is
+> worth reading before you start.
+
+Six is the estimate's number, not the conversion's. The block above it predicts 108 MB for an
+18.7 MB recording, which is 5.8×; converting it writes 94 MB, which is 5.0×. The estimate is
+documented as erring high on purpose — a cell is budgeted at the width its channel's declared
+physical range allows and most samples sit well inside it, which across the fixture set reads
+about 16% high — and the sentence took that overshoot as the fact about the output.
+
+It is the one number on the page a reader uses to decide whether they have room, in a paragraph
+that is otherwise about the difference between what is predicted and what is written. Both are
+now given: five times here, 94 MB against the 108 MB above, and why the two differ.
+
 ## 0.7.238
 
 ### a worked example whose first line no runtime prints that way
