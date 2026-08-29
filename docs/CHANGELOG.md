@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.241
+
+### a file sized at three times what the recording writes
+
+The DuckDB recipe sizes the file it is about:
+
+> DuckDB reads the CSV where it lies and streams it, so a 286 MB `signals_100hz.csv` can be
+> aggregated without a 286 MB frame in memory and without an import step.
+
+`sleep_csv/signals_100hz.csv` is 93,003,504 bytes — 89 MB in the units this site prints sizes
+in. Every recipe on the page reads that same conversion of `sleep-study.edf`, which the suite
+holds the pages to, and the chunked-reading recipe two sections up prints its row count
+(2,880,000) to prove it.
+
+286 MB is roughly what `large.test.js` builds from a 32 MB recording, and it looks as though it
+travelled from there. It is the number the paragraph turns on: the argument is that the frame
+does not have to fit in memory, and it overstates the frame by more than three times.
+
 ## 0.7.240
 
 ### a comparative pointing at the wrong one of two numbers

@@ -488,7 +488,7 @@ Keep `time_s` as float64. A recording eight hours long reaches times near 28,800
 duckdb -c "SELECT count(*) AS rows, min(time_s), max(time_s) FROM 'sleep_csv/signals_100hz.csv'"
 ```
 
-DuckDB reads the CSV where it lies and streams it, so a 286 MB `signals_100hz.csv` can be aggregated without a 286 MB frame in memory and without an import step. Column names containing spaces are quoted with double quotes, exactly as SQL requires:
+DuckDB reads the CSV where it lies and streams it, so the 89 MB `signals_100hz.csv` this recording produces can be aggregated without an 89 MB frame in memory and without an import step. Column names containing spaces are quoted with double quotes, exactly as SQL requires:
 
 ```bash
 duckdb -c "
