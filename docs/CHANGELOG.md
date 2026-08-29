@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.230
+
+### a refusal blamed on the recording, over a flag the caller passed
+
+`--info --stdout` shows the refusal a conversion would give, so a script can find out whether
+`--stdout` will work before committing to it. It named the recording as the reason, whatever
+the reason was:
+
+```text
+warning: --stdout would refuse this recording: has no signal data to write because
+         --annotations-only was given.
+         Drop one of the two flags.
+```
+
+That recording streams perfectly. What refuses it is a flag the caller passed, which the hint
+one line down says in as many words. Of the three shapes `--stdout` refuses, two really are
+about the file — more than one sampling rate, no signal channels at all — and the third is
+about the command line.
+
+It is the distinction this tool draws everywhere else, and has a set for: `USAGE_ERROR_CODES`
+exists so an `UNSUPPORTED_REQUEST` exits 2 rather than 1, on the reasoning that "a caller with
+a `--stdout` conflict is being told to change the flags ... so filing it under 1 sent scripts
+looking at the disk". The one place that answer is shown ahead of time sent them looking at
+the recording.
+
 ## 0.7.229
 
 ### the one row of twenty that describes a message instead of quoting it

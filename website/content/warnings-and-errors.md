@@ -626,7 +626,7 @@ Raised only by `--info --stdout`, on a recording the conversion would refuse.
 **What edf2csv does.** Says so, in the words the conversion itself would use, and goes on describing the recording:
 
 ```
-warning: --stdout would refuse this recording: needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+warning: --stdout would refuse this run: needs exactly one table, but this recording produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
          Narrow it to one rate with --channels, write --layout long to get them
          all in one table, or convert to a directory instead.
 ```

@@ -1030,7 +1030,16 @@ async function showInfo(
         plan.diagnostics.push({
           code: 'STDOUT_UNSUPPORTED',
           severity: 'warning',
-          message: `--stdout would refuse this recording: ${refusal.message.replace(/^--stdout /u, '')}`,
+          /*
+            "this run", not "this recording". Two of the three refusals are about the file —
+            more than one rate, no signal channels — and the third is about the flags: the
+            same recording streams perfectly once `--annotations-only` comes off. It read
+            `--stdout would refuse this recording: has no signal data to write because
+            --annotations-only was given`, blaming the recording for a combination the hint
+            underneath it then tells you to fix by dropping a flag. It is the same distinction
+            the exit codes draw and USAGE_ERROR_CODES exists for.
+          */
+          message: `--stdout would refuse this run: ${refusal.message.replace(/^--stdout /u, '')}`,
           ...(refusal.hint === undefined ? {} : { hint: refusal.hint }),
         });
       }

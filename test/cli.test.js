@@ -1110,7 +1110,7 @@ describe('--info', () => {
     */
     const preview = await cli([fixture('mixed-rates.edf'), '--info', '--stdout']);
     assert.equal(preview.code, 0, preview.stderr);
-    assert.match(preview.stderr, /--stdout would refuse this recording/u, preview.stderr);
+    assert.match(preview.stderr, /--stdout would refuse this run/u, preview.stderr);
     assert.ok(preview.stdout.includes('EEG Fpz-Cz'), 'and it still describes the recording');
 
     // The words are the conversion's, so the two cannot drift apart.
