@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.242
+
+### seven codes summarised as three, missing the one that names a read
+
+The API reference summarises `ConversionError` in one line before listing its seven codes:
+
+> The output can't be written, the request can't be carried out, or your own callback threw.
+
+Three causes for seven codes, and the one they leave out is `INPUT_UNREADABLE` — the reader
+failing after the conversion has started writing. It is not the output failing, not the request
+being impossible, and not the caller's callback; it is the recording going away mid-pass.
+
+That code exists precisely because the two were being conflated. Before it, a read failure came
+back as `Writing to "<dir>" failed` under a hint about freeing disk space — which, as the
+warnings page puts it, "sends you to inspect the one part of the system that was working". The
+sentence introducing the error class still described only the three it is not.
+
+`INPUT_UNREADABLE` was also the only code in the list below it carrying no gloss, while three
+of its six neighbours have one. It has one now.
+
 ## 0.7.241
 
 ### a file sized at three times what the recording writes

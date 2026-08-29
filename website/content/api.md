@@ -585,7 +585,7 @@ The warning names two rates rather than the file's three, because it describes t
 | Type | When |
 | --- | --- |
 | `EdfError` | The recording can't be read or its header is unusable. Has `code` and `hint`. |
-| `ConversionError` | The output can't be written, the request can't be carried out, or your own callback threw. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST`, `CALLBACK_FAILED` or `WRITE_FAILED`. |
+| `ConversionError` | The output can't be written, the recording stopped being readable part way through, the request can't be carried out, or your own callback threw. `code` is `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION`, `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST`, `CALLBACK_FAILED` or `WRITE_FAILED`. |
 | `OptionError` | An option is not a value this can act on: `decimals` outside 0 to 20 or not a whole number, a `start` or `end` that is not a finite number of seconds, a `duration` that is not a non-negative one, a `layout` that is neither `"wide"` nor `"long"`, a `channels` value that is not a list of channel names, or is a list that names nothing — an empty array, or one holding only blanks, which is what an empty string split on commas produces — or an `outputDir` of `""`. The first argument is held to the same standard: an `inputPath` that is not a string — an option bag passed by mistake, an array of paths — is refused here rather than handed to `fs`, which answered `Cannot read "[object Object]"` as though the recording were the problem. |
 | `ChannelSelectionError` | A `channels` term matched nothing, or `#N` named a position the file doesn't have. |
 | `TimeRangeError` | The requested window is empty, inverted, past the end, or over-specified. |
@@ -613,7 +613,7 @@ try {
 }
 ```
 
-`ConversionError.code` is one of `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION` (an output file would resolve to the recording being read), `INPUT_UNREADABLE`, `UNSUPPORTED_REQUEST` (the flags cannot be carried out together), `CALLBACK_FAILED` (your `onProgress` threw) or `WRITE_FAILED`.
+`ConversionError.code` is one of `OUTPUT_EXISTS`, `OUTPUT_UNWRITABLE`, `INPUT_OUTPUT_COLLISION` (an output file would resolve to the recording being read), `INPUT_UNREADABLE` (the reader failed after writing had begun), `UNSUPPORTED_REQUEST` (the flags cannot be carried out together), `CALLBACK_FAILED` (your `onProgress` threw) or `WRITE_FAILED`.
 
 `ConversionErrorCode` is the type of that field, so a handler can be written down rather than only written: `function explain(code: ConversionErrorCode)`, a `Record<ConversionErrorCode, string>` of messages, or a `switch` the compiler checks for exhaustiveness. It was reachable but unnameable until 0.7.6, when `EdfErrorCode` and `DiagnosticCode` had both been exported since they existed.
 
