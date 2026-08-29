@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.244
+
+### two counts on one line, pluralised two ways beside the function for it
+
+`--info`'s `Channels` line pluralises two counts, and did neither through `counted`:
+
+```ts
+  const annotationPart =
+    annotationCount > 0
+      ? ` + ${annotationCount} annotation channel${annotationCount === 1 ? '' : 's'}`
+      : '';
+  lines.push(
+    `Channels   ${signals.length} signal${signals.length === 1 ? '' : 's'}${annotationPart}`,
+  );
+```
+
+The comment above it records that the annotation half once read "2 annotation channel" and was
+fixed — by adding a second ternary rather than by asking the function this file already imports
+and uses one statement earlier, for `counted(file.recordCount, 'record')` on the `Duration`
+line.
+
+That is the drift `counted` exists to end, and 0.7.243 found the same thing one file over: a
+count with a rule of its own, sitting beside the shared one. Three of these are now on one line
+of `--info` output and none of them is spelled twice.
+
+Byte-identical across the fixture set: `1 signal + 1 annotation channel`, `2 signals`,
+`1 signal + 2 annotation channels`.
+
 ## 0.7.243
 
 ### a parameter for an exception the exception did not use

@@ -268,16 +268,19 @@ export function formatInfo(
 
   const signals = file.dataSignals;
   lines.push('');
-  // The signal count was pluralised but the annotation-channel count was not, so a file
-  // carrying two of them read "2 annotation channel". EDF+ permits more than one.
+  /*
+    Both counts through `counted`, which this function already uses one line up for the record
+    count and which exists so a count and its noun cannot disagree.
+
+    The annotation-channel half was pluralised by hand when it was fixed — a file carrying two
+    of them read "2 annotation channel", and EDF+ permits more than one — and the signal half
+    had been hand-rolled since it was written. Two spellings of one rule in one line, in the
+    file that imports the rule.
+  */
   const annotationCount = file.annotationSignals.length;
   const annotationPart =
-    annotationCount > 0
-      ? ` + ${annotationCount} annotation channel${annotationCount === 1 ? '' : 's'}`
-      : '';
-  lines.push(
-    `Channels   ${signals.length} signal${signals.length === 1 ? '' : 's'}${annotationPart}`,
-  );
+    annotationCount > 0 ? ` + ${counted(annotationCount, 'annotation channel')}` : '';
+  lines.push(`Channels   ${counted(signals.length, 'signal')}${annotationPart}`);
   lines.push('');
 
   const rows: string[][] = [['#', 'COLUMN', 'LABEL', 'UNIT', 'RATE', 'RANGE', 'OUTPUT']];
