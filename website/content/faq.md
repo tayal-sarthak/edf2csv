@@ -555,8 +555,8 @@ Channel count used to be a third, and no longer is. Each channel gets a cache of
 values — the same handful of strings serve millions of rows — sized to the digital range it
 declares, up to 512 KB for one declaring the whole 16-bit range, which is what an ordinary EEG
 amplifier declares. A per-channel ceiling bounds nothing about a file's channel count, so a
-229 KB recording of 256 such channels reserved 134 MB before writing a row and died out of heap
-under anything smaller. Since 0.5.52 the caches share one 16 MB budget for the conversion,
+229 KB recording of 256 such channels reserved 134 MB of pointers before writing a row, and died
+out of heap under any cap below the 192 MB that reservation forced it to need. Since 0.5.52 the caches share one 16 MB budget for the conversion,
 handed out fastest rate first; channels past it format each value directly, which is slower and
 produces exactly the same text.
 

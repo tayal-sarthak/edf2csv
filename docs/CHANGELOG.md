@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.240
+
+### a comparative pointing at the wrong one of two numbers
+
+The FAQ's memory answer explains why channel count no longer costs anything, and ends on a
+comparative with nothing to compare against:
+
+> a 229 KB recording of 256 such channels reserved 134 MB before writing a row and died out of
+> heap under anything smaller.
+
+Smaller than 134 MB? That is the reservation, not the heap, and a run does not die under a cap
+equal to what it reserved — it dies under one that cannot hold the reservation plus everything
+else. The figure the sentence needs is in `format/number.ts`, where the same defect is recorded
+with both numbers: "a 256-channel montage reserved 134 MB of pointers before writing a row — a
+recording that needed a 192 MB heap and died with a V8 out-of-memory fatal error under anything
+smaller."
+
+The FAQ sentence borrowed that shape and dropped the second number, so "anything smaller"
+re-pointed itself at the first one. Both are named now.
+
+The two accounts still give different sizes for the recording — 229 KB here, 7.9 MB there — and
+that is left alone rather than guessed at: 134 MB of pointers is 256 channels times 512 KB
+whatever the file weighs, so either reproduction is consistent with the defect and I have no
+way to establish which file each was measured on.
+
 ## 0.7.239
 
 ### the estimate's overshoot, quoted as the size of the output
