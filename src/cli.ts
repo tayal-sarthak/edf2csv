@@ -972,19 +972,6 @@ async function showInfo(
       : null;
     plan.diagnostics.push(...timing.diagnostics);
     /*
-      What --stdout would do with this recording, which --info did not ask.
-
-      `--info --stdout` on a three-rate file predicted "Would write 1,155 rows, roughly
-      22.2 KB" and said the channels "are written to one file per rate" — for a command that
-      refuses to run, writes nothing and names no file. --info exists to say what a
-      conversion will do, and refusing is one of the things it does.
-
-      A warning rather than a refusal, for the reason 0.5.51 gives about the destination
-      guards: --info writes nothing, so a rule about the output has no business stopping it
-      from describing the recording — and being told the command will not work is exactly
-      what was asked. The conversion's own guard supplies the words, so there is one wording.
-    */
-    /*
       What the conversion would say about the durations it would write.
 
       Same window the conversion applies, so --info predicts the warnings rather than a
@@ -1024,6 +1011,19 @@ async function showInfo(
     const noEvents = noAnnotations(file, shared as ConvertOptions);
     if (noEvents) plan.diagnostics.push(noEvents);
 
+    /*
+      What --stdout would do with this recording, which --info did not ask.
+
+      `--info --stdout` on a three-rate file predicted "Would write 1,155 rows, roughly
+      22.2 KB" and said the channels "are written to one file per rate" — for a command that
+      refuses to run, writes nothing and names no file. --info exists to say what a
+      conversion will do, and refusing is one of the things it does.
+
+      A warning rather than a refusal, for the reason 0.5.51 gives about the destination
+      guards: --info writes nothing, so a rule about the output has no business stopping it
+      from describing the recording — and being told the command will not work is exactly
+      what was asked. The conversion's own guard supplies the words, so there is one wording.
+    */
     if (toStdout) {
       const refusal = stdoutRefusal(file, plan);
       if (refusal) {

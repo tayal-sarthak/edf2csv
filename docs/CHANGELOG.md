@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.234
+
+### one of four rationales, thirty-five lines from what it argues for
+
+`showInfo` adds four things a conversion would raise that `--info` used not to, each with a
+paragraph over it saying why. Three of the four sit on the line that adds them. The first sat
+thirty-five lines above its own:
+
+```ts
+    /*
+      What --stdout would do with this recording, which --info did not ask.
+      ...
+    */
+    /*
+      What the conversion would say about the durations it would write.
+      ...
+    */
+    plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, eventWindow));
+```
+
+A reader meets an argument about `--stdout` refusals and then a statement about annotation
+durations, with the `if (toStdout)` it belongs to three statements further down. The chain is
+visible in the wording of the block after it, which opens "And the warning about the signal
+file this conversion would not write" — an "And" that follows the durations paragraph and was
+written to follow the one about `--stdout`, so the order the comments were composed in is not
+the order they are read in.
+
+The same misplacement 0.7.228 swept out of the doc comments, in the rationale blocks it
+deliberately exempted: those attach to nothing by design, so nothing but reading catches one in
+the wrong place.
+
 ## 0.7.233
 
 ### an extension matched in any case, documented in one
