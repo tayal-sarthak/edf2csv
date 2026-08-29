@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.226
+
+### one file in the sentence above the block and several inside it
+
+The `EMPTY_WINDOW` section opens by saying what the run leaves behind:
+
+> The conversion had signal tables to fill and put no data rows in any of them, so
+> `signals.csv` holds its header and nothing else.
+
+One file, named. Three lines below it, the example block said:
+
+```text
+warning: No samples fall inside the requested window (1.950s to 2.000s), so the signal
+         files hold their headers and no data.
+```
+
+The example is a two-record, single-channel recording windowed between its last sample and the
+nominal end of its last record — one signal file, which is the case the paragraph above
+introduces it as. `EMPTY_WINDOW` has said "the signal file holds its header and no data" for
+such a run since 0.7.219, and the block kept the older sentence, contradicting the line that
+sets it up.
+
+The same drift on the CLI reference was fixed in 0.7.225; this is the other copy, on the page
+that documents the warning itself. Reproduced against the tool, figures included: the run
+prints this block verbatim.
+
 ## 0.7.225
 
 ### a warning quoted on the page in the wording it had two releases ago

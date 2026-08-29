@@ -838,7 +838,7 @@ A window can select nothing without being past the end of the recording — `--s
 
 ```
 warning: No samples fall inside the requested window (1.950s to 2.000s), so the signal
-         files hold their headers and no data.
+         file holds its header and no data.
          The window is inside the recording but lands where there is no data —
          past the last sample, or inside a gap in a discontinuous file. Run with
          --info to see where the records actually sit.
