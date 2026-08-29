@@ -239,7 +239,14 @@ monotonically. Both are named explicitly in the warnings and in `metadata.json` 
 EDF has nowhere to store events, so no file is written at all rather than an empty one suggesting
 that events were looked for and not found.
 
-Run `--info`. If the channel count line doesn't mention an annotation channel, the file has none:
+Run `--info`. The channel count line names annotation channels separately, so a file with none
+says only how many signals it has:
+
+```text
+Channels   2 signals
+```
+
+against a recording that has one:
 
 ```text
 Channels   5 signals + 1 annotation channel

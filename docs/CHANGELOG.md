@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.231
+
+### an answer illustrated with the case it is not about
+
+The FAQ entry headed "There is no annotations.csv in my output directory" told the reader how
+to check, and then showed the wrong half of the answer:
+
+> Run `--info`. If the channel count line doesn't mention an annotation channel, the file has
+> none:
+>
+> ```text
+> Channels   5 signals + 1 annotation channel
+> ```
+
+The block under a sentence about a line that does *not* mention an annotation channel is a line
+that does. A reader arriving at this entry has a directory with no `annotations.csv` and wants
+to recognise their own output; what they are handed is what the other case looks like, and they
+have to invert it themselves.
+
+Both are shown now, the negative one first, since that is the question the entry is answering.
+Both taken from the tool: `Channels   2 signals` on a plain BDF, `Channels   1 signal + 1
+annotation channel` on an EDF+.
+
 ## 0.7.230
 
 ### a refusal blamed on the recording, over a flag the caller passed
