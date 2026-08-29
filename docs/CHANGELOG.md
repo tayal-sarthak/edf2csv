@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.245
+
+### a sixth error type, from the one stat that could not take no for an answer
+
+`convert()` throws five error types, all exported, all carrying a `code` and a `hint`. It could
+throw a sixth:
+
+```text
+Error: ENOENT: no such file or directory, stat './link.edf'
+```
+
+The check that refuses to write an output file over the recording being read compares inodes, and
+took the input's with a bare `stat`. Every other filesystem call in that function tolerates the
+answer being gone — the target's own stat is `.catch(() => null)` two lines down — and this one
+turned a recording moving under the conversion into Node's own error, with no code this tool
+defines and no advice.
+
+It is not hypothetical, and it is the one path where a file moving is the documented ordinary
+case: the descriptor is already open, so `EdfFile` reads the recording perfectly well, and a
+rename or unlink in the window between opening it and this check is all it takes. Reproduced by
+converting through a symbolic link and removing the link while the annotation channel is being
+scanned.
+
+Tolerant now, which loses only the inode comparison for a file that no longer answers to that
+name. `samePath` still catches the two names being one name, and the inode form still catches a
+hard link — both checked: an input named `signals.csv` and an input hard-linked to
+`channels.csv` are each still refused.
+
 ## 0.7.244
 
 ### two counts on one line, pluralised two ways beside the function for it

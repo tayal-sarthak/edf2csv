@@ -402,7 +402,21 @@ async function assertInputDoesNotOverlapOutputs(
   names.add('metadata.json');
 
   const inputResolved = path.resolve(inputPath);
-  const inputInfo = await stat(inputPath);
+  /*
+    Tolerant of the input going away, like every other stat in this function.
+
+    This one was bare, so a recording renamed or unlinked between `EdfFile.open` and here threw
+    Node's own error straight out of `convert()`:
+
+        Error: ENOENT: no such file or directory, stat './link.edf'
+
+    with no `code` this tool defines and no hint — a sixth error type from a function the API
+    page says throws five, on the one path where a file moving under a conversion is the
+    documented ordinary case. The descriptor is already open, so the conversion itself is fine;
+    what is lost is the inode comparison, and `samePath` below still answers the case that
+    matters when the two names are the same name.
+  */
+  const inputInfo = await stat(inputPath).catch(() => null);
 
   for (const name of names) {
     const target = path.join(outputDir, name);
@@ -410,7 +424,10 @@ async function assertInputDoesNotOverlapOutputs(
     const targetInfo = await stat(target).catch(() => null);
     const samePath = targetResolved === inputResolved;
     const sameFile =
-      targetInfo !== null && targetInfo.dev === inputInfo.dev && targetInfo.ino === inputInfo.ino;
+      targetInfo !== null &&
+      inputInfo !== null &&
+      targetInfo.dev === inputInfo.dev &&
+      targetInfo.ino === inputInfo.ino;
     if (!samePath && !sameFile) continue;
 
     throw new ConversionError(
