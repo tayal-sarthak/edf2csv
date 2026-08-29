@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.233
+
+### an extension matched in any case, documented in one
+
+The folder walk matches `/\.(edf|bdf)$/iu` — case-insensitively — and neither page that
+describes it says so. Both say "every `.edf` and `.bdf` inside", which a reader with a folder
+of `.EDF` files reads as a list they are not on.
+
+`.EDF` is not unusual. Clinical export tools and Windows-era software write it, and a study
+copied off one arrives with the extension in whatever case that system used. The behaviour is
+deliberate and covered — `test/fuzz/trees.mjs` builds mixed-case extensions on purpose, and the
+correctness page names them among the arrangements it checks — so the only thing missing was
+the sentence. Someone who believed the pages had two ways to be wrong about it: rename fifty
+files that did not need renaming, or conclude the folder form does not apply to their study and
+go back to a shell loop, which is the thing the walk exists to replace.
+
+Said in both places the folder form is documented, with what it means: `edf2csv study` finds
+`night-01.EDF` and `night-02.Bdf` and converts them, where `edf2csv study/*.edf` does not.
+
 ## 0.7.232
 
 ### the commonest typo, costing twice what the bound allows

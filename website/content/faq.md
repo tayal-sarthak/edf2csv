@@ -496,7 +496,7 @@ Point it at the folder:
 edf2csv /data/recordings --out /data/converted --jobs auto
 ```
 
-Every `.edf` and `.bdf` inside is converted, at any depth, and each gets its own directory under `/data/converted` keeping the position it had. Naming the files individually works too:
+Every `.edf` and `.bdf` inside is converted, at any depth — the extension is matched without regard to case, so `.EDF` and `.Bdf` count — and each gets its own directory under `/data/converted` keeping the position it had. Naming the files individually works too:
 
 ```bash
 edf2csv /data/recordings/*.edf --out /data/converted

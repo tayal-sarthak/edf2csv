@@ -56,7 +56,7 @@ error: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so 
        Convert them separately, or rename one of them.
 ```
 
-A folder is expanded to every `.edf` and `.bdf` inside it, at any depth, which is usually easier than getting a shell to do it:
+A folder is expanded to every `.edf` and `.bdf` inside it, at any depth, which is usually easier than getting a shell to do it. The extension is matched without regard to case, so `.EDF` and `.Bdf` are found too — clinical exports write both, and a shell glob does not:
 
 ```bash
 edf2csv /data/study --out ./converted --jobs auto
