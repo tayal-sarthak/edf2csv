@@ -28,7 +28,7 @@ Four places show you the same diagnostics in different forms.
 | Terminal, default | Printed to stderr before the conversion summary, hint included |
 | `--quiet` | Suppresses the summary only. Warnings and errors still print |
 | `--json` | Diagnostics aren't printed as text. They appear in the `warnings` array on stdout, each with `code`, `severity` and `message`. Hints aren't included |
-| `metadata.json` | The `notes` array records `code`, `severity` and `message` for every diagnostic raised while reading the header and planning the conversion |
+| `metadata.json` | The `notes` array records `code`, `severity` and `message` for every diagnostic the run raised up to the moment it is written — the header's, the plan's, and the conversion's own. `INPUT_CHANGED` is decided after every CSV is on disk and is in here |
 
 There's one exception. `STALE_OUTPUT` is detected after `metadata.json` has already been written, so it appears on the terminal and in `--json` output but never in `metadata.json`.
 

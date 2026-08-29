@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.246
+
+### a boundary drawn one stage before the warning that crosses it
+
+The table of where diagnostics appear describes `metadata.json` as carrying
+
+> every diagnostic raised while reading the header and planning the conversion
+
+and the paragraph under it is precise about exactly this kind of timing: "`STALE_OUTPUT` is
+detected after `metadata.json` has already been written, so it appears on the terminal and in
+`--json` output but never in `metadata.json`."
+
+`INPUT_CHANGED` is decided later still than the plan — after every CSV has been written, by
+comparing the descriptor against the size and modification time the file had when it was
+opened — and it is in `notes`. Converting a recording that grows underneath it records:
+
+```text
+notes: MIXED_SAMPLING_RATES, LARGE_OUTPUT, INPUT_CHANGED
+source.sha256: null
+```
+
+`NO_SAMPLES` for a signal file not written, `NO_ANNOTATIONS`, and the two annotation-duration
+warnings are the same: raised by the conversion, not by the plan, and all in `notes`.
+
+So the row's boundary was drawn one stage too early, on the page whose next sentence turns on
+where that boundary actually is — and `INPUT_CHANGED` is the one an archived conversion most
+needs, since it is what says the checksum beside it is null on purpose.
+
 ## 0.7.245
 
 ### a sixth error type, from the one stat that could not take no for an answer
