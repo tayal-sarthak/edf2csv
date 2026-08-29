@@ -1161,7 +1161,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 
 | Situation | Example message |
 | --- | --- |
-| Unknown flag | Reported by the argument parser, followed by a pointer to `--help` |
+| Unknown flag | `There is no --chanels option. Did you mean --channels?`, then how to pass it as a filename instead, then a pointer to `--help` |
 | No input file | Usage text is printed |
 | Two recordings that would convert into the same directory | `"n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.` |
 | Several recordings with `--stdout` | `--stdout writes a single CSV, so it cannot take 3 recordings.` |

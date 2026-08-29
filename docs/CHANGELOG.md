@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.229
+
+### the one row of twenty that describes a message instead of quoting it
+
+The usage-error table quotes the message for each of its twenty rows. One row does not, and it
+is the first:
+
+> | Unknown flag | Reported by the argument parser, followed by a pointer to `--help` |
+
+It is not reported by the argument parser. `usageMessage` replaces Node's sentence outright,
+and the comment above it spends a paragraph on why: Node's version opens a quotation mark
+before `--` and never closes it, arrives without the `error:` prefix every other refusal
+carries, and explains how to pass a *file* whose name begins with a dash to a reader who has
+mistyped one of twenty flags. What the tool prints is
+
+```text
+error: There is no --chanels option. Did you mean --channels?
+       If it is the name of a file, pass it after -- instead:
+       edf2csv -- "--chanels"
+```
+
+So the row describing a message in prose rather than quoting it is the one describing the
+message this tool went to the most trouble to stop delegating — and it is the commonest usage
+error there is, on the table a reader scans to recognise one in a log.
+
 ## 0.7.228
 
 ### two doc comments moved by hand, and the two nobody swept for
