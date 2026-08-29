@@ -292,11 +292,11 @@ Worked through on a real channel with `physicalMin -800`, `physicalMax 800`, `di
 `digitalMax 2047`:
 
 ```
-gain   = 1600 / 4095 = 0.39072039072039073
+gain   = 1600 / 4095 = 0.3907203907203907
 offset = 800 / gain - 2047 = 2047.5 - 2047 = 0.5
 
-digital 0  ->  0.39072039072039073 * 0.5 = 0.19536019536019536
-digital 1  ->  0.39072039072039073 * 1.5 = 0.5860805860805861
+digital 0  ->  0.3907203907203907 * 0.5 = 0.19536019536019536
+digital 1  ->  0.3907203907203907 * 1.5 = 0.5860805860805861
 ```
 
 ### What physical minimum and maximum actually mean

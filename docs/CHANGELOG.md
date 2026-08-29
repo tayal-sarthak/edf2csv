@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.238
+
+### a worked example whose first line no runtime prints that way
+
+The calibration section works the arithmetic through on a real channel, digit by digit, because
+the claim it is supporting is that the result is "bit-for-bit identical to pyEDFlib and
+EDFbrowser". Three of its four lines print the shortest spelling of the double they name. The
+gain printed one digit longer:
+
+```text
+gain   = 1600 / 4095 = 0.39072039072039073
+digital 0  ->  0.39072039072039073 * 0.5 = 0.19536019536019536
+```
+
+`1600 / 4095` is `0.3907203907203907` — in Node, in Python's `repr`, in a browser console, and
+in every place a reader of this section would go to check it. The seventeen-digit form parses
+back to the same double, so nothing computed from it is wrong; it is simply not what anything
+prints, and it is the first line of a worked example whose whole purpose is that it can be
+retyped and compared.
+
+The two values under it — `0.19536019536019536` and `0.5860805860805861` — are already in the
+canonical form, as is the same figure in `scale.ts`'s own comment, so the gain was the one
+number in the section a reader could not match against their own output.
+
 ## 0.7.237
 
 ### the one paragraph on the site that opens against a closing fence
