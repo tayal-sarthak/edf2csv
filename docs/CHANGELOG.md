@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.257
+
+### a name that reorders the line rather than repainting it
+
+`printable` escapes control bytes before anything from outside reaches the terminal, and its
+comment says why: `\x1b[2J\x1b[H` clears the screen and homes the cursor, which is enough to
+hide the output or repaint it as something else. The `File` line's own comment extends that to
+paths — "a path is untrusted text: a folder may be named with an ESC byte, and a file name may
+hold a newline on every platform this runs on".
+
+A bidirectional override is untrusted text of the same kind that does not drive the terminal at
+all. It tells the terminal to display a run of text right to left, and to keep doing so until
+the run closes. A recording named `sleep-\u202efdp.edf` was printed by
+
+```text
+File       ./sleep-\u202efdp.edf
+```
+
+and reached the screen as `./sleep-fde.pdf`. Nothing was escaped, nothing was wrong with the
+bytes, and the name shown was not the name on disk — which is the whole of what this function
+exists to prevent, arriving by a route it did not cover. The `[n/m]` header of a batch and the
+`Wrote` line print the same name the same way.
+
+U+202A to U+202E and U+2066 to U+2069, the overrides, embeddings and isolates. Not U+200E and
+U+200F, the marks, which reorder the neutral characters beside them rather than a run and turn
+up in ordinary names written in Arabic or Hebrew; nothing writes an override into a filename
+by accident. Written `\u202e` with four digits rather than `\x`, which is two and would have a
+reader counting them find a different character.
+
+Header text cannot reach this — `decodeLatin1` maps every byte to a code point below U+0100 —
+so it is about paths, which come from the filesystem, and about the messages that quote them.
+
 ## 0.7.256
 
 ### seven column heads over a table with no rows in it

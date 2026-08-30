@@ -498,6 +498,47 @@ describe('terminal safety', () => {
     assert.deepEqual(offending, [], 'control bytes must be escaped before reaching the terminal');
   });
 
+  it('escapes a name that reorders the line as well as one that repaints it', async () => {
+    /*
+      Escaping was of the control bytes, which is what an ESC in a name does: it drives the
+      terminal. A bidirectional override does not drive it — it tells it to display a run
+      right to left, and to keep doing so until the run closes. `sleep-\u202efdp.edf` reaches
+      the screen as
+
+          File       ./sleep-fde.pdf
+
+      Nothing is wrong with the bytes and nothing was escaped; the name shown is simply not
+      the name on disk, which is the whole of what this escaping exists to prevent.
+
+      The overrides, embeddings and isolates — U+202A to U+202E, U+2066 to U+2069 — and not
+      the marks U+200E and U+200F, which reorder the neutral characters beside them rather
+      than a run and turn up in ordinary Arabic and Hebrew names. Nothing writes an override
+      into a filename by accident.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-bidi-'));
+    temporaries.push(dir);
+    const source = await readFile(fixture('tiny.edf'));
+    const tricked = path.join(dir, 'sleep-\u202efdp.edf');
+    await writeFile(tricked, source);
+
+    const info = await cli([tricked, '--info']);
+    assert.equal(info.code, 0, info.stderr);
+    assert.ok(!info.stdout.includes('\u202e'), 'an override reached the terminal');
+    assert.match(info.stdout, /File .*sleep-\\u202efdp\.edf/u, info.stdout);
+
+    const converted = await cli([tricked, '--out', path.join(dir, 'out')]);
+    assert.equal(converted.code, 0, converted.stderr);
+    assert.ok(!converted.stderr.includes('\u202e'), 'an override reached the summary');
+
+    // A name carrying a bidi mark is left alone: it is not an override, and it is how a
+    // right-to-left name is ordinarily written.
+    const marked = path.join(dir, 'sleep-\u200fname.edf');
+    await writeFile(marked, source);
+    const plain = await cli([marked, '--info']);
+    assert.equal(plain.code, 0, plain.stderr);
+    assert.ok(plain.stdout.includes('\u200f'), 'a bidi mark was escaped as if it were an override');
+  });
+
   it('escapes the path too, which the filesystem supplies and nobody vets', async () => {
     /*
       The tests above cover the header fields. A path is untrusted text of exactly the same

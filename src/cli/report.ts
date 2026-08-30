@@ -113,10 +113,38 @@ function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<num
  * `metadata.json` still copy the field verbatim, and CSV quoting already makes that safe.
  */
 export function printable(text: string): string {
+  /*
+    And the characters that reorder the line rather than drive the terminal.
+
+    U+202A-U+202E and U+2066-U+2069 are bidirectional overrides, embeddings and isolates:
+    they tell the terminal to display a run of text right to left, and they do it to
+    everything after them until the run is closed. A file named `sleep-\u202efdp.edf` is
+    printed by this line
+
+        File       ./sleep-\u202efdp.edf
+
+    and appears on screen as `./sleep-fde.pdf`. Nothing is escaped, nothing is wrong with the
+    bytes, and the name shown is not the name on disk — which is the whole of what this
+    function exists to prevent, arriving by a route it did not cover. A path is untrusted
+    text, as the `File` line's own comment says, and a directory entry can carry these as
+    easily as it can carry an ESC byte.
+
+    Not the marks, U+200E and U+200F, which reorder neutral characters beside them rather
+    than a run and do turn up in ordinary names written in Arabic or Hebrew. The overrides do
+    not: nothing writes one into a filename by accident.
+
+    Header text cannot reach this, since `decodeLatin1` maps every byte to a code point below
+    U+0100 — so this is about paths, which come from the filesystem, and about the messages
+    that quote them.
+
+    Written `\u202e` and not `\x202e`, because `\x` is two digits and a reader who counts them
+    would get a different character.
+  */
   // The control characters are what this function is for, not an oversight in it.
-  return text.replace(/[\u0000-\u001f\u007f-\u009f]/gu, (c) =>
-    `\\x${c.codePointAt(0)!.toString(16).padStart(2, '0')}`,
-  );
+  return text.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/gu, (c) => {
+    const code = c.codePointAt(0) as number;
+    return code > 0xff ? `\\u${code.toString(16)}` : `\\x${code.toString(16).padStart(2, '0')}`;
+  });
 }
 
 /**
