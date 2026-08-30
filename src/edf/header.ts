@@ -224,6 +224,22 @@ function normaliseNumberField(raw: string): { text: string; sawComma: boolean } 
   return { text, sawComma: false };
 }
 
+/**
+ * What a header field that is not the number it must be usually means.
+ *
+ * `BAD_HEADER_FIELD` is raised four ways — an empty numeric field, one that does not parse, one
+ * that must be whole and is not, and a signal declaring a negative sample count — and one of
+ * the four carried this. The other three printed a bare sentence about a field and stopped,
+ * which is the same gap `EdfFile.#UNREADABLE_HINT` was written to close on the read side: a
+ * family of errors where one member says what the cause usually is and the rest do not.
+ *
+ * An empty field is if anything the plainer symptom of the two. A truncated download stops
+ * mid-header and leaves the rest as spaces; a byte-shifted file reads a field off the wrong
+ * offset and finds whitespace as often as it finds digits. The page has said all four mean
+ * this since they were documented together.
+ */
+const BAD_FIELD_HINT = 'The file may be truncated, byte-shifted, or not an EDF file at all.';
+
 function parseNumberField(
   raw: string,
   field: string,
@@ -233,20 +249,21 @@ function parseNumberField(
   const text = normalised.text;
   if (normalised.sawComma && sawComma) sawComma.value = true;
   if (text === '') {
-    throw new EdfError('BAD_HEADER_FIELD', `Header field "${field}" is empty.`);
+    throw new EdfError('BAD_HEADER_FIELD', `Header field "${field}" is empty.`, BAD_FIELD_HINT);
   }
   const n = DECIMAL_FIELD.test(text) ? Number(text) : NaN;
   if (!Number.isFinite(n)) {
     throw new EdfError(
       'BAD_HEADER_FIELD',
       `Header field "${field}" is not a number (found ${JSON.stringify(text)}).`,
-      'The file may be truncated, byte-shifted, or not an EDF file at all.',
+      BAD_FIELD_HINT,
     );
   }
   if (integer && !Number.isInteger(n)) {
     throw new EdfError(
       'BAD_HEADER_FIELD',
       `Header field "${field}" must be a whole number (found ${JSON.stringify(text)}).`,
+      BAD_FIELD_HINT,
     );
   }
   return n;
@@ -452,6 +469,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       throw new EdfError(
         'BAD_HEADER_FIELD',
         `Signal ${i} ("${label}") declares ${samplesPerRecord} samples per record.`,
+        BAD_FIELD_HINT,
       );
     }
 

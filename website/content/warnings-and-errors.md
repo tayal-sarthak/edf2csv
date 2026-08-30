@@ -934,7 +934,7 @@ error: Header field "number of header bytes" is not a number (found "adding p").
        The file may be truncated, byte-shifted, or not an EDF file at all.
 ```
 
-This is the error you get when pointing edf2csv at something that isn't an EDF file. It also appears when a file is byte-shifted, so that fields are being read from the wrong offsets.
+This is the error you get when pointing edf2csv at something that isn't an EDF file. It also appears when a file is byte-shifted, so that fields are being read from the wrong offsets. All four raisings carry that second line; until 0.7.259 only the middle one did, and an empty field — which is what a truncated download and a byte-shifted read both produce most often — said nothing about either.
 
 ### INVALID_SIGNAL_COUNT
 

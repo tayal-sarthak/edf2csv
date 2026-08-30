@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.259
+
+### one hint for four raisings of one code
+
+`BAD_HEADER_FIELD` is raised four ways: a numeric field that is empty, one whose contents do
+not parse as a finite number, one that must be a whole number and is not, and a signal
+declaring a negative sample count. The page documents all four in one sentence and then says
+what they mean — "This is the error you get when pointing edf2csv at something that isn't an
+EDF file. It also appears when a file is byte-shifted, so that fields are being read from the
+wrong offsets."
+
+One of the four said so:
+
+```text
+error: Header field "number of header bytes" is not a number (found "adding p").
+       The file may be truncated, byte-shifted, or not an EDF file at all.
+```
+
+The other three printed the first line and stopped. So a truncated download — which stops
+mid-header and leaves the rest as spaces, the plainest way there is to get an empty numeric
+field — was answered with
+
+```text
+error: Header field "number of data records" is empty.
+```
+
+and nothing else. The advice that names the cause was written for this file and printed only
+for the one arrangement of it that happens to contain characters.
+
+The same gap `EdfFile.#UNREADABLE_HINT` was written to close on the read side: a family of
+errors where one member says what the cause usually is and the rest do not. It is one constant
+now, `BAD_FIELD_HINT`, named where the four raisings can share it rather than copied to three
+more places.
+
 ## 0.7.258
 
 ### an errno translator reached by the two failures that were not the write
