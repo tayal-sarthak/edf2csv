@@ -27,6 +27,7 @@ import {
   auditStdout,
   convert,
   defaultOutputDir,
+  describeFsError,
   durationDiagnostics,
   requestedAnnotationWindow,
   noAnnotations,
@@ -212,7 +213,13 @@ function ignoreBrokenPipe(stream: NodeJS.WriteStream): void {
       failure twice, so this only speaks when nothing else will.
     */
     if (stream.listenerCount('error') > 1) return;
-    process.stderr.write(`error: Writing to ${stream === process.stdout ? 'stdout' : 'stderr'} failed: ${error.message}\n`);
+    // Through `describeFsError`, like the two failures raised inside the conversion. This is
+    // the last-resort listener, so it is the one path where Node's own text — errno token,
+    // syscall and all — had nothing in front of it.
+    process.stderr.write(
+      `error: Writing to ${stream === process.stdout ? 'stdout' : 'stderr'} failed: ` +
+        `${describeFsError(error)}.\n`,
+    );
     process.exitCode = EXIT_ERROR;
   });
 }

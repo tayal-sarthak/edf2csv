@@ -146,7 +146,9 @@ describe('--out onto a destination that fills up', () => {
         !/Unhandled 'error' event/u.test(stderr),
         `died on an unhandled event rather than reporting:\n${stderr}`,
       );
-      assert.match(stderr, /failed: ENOSPC/u);
+      // The errno as a sentence, which is what `describeFsError` turns it into; Node's own
+      // text reached the screen here until 0.7.258.
+      assert.match(stderr, /failed: the disk is full\./u);
       assert.match(stderr, /The files written so far are incomplete/u);
     }, '8m');
   });
@@ -281,7 +283,7 @@ describe('--stdout onto a destination that fills up', () => {
       const result = await toFile([fixture('long-stream.edf'), '--stdout', '--gzip'], destination);
 
       assert.notEqual(result.code, 0, `a truncated stream reported success:\n${result.stderr}`);
-      assert.match(result.stderr, /no space left on device|did not reach the destination/u, result.stderr);
+      assert.match(result.stderr, /the disk is full|did not reach the destination/u, result.stderr);
       assert.doesNotMatch(result.stderr, /Wrote [\d,]+ rows to stdout/u,
         `a failed run announced its rows:\n${result.stderr}`);
     });
@@ -325,7 +327,7 @@ describe('--stdout onto a destination that fills up', () => {
       const destination = path.join(VOLUME, 'desc.txt');
       const result = await toFile([recording, '--info'], destination);
       assert.notEqual(result.code, 0, `a description that never arrived reported success:\n${result.stderr}`);
-      assert.match(result.stderr, /no space left on device|did not reach the destination/u, result.stderr);
+      assert.match(result.stderr, /the disk is full|did not reach the destination/u, result.stderr);
     }, '4m');
   });
 
@@ -339,7 +341,7 @@ describe('--stdout onto a destination that fills up', () => {
       The check above made the failure fatal. It came out twice, and the second contradicted
       the first:
 
-        error: Writing to stdout failed: ENOSPC: no space left on device, write
+        error: Writing to stdout failed: the disk is full.
         error: Writing to stdout failed: 58900 of 58900 bytes did not reach the destination,
                which stopped accepting them part way through.
                What is there ends mid-row and should not be used. ... and nothing after it

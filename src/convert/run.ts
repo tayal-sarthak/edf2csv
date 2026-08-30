@@ -512,8 +512,15 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
   }
 }
 
-/** Turn a Node filesystem error into something a person can act on. */
-function describeFsError(cause: unknown): string {
+/**
+ * Turn a Node filesystem error into something a person can act on: an errno as a sentence,
+ * so Node's own text never reaches the screen.
+ *
+ * Exported for the CLI's last-resort stdout listener, which is the third and last place a
+ * write failure becomes a message and the one that was still printing `ENOSPC: no space left
+ * on device, write`.
+ */
+export function describeFsError(cause: unknown): string {
   const code = (cause as NodeJS.ErrnoException | undefined)?.code;
   if (code === 'EACCES' || code === 'EPERM') return 'permission denied';
   if (code === 'ENOSPC') return 'the disk is full';
@@ -522,6 +529,18 @@ function describeFsError(cause: unknown): string {
   if (code === 'ENOTDIR') return 'part of the path is a file, not a directory';
   if (code === 'EROFS') return 'the filesystem is read-only';
   if (code === 'ENAMETOOLONG') return 'the path is too long';
+  /*
+    The two `writeHint` knew and this did not, which showed once the write failures started
+    coming through here: `writeHint` reads the same errno off the same error and has a
+    sentence for eleven of them, this had seven, and the gap was the two that only a write
+    reaches. `EISDIR` is a directory sitting where an output file belongs, which is the
+    commonest way to make one of these happen on purpose.
+
+    `EPIPE` is deliberately not here. The writer treats a reader hanging up as the ordinary
+    end of a pipeline rather than as a failure, so it never becomes a message.
+  */
+  if (code === 'EISDIR') return 'a directory is sitting there already';
+  if (code === 'EMFILE' || code === 'ENFILE') return 'too many files are open';
   /*
     The one this list could not describe, and the recursive mkdir above is what makes it
     surprising: every parent is created on the way, so "no such file or directory" is not a
@@ -728,10 +747,26 @@ async function writeSignalFiles(
       );
     }
 
-    const detail = cause instanceof Error ? cause.message : String(cause);
+    /*
+      Through `describeFsError`, like the destination errors above, and not through Node's
+      own text.
+
+      That function exists to keep an errno and the internal call that raised it off the
+      screen — its comment says so in as many words, quoting the leak it was written for:
+      `Cannot create "dangle/x": ENOENT: no such file or directory, mkdir 'dangle'.` The
+      write failures never joined it, so a directory sitting where signals.csv belongs read
+
+          error: Writing to "out" failed: EISDIR: illegal operation on a directory, open 'out/signals.csv'
+
+      with the errno token, the syscall, the path repeated, and no full stop — the one
+      diagnostic shape this tool went back and fixed. The hint printed directly under it has
+      always read the same errno and said "A directory is sitting where that file belongs",
+      so the answer was in hand; it was the sentence above it that had not asked.
+    */
     throw new ConversionError(
       'WRITE_FAILED',
-      `Writing to ${outputDir === null ? 'stdout' : `"${outputDir}"`} failed: ${detail}`,
+      `Writing to ${outputDir === null ? 'stdout' : `"${outputDir}"`} failed: ` +
+        `${describeFsError(cause)}.`,
       writeHint(cause, outputDir === null),
     );
   }
@@ -1128,10 +1163,10 @@ async function writeOutputFile(
     // costs nothing extra. Only the signal tables are large enough to need a stream.
     await writeFile(path.join(outputDir, name), gzip ? gzipSync(contents) : contents, gzip ? undefined : 'utf8');
   } catch (cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
+    // The same as the signal tables above; see the note there.
     throw new ConversionError(
       'WRITE_FAILED',
-      `Writing "${name}" to "${outputDir}" failed: ${detail}`,
+      `Writing "${name}" to "${outputDir}" failed: ${describeFsError(cause)}.`,
       writeHint(cause),
     );
   }

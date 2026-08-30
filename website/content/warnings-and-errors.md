@@ -1068,14 +1068,14 @@ error: "notes.txt" is a file, but the converted data needs a directory.
        Choose a directory with --out.
 ```
 
-Filesystem failures are translated into plain language rather than passed through as system codes. The whole list, in the words the message uses: permission denied; the disk is full; you are over your disk quota on this filesystem; part of the path is a file, not a directory; the filesystem is read-only; the path is too long; part of the path does not exist.
+Filesystem failures are translated into plain language rather than passed through as system codes — here, and since 0.7.258 in `WRITE_FAILED` below, which is where the last of Node's own text was still reaching the screen. The whole list, in the words the message uses: permission denied; the disk is full; you are over your disk quota on this filesystem; part of the path is a file, not a directory; the filesystem is read-only; the path is too long; a directory is sitting there already; too many files are open; part of the path does not exist.
 
 ### WRITE_FAILED
 
 Writing one of the output files failed part way through, most often because the disk filled up.
 
 ```
-error: Writing to "recording_csv" failed: ENOSPC: no space left on device
+error: Writing to "recording_csv" failed: the disk is full.
        The files written so far are incomplete and should not be used. The
        destination is out of space; free some up or choose another with --out.
 ```
@@ -1100,7 +1100,7 @@ The partly written files are left on disk either way. They are truncated at an a
 Under `--stdout` the sentence changes, because that path writes no files and `--out` is the flag you chose not to pass:
 
 ```
-error: Writing to stdout failed: ENOSPC: no space left on device, write
+error: Writing to stdout failed: the disk is full.
        What reached stdout before it failed is incomplete and should not be
        used. The destination is out of space; free some up or redirect it
        somewhere else.

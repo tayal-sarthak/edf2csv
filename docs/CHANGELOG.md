@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.258
+
+### an errno translator reached by the two failures that were not the write
+
+`describeFsError` turns an errno into a sentence, and its own comment says what it is for,
+quoting the leak it was written to stop:
+
+```text
+error: Cannot create "dangle/x": ENOENT: no such file or directory, mkdir 'dangle'.
+       Check the path exists and that you have permission to write there.
+```
+
+"Keeping that off the screen is the whole purpose of the six lines above it." It was reached by
+the two destination-creation failures and by nothing else. The three places a *write* failure
+becomes a message all passed `cause.message` straight through:
+
+```text
+error: Writing "channels.csv" to "out" failed: EISDIR: illegal operation on a directory, open 'out/channels.csv'
+error: Writing to "out" failed: ENOSPC: no space left on device, write
+error: Writing to stdout failed: ENOSPC: no space left on device, write
+```
+
+The errno token, the syscall, the path a second time, and no full stop — which is the one
+diagnostic shape this tool went back and fixed on the single message that lacked one. The hint
+printed directly underneath has always read the same errno off the same error and said "A
+directory is sitting where that file belongs"; the answer was in hand, and the sentence above it
+had not asked.
+
+```text
+error: Writing "channels.csv" to "out" failed: a directory is sitting there already.
+```
+
+Which turned up the second half of it. `writeHint` has a sentence for eleven codes and
+`describeFsError` had seven, and the gap was exactly the ones only a write reaches: `EISDIR`,
+and `EMFILE`/`ENFILE` on a recording that opens one output file per sampling rate. `EPIPE` is
+deliberately still absent — the writer treats a reader hanging up as the ordinary end of a
+pipeline rather than as a failure, so it never becomes a message. The page that lists these
+translations lists the two new ones, and a test has compared the two lists in both directions
+since 0.6.x.
+
 ## 0.7.257
 
 ### a name that reorders the line rather than repainting it
