@@ -9,6 +9,7 @@
  */
 
 import type { EdfSignal } from '../edf/header.js';
+import { editDistance } from '../format/distance.js';
 import { listed } from '../format/list.js';
 import { assertOptions } from './options.js';
 
@@ -388,30 +389,4 @@ export function typeable(label: string): string | null {
 function untypeableBecause(label: string): string {
   if (label.includes(',')) return 'a comma in the label would read as two names';
   return 'the label cannot be typed';
-}
-
-/** Levenshtein distance, two-row variant. */
-function editDistance(a: string, b: string): number {
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
-  let current = new Array<number>(b.length + 1).fill(0);
-
-  for (let i = 1; i <= a.length; i++) {
-    current[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
-      current[j] = Math.min(
-        (current[j - 1] ?? 0) + 1,
-        (previous[j] ?? 0) + 1,
-        (previous[j - 1] ?? 0) + cost,
-      );
-    }
-    const swap = previous;
-    previous = current;
-    current = swap;
-  }
-  return previous[b.length] ?? 0;
 }

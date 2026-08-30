@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.251
+
+### the transposition fix that reached the flags and not the labels
+
+0.7.232 taught the option suggester that a swap of two adjacent characters is one slip and not
+two, because plain Levenshtein charges two and that put `--hlep`, `--jsno` and `--gzpi` past the
+allowance with nothing offered back. The channel suggester kept its own two-row Levenshtein —
+the same job, the same file's worth of reasoning, and the side a person actually types by hand,
+since a channel label is long, unfamiliar and copied off a screen.
+
+Both are one function now, in `src/format/distance.ts`.
+
+The effect is on which name comes first. Over a CHB-MIT montage — `FP1-F7`, `F7-T7`, `T7-P7`,
+`P7-O1`, `FP1-F3` and the rest, twenty labels that are all within an edit or two of each other —
+every one of the 79 single transpositions was already offered, and eight of them were offered
+second:
+
+```text
+--channels FP1-3F   was:  Did you mean "FP1-F7", "FP1-F3"?
+                    now:  Did you mean "FP1-F3", "FP1-F7"?
+
+--channels 8P-O2    was:  Did you mean "P4-O2", "P8-O2"?
+                    now:  Did you mean "P8-O2", "P4-O2"?
+```
+
+Two edits against both, so the tie fell to file order, and file order put the wrong electrode
+pair in front. `suggest` already carries a comment about this outcome from the other direction:
+"a suggestion that is retypeable, close, and about the wrong signal. Taking it converts a heart
+trace under the belief it is an EEG, and the run succeeds." A montage of adjacent derivations is
+where that is easiest to do and hardest to notice.
+
+79 of 79 named first now, and `--channels ECG` on a file carrying `ECG` and `EEG` is unchanged,
+since neither is a transposition of the other.
+
 ## 0.7.250
 
 ### the fifth count of data records, spelled by hand beside four that are not

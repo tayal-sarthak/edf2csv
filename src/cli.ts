@@ -41,6 +41,7 @@ import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson, wrap } from './cli/report.js';
 import { counted, listed } from './format/list.js';
+import { editDistance } from './format/distance.js';
 import { VERSION } from './version.js';
 
 const USAGE = `edf2csv ${VERSION}
@@ -2262,37 +2263,6 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
       `flag rather than as its value.\n` +
       `       Write it as one argument instead: ${typeable}`,
   );
-}
-
-/**
- * Edit distance counting a swap of two adjacent characters as one edit, not two.
- *
- * Damerau's restricted form, which needs the row two back and so keeps three rather than the
- * two plain Levenshtein needs. Twenty names of under twenty characters, so the extra row costs
- * nothing worth measuring.
- */
-function editDistance(a: string, b: string): number {
-  let twoBack: number[] = [];
-  let previous = Array.from({ length: b.length + 1 }, (_unused, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const current = new Array<number>(b.length + 1).fill(0);
-    current[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      let best = Math.min(
-        (previous[j] as number) + 1,
-        (current[j - 1] as number) + 1,
-        (previous[j - 1] as number) + cost,
-      );
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        best = Math.min(best, (twoBack[j - 2] as number) + 1);
-      }
-      current[j] = best;
-    }
-    twoBack = previous;
-    previous = current;
-  }
-  return previous[b.length] as number;
 }
 
 /**
