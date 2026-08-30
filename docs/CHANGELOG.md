@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.249
+
+### a column reporting a choice on a run where nothing was chosen
+
+The `OUTPUT` column of the `--info` table names the file each channel lands in, and has two
+answers for a channel that lands in none. A comment beside them draws the line: a channel with
+no samples was reported as `(not selected)` until 0.5.x, "which is a different thing and not
+true when it was named on `--channels`".
+
+`--annotations-only` is the same distinction one step further out, and it was on the wrong side
+of it:
+
+```text
+#  COLUMN      LABEL       UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz  EEG Fpz-Cz  uV    100 Hz  -250 to 250  (not selected)
+
+Would write annotations.csv and channels.csv, and no signal data.
+```
+
+That is `--info --annotations-only --channels "EEG Fpz-Cz"`. The name was accepted and checked
+against the file — the reference is explicit that `--channels` "selects nothing here" but its
+names are still validated — and the table then reported the one channel that was asked for as
+not chosen, three lines above a sentence saying no signal data is written at all. Nothing about
+that run turns on which channels were named; every row read the same whatever was passed.
+
+Both machine-readable views already had it right. `channels.csv` leaves `output_file` empty and
+`--info --json` reports `output_file: null`, neither of which claims a choice. The human table
+was the only one of the three that did.
+
+`(no signal data)` now, in the words the sentence under the table already uses.
+
 ## 0.7.248
 
 ### a third format name taken from the code instead of the header

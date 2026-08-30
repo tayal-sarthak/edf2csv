@@ -306,8 +306,21 @@ export function formatInfo(
         what is actually the case is that the file gives it nothing to convert. The
         NO_SAMPLES warning below the table says so; the table contradicted it.
       */
-      fileFor.get(signal.index) ??
-        (signal.samplesPerRecord === 0 ? '(no samples)' : '(not selected)'),
+      /*
+        And under --annotations-only nothing was deselected either — the run writes no signal
+        table at all, which is the same distinction one paragraph up.
+
+        `--info --annotations-only --channels "EEG Fpz-Cz"` accepted the name, checked it
+        against the file, and then printed "(not selected)" against the very channel it had
+        just been asked for. The sentence three lines under the table already says the truth,
+        "and no signal data", and `channels.csv` and `--info --json` both say it too — the
+        cell is empty and `output_file` is null. The human table was the one place claiming a
+        choice nobody made.
+      */
+      plan.writeSignals
+        ? (fileFor.get(signal.index) ??
+          (signal.samplesPerRecord === 0 ? '(no samples)' : '(not selected)'))
+        : '(no signal data)',
     ]);
   }
   lines.push(table(rows, new Set([0])));
