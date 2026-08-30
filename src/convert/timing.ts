@@ -86,8 +86,13 @@ export function deriveRecordStarts(
     diagnostics.push({
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
+      // Through `counted`, like the four other counts of "data record" in this file. This one
+      // spelled the noun and the verb by hand — `record${one ? '' : 's'} carr${one ? 'ies' :
+      // 'y'}` — while its nearest neighbour, sixty lines down and about the same records,
+      // writes `${counted(n, 'data record')} ${one ? 'carries' : 'carry'}`. Same phrase, same
+      // file, two spellings, and only one of them can be checked against the helper.
       message:
-        `${lostTimekeeping} data record${one ? '' : 's'} carr${one ? 'ies' : 'y'} a timekeeping ` +
+        `${counted(lostTimekeeping, 'data record')} ${one ? 'carries' : 'carry'} a timekeeping ` +
         `annotation that could not be read, so ${one ? 'it does' : 'they do'} not say where in ` +
         `time ${one ? 'it sits' : 'they sit'}.`,
       hint:

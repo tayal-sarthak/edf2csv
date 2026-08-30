@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.250
+
+### the fifth count of data records, spelled by hand beside four that are not
+
+timing.ts counts data records in five messages. Four go through `counted`, the shared
+pluraliser written for exactly this. The fifth spelled both the noun and the verb by hand:
+
+```js
+`${lostTimekeeping} data record${one ? '' : 's'} carr${one ? 'ies' : 'y'} a timekeeping `
+```
+
+Sixty lines down, about the same records in the same file, its nearest neighbour writes
+
+```js
+`${missing.length} of ${counted(file.recordCount, 'data record')} ${one ? 'carries' : 'carry'} no `
+```
+
+Same phrase, two spellings, and `carr` + `ies`/`y` is a word split across a conditional for no
+reason other than that it was written before the helper existed. The rendered text is
+unchanged; what changes is that the count is now checked by the one function that gets this
+right, rather than by a ternary nobody will read again.
+
+This is the last hand-rolled `data record` in the file. 0.7.212 did the same for the header
+parser's record-count mismatch, which had been reading "declares 1 data records" since it was
+written, and 0.7.244 for the two counts on `--info`'s Channels line.
+
 ## 0.7.249
 
 ### a column reporting a choice on a run where nothing was chosen
