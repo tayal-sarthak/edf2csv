@@ -185,11 +185,29 @@ export class EdfFile {
         EdfFile.#UNREADABLE_HINT,
       );
     });
+    /*
+      Both of these said what was wrong and nothing about what to do, which is the gap
+      `#UNREADABLE_HINT` two lines up was added to close for the third member of this family.
+
+      Neither is reached from the command line, and that is the point: a folder there is
+      expanded to the recordings inside it and a socket is filtered out by the walk, so the
+      caller who arrives here is holding a path in code and has no walk behind them.
+    */
     if (info.isDirectory()) {
-      throw new EdfError('UNREADABLE', `"${path}" is a directory, not an EDF file.`);
+      throw new EdfError(
+        'UNREADABLE',
+        `"${path}" is a directory, not an EDF file.`,
+        'Name a recording inside it. The command line expands a folder to the recordings it ' +
+          'holds; this takes one file.',
+      );
     }
     if (!info.isFile()) {
-      throw new EdfError('UNREADABLE', `"${path}" is not a regular file.`);
+      throw new EdfError(
+        'UNREADABLE',
+        `"${path}" is not a regular file.`,
+        'A pipe, socket or device cannot be read as a recording: the parser seeks to a byte ' +
+          'offset inside the file, which only a real file supports.',
+      );
     }
 
     /*
@@ -595,7 +613,15 @@ export class EdfFile {
   }
 
   #assertOpen(): void {
-    if (this.#closed) throw new EdfError('UNREADABLE', 'This EDF file has already been closed.');
+    if (this.#closed) {
+      throw new EdfError(
+        'UNREADABLE',
+        'This EDF file has already been closed.',
+        // The same advice `changedSinceOpen` gives for the same mistake, which is the only
+        // other method that has anything to say about a closed file.
+        'Open it again, or keep it open until the last read.',
+      );
+    }
   }
 }
 

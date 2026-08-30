@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.260
+
+### three fatal errors with nothing to do about them, and a guard
+
+`EdfError` takes a hint, and `formatDiagnostics` prints it on the indented line under the
+message. cli-reference calls it "an optional indented hint". Twenty-one of these are raised and
+three still had none after 0.7.259 closed the other three:
+
+```text
+error: "study" is a directory, not an EDF file.
+error: "/dev/stdin" is not a regular file.
+error: This EDF file has already been closed.
+```
+
+None of the three is reachable from the command line, and that is what makes the silence worse
+rather than better. A folder there is expanded to the recordings inside it and a socket is
+filtered out by the walk, so whoever arrives at these is holding a path in code with no walk
+behind them — the reader who most needs to be told that a folder is expanded elsewhere and that
+this call takes one file, or that a pipe cannot be read as a recording because the parser seeks
+to a byte offset inside it, which only a real file supports.
+
+`#UNREADABLE_HINT` was added to this family in 0.7.x, with a comment saying the message it was
+written for was "the only member of its family with nothing indented under it". It was not: two
+more members of that same family had nothing either, four lines below. 0.7.259 fixed three more
+by hand in the header parser. Three fixes, each of one message at a time, each leaving some.
+
+So the question is now asked of the whole tree: a test finds every `new EdfError(` in `src` and
+fails on any raised with fewer than three arguments. Confirmed capable of failing — dropping
+the hint from any one of them is caught by file and line. The reference no longer calls it
+optional.
+
 ## 0.7.259
 
 ### one hint for four raisings of one code

@@ -4687,6 +4687,76 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('gives every fatal parser error something to do about it', async () => {
+    /*
+      `EdfError` takes a hint and `formatDiagnostics` prints it on the indented line under the
+      message. Six of the twenty-one raisings did not pass one, and they were not the obscure
+      six: an empty numeric header field is what a truncated download leaves behind, and a
+      fractional one is what a byte-shifted read finds — both said what the field was and
+      stopped, while the third raising of the same code, one branch away, said what that
+      usually means.
+
+      Fixed by hand twice before this: `#UNREADABLE_HINT` in 0.7.x, when `Cannot read
+      "rec.edf": no such file` was "the only member of its family with nothing indented under
+      it" — a claim that was not true, since two more members of that same family had nothing
+      either — and `BAD_FIELD_HINT` in 0.7.259 for three of the four raisings of
+      `BAD_HEADER_FIELD`. This asks it of the whole tree instead.
+
+      Quotes are skipped whole rather than parsed, so an apostrophe in a message and a comma
+      inside a `${...}` are both invisible to the count. That holds while no template literal
+      here nests another backtick string, which is asserted below rather than assumed.
+    */
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(relative);
+        else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await walk('src');
+
+    /** Top-level arguments of the call whose opening parenthesis is at `open`. */
+    const countArguments = (text, open) => {
+      let depth = 1;
+      let commas = 0;
+      let nested = false;
+      for (let i = open + 1; depth > 0 && i < text.length; i++) {
+        const c = text[i];
+        if (c === "'" || c === '"' || c === '`') {
+          const quote = c;
+          i++;
+          while (i < text.length && text[i] !== quote) {
+            if (text[i] === '\\') i++;
+            else if (quote === '`' && text[i] === '$' && text[i + 1] === '{') {
+              if (text.slice(i, text.indexOf('}', i)).includes('`')) nested = true;
+            }
+            i++;
+          }
+          continue;
+        }
+        if (c === '(' || c === '[' || c === '{') depth++;
+        else if (c === ')' || c === ']' || c === '}') depth--;
+        else if (c === ',' && depth === 1) commas++;
+      }
+      return { args: commas + 1, nested };
+    };
+
+    const hintless = [];
+    let raisings = 0;
+    for (const where of files) {
+      const text = await read(where);
+      for (let at = text.indexOf('new EdfError('); at !== -1; at = text.indexOf('new EdfError(', at + 1)) {
+        raisings++;
+        const { args, nested } = countArguments(text, at + 'new EdfError('.length - 1);
+        assert.ok(!nested, `${where} nests a backtick inside a template; the scan cannot count it`);
+        if (args < 3) hintless.push(`${where}:${text.slice(0, at).split('\n').length}`);
+      }
+    }
+    assert.ok(raisings >= 21, `expected the parser's raisings, found ${raisings}`);
+    assert.deepEqual(hintless, [], `a fatal error with nothing to do about it: ${hintless.join(', ')}`);
+  });
+
   it('lists every filesystem failure it says it translates', async () => {
     /*
       "Filesystem failures are translated into plain language rather than passed through as
