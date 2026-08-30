@@ -543,8 +543,30 @@ export function formatSummary(result: ConvertResult): string {
   }
   lines.push(`Wrote ${printable(result.outputDir)}`);  // Escaped; see the File line above.
   lines.push(table(rows, new Set([1])));
-  lines.push(`Done in ${(result.elapsedMs / 1000).toFixed(1)}s.`);
+  lines.push(`Done in ${elapsed(result.elapsedMs)}.`);
   return lines.join('\n');
+}
+
+/**
+ * How long the run took, in a unit it can be stated in.
+ *
+ * `elapsedMs` is a difference of two `Date.now()` readings, so it is whole milliseconds, and
+ * `(ms / 1000).toFixed(1)` rounds everything under fifty of them to `0.0`. That is the last
+ * line of every conversion of a small recording — `--annotations-only` on a three-record
+ * file, every fixture in this repository, and the transcript on three documentation pages,
+ * all of which read `Done in 0.0s.` for a run that read a file and wrote three.
+ *
+ * The same refusal `formatDuration` and `formatBytes` make one file over, and for the reason
+ * stated there: none of them is a rounding rule, and each declines to print a form the
+ * quantity cannot take — 1023.999 KB is not "1024 KB", two records of 1e-15s are not "0s",
+ * and a conversion that happened did not take no time.
+ *
+ * A clock that reports no change at all has measured something below what it can resolve,
+ * which is a different statement from zero and is what it says.
+ */
+function elapsed(milliseconds: number): string {
+  if (milliseconds >= 50) return `${(milliseconds / 1000).toFixed(1)}s`;
+  return milliseconds > 0 ? `${milliseconds}ms` : 'under 1ms';
 }
 
 /**

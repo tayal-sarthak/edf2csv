@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.252
+
+### the one duration in the tool still rounding a real one to zero
+
+The last line of every successful conversion was `(elapsedMs / 1000).toFixed(1)` seconds.
+`elapsedMs` is a difference of two `Date.now()` readings, so it is whole milliseconds, and
+anything under fifty of them rounds to `0.0`:
+
+```text
+Wrote recording_csv
+  signals.csv      300  rows
+  annotations.csv    3  rows
+  channels.csv       1  row
+Done in 0.0s.
+```
+
+That is not a rare case. It is every conversion of a small recording, every fixture in this
+repository, and — because the pages were written by running the tool — the closing line of the
+transcript on three documentation pages, including the first one a reader meets.
+
+number.ts already refuses this twice, and says why in as many words: 1,048,575 bytes is carried
+up rather than printed as the "1024 KB" no unit has, and two records of 1e-15s print their real
+length rather than the `0s` that made `--start 0.5` be refused "at or past the end of this 0s
+recording". Its comment generalises: "None of the three is a rounding rule; each one refuses to
+print a form the quantity cannot take." A conversion that opened a file and wrote three did not
+take no time.
+
+Milliseconds under fifty of them, seconds above:
+
+```text
+Done in 11ms.
+Done in 0.4s.
+```
+
+And a clock that reports no change at all has measured something below what it can resolve,
+which is a different statement from zero — `Done in under 1ms.`
+
 ## 0.7.251
 
 ### the transposition fix that reached the flags and not the labels

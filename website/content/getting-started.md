@@ -49,7 +49,7 @@ Wrote recording_csv
   signals.csv      300  rows
   annotations.csv    3  rows
   channels.csv       1  row
-Done in 0.0s.
+Done in 11ms.
 ```
 
 Some notes on that:

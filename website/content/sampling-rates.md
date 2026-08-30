@@ -55,7 +55,7 @@ Wrote ./converted
   signals_128hz.csv  384  rows
   signals_1hz.csv      3  rows
   channels.csv         3  rows
-Done in 0.0s.
+Done in 12ms.
 ```
 
 The row counts are the sample counts. The temperature file has three rows because the thermistor produced three readings:

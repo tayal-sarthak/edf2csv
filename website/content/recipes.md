@@ -400,7 +400,7 @@ Wrote ./seizure-window
   signals.csv      7,680  rows
   annotations.csv      1  row
   channels.csv         1  row
-Done in 0.0s.
+Done in 0.4s.
 ```
 
 Two things make this work. `--start` accepts a plain number as seconds (as well as `30s`, `5m`, `1h30m` and `00:30:00`), so an onset read straight out of `annotations.csv` can be handed to it unchanged. And the window's `annotations.csv` is filtered to events whose onset falls inside the window, so the excerpt arrives with its own event list already attached.
