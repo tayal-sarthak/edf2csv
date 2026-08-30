@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.254
+
+### the third parse failure, still answered in Node's words
+
+`parseArgs` can fail three ways, and this file had taken over two of them. An unknown flag
+became `There is no --chanels option. Did you mean --channels?` with the shell-safe way to pass
+it as a filename underneath; a value beginning with a dash became `--out was given "-nightly",
+which begins with a dash ...` with the joined form to write instead. The third — forgetting the
+value altogether, which is the commonest of the three — was still Node's:
+
+```text
+error: Option '-c, --channels <value>' argument missing
+```
+
+Three things wrong with it, on a line whose whole job is to say what to type. It names both
+spellings when the reader typed one, so the sentence is about a command nobody wrote. It ends
+without a full stop, which 68 of this tool's 69 diagnostics carry — the sixty-ninth was fixed
+for exactly that. And `<value>` is a placeholder that appears nowhere in `--help`, nowhere in
+the reference, and nowhere else here: this flag takes a `<list>`, `--start` takes a `<time>`,
+`--out` a `<dir>`, `--layout` a `<kind>`.
+
+```text
+error: --channels needs a value and was given none.
+       It takes one: --channels <list>.
+```
+
+The placeholder is read out of the usage block rather than listed a second time, so it is the
+same word `--help` prints and cannot drift from it.
+
+`--gzip=yes` is the same failure from the other side and had the same treatment — `Option
+'--gzip' does not take an argument`, which does not say what was given or what to write:
+
+```text
+error: --gzip is a switch and takes no value, but was given "yes".
+       Write it on its own: --gzip
+```
+
 ## 0.7.253
 
 ### two more messages naming a marker the file does not carry, and a guard

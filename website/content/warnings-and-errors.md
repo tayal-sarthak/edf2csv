@@ -1162,6 +1162,8 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | Situation | Example message |
 | --- | --- |
 | Unknown flag | `There is no --chanels option. Did you mean --channels?`, then how to pass it as a filename instead, then a pointer to `--help` |
+| A flag given no value | `--channels needs a value and was given none.`, then `It takes one: --channels <list>.` The placeholder is the one `--help` writes for that flag |
+| A switch given a value | `--gzip is a switch and takes no value, but was given "yes".`, then `Write it on its own: --gzip` |
 | No input file | Usage text is printed |
 | Two recordings that would convert into the same directory | `"n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", so one would overwrite the other.` |
 | Several recordings with `--stdout` | `--stdout writes a single CSV, so it cannot take 3 recordings.` |

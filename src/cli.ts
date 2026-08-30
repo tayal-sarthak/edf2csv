@@ -115,6 +115,16 @@ Examples
 `;
 
 /**
+ * The placeholder `--help` writes after each option that takes a value, read off `--help`.
+ *
+ * Read rather than listed again so the two cannot part company: `--channels <list>` is what
+ * the usage block says and what the reference documents, and the refusals below quote it back.
+ */
+const VALUE_NAMES = new Map<string, string>(
+  [...USAGE.matchAll(/--([a-z-]+) (<[a-z]+>)/gu)].map((m) => [m[1] as string, m[2] as string]),
+);
+
+/**
  * A continuation line under an `error: ` or `interrupted (SIGINT): ` head.
  *
  * These are written straight to stderr rather than raised as an error, so they never passed
@@ -2175,6 +2185,17 @@ function singleQuoted(text: string): string {
 }
 
 /**
+ * Which spelling of an option the command actually used.
+ *
+ * Node names both — `-c, --channels` — and the reader typed one of them. Quoting the pair back
+ * makes a refusal about a command nobody wrote.
+ */
+function asTyped(short: string | undefined, long: string, argv: readonly string[]): string {
+  if (short === undefined) return long;
+  return argv.some((a) => a === long || a.startsWith(`${long}=`)) ? long : short;
+}
+
+/**
  * A `parseArgs` failure, in this tool's words where they are better than Node's.
  *
  * Node refuses `--out -nightly` with "Option '--out' argument is ambiguous. Did you forget to
@@ -2220,6 +2241,42 @@ function usageMessage(error: unknown, argv: readonly string[]): string {
   if (code !== 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
     return asError(raw);
   }
+  /*
+    Node's voice, in the two refusals this file had not taken over.
+
+    `unknownOption` and the ambiguous-value branch below both rewrite their message into this
+    tool's words. Forgetting a value did not, so the commonest slip of the three came back as
+
+        error: Option '-c, --channels <value>' argument missing
+
+    which names both spellings when the reader typed one, ends without the full stop 68 of
+    this tool's 69 diagnostics carry, and quotes a placeholder — `<value>` — that appears
+    nowhere in `--help`, the reference, or any other message here: this option takes a
+    `<list>`, `--start` takes a `<time>`, `--out` a `<dir>`. Nothing in it tells the reader
+    what to write, and it is the one refusal where that is the whole question.
+
+    `--gzip=yes` is the same failure from the other side, and had the same treatment.
+  */
+  const missing = /^Option '(?:(-[A-Za-z]), )?(--[a-z-]+) <value>' argument missing$/u.exec(raw);
+  if (missing) {
+    const long = missing[2] as string;
+    return printableLines(
+      `error: ${asTyped(missing[1], long, argv)} needs a value and was given none.\n` +
+        `       It takes one: ${long} ${VALUE_NAMES.get(long.slice(2)) ?? '<value>'}.`,
+    );
+  }
+  const unwanted = /^Option '(?:(-[A-Za-z]), )?(--[a-z-]+)' does not take an argument$/u.exec(raw);
+  if (unwanted) {
+    const long = unwanted[2] as string;
+    const typed = asTyped(unwanted[1], long, argv);
+    const given = argv.find((a) => a.startsWith(`${long}=`))?.slice(long.length + 1);
+    return printableLines(
+      `error: ${typed} is a switch and takes no value` +
+        `${given === undefined ? '' : `, but was given "${given}"`}.\n` +
+        `       Write it on its own: ${typed}`,
+    );
+  }
+
   const ambiguous = /^Option '(-[^']+)' argument is ambiguous/u.exec(raw);
   if (!ambiguous) return asError(raw);
 
