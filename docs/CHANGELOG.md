@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.256
+
+### seven column heads over a table with no rows in it
+
+`--info` on a recording holding nothing but events printed this:
+
+```text
+Channels   0 signals + 1 annotation channel
+
+#  COLUMN  LABEL  UNIT  RATE  RANGE  OUTPUT
+
+Would write annotations.csv and channels.csv, and no signal data.
+```
+
+Seven column heads over no rows, one line after the count that says there are none. It is the
+same sentence `--channels "#0"` was given its own wording for — "No channel at position #0.
+This file has signal channels at ." states there are some and then names none — and the same
+shape as the "Would write 0 rows, roughly 0 B." this mode stopped printing at 0.4.51.
+
+Not a rare file. `annotations-only.edf` is one of this repository's fixtures because it is
+what several scoring systems export: the events beside the recording, in their own EDF+ file
+with no signals in it. `NO_SIGNAL_CHANNELS` is raised for it and its own documentation says
+`channels.csv` comes out as a header row and nothing else — which is right for a machine file
+with a fixed schema, and is exactly what a terminal table is not.
+
+Nothing takes its place. The count is one line above and the body three lines below says what
+a conversion would write; a table saying "none" twice more adds nothing to either.
+
 ## 0.7.255
 
 ### seven counts pluralised by hand beside the function for it

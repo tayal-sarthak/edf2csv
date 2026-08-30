@@ -198,6 +198,8 @@ channel is resampled.
 Would write 3,196,800 rows, roughly 108 MB.
 ```
 
+A recording with no signal channels at all — one holding only EDF+ events — has no table, and none is printed: the `Channels` line above says `0 signals` and the body below says what would be written. Only the column heads would have been left, which is not a table.
+
 Reading the table:
 
 - The `#` column is the channel's position in the file, counted over every channel including the annotation channel — which is why the data channels above stop at `#4` in a file with six channels: `#5` is `EDF Annotations`. A recording that stores its annotation channel in the middle makes the numbering skip instead. Those `#` values are what the `#N` form of `--channels` addresses.

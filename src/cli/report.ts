@@ -323,9 +323,27 @@ export function formatInfo(
         : '(no signal data)',
     ]);
   }
-  lines.push(table(rows, new Set([0])));
+  /*
+    A column head over nothing is not a table.
 
-  lines.push('');
+    The line above has just said `Channels   0 signals + 1 annotation channel`, and this then
+    printed
+
+        #  COLUMN  LABEL  UNIT  RATE  RANGE  OUTPUT
+
+    with no row under it — seven headings for a set of no channels, on a recording holding
+    only events, which is what `annotations-only.edf` in this repository is and what a
+    companion event file out of a scoring system is. The same sentence `--channels "#0"` was
+    given its own wording for: "No channel at position #0. This file has signal channels at
+    ." states there are some and then names none.
+
+    Nothing goes in its place. The count is stated one line up and the body three lines down
+    says what the conversion would write; a table saying "none" twice more adds nothing.
+  */
+  if (signals.length > 0) {
+    lines.push(table(rows, new Set([0])));
+    lines.push('');
+  }
   /*
     From here down --info stops laying out columns and starts explaining itself, so from
     here down it wraps. The key-value lines and the channel table above are aligned to each
