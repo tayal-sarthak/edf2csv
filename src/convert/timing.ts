@@ -149,19 +149,25 @@ export function deriveRecordStarts(
         move either the samples or the events by the origin on a guess.
       */
       const stated = annotationData.recordStarts.find((start) => start !== null) ?? null;
+      const base = file.header.isBdf ? 'BDF' : 'EDF';
+      const plus = `${base}+`;
       if (stated !== null && Math.abs(stated) > 0) {
         diagnostics.push({
           code: 'MISSING_EDF_PLUS_MARKER',
           severity: 'warning',
+          // The markers as this file spells them, which is what the contradiction warning
+          // sixty lines down already does and what NO_SIGNAL_CHANNELS was fixed for. A BDF
+          // recording was told to "Mark the file EDF+C" — not a value BDF+ defines — and
+          // that it "is read as plain EDF", which it is not.
           message:
             `This file has an annotation channel stating that its records begin at ` +
-            `${plain(stated)}s, but its reserved field carries no EDF+C or EDF+D marker — so ` +
-            `it is read as plain EDF, time_s counts from zero, and the two disagree by ` +
-            `${plain(stated)}s.`,
+            `${plain(stated)}s, but its reserved field carries no ${plus}C or ${plus}D ` +
+            `marker — so it is read as plain ${base}, time_s counts from zero, and the two ` +
+            `disagree by ${plain(stated)}s.`,
           hint:
-            'annotations.csv keeps the onsets the file gives, so its events and signals.csv ' +
-            'are on different clocks. Mark the file EDF+C, or subtract the offset from the ' +
-            'onsets, before joining them.',
+            `annotations.csv keeps the onsets the file gives, so its events and signals.csv ` +
+            `are on different clocks. Mark the file ${plus}C, or subtract the offset from ` +
+            `the onsets, before joining them.`,
         });
       }
       return { starts: null, diagnostics };

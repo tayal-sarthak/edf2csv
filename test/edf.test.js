@@ -1595,4 +1595,88 @@ describe('what the header says against what it means', () => {
   });
 });
 
+describe('a BDF+ recording is never told about EDF+', () => {
+  it('names the marker its own header would carry, in every message that names one', async () => {
+    /*
+      BDF+ spells the things EDF+ spells: `BDF Annotations` for the channel, `BDF+C` and
+      `BDF+D` for the reserved field. This parser reads all three and has since it read
+      annotations at all — and four separate messages named the EDF+ spellings anyway,
+      telling a BDF recording it holds a channel it does not carry and advising it to be
+      marked with a value BDF+ does not define.
 
+      Two were fixed one at a time: the DISCONTINUOUS warning in 0.3.x, and its continuous
+      twin later, whose comment says "Same code, same header field, and the continuous branch
+      never got it". Fixing them one at a time is what left the other two. This asks the
+      question of every message a BDF file can raise at once, so a fifth cannot be written.
+
+      `EDF` on its own, not `EDF+`: "read as plain EDF" was one of the two, and it is the
+      sentence that says which format the file is being treated as.
+    */
+    const { buildPlan, parseHeader } = await import('../dist/index.js');
+    const { stdoutRefusal, noSignalFile } = await import('../dist/convert/run.js');
+    const { deriveRecordStarts } = await import('../dist/convert/timing.js');
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-bdfplus-'));
+    temporaries.push(scratch);
+
+    const annotationChannel = {
+      label: 'BDF Annotations', dimension: '', physMin: -1, physMax: 1,
+      digMin: -8388608, digMax: 8388607, samplesPerRecord: 30, annotations: true,
+    };
+    const signalChannel = {
+      label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100,
+      digMin: -8388608, digMax: 8388607, samplesPerRecord: 2, gen: () => 1,
+    };
+    const written = (name, reserved, signals, talsForRecord) => {
+      const at = path.join(scratch, `${name}.bdf`);
+      writeEdf({ path: at, bdf: true, reserved, numRecords: 2, recordDuration: 1, signals, talsForRecord });
+      return at;
+    };
+
+    const cases = [
+      // Only annotations: NO_SIGNAL_CHANNELS, and the --stdout refusal for the same shape.
+      ['only-annotations', 'BDF+C', [annotationChannel], (r) => buildTal(r, [])],
+      // An annotation channel and no marker: MISSING_BDF_PLUS_MARKER's wording.
+      ['no-marker', '', [signalChannel, annotationChannel],
+        (r) => buildTal(1000 + r, r === 0 ? [{ onset: 1000.5, duration: null, text: 'E' }] : [])],
+      // Marked continuous, with records that say otherwise.
+      ['contradicting', 'BDF+C', [signalChannel, annotationChannel],
+        (r) => buildTal(r === 0 ? 0 : 5, [])],
+      // And marked discontinuous.
+      ['discontinuous', 'BDF+D', [signalChannel, annotationChannel],
+        (r) => buildTal(r === 0 ? 0 : 5, [])],
+    ];
+
+    for (const [name, reserved, signals, talsForRecord] of cases) {
+      const at = written(name, reserved, signals, talsForRecord);
+      const file = await EdfFile.open(at);
+      open.push(file);
+      const parsed = parseHeader(await readFile(at), (await readFile(at)).length);
+      const annotations = await file.readAnnotations();
+      const timing = deriveRecordStarts(file, annotations);
+      const plan = buildPlan(
+        {
+          signals: file.header.signals,
+          recordDuration: file.header.recordDuration,
+          recordCount: file.recordCount,
+          hasAnnotationChannel: file.annotationSignals.length > 0,
+          recordStarts: timing.starts,
+        },
+        {},
+      );
+      const refusal = stdoutRefusal(file, plan);
+      const missing = noSignalFile(file, plan);
+      const said = [
+        ...parsed.diagnostics,
+        ...timing.diagnostics,
+        ...plan.diagnostics,
+        ...(missing ? [missing] : []),
+        ...(refusal ? [{ message: refusal.message, hint: refusal.hint }] : []),
+      ].flatMap((d) => [d.message, d.hint ?? '']);
+      assert.ok(said.length > 0, `${name} raised nothing to check`);
+      for (const text of said) {
+        assert.ok(!/\bEDF\b/u.test(text), `${name} said "${text}" to a BDF file`);
+      }
+    }
+  });
+});

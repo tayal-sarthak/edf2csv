@@ -1506,8 +1506,8 @@ export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionEr
       return new ConversionError(
         'UNSUPPORTED_REQUEST',
         file.dataSignals.length === 0
-          ? '--stdout has no signal data to write: this recording has no signal channels, ' +
-            'only EDF+ annotations.'
+          ? `--stdout has no signal data to write: this recording has no signal channels, ` +
+            `only ${file.header.isBdf ? 'BDF+' : 'EDF+'} annotations.`
           : '--stdout has no signal data to write: nothing was selected that carries samples.',
         file.dataSignals.length === 0
           ? 'Convert to a directory to get its annotations.csv, or drop --stdout.'

@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.253
+
+### two more messages naming a marker the file does not carry, and a guard
+
+0.7.248 fixed one message that named the EDF+ spellings at a BDF+ recording. Fixing it one at
+a time is what had left it: the DISCONTINUOUS warning read the marker off the header in 0.3.x,
+its continuous twin was given the same treatment later — with a comment ending "Same code, same
+header field, and the continuous branch never got it" — and `describeFormat` carries its own
+note about a doc comment naming strings it cannot return. Four fixes, one message each, and two
+were still wrong.
+
+The `--stdout` refusal for a recording holding only events:
+
+```text
+error: --stdout has no signal data to write: this recording has no signal channels, only EDF+ annotations.
+```
+
+And `MISSING_EDF_PLUS_MARKER`, which is advice:
+
+```text
+warning: ... its reserved field carries no EDF+C or EDF+D marker — so it is read as plain EDF,
+         time_s counts from zero, and the two disagree by 1000s.
+         ... Mark the file EDF+C, or subtract the offset from the onsets, before joining them.
+```
+
+Told to a BDF file, that names a channel label it does not carry (`BDF Annotations` is what it
+holds, and this parser has recognised it by name for as long as it has read annotations),
+advises a reserved-field value BDF+ does not define, and states the file is read as plain EDF
+when it is read as plain BDF.
+
+Both take the header now, and the fifth one cannot be written: a test builds four BDF+
+recordings — annotations only, an annotation channel with no marker, marked continuous over
+records that contradict it, and marked discontinuous — collects every message and hint the
+parser, the timing, the plan, the `--stdout` guard and the no-signal-file warning produce for
+each, and fails on the word `EDF` anywhere in any of them. Confirmed capable of failing: putting
+back the fix from 0.7.248 is caught on the first file.
+
 ## 0.7.252
 
 ### the one duration in the tool still rounding a real one to zero
