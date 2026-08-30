@@ -50,7 +50,7 @@ export function assertOptions(options: {
   if (decimals !== undefined) {
     if (!Number.isInteger(decimals) || decimals < 0 || decimals > MAX_DECIMALS) {
       throw new OptionError(
-        `decimals must be a whole number between 0 and ${MAX_DECIMALS}, got ${describe(decimals)}.`,
+        `decimals must be a whole number between 0 and ${MAX_DECIMALS}, got ${describeValue(decimals)}.`,
       );
     }
   }
@@ -71,7 +71,7 @@ export function assertOptions(options: {
     const value = options[name];
     if (value === undefined) continue;
     if (typeof value !== 'number' || !Number.isFinite(value)) {
-      throw new OptionError(`${name} must be a number of seconds, got ${describe(value)}.`);
+      throw new OptionError(`${name} must be a number of seconds, got ${describeValue(value)}.`);
     }
     /*
       A length below zero is refused for what it is, rather than for not being a number.
@@ -84,7 +84,7 @@ export function assertOptions(options: {
       reference has always said this check enforces.
     */
     if (name === 'duration' && value < 0) {
-      throw new OptionError(`duration is a length of time, so it cannot be ${describe(value)}.`);
+      throw new OptionError(`duration is a length of time, so it cannot be ${describeValue(value)}.`);
     }
   }
 
@@ -99,7 +99,7 @@ export function assertOptions(options: {
   */
   const { layout } = options;
   if (layout !== undefined && layout !== 'wide' && layout !== 'long') {
-    throw new OptionError(`layout must be "wide" or "long", got ${describe(layout)}.`);
+    throw new OptionError(`layout must be "wide" or "long", got ${describeValue(layout)}.`);
   }
 
   /*
@@ -148,7 +148,7 @@ export function assertOptions(options: {
       this function exists for.
     */
     if (!Array.isArray(channels) || channels.some((term) => typeof term !== 'string')) {
-      throw new OptionError(`channels must be a list of channel names, got ${describe(channels)}.`);
+      throw new OptionError(`channels must be a list of channel names, got ${describeValue(channels)}.`);
     }
     if (channels.every((term) => term.trim() === '')) {
       throw new OptionError('channels was given but lists no channel names.');
@@ -172,11 +172,25 @@ export function assertOptions(options: {
  */
 export function assertInputPath(input: unknown): void {
   if (typeof input !== 'string') {
-    throw new OptionError(`input must be a path to a recording, got ${describe(input)}.`);
+    throw new OptionError(`input must be a path to a recording, got ${describeValue(input)}.`);
   }
 }
 
-/** `NaN` and `-1` read better unquoted; anything else is quoted so its type is visible. */
-function describe(value: unknown): string {
-  return typeof value === 'number' ? String(value) : JSON.stringify(value);
+/**
+ * How a rejected value reads in the refusal: numbers bare, everything else quoted so its
+ * type is visible.
+ *
+ * `JSON.stringify` has no text for a function or a symbol — it returns `undefined`, not a
+ * string — so `layout: () => 'long'` came back as `layout must be "wide" or "long", got
+ * undefined.`, which names the one value that does not raise this: every option here is
+ * optional, and `undefined` is how a caller says they are not passing it. `input` was worse,
+ * since `convert(undefined)` and `convert(someFunction)` then produced the same sentence, and
+ * the first is a forgotten argument while the second is a wrong one.
+ *
+ * Exported because time-range.ts had the identical function, fixed there and not here — the
+ * same two-copies-of-one-helper the derived precision and the pluraliser were each pulled
+ * together for.
+ */
+export function describeValue(value: unknown): string {
+  return typeof value === 'number' ? String(value) : JSON.stringify(value) ?? String(value);
 }

@@ -8,7 +8,7 @@
  */
 
 import { fixed, formatDuration } from '../format/number.js';
-import { assertOptions } from './options.js';
+import { assertOptions, describeValue } from './options.js';
 
 export class TimeRangeError extends Error {
   constructor(message: string) {
@@ -46,11 +46,6 @@ export const UNIT_SECONDS: Record<string, number> = {
 
 const CLOCK = /^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/u;
 const UNIT_TOKEN = /(\d+(?:\.\d+)?)\s*([a-z]+)/giu;
-
-/** How the value reads in a refusal: numbers bare, everything else quoted so its type shows. */
-function describeValue(value: unknown): string {
-  return typeof value === 'number' ? String(value) : JSON.stringify(value) ?? String(value);
-}
 
 /**
  * Parse a duration or offset into seconds.

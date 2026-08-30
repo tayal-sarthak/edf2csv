@@ -16,8 +16,8 @@ authors:
 repository-code: https://github.com/tayal-sarthak/edf2csv
 url: https://edf2csv.vercel.app
 license: MIT
-version: 0.7.246
-date-released: 2026-08-29
+version: 0.7.247
+date-released: 2026-08-30
 keywords:
   - EDF
   - European Data Format

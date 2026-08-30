@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.247
+
+### one describe of two, and the one that had no text for a function
+
+`assertOptions` and `assertInputPath` quote the value they refuse so the caller can see what
+they actually passed. Both went through a local `describe`, which hands anything that is not a
+number to `JSON.stringify` — and `JSON.stringify` has no text for a function or a symbol. It
+returns `undefined`, the value, not a string:
+
+```text
+convert(file, { layout: () => 'long' })
+OptionError: layout must be "wide" or "long", got undefined.
+```
+
+Which names the one value that cannot raise this. Every option here is optional and `undefined`
+is how a caller says they are not passing one, so the message reads as a report about an
+argument that was never given. `input` is worse, because both spellings really are reachable:
+`convert(undefined)` and `convert(readRecording)` came back identical, and the first is a
+forgotten argument while the second is a wrong one.
+
+time-range.ts has had the identical function since it was written, with the fallback this one
+lacked — `JSON.stringify(value) ?? String(value)` — so `parseTimeSpec` answered the same
+function with `not ()=>'long'` while `assertOptions` answered it with `not undefined`. Two
+copies of one helper, fixed in one of them: the same shape as `decimalsNeeded`, `counted` and
+`editDistance`, each of which was pulled into one place for this reason. It is exported from
+options.ts now and time-range.ts imports it.
+
 ## 0.7.246
 
 ### a boundary drawn one stage before the warning that crosses it
