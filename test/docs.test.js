@@ -425,6 +425,49 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(stacked, [], `doc comments attached to nothing: ${stacked.join(', ')}`);
   });
 
+  it('counts things through the pluraliser rather than beside it', async () => {
+    /*
+      `counted(n, noun)` exists because `${n} records` is right until the file has one of
+      them, and a one-record recording, a one-byte tail and a batch of one are all ordinary.
+      Nine call sites used it and seven wrote the suffix out by hand next to the count:
+      `${warnings} warning${warnings === 1 ? '' : 's'}` twice in the CLI, the interrupted
+      batch's conversions, the unreadable paths, both annotation-duration warnings, and the
+      control characters in a header field.
+
+      Three of those had already been fixed one at a time — 0.7.212 for a header declaring
+      "1 data records", 0.7.244 for the two counts on `--info`'s Channels line, 0.7.250 for
+      the lost timekeeping records. Fixing them one at a time is what left the other seven,
+      so this asks the question of the whole tree at once.
+
+      A count followed by a noun and an inline `? '' : 's'`, which is the shape `counted`
+      replaces exactly. Not `${n === 1 ? 'row' : 'rows'}`: the three of those left interpolate
+      a thousands-separated `toLocaleString` count that `counted` does not produce, and a
+      helper that would is a different change from this one.
+    */
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(relative);
+        else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await walk('src');
+    assert.ok(files.length >= 19, `walked ${files.length} source files`);
+
+    const byHand = [];
+    for (const where of files) {
+      const lines = (await read(where)).split('\n');
+      for (const [index, line] of lines.entries()) {
+        if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
+        if (/\$\{[^{}]*\}[A-Za-z ]*[A-Za-z]\$\{[^{}]*\?\s*''\s*:\s*'s'\}/u.test(line)) {
+          byHand.push(`${where}:${index + 1}`);
+        }
+      }
+    }
+    assert.deepEqual(byHand, [], `a count pluralised beside counted(): ${byHand.join(', ')}`);
+  });
+
   it('shows only format strings describeFormat can return', async () => {
     /*
       `describeFormat` is a public export, so its doc comment is what a TypeScript consumer's

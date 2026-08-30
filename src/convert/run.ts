@@ -26,7 +26,7 @@ import {
   csvRow,
   escapeCsvField,
 } from '../format/csv.js';
-import { listed } from '../format/list.js';
+import { counted, listed } from '../format/list.js';
 import {
   makeSampleFormatter,
   makeTimeFormatter,
@@ -1246,7 +1246,7 @@ export function durationDiagnostics(
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
       message:
-        `${negative} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration below zero, ` +
+        `${counted(negative, 'annotation')} state${one ? 's' : ''} a duration below zero, ` +
         `which is not a length of time.`,
       hint:
         'The value is written to annotations.csv as the file gave it. Adding it to onset_s ' +
@@ -1261,7 +1261,7 @@ export function durationDiagnostics(
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
       message:
-        `${unreadable} annotation${one ? '' : 's'} state${one ? 's' : ''} a duration that is ` +
+        `${counted(unreadable, 'annotation')} state${one ? 's' : ''} a duration that is ` +
         `not a number, so ${one ? 'its' : 'their'} duration_s cell is empty.`,
       hint:
         'The onset and the description were read normally. An empty duration_s otherwise ' +

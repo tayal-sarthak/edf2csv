@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.255
+
+### seven counts pluralised by hand beside the function for it
+
+`counted(n, noun)` exists because `${n} records` is right until the file has one of them, and a
+one-record recording, a one-byte tail and a batch of one are all ordinary. Nine call sites used
+it. Seven wrote the suffix out by hand right beside the count:
+
+```text
+--strict: 1 warnings raised, so this run is reported as a failure.
+interrupted (SIGINT): 1 conversions stopped part way through.
+Converted 3 of 4 recordings; 1 failed; 1 paths could not be read.
+Signal 0's label contains 1 control characters (\x1b), which will appear in the CSV column name.
+1 annotations states a duration below zero, which is not a length of time.
+```
+
+Every one of those is a line a reader meets on an ordinary run — the `--strict` verdict twice,
+once for a conversion and once for `--info`; the summary of a batch with one bad path; the
+sentence a Ctrl-C prints; and both annotation-duration warnings.
+
+Three of this kind had already been fixed one at a time: 0.7.212 for a header declaring "1 data
+records", 0.7.244 for the two counts on `--info`'s Channels line, 0.7.250 for the lost
+timekeeping records. Fixing them one at a time is what left these seven, so this asks the
+question of the whole tree at once and keeps asking it: a test walks `src` for a count followed
+by a noun and an inline `? '' : 's'`, which is the shape `counted` replaces exactly, and fails
+on any of them. Confirmed capable of failing — putting one back is caught by line number.
+
+Three counts stay as they are, and the test says why: `${rows.toLocaleString('en-US')} ${rows
+=== 1 ? 'row' : 'rows'}` groups its thousands, which `counted` does not produce. A helper that
+does is a different change from this one.
+
 ## 0.7.254
 
 ### the third parse failure, still answered in Node's words

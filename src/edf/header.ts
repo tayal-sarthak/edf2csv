@@ -524,7 +524,6 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         const shown = [...new Set(control)]
           .map((c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`)
           .join(', ');
-        const plural = control.length === 1 ? '' : 's';
         const inLabel = affected.some(([name]) => name === 'label');
         // "label and unit", not "label, unit" — `listed` is for long enumerations that get
         // truncated, and this is a sentence with at most four items in it.
@@ -551,7 +550,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           severity: 'warning',
           message:
             `Signal ${i}'s ${named} ${affected.length === 1 ? 'contains' : 'contain'} ` +
-            `${control.length} control character${plural} (${shown}), ${lands} exactly as the ` +
+            `${counted(control.length, 'control character')} (${shown}), ${lands} exactly as the ` +
             `header has ${control.length === 1 ? 'it' : 'them'}.`,
           hint:
             /*

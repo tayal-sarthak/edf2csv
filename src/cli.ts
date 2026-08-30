@@ -643,7 +643,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       if (strict && warnings > 0) {
         process.stderr.write(
           `\n${wrap(
-            `--strict: ${warnings} warning${warnings === 1 ? '' : 's'} raised, so this run is ` +
+            `--strict: ${counted(warnings, 'warning')} raised, so this run is ` +
               `reported as a failure. Nothing was written either way, since --info converts nothing.`,
           )}\n`,
         );
@@ -756,8 +756,8 @@ export async function main(argv: readonly string[]): Promise<number> {
         const started = abandoned.filter((destination) => existsSync(destination));
         const untouched = abandoned.filter((destination) => !existsSync(destination));
         process.stderr.write(
-          `\ninterrupted (${signal}): ${abandoned.length} conversion` +
-            `${abandoned.length === 1 ? '' : 's'} stopped part way through.\n` +
+          `\ninterrupted (${signal}): ${counted(abandoned.length, 'conversion')} ` +
+            `stopped part way through.\n` +
             (started.length > 0
               ? detail(`Incomplete, and should not be used: ${listed(started.map(printable))}`)
               : '') +
@@ -846,7 +846,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (batch && !quiet && !asJson) {
       const unread =
         unreadable.length > 0
-          ? `; ${unreadable.length} path${unreadable.length === 1 ? '' : 's'} could not be read`
+          ? `; ${counted(unreadable.length, 'path')} could not be read`
           : '';
       const failed = converted < inputs.length ? `; ${inputs.length - converted} failed` : '';
       process.stderr.write(
@@ -880,7 +880,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     if (strict && warnings > 0) {
       process.stderr.write(
         `\n${wrap(
-          `--strict: ${warnings} warning${warnings === 1 ? '' : 's'} raised, so this run is ` +
+          `--strict: ${counted(warnings, 'warning')} raised, so this run is ` +
             `reported as a failure. The output was still written.`,
         )}\n`,
       );
