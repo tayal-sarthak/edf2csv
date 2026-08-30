@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.7.248
+
+### a third format name taken from the code instead of the header
+
+`NO_SIGNAL_CHANNELS` is raised for a file whose every channel is an annotation channel, and it
+named the format rather than reading it:
+
+```text
+warning: This file has no signal channels; it contains only EDF+ annotations.
+```
+
+BDF+ spells that channel `BDF Annotations`, which this parser has recognised by name beside
+`EDF Annotations` for as long as it has read annotations at all — so a BDF+ recording holding
+only events was told it contains a channel it does not carry, in a format it is not. Two lines
+above, `--info` says `BDF+ (continuous)`; the channel table names `BDF Annotations`;
+`channels.csv` and `metadata.json` both record `BDF+`. This one line disagreed with all of them.
+
+The DISCONTINUOUS warning ten lines up in the same function has read the marker off the header
+since 0.3.x — `${isBdf ? 'BDF+D' : 'EDF+D'}` — and the continuous twin of that warning was
+given the same treatment in 0.7.x for the same reason. `describeFormat` carries its own note
+about a doc comment that named strings it cannot return. This is the last of the four.
+
 ## 0.7.247
 
 ### one describe of two, and the one that had no text for a function

@@ -1008,7 +1008,18 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'NO_SIGNAL_CHANNELS',
       severity: 'warning',
-      message: 'This file has no signal channels; it contains only EDF+ annotations.',
+      /*
+        The marker as the file spells it, which is what the DISCONTINUOUS warning ten lines up
+        already does and what `describeFormat` was fixed for.
+
+        A BDF+ recording holding nothing but its `BDF Annotations` channel — a label this
+        parser recognises by name, beside `EDF Annotations`, and has since annotations were
+        read at all — was told it "contains only EDF+ annotations", naming a channel it does
+        not carry and a format it is not. `--info` two lines above says `BDF+ (continuous)`
+        and the channel table names the channel; this warning was the one line disagreeing
+        with both.
+      */
+      message: `This file has no signal channels; it contains only ${isBdf ? 'BDF+' : 'EDF+'} annotations.`,
     });
   }
 

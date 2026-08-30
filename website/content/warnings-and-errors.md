@@ -782,7 +782,7 @@ warning: No signal file is written: there is no signal data in this recording to
          signal channels, so it has none to list.
 ```
 
-The second is `NO_SAMPLES`, raised beside it by the conversion rather than by the header: one says what the file is, the other what the run therefore did.
+The second is `NO_SAMPLES`, raised beside it by the conversion rather than by the header: one says what the file is, the other what the run therefore did. A BDF+ recording says `BDF+ annotations`, since `BDF Annotations` is the label its channel actually carries.
 
 **What to do.** Nothing, if you were after the events. If you expected signal data, you're converting the wrong file of the pair.
 
