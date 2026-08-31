@@ -15,7 +15,7 @@ import path from 'node:path';
 
 import type { RecordBatch } from '../edf/reader.js';
 import { EdfFile } from '../edf/reader.js';
-import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
+import { describeFormat, formatRates, formatWallClock, startsFormula } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
@@ -27,6 +27,7 @@ import {
   escapeCsvField,
 } from '../format/csv.js';
 import { counted, listed } from '../format/list.js';
+import { escapeCharacter, unprintableIn } from '../format/unprintable.js';
 import {
   makeSampleFormatter,
   makeTimeFormatter,
@@ -253,6 +254,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       // Reported against the rows that will be written, not against the file; see
       // durationDiagnostics.
       plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, window));
+      plan.diagnostics.push(...descriptionDiagnostics(annotationData.annotations, window));
       const result = await writeAnnotationsCsv(
         outputDir,
         annotationData.annotations,
@@ -1301,6 +1303,81 @@ export function durationDiagnostics(
       hint:
         'The onset and the description were read normally. An empty duration_s otherwise ' +
         'means the file stated no duration, so these rows cannot be told apart from those.',
+    });
+  }
+
+  return diagnostics;
+}
+
+/**
+ * What the descriptions in the events that will actually be written look like.
+ *
+ * EDF's four free-text header fields have had two warnings about where they land since they
+ * were written: `FORMULA_LABEL` for text a spreadsheet runs instead of reading, and
+ * `NONPRINTABLE_LABEL` for bytes that drive a terminal. Both say the same thing about the
+ * remedy — the text is written exactly as the file has it, because rewriting it would mean
+ * the CSV no longer says what the recording says — and both exist so that the tool is not
+ * silent about where it goes.
+ *
+ * `annotations.csv`'s `description` column is the same kind of text, out of the same file,
+ * into the same spreadsheet, and nothing was said about it at all. An event described
+ * `=HYPERLINK("http://…","Sleep stage W")` was written verbatim, exit 0, no warning, and
+ * opens as a live link nobody in the reading chain wrote; one carrying `\x1b[31m` turns the
+ * terminal red on `cat annotations.csv`. It is the more likely of the two to happen by
+ * accident, since a description is typed by a person at a scoring station while a channel
+ * label is written once by the recorder.
+ *
+ * It is also the only free text in the output that can carry a character above U+00FF —
+ * header text is decoded latin1, so every byte of it becomes a code point below U+0100, and
+ * a bidirectional override cannot reach a label. It can reach a description, which is UTF-8.
+ *
+ * Counted rather than raised per event, unlike the header's four fields: a night's scoring is
+ * thousands of events, and a warning each is not a report. The count is of the rows that
+ * reach `annotations.csv`, after the same window filter the writer applies, for the reason
+ * `durationDiagnostics` beside it gives.
+ */
+export function descriptionDiagnostics(
+  annotations: readonly Annotation[],
+  window: { from: number; to: number },
+): Diagnostic[] {
+  const written = annotations.filter((a) => a.onset >= window.from && a.onset < window.to);
+  const diagnostics: Diagnostic[] = [];
+
+  const formulaic = written.filter((a) => startsFormula(a.text));
+  if (formulaic.length > 0) {
+    const one = formulaic.length === 1;
+    const shown = [...new Set(formulaic.map((a) => a.text[0] as string))].join(', ');
+    diagnostics.push({
+      code: 'FORMULA_LABEL',
+      severity: 'warning',
+      message:
+        `${counted(formulaic.length, 'annotation')} ${one ? 'has a description' : 'have descriptions'} ` +
+        `starting with ${shown}, which Excel, LibreOffice and Google Sheets read as the start ` +
+        `of a formula rather than as text.`,
+      hint:
+        'The text is written to annotations.csv exactly as the file has it, so the cell is ' +
+        'what the recording says. Open the CSV with pandas or R, or import it into the ' +
+        'spreadsheet as text, if you do not want it evaluated.',
+    });
+  }
+
+  const marked = written.filter((a) => unprintableIn(a.text).length > 0);
+  if (marked.length > 0) {
+    const one = marked.length === 1;
+    const shown = [...new Set(marked.flatMap((a) => unprintableIn(a.text)))]
+      .map(escapeCharacter)
+      .join(', ');
+    diagnostics.push({
+      code: 'NONPRINTABLE_LABEL',
+      severity: 'warning',
+      message:
+        `${counted(marked.length, 'annotation')} ${one ? 'has a description' : 'have descriptions'} ` +
+        `carrying text a terminal does not print as itself (${shown}), written to ` +
+        `annotations.csv exactly as the file has ${one ? 'it' : 'them'}.`,
+      hint:
+        'A control byte can drive the terminal and a bidirectional override reverses what ' +
+        'follows it, so read the file with pandas or R rather than with cat. The cell is ' +
+        'what the recording says either way.',
     });
   }
 

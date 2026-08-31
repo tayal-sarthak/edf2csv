@@ -142,7 +142,7 @@ export interface EdfHeaderInfo {
  * that opens as 100, which is what the header says; `-100` beside it said nothing, and under
  * `--strict` the difference was an exit code. `+1+1` is still arithmetic and still flagged.
  */
-function startsFormula(text: string): boolean {
+export function startsFormula(text: string): boolean {
   if (/^[=@]/u.test(text)) return true;
   if (!/^[+-]./u.test(text)) return false;
   // `\.\d*` and not `\.\d+`, which is the spelling DECIMAL_FIELD and DECIMAL_DURATION both

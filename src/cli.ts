@@ -28,6 +28,7 @@ import {
   convert,
   defaultOutputDir,
   describeFsError,
+  descriptionDiagnostics,
   durationDiagnostics,
   requestedAnnotationWindow,
   noAnnotations,
@@ -1012,6 +1013,9 @@ async function showInfo(
       its comment gives; this was the second copy that comment says not to make.
     */
     plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, eventWindow));
+    // And what those descriptions carry; see descriptionDiagnostics. Only reached where the
+    // events have been read, which is the same set of files the duration warnings cover.
+    plan.diagnostics.push(...descriptionDiagnostics(annotationData.annotations, eventWindow));
 
     /*
       And the warning about the signal file this conversion would not write.

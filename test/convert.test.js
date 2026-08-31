@@ -4132,3 +4132,98 @@ describe('converting', () => {
     );
   });
 });
+
+describe('what an annotation description carries into the CSV', () => {
+  const ESCAPE = String.fromCharCode(27);
+  const OVERRIDE = String.fromCharCode(0x202e);
+
+  const withDescriptions = async (name, texts) => {
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-desc-'));
+    temporaries.push(dir);
+    const at = path.join(dir, `${name}.edf`);
+    writeEdf({
+      path: at,
+      reserved: 'EDF+C',
+      numRecords: texts.length,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 2, gen: () => 1 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+      talsForRecord: (r) => buildTal(r, [{ onset: r + 0.5, duration: null, text: texts[r] }]),
+    });
+    return { at, out: path.join(dir, 'out') };
+  };
+
+  it('says where a description a spreadsheet will run ends up', async () => {
+    /*
+      The four free-text header fields have raised FORMULA_LABEL since it existed: a channel
+      labelled `=HYPERLINK(...)` becomes a column heading that is a link nobody wrote, and the
+      warning says so rather than rewriting the cell, because rewriting it would mean the CSV
+      no longer says what the recording says.
+
+      `annotations.csv`'s `description` is the same text out of the same file into the same
+      spreadsheet, and nothing was said about it at all. It is the likelier of the two: a
+      description is typed by a person at a scoring station, and a label is written once by
+      the recorder.
+    */
+    const { at, out } = await withDescriptions('formula', [
+      '=HYPERLINK("http://example.invalid","Sleep stage W")',
+      '+1+1',
+    ]);
+    const result = await convert(at, { outputDir: out });
+    const raised = result.diagnostics.filter((d) => d.code === 'FORMULA_LABEL');
+    assert.equal(raised.length, 1, JSON.stringify(result.diagnostics));
+    assert.match(raised[0].message, /2 annotations have descriptions starting with =, \+/u);
+
+    // Written exactly as the file has it, which is the half the warning promises.
+    const csv = await readFile(path.join(out, 'annotations.csv'), 'utf8');
+    assert.ok(csv.includes('=HYPERLINK'), csv);
+
+    // And the two exceptions the header fields take, taken here too: a lone `-` is how a
+    // file writes "no value", and a field that is entirely a number opens as that number.
+    const plain = await withDescriptions('plain', ['-', '-100']);
+    const quiet = await convert(plain.at, { outputDir: plain.out });
+    assert.deepEqual(quiet.diagnostics.filter((d) => d.code === 'FORMULA_LABEL'), []);
+  });
+
+  it('says where a description the terminal will not print as itself ends up', async () => {
+    /*
+      The other half of the same argument, and the one place in the output that can carry a
+      character above U+00FF: header text is decoded latin1, so an override cannot reach a
+      label, and an annotation description is UTF-8.
+    */
+    const { at, out } = await withDescriptions('unprintable', [
+      `${ESCAPE}[31mSeizure`,
+      `stage-${OVERRIDE}fdp`,
+    ]);
+    const result = await convert(at, { outputDir: out });
+    const raised = result.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+    assert.equal(raised.length, 1, JSON.stringify(result.diagnostics));
+    assert.match(raised[0].message, /\\x1b/u, raised[0].message);
+    assert.match(raised[0].message, /\\u202e/u, raised[0].message);
+
+    const csv = await readFile(path.join(out, 'annotations.csv'), 'utf8');
+    assert.ok(csv.includes(ESCAPE), 'the description was rewritten rather than reported');
+
+    // A bidi mark is not an override and is how a right-to-left description is written.
+    const marked = await withDescriptions('mark', [`stage-${String.fromCharCode(0x200f)}W`]);
+    const quiet = await convert(marked.at, { outputDir: marked.out });
+    assert.deepEqual(quiet.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL'), []);
+  });
+
+  it('counts the descriptions that reach the file, not the ones in it', async () => {
+    /*
+      The same window discipline the duration warnings were given: `annotations.csv` is
+      filtered to the requested window, so a count taken over the whole file names rows that
+      are not in the output and fails --strict for them.
+    */
+    const { at, out } = await withDescriptions('windowed', ['=1+1', 'ordinary', '=2+2']);
+    const result = await convert(at, { outputDir: out, start: 1, end: 2 });
+    const raised = result.diagnostics.filter((d) => d.code === 'FORMULA_LABEL');
+    assert.deepEqual(raised, [], JSON.stringify(raised));
+  });
+});

@@ -33,8 +33,11 @@ filesystem work around it:
   they reach the column headers of every signal file and the cells of `channels.csv`, while a
   filename comes from the input's name and the channel's sampling rate. A label of `../escape`
   is a column called `../escape`.
-- A way for header text to reach something that executes it. The label, unit, transducer and
-  prefiltering fields are free text and are written into the CSV verbatim, which is deliberate;
+- A way for text out of the recording to reach something that executes it. The label, unit,
+  transducer and prefiltering fields are free text and are written into the CSV verbatim, which
+  is deliberate; so is an EDF+ annotation's description, which since 0.8.0 is held to the same
+  two warnings — it is the one field of the output that can carry a character above U+00FF, and
+  the one most often typed by a person rather than written by a recorder;
   what is not acceptable is the tool being silent about where that lands. The known case — a
   field a spreadsheet evaluates rather than displays — raises
   [`FORMULA_LABEL`](https://edf2csv.vercel.app/docs/warnings-and-errors#formula_label) rather
