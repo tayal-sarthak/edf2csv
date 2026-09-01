@@ -15,7 +15,7 @@ import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal, makeScaler } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { counted, grouped, listed } from '../format/list.js';
-import { fixed, timeDecimals } from '../format/number.js';
+import { fixed, plain, timeDecimals } from '../format/number.js';
 import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
@@ -391,7 +391,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   */
   const untimeable = groups.some((group) => !Number.isFinite(group.rate));
   if (writeSignals && groups.length > 0 && estimate.rows === 0 && !untimeable) {
-    diagnostics.push(emptyWindow(range, input.recordCount, groups.length));
+    diagnostics.push(emptyWindow(range, input.recordCount, groups));
   }
 
   if (estimate.exceedsSpreadsheetLimit) {
@@ -628,8 +628,32 @@ function widthOf(magnitude: number, decimals: number, signed = false): number {
  * happens to line up with the window; --strict turns it into a failure for those who want
  * that.
  */
-function emptyWindow(range: ResolvedRange, recordCount: number, fileCount: number): Diagnostic {
+function emptyWindow(
+  range: ResolvedRange,
+  recordCount: number,
+  groups: readonly RateGroup[],
+): Diagnostic {
+  const fileCount = groups.length;
   const asked = !range.isWholeRecording;
+  /*
+    A window narrower than one sample interval, which is the commonest way to get here and
+    was the one cause the hint did not name.
+
+    Sample times sit on a grid of `1 / rate`, so a half-open window at least one interval
+    wide always contains one — which makes the converse exact: on a continuous recording, a
+    window inside the recording that selects nothing is a window narrower than the interval.
+    `--start 0.31 --end 0.39` on a 10 Hz file is 0.08s of a 0.1s grid, and the hint answered
+    "past the last sample, or inside a gap in a discontinuous file", neither of which is true
+    of it — one being a special case of the same thing and the other belonging to a file
+    shape this one does not have.
+
+    The fastest rate, since that is the one whose grid is finest: if none of its samples fits,
+    none of the slower ones does either.
+  */
+  const fastest = Math.max(...groups.map((group) => group.rate).filter(Number.isFinite), 0);
+  const interval = fastest > 0 ? 1 / fastest : 0;
+  const width = range.endSeconds - range.startSeconds;
+  const narrow = asked && interval > 0 && width > 0 && width < interval;
   /*
     One rate is one file, which is nearly every recording, and this said "files" either way:
     "so the signal files hold their headers and no data" over a single signals.csv. The count
@@ -664,9 +688,14 @@ function emptyWindow(range: ResolvedRange, recordCount: number, fileCount: numbe
         ? `This recording starts at ${fixed(range.recordingStartSeconds, 3)}s, so the whole ` +
           'window sits before it. --start and --end are read on the recording\'s own clock, ' +
           'which --info prints as "Timed from".'
-        : 'The window is inside the recording but lands where there is no data — past the ' +
-          'last sample, or inside a gap in a discontinuous file. Run with --info to see where ' +
-          'the records actually sit.'
+        : narrow
+          ? `It is ${fixed(width, 3)}s wide and the fastest channel here samples every ` +
+            `${plain(interval)}s, so no sample time falls inside it. Widen it to at least ` +
+            'one sample interval, or convert more of the recording and take the row nearest ' +
+            'the moment you want.'
+          : 'The window is inside the recording but lands where there is no data — inside a ' +
+            'gap in a discontinuous file, or past the last sample. Run with --info to see ' +
+            'where the records actually sit.'
       : 'Run with --info to see what the header declares.',
   };
 }

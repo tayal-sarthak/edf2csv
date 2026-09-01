@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.30
+
+### a hint that named two causes, neither of them the common one
+
+`EMPTY_WINDOW` fires when a window lands inside the recording and selects no samples, and its
+hint named two reasons:
+
+```
+warning: No samples fall inside the requested window (0.310s to 0.390s), so the signal file
+         holds its header and no data.
+         The window is inside the recording but lands where there is no data —
+         past the last sample, or inside a gap in a discontinuous file.
+```
+
+That file is `tiny.edf`: two seconds, one channel, 10 Hz, no gaps. The window is not past the
+last sample and there is no gap to be inside. It is 0.08 s of a 0.1 s grid.
+
+That is the commonest way to reach this warning and the one reason the hint did not give — and
+the other two are the same thing seen twice, since "past the last sample" is the last interval
+of the grid.
+
+Sample times sit on a grid of `1 / rate`, so a half-open window at least one interval wide
+always contains one. Which makes the converse exact rather than a guess: a window narrower than
+the interval is why nothing fell inside it, and the branch can say so with the numbers.
+
+```
+warning: No samples fall inside the requested window (0.310s to 0.390s), so the signal file
+         holds its header and no data.
+         It is 0.080s wide and the fastest channel here samples every 0.1s, so no
+         sample time falls inside it. Widen it to at least one sample interval, or
+         convert more of the recording and take the row nearest the moment you want.
+```
+
+The fastest channel is the one named, because its grid is the finest: if none of its samples
+fits, none of a slower channel's does either.
+
+A gap keeps the other answer. `--start 3.5 --end 3.6` on a discontinuous file is a full 10 Hz
+interval wide, so the window is not the problem and where the records sit is — which is what
+that hint has always said, and now says only when it is true. A window before the recording
+keeps its own third answer, added in 0.7.x for the same reason: "neither offered explanation
+applies to it."
+
 ## 0.8.29
 
 ### the refusal for --duration 0 that names everything except --duration

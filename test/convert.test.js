@@ -1700,6 +1700,41 @@ describe('option checking', () => {
     assert.equal((await codes('annotations.edf', { start: 2.9 })).length, 0, 'signals were written');
   });
 
+  it('names the sample interval when the window is thinner than one', async () => {
+    /*
+      A window inside the recording that selects nothing was answered with "past the last
+      sample, or inside a gap in a discontinuous file". Neither is true of the commonest way
+      to get there: `--start 0.31 --end 0.39` on a 10 Hz recording is 0.08s of a 0.1s grid.
+
+      Sample times sit on a grid of `1 / rate`, so a half-open window at least one interval
+      wide always contains one — which makes the converse exact, and makes the branch a
+      statement rather than a guess.
+    */
+    const narrow = await convert(fixture('tiny.edf'), {
+      outputDir: await outDir(), start: 0.31, end: 0.39,
+    });
+    const thin = narrow.diagnostics.find((d) => d.code === 'EMPTY_WINDOW');
+    assert.ok(thin, JSON.stringify(narrow.diagnostics.map((d) => d.code)));
+    assert.match(thin.hint, /0\.080s wide and the fastest channel here samples every 0\.1s/u, thin.hint);
+    assert.doesNotMatch(thin.hint, /gap in a discontinuous file/u, thin.hint);
+
+    // A gap really is a gap, and keeps the other answer: 0.1s of a 10 Hz grid is one whole
+    // interval, so an empty window that wide is about where the records sit.
+    const gap = await convert(fixture('discontinuous.edf'), {
+      outputDir: await outDir(), start: 3.5, end: 3.6,
+    });
+    const inGap = gap.diagnostics.find((d) => d.code === 'EMPTY_WINDOW');
+    assert.ok(inGap, JSON.stringify(gap.diagnostics.map((d) => d.code)));
+    assert.match(inGap.hint, /gap in a discontinuous file/u, inGap.hint);
+
+    // And a window before the recording keeps its own answer, which is neither of those.
+    const before = await convert(fixture('late-start.edf'), {
+      outputDir: await outDir(), start: 0, end: 1,
+    });
+    const early = before.diagnostics.find((d) => d.code === 'EMPTY_WINDOW');
+    assert.match(early.hint, /starts at 30\.000s, so the whole window sits before it/u, early.hint);
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.

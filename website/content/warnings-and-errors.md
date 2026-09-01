@@ -867,20 +867,32 @@ A directory that has been converted into several times can hold a great many of 
 
 The conversion had signal tables to fill and put no data rows in any of them, so `signals.csv` holds its header and nothing else.
 
-A window can select nothing without being past the end of the recording — `--start` at or past the end is a usage error and stops the run before this. This is the narrower case: a window that lies inside the recording but lands where there is no data. Between the last sample and the nominal end of the last record:
+A window can select nothing without being past the end of the recording — `--start` at or past the end is a usage error and stops the run before this. This is the narrower case: a window that lies inside the recording but lands where there is no data.
+
+The commonest reason is that the window is thinner than the gap between two samples. Sample times sit on a grid of `1 / rate`, so a window at least one interval wide always contains one — and a window narrower than that need not. On a 10 Hz recording, whose samples are 0.1 s apart:
 
 ```
 warning: No samples fall inside the requested window (1.950s to 2.000s), so the signal
          file holds its header and no data.
-         The window is inside the recording but lands where there is no data —
-         past the last sample, or inside a gap in a discontinuous file. Run with
-         --info to see where the records actually sit.
+         It is 0.050s wide and the fastest channel here samples every 0.1s, so no
+         sample time falls inside it. Widen it to at least one sample interval, or
+         convert more of the recording and take the row nearest the moment you want.
 ```
 
-Or, on a discontinuous recording whose records sit at 0s, 1s and 10s, anywhere in the eight-second gap:
+The fastest channel is the one named, since its grid is the finest: if none of its samples fits, none of a slower channel's does either.
+
+The other reason needs a discontinuous recording. On one whose records sit at 0s, 1s and 10s, anywhere in the eight-second gap:
 
 ```bash
 edf2csv study.edf --start 2 --end 10    # asks for a span that holds no records at all
+```
+
+```
+warning: No samples fall inside the requested window (2.000s to 10.000s), so the signal
+         file holds its header and no data.
+         The window is inside the recording but lands where there is no data —
+         inside a gap in a discontinuous file, or past the last sample. Run with
+         --info to see where the records actually sit.
 ```
 
 **What to do.** Run `--info` to see where the records really are. On an EDF+D file the gaps are the point: the row times are true recording times, so a window chosen from wall-clock arithmetic can miss the data entirely.
