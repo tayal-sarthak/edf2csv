@@ -103,6 +103,17 @@ error: No EDF or BDF recordings found in "/data/empty".
 
 Short options are single letters and the version flag is a capital `V`. Unknown flags are rejected; there's no pass-through.
 
+A short option's value follows the letter directly or comes as the next argument — `-o out`, `-oout` — and never with an `=`, which POSIX reads as part of the value. `-o=out` is refused rather than writing to a directory called `=out`, and `-q=1` is refused rather than being reported as an unknown option `-=`:
+
+```
+error: -o takes its value directly or as the next argument, so "-o=out" asks for a value of "=out".
+       Write it as -o out, or as --out=out.
+error: -q is a switch and takes no value, but was written "-q=1".
+       Write it on its own: -q
+```
+
+The long forms take an `=` as usual: `--out=out` is the same as `--out out`.
+
 A value that begins with a dash has to be written as one argument, or it reads as another flag. This comes up with a destination named `-nightly`, or a negative `--start` on a recording timed from before zero. The refusal says which form to use, and the two forms differ: a long option joins with `=`, a short one joins directly.
 
 ```

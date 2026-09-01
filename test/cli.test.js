@@ -151,6 +151,52 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--help/);
   });
 
+  it('refuses a short option written with an equals sign, which POSIX reads as the value', async () => {
+    /*
+      A short option's value follows the letter directly or comes as the next argument, so the
+      `=` is part of the value — and `parseArgs` follows POSIX. The long form of each mistake
+      was answered properly and the short form was not:
+
+          --out=nightly   writes to "nightly"
+          -o=nightly      wrote to "=nightly", exit 0, nothing said
+          --gzip=yes      error: --gzip is a switch and takes no value ...
+          -q=1            error: There is no -= option.
+
+      The first is a directory nobody named holding the conversion, under a summary reporting
+      success — the shape `--decimals 0o5` and `--channels "#0x2"` were both refused for. The
+      second names an option nobody wrote: `-q=1` is `-q`, `-=`, `-1` to a POSIX parser.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-glued-'));
+    temporaries.push(dir);
+
+    const valued = await cli([fixture('tiny.edf'), '-o=' + path.join(dir, 'out')]);
+    assert.equal(valued.code, 2, valued.stderr);
+    assert.match(valued.stderr, /^error: -o takes its value directly or as the next argument/u);
+    assert.match(valued.stderr, /Write it as -o\b/u, valued.stderr);
+    assert.deepEqual(
+      (await readdir(dir)).filter((n) => n.startsWith('=')),
+      [],
+      'it wrote to a directory nobody named',
+    );
+
+    const flag = await cli([fixture('tiny.edf'), '-q=1']);
+    assert.equal(flag.code, 2, flag.stderr);
+    assert.match(flag.stderr, /^error: -q is a switch and takes no value, but was written "-q=1"\./u);
+    assert.doesNotMatch(flag.stderr, /-=/u, 'it named an option nobody wrote');
+
+    // An unknown letter is Node's own answer and a correct one, and stays.
+    const unknown = await cli([fixture('tiny.edf'), '-z=1']);
+    assert.match(unknown.stderr, /There is no -z option/u, unknown.stderr);
+
+    // The forms that do work still do, and a token after `--` is a filename.
+    for (const args of [['-o', path.join(dir, 'a')], ['-o' + path.join(dir, 'b')], ['--out=' + path.join(dir, 'c')]]) {
+      const ran = await cli([fixture('tiny.edf'), ...args, '--quiet']);
+      assert.equal(ran.code, 0, `${args.join(' ')}: ${ran.stderr}`);
+    }
+    const positional = await cli(['--', '-o=nope.edf']);
+    assert.match(positional.stderr, /Cannot read "-o=nope\.edf"/u, positional.stderr);
+  });
+
   it('says what to type when a value begins with a dash', async () => {
     /*
       Node's parseArgs refuses `--out -nightly` with "Option '--out' argument is ambiguous. Did
@@ -5202,6 +5248,10 @@ describe('--stdout', () => {
       [fixture('tiny.edf'), '--duration', '1', '--end', '2'],
       [fixture('tiny.edf'), '--layout', 'sideways'],
       [empty],
+      // The short-option `=` form, refused before parseArgs sees it — so it is the one
+      // refusal in this list that never passes through `usageMessage`'s shaping.
+      [fixture('tiny.edf'), '-q=1'],
+      [fixture('tiny.edf'), '-o=x'],
     ];
     for (const args of refusals) {
       const { code, stdout, stderr } = await cli(args);

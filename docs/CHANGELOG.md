@@ -8,6 +8,58 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.23
+
+### a short option with an equals sign, which wrote to a directory nobody named
+
+```
+$ edf2csv rec.edf -o=nightly
+Wrote =nightly
+  signals.csv   102,400  rows
+Done in 0.4s.
+```
+
+The conversion is in a directory called `=nightly`, and the run reports success.
+
+A short option's value follows the letter directly or comes as the next argument — `-o out`,
+`-oout` — so the `=` is part of the value, and `parseArgs` follows POSIX. The long form of the
+same slip is handled: `--out=nightly` writes to `nightly`. The short one wrote to a directory
+nobody named and said nothing, which is the shape this tool has refused three times already —
+`--decimals 0o5`, `--jobs 0x10`, `--channels "#0x2"` — and for the reason recorded there: "a
+slip did not fail — it quietly converted a different channel than the one asked for, which for
+this tool is the worst way to be wrong."
+
+`-c=ECG` and `-j=4` do fail, but on a value carrying a `=` nobody meant to give: `No channel
+named "=ECG"`.
+
+The switches fail differently, and worse:
+
+```
+$ edf2csv rec.edf -q=1
+error: There is no -= option.
+       If it is the name of a file, pass it after -- instead:
+       edf2csv -- "-="
+```
+
+`-q=1` is `-q`, `-=`, `-1` to a POSIX parser, so `-=` is what came back — an option nobody
+wrote, with advice on how to pass it as a filename. `--gzip=yes`, the same mistake in long
+form, has always been answered properly.
+
+```
+error: -o takes its value directly or as the next argument, so "-o=nightly" asks for a value of "=nightly".
+       Write it as -o nightly, or as --out=nightly.
+error: -q is a switch and takes no value, but was written "-q=1".
+       Write it on its own: -q
+```
+
+Only the eight letters this tool has, and only before a `--`. An unknown letter keeps Node's
+answer, which names the letter and is correct; a `-o=x` after the separator is a filename, and
+still is. `-o nightly`, `-onightly` and `--out=nightly` are untouched.
+
+The advice is pasteable, by the rule the other refusals follow: the whole token is quoted where
+a shell would not hand it back unchanged, so a destination with a space in it comes back as
+`-o 'my dir', or as '--out=my dir'` rather than as two arguments.
+
 ## 0.8.22
 
 ### a header field with no edges, on the line that exists to show it

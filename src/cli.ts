@@ -230,6 +230,12 @@ export async function main(argv: readonly string[]): Promise<number> {
   ignoreBrokenPipe(process.stdout);
   ignoreBrokenPipe(process.stderr);
 
+  const glued = gluedShortOption(argv);
+  if (glued) {
+    process.stderr.write(glued);
+    return EXIT_USAGE;
+  }
+
   let values: Record<string, unknown>;
   let positionals: string[];
 
@@ -2218,6 +2224,68 @@ function survivesBare(text: string): boolean {
 
 function singleQuoted(text: string): string {
   return `'${text.replaceAll("'", "'\\''")}'`;
+}
+
+/**
+ * `-o=out`, which is not how a short option carries a value.
+ *
+ * POSIX puts a short option's value straight after the letter or in the next argument, so the
+ * `=` is part of the value — and `parseArgs` follows POSIX. The long forms of the same two
+ * mistakes are both answered properly, and the short forms were not:
+ *
+ *     edf2csv rec.edf --out=nightly     writes to "nightly"
+ *     edf2csv rec.edf -o=nightly        writes to "=nightly", exit 0, nothing said
+ *
+ *     edf2csv rec.edf --gzip=yes        error: --gzip is a switch and takes no value ...
+ *     edf2csv rec.edf -q=1              error: There is no -= option.
+ *
+ * The first is the shape this tool has refused three times over — `--decimals 0o5`,
+ * `--jobs 0x10`, `--channels "#0x2"` — and for the reason recorded there: "a slip did not
+ * fail — it quietly converted a different channel than the one asked for, which for this
+ * tool is the worst way to be wrong." Here it is a directory nobody named, holding the
+ * conversion, while the summary reports success. `-j=4` and `-c=ECG` do fail, but on a value
+ * carrying a `=` the reader did not intend to give.
+ *
+ * The second names an option nobody wrote. `-q=1` is `-q`, `-=`, `-1` to a POSIX parser, and
+ * `-=` is what came back — with advice on how to pass `-=` as a filename.
+ *
+ * Only the eight letters this tool actually has, and only before a `--`: an unknown letter is
+ * Node's own answer and a correct one, and a `-o=x` after the separator is a filename.
+ */
+function gluedShortOption(argv: readonly string[]): string | null {
+  const shorts = new Map(
+    Object.entries(OPTIONS)
+      .filter(([, spec]) => 'short' in spec)
+      .map(([name, spec]) => [(spec as { short: string }).short, { name, spec }]),
+  );
+  const separator = argv.indexOf('--');
+  const options = separator === -1 ? argv : argv.slice(0, separator);
+  const token = options.find((a) => /^-[A-Za-z]=/u.test(a) && shorts.has(a[1] as string));
+  if (token === undefined) return null;
+
+  const letter = token[1] as string;
+  const { name, spec } = shorts.get(letter) as { name: string; spec: { type: string } };
+  const value = token.slice(3);
+  const shown = printable(value);
+  // Pasteable, by the rule the other refusals follow: the whole token is quoted when a shell
+  // would not hand it back unchanged, since a value with a space in it makes two arguments.
+  const bare = (text: string): string => (survivesBare(text) ? text : singleQuoted(text));
+
+  if (spec.type === 'boolean') {
+    return (
+      `error: -${letter} is a switch and takes no value, but was written "${printable(token)}".\n` +
+      detail(`Write it on its own: -${letter}`)
+    );
+  }
+  return (
+    `error: -${letter} takes its value directly or as the next argument, so "${printable(token)}" ` +
+    `asks for a value of "=${shown}".\n` +
+    detail(
+      value === ''
+        ? `Drop the "=" and write the value after it, or use the long form --${name}.`
+        : `Write it as -${letter} ${bare(shown)}, or as ${bare(`--${name}=${shown}`)}.`,
+    )
+  );
 }
 
 /**
