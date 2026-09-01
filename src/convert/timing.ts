@@ -235,8 +235,16 @@ export function deriveRecordStarts(
           The sibling discontinuous warning has done this since 0.3.x: `${'$'}{isBdf ? 'BDF+D' :
           'EDF+D'}`. Same code, same header field, and the continuous branch never got it.
         */
+        /*
+          Both counts grouped, which is the whole point of the sentence: it puts one against
+          the other. 0.8.5 gave `counted` the grouping and went through the bare numbers
+          standing beside it — including this exact phrase in the ANNOTATION_DECODE_FAILED
+          warning eighty lines down, `${grouped(missing.length)} of ${counted(...)}` — and
+          missed this one, so a three-thousand-record file read "2999 of its 3,000 data
+          records", three words apart.
+        */
         message:
-          `This file is marked continuous (${continuous}), but ${contradicting} of its ` +
+          `This file is marked continuous (${continuous}), but ${grouped(contradicting)} of its ` +
           `${counted(file.recordCount, 'data record')} ` +
           `${contradicting === 1 ? 'says it starts' : 'say they start'} somewhere other than ` +
           `where continuity puts ${contradicting === 1 ? 'it' : 'them'}.`,

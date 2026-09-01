@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.24
+
+### 2999 of its 3,000, in the sentence that exists to compare them
+
+```
+warning: This file is marked continuous (EDF+C), but 2999 of its 3,000 data records say they
+         start somewhere other than where continuity puts them.
+```
+
+The two numbers that sentence exists to put against each other, three words apart, written two
+different ways.
+
+0.8.5 gave `counted` its digit grouping and then went through the bare figures standing beside
+a `counted` call in the same sentence, because "where it actually costs something is a sentence
+holding two figures for the reader to subtract by eye". It reached the identical phrase in the
+`ANNOTATION_DECODE_FAILED` warning eighty lines further down the same file —
+`${grouped(missing.length)} of ${counted(file.recordCount, 'data record')}` — and missed this
+one.
+
+```
+warning: This file is marked continuous (EDF+C), but 2,999 of its 3,000 data records say they
+         start somewhere other than where continuity puts them.
+```
+
+**The check.** `${n} of ${counted(total, …)}` is the phrase, and it has been wrong twice, so it
+is the phrase the check is written against: every interpolation set against a `counted` count
+that way has to be a `counted` or a `grouped` one. Whitespace is collapsed first, since these
+messages are assembled across several lines — which is how the pair got separated in the first
+place.
+
+It sits beside the two rules 0.8.5 left: every count goes through the pluraliser, and
+`toLocaleString` appears once in the tree.
+
 ## 0.8.23
 
 ### a short option with an equals sign, which wrote to a directory nobody named

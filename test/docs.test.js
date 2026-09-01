@@ -483,6 +483,31 @@ describe('documentation and source agree on their lists', () => {
       [],
       `a number grouped outside the helper: ${ownGrouping.join(', ')}`,
     );
+
+    /*
+      And the phrase that puts one count against another, which is where the grouping matters
+      most and where it has now been wrong twice: `${n} of ${counted(total, ...)}`. 0.8.5
+      grouped one of the two raisings of it and left the other, so a three-thousand-record
+      file read "2999 of its 3,000 data records" — the two numbers the sentence exists to
+      compare, three words apart, written two different ways.
+
+      Whitespace collapsed first, since these messages are built across several lines.
+    */
+    const paired = [];
+    for (const where of files) {
+      const text = (await read(where)).replace(/\s+/gu, ' ');
+      for (const match of text.matchAll(/\$\{([^{}]*)\} of (?:its |the )?`? ?\+? ?`?\$\{counted\(/gu)) {
+        const expression = (match[1] ?? '').trim();
+        if (!expression.startsWith('grouped(') && !expression.startsWith('counted(')) {
+          paired.push(`${where}: \${${expression}} of ...`);
+        }
+      }
+    }
+    assert.deepEqual(
+      paired,
+      [],
+      `a bare count set against a grouped one: ${paired.join(', ')}`,
+    );
   });
 
   it('shows only format strings describeFormat can return', async () => {
