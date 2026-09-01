@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.13
+
+### the one option the archive's own record did not mention
+
+`metadata.json` records the layout, and output-files.md says why:
+
+> It is what tells a pipeline which shape the signal table is in, since the two have different
+> columns and **nothing else in the archive distinguishes them**.
+
+`--bom` meets that test and was not recorded. It puts three bytes at the front of every CSV
+and leaves no other trace. `--gzip` does not need recording — it names itself, since the
+entries under `files` end `.csv.gz` — so the byte order mark was the one option whose effect
+a reader of the archive could not find out.
+
+It is also the one that decides whether reading the table back works. `csv.ts` sets that out
+where the mark is written:
+
+> pandas strips it either engine (checked against 3.0.5), but Python's own `csv.reader` over a
+> plain `open()` does not, and neither does `fs.readFileSync(path, 'utf8')`: the first column
+> name comes back as `﻿time_s`, and a lookup of `time_s` misses.
+
+So the document a pipeline reads to find out how to open the files did not carry the one fact
+that changes the answer.
+
+```json
+"conversion": {
+  ...
+  "layout": "wide",
+  "bom": true,
+```
+
+`metadata.json` itself still has no mark, for the reason it never did: `JSON.parse` rejects one.
+
+The check asserts the field against the bytes rather than against the flag — every CSV the run
+wrote has to begin with the mark exactly when the field says so — so the two cannot drift.
+
 ## 0.8.12
 
 ### the failure one step before the one whose advice follows its cause

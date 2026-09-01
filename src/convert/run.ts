@@ -311,6 +311,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       annotationsWritten,
       changed ? null : checksumAtOpen,
       timing.starts !== null,
+      options.bom === true,
     );
 
     const stale = await findStaleOutput(outputDir, written);
@@ -1837,6 +1838,8 @@ async function writeMetadata(
   checksum: string | null,
   /** Whether the record start times could be read; see withTimingPromiseKept. */
   timedFromRecords: boolean,
+  /** Whether each CSV starts with a byte order mark; see the `bom` field below. */
+  bom: boolean,
 ): Promise<void> {
   const { header } = file;
 
@@ -1898,6 +1901,20 @@ async function writeMetadata(
         no way to know which applied.
       */
       layout: plan.layout,
+      /*
+        The one option whose effect nothing else in this archive shows.
+
+        `layout` is recorded on the stated grounds that "the two have different columns and
+        nothing else in the archive distinguishes them". `--gzip` distinguishes itself: the
+        names in `files` end `.csv.gz`. `--bom` puts three bytes in front of every CSV and
+        leaves no other trace — and it is the option that decides whether reading the table
+        back works. `csv.ts` sets out why: pandas strips the mark either engine, and Python's
+        own `csv.reader` over a plain `open()` does not, nor does `readFileSync(path,
+        'utf8')`, so the first column name comes back as `\ufefftime_s` and a lookup of
+        `time_s` misses. A pipeline reading this document to find out how to open the files
+        could not find out the one thing that changes the answer.
+      */
+      bom,
       files: written.map((f) => ({ name: f.name, rows: f.rows })),
       rate_groups: plan.groups.map((g) => ({
         file: g.fileName,

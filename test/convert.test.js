@@ -3670,6 +3670,33 @@ describe('converting', () => {
     assert.ok(compared > 150, `only ${compared} runs were compared against what they wrote`);
   });
 
+  it('records whether the CSVs carry a byte order mark, which nothing else shows', async () => {
+    /*
+      `layout` is in metadata.json on the stated grounds that "the two have different columns
+      and nothing else in the archive distinguishes them". `--gzip` distinguishes itself, in
+      the `.csv.gz` names under `files`. `--bom` puts three bytes at the front of every CSV
+      and leaves no other trace — and it is the option that decides whether reading the table
+      back works, since Python's own `csv.reader` and `readFileSync(path, 'utf8')` both hand
+      back `\ufefftime_s` as the first column name and a lookup of `time_s` misses.
+
+      Asserted against the bytes rather than against the flag, so the field cannot drift from
+      what was written.
+    */
+    for (const bom of [true, false]) {
+      const dir = await outDir();
+      const result = await convert(fixture('annotations.edf'), { outputDir: dir, bom });
+      const metadata = JSON.parse(await readFile(path.join(dir, 'metadata.json'), 'utf8'));
+      assert.equal(metadata.conversion.bom, bom, `bom: ${bom}`);
+      for (const written of result.files) {
+        const text = await readFile(path.join(dir, written.name), 'utf8');
+        assert.equal(text.startsWith('\ufeff'), bom, `${written.name} with bom: ${bom}`);
+      }
+      // And metadata.json never carries one, since JSON.parse rejects it.
+      const raw = await readFile(path.join(dir, 'metadata.json'), 'utf8');
+      assert.ok(!raw.startsWith('\ufeff'), 'metadata.json must stay parseable');
+    }
+  });
+
   it('records provenance in metadata.json', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });

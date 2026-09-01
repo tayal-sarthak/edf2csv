@@ -430,6 +430,7 @@ a conversion reproducible six months later.
     "records_converted": [0, 28800],
     "annotations_written": 7,
     "layout": "wide",
+    "bom": false,
     "files": [
       { "name": "signals_100hz.csv", "rows": 2880000 },
       { "name": "signals_10hz.csv", "rows": 288000 },
@@ -547,6 +548,14 @@ warning: The input changed while it was being converted, so this output covers t
 - `layout` is `"wide"` or `"long"`, matching [`--layout`](/docs/cli-reference#--layout). It is what
   tells a pipeline which shape the signal table is in, since the two have different columns and
   nothing else in the archive distinguishes them.
+- `bom` is `true` when [`--bom`](/docs/cli-reference#--bom) was given, so every CSV in this
+  directory begins with a UTF-8 byte order mark. Recorded for the same reason `layout` is:
+  nothing else here shows it. `--gzip` names itself in `files`, where the entries end `.csv.gz`;
+  the mark is three bytes at the front of a file and leaves no other trace. It is also the one
+  that decides whether reading the table back works — pandas strips it either engine, and
+  Python's own `csv.reader` over a plain `open()` does not, nor does `fs.readFileSync(path,
+  'utf8')`, so the first column name comes back as `\ufefftime_s` and a lookup of `time_s`
+  misses. Readers that want it gone ask for `utf-8-sig`.
 - `rate_groups` records the grouping decision: for each group, the file it was written to, its
   sampling rate, its channels in order, and the decimal precision used for each. Its
   `sampling_rate_hz` is `null` when the rate is not a number JSON can hold, for the reason
