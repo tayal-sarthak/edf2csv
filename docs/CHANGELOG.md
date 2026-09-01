@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.19
+
+### eleven refusals that opened with the word undefined
+
+`parseTimeSpec` opens every one of its eleven refusals with the name of the option it is
+checking, and the command line passes the flag:
+
+```
+error: --start "1,5" is not a time I understand. Try 30s, 5m, 1h30m, 00:30:00, or a plain
+       number of seconds.
+```
+
+It is also the function the api page sends other people's users to — "Use `parseTimeSpec` if
+you want to accept those forms from your own users" — and a caller who writes the one-argument
+call its neighbours take got the sentence with a hole in it:
+
+```
+TimeRangeError: undefined is empty. Try a value like 30s, 5m, or 00:30:00.
+TimeRangeError: undefined "1:2:3:4" is not a time I understand.
+TimeRangeError: undefined must be given as text, not 30.
+```
+
+Every message in the function, opening with the word `undefined`. 0.7.x hardened the first
+argument for exactly this caller — the comment above the check says so, quoting the api page —
+and left the argument beside it able to put that word at the front of the sentence.
+
+The name is optional now, and falls back to `The value`:
+
+```
+TimeRangeError: The value "1:2:3:4" is not a time I understand.
+```
+
+Coerced rather than refused, unlike the value itself. This argument names something in a
+message rather than being the thing checked, so there is a right answer to fall back on and
+nothing is lost by using it — and `""` takes the same route, since `"" is empty.` is the same
+sentence with a different hole in it.
+
 ## 0.8.18
 
 ### the two JSON documents carried the override the text form escapes

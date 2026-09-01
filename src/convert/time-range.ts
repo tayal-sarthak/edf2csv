@@ -67,7 +67,27 @@ const UNIT_TOKEN = /(\d+(?:\.\d+)?)\s*([a-z]+)/giu;
  *
  * A length below zero is still a different thing, and `--duration` still refuses one.
  */
-export function parseTimeSpec(input: string, optionName: string, allowNegative = false): number {
+export function parseTimeSpec(input: string, optionName?: string, allowNegative = false): number {
+  /*
+    A name for the value, when the caller has not given one.
+
+    Every refusal below opens with it, and the CLI passes the flag — `--start "1,5" is not a
+    time I understand`. This is also the function the api page sends other people's users to,
+    and a caller who writes the one-argument call its neighbours take got
+
+        TimeRangeError: undefined is empty. Try a value like 30s, 5m, or 00:30:00.
+
+    on every one of the eleven messages in here. The paragraph below hardened `input` for
+    exactly that caller; the argument beside it could still put the word `undefined` at the
+    front of the sentence.
+
+    Coerced rather than refused, unlike `input`: this one names the value in a message rather
+    than being the value, so there is a right answer to fall back on and nothing is lost by
+    using it. An empty or non-string name takes the same route, since `"" is empty.` is the
+    same sentence with a different hole in it.
+  */
+  const named =
+    typeof optionName === 'string' && optionName.trim() !== '' ? optionName : 'The value';
   /*
     Text, because this is the function the API page points other people's users at: "Use
     `parseTimeSpec` if you want to accept those forms from your own users."
@@ -81,13 +101,13 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
   */
   if (typeof input !== 'string') {
     throw new TimeRangeError(
-      `${optionName} must be given as text, not ${describeValue(input)}. ` +
+      `${named} must be given as text, not ${describeValue(input)}. ` +
         `Seconds are written "30", and the other forms are "30s", "5m", "1h30m", "00:30:00".`,
     );
   }
   const trimmed = input.trim().toLowerCase();
   if (trimmed === '') {
-    throw new TimeRangeError(`${optionName} is empty. Try a value like 30s, 5m, or 00:30:00.`);
+    throw new TimeRangeError(`${named} is empty. Try a value like 30s, 5m, or 00:30:00.`);
   }
 
   /*
@@ -121,12 +141,12 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
   */
   if (text.startsWith('+')) {
     throw new TimeRangeError(
-      `${optionName} "${input}" begins with a plus. Write the number on its own: ` +
+      `${named} "${input}" begins with a plus. Write the number on its own: ` +
         `${input.trim().replaceAll('+', '').trim()}`,
     );
   }
   const signed = (seconds: number): number =>
-    assertFinite(negative ? -seconds : seconds, optionName, input, allowNegative);
+    assertFinite(negative ? -seconds : seconds, named, input, allowNegative);
 
   // Bare number means seconds.
   if (/^\d+(?:\.\d+)?$/u.test(text)) return signed(Number(text));
@@ -139,7 +159,7 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     const seconds = Number(clock[3]);
     if (minutes >= 60 || seconds >= 60) {
       throw new TimeRangeError(
-        `${optionName} "${input}" has a minutes or seconds field of 60 or more.`,
+        `${named} "${input}" has a minutes or seconds field of 60 or more.`,
       );
     }
     return signed(hours * 3600 + minutes * 60 + seconds);
@@ -161,7 +181,7 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     const scale = UNIT_SECONDS[unit];
     if (scale === undefined) {
       throw new TimeRangeError(
-        `${optionName} "${input}" uses an unknown unit "${unit}". Use h, m, s or ms, ` +
+        `${named} "${input}" uses an unknown unit "${unit}". Use h, m, s or ms, ` +
           `or their long forms: hours, minutes, seconds.`,
       );
     }
@@ -171,7 +191,7 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
     // keyed by their scale so the aliases collapse together: "1h30min20m" is caught too.
     if (seen.has(scale)) {
       throw new TimeRangeError(
-        `${optionName} "${input}" gives the same unit twice. ` +
+        `${named} "${input}" gives the same unit twice. ` +
           `Combine each unit once, as in 1h30m.`,
       );
     }
@@ -189,7 +209,7 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
   // Reject partially-understood input like "5x" or "1h banana".
   if (matched === 0 || consumed !== text.replace(/\s+/gu, '').length) {
     throw new TimeRangeError(
-      `${optionName} "${input}" is not a time I understand. ` +
+      `${named} "${input}" is not a time I understand. ` +
         `Try 30s, 5m, 1h30m, 00:30:00, or a plain number of seconds.`,
     );
   }
@@ -210,7 +230,7 @@ export function parseTimeSpec(input: string, optionName: string, allowNegative =
   */
   if (spaced) {
     throw new TimeRangeError(
-      `${optionName} "${input}" puts a space between a number and its unit. ` +
+      `${named} "${input}" puts a space between a number and its unit. ` +
         `Write them together: ${input.trim().replace(/(\d)\s+([a-z])/giu, '$1$2')}`,
     );
   }

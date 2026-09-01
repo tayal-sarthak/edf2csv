@@ -67,6 +67,35 @@ describe('time specifications', () => {
     assert.equal(parseTimeSpec('250ms', '--start'), 0.25);
   });
 
+  it('names the value even when the caller did not name it', () => {
+    /*
+      Every refusal in `parseTimeSpec` opens with the option's name, and the CLI passes the
+      flag. This is also the function the api page sends other people's users to — "Use
+      `parseTimeSpec` if you want to accept those forms from your own users" — and a caller
+      who writes the one-argument call its neighbours take got
+
+          TimeRangeError: undefined is empty. Try a value like 30s, 5m, or 00:30:00.
+
+      on every one of the eleven messages in there. 0.7.x hardened the first argument for
+      exactly that caller and left the one beside it able to put `undefined` at the front of
+      the sentence.
+    */
+    for (const [value, name] of [['', undefined], ['1,5', undefined], [30, undefined],
+      ['+1s', ''], ['1x', '   ']]) {
+      assert.throws(() => parseTimeSpec(value, name), (error) => {
+        assert.match(error.message, /^The value\b/u, error.message);
+        assert.doesNotMatch(error.message, /undefined/u, error.message);
+        return true;
+      });
+    }
+    // A name that was given still opens the sentence, which is what the CLI relies on.
+    assert.throws(() => parseTimeSpec('1,5', '--start'), (error) => {
+      assert.match(error.message, /^--start "1,5" is not a time/u, error.message);
+      return true;
+    });
+    assert.equal(parseTimeSpec('1h'), 3600, 'a valid value still parses without a name');
+  });
+
   it('rejects input it only partly understands instead of guessing', () => {
     for (const bad of ['5x', '1h banana', '', 'abc', '00:99:00']) {
       assert.throws(() => parseTimeSpec(bad, '--start'), TimeRangeError, `should reject ${bad}`);

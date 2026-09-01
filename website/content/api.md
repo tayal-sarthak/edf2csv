@@ -765,7 +765,7 @@ Column names come from the whole file, not from the current selection, so a chan
 Time parsing, if you want to accept the CLI's time forms:
 
 ```ts
-function parseTimeSpec(input: string, optionName: string, allowNegative?: boolean): number;  // seconds
+function parseTimeSpec(input: string, optionName?: string, allowNegative?: boolean): number;  // seconds
 function resolveRange(options: {
   start?: number;
   duration?: number;
@@ -788,7 +788,7 @@ parseTimeSpec('90', '--start');       // 90, a bare number is seconds
 parseTimeSpec('-1h30m', '--start', true); // -5400, the sign applies to the whole value
 ```
 
-A value that is not text is refused rather than coerced — `parseTimeSpec(30, '--start')` throws
+`optionName` is what every refusal opens with — the CLI passes the flag, so its messages read `--start "1,5" is not a time I understand`. It is optional: leave it out and the refusals say `The value`, which is what they said `undefined` for until 0.8.19. A value that is not text is refused rather than coerced — `parseTimeSpec(30, '--start')` throws
 `TimeRangeError: --start must be given as text, not 30`. That is the shape a JSON config or a
 form field arrives in, and the reason it is not read as 30 is the one `channels: 'ECG'` gives:
 an accepting `Number(input)` also accepts `NaN`. Everything this function refuses is a
