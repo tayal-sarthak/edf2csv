@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.2
+
+### the one calibration warning of four that fills the cells, and said nothing about it
+
+Four branches of one `if`/`else` answer the same question — this channel's calibration does
+not work — and three of them end the same way:
+
+```
+warning: Signal 0 ("ch") declares a physical range from -1e-320 to 1e-320, whose span is too small to represent, so its values cannot be scaled.
+         Its cells are left empty rather than filled with a value the header
+         cannot justify.
+warning: Signal 0 ("ch") has digital minimum equal to digital maximum (7), so its values cannot be scaled.
+         Its cells are left empty rather than filled with a value the header
+         cannot justify.
+warning: Signal 0 ("ch") has physical minimum equal to physical maximum (5), so every sample converts to the same value.
+```
+
+The fourth is the one branch that does the opposite. `physicalMin === physicalMax` is a
+mapping — a defined one, with a single point in it — so `makeScaler` returns that constant
+and every cell of the column is filled with it:
+
+```text
+time_s,ch
+0.000,5.000
+0.250,5.000
+```
+
+A reader who has met either neighbour has been told, twice, that a calibration this tool
+cannot use leaves the cells empty. Here it does not, and nothing said so. A column of one
+repeated number is also exactly what a genuinely flat recording produces, which is the
+confusion worth heading off and the reason the reference page spends a paragraph on it:
+"There the mapping doesn't exist and the cells are left empty; here it exists and simply has
+no slope." That paragraph has been on warnings-and-errors.md since the code was written. The
+warning — the only part of it most people see — carried none of it.
+
+The hint also says what is lost, which is the other half of the page's answer: the distinct
+digital codes are still in the file and are not recoverable from the CSV.
+
 ## 0.8.1
 
 ### two failures a batch script cannot grep for

@@ -720,6 +720,21 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           message:
             `Signal ${i} ("${label}") has physical minimum equal to physical maximum ` +
             `(${physicalMin}), so every sample converts to the same value.`,
+          /*
+            The one branch of the four that fills the cells, and the only one that said
+            nothing about them.
+
+            Its three neighbours all end "Its cells are left empty rather than filled with a
+            value the header cannot justify", which is the opposite of what happens here: the
+            mapping is defined — it has one point in it — so `physicalMin` is written into
+            every cell, and a reader who had learned the family's answer from the branch above
+            gets it backwards. A column of one repeated number is also the shape a genuinely
+            flat recording takes, which is the confusion worth heading off.
+          */
+          hint:
+            'Its cells carry that value rather than being left empty, since the mapping is ' +
+            'defined — it just has one point in it. The distinct digital codes behind them ' +
+            'are not recoverable from the CSV.',
         });
       } else if ((physicalMax - physicalMin) * (digitalMax - digitalMin) < 0) {
         /*

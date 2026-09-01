@@ -233,6 +233,9 @@ A channel declares the same value for its physical minimum and physical maximum,
 
 ```
 warning: Signal 1 ("flatphys") has physical minimum equal to physical maximum (5), so every sample converts to the same value.
+         Its cells carry that value rather than being left empty, since the
+         mapping is defined — it just has one point in it. The distinct digital
+         codes behind them are not recoverable from the CSV.
 ```
 
 Note the difference from `DEGENERATE_DIGITAL_RANGE` above. There the mapping doesn't exist and the cells are left empty; here it exists and simply has no slope, so the value it gives is a real reading and is written as one.
