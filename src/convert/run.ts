@@ -1734,7 +1734,7 @@ export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionEr
         // is what there is to narrow it to. The parenthetical used to repeat the count
         // that had just been given — "produces 3 (its channels use 3 different sampling
         // rates)" — which told nobody anything they could act on.
-        `--stdout needs exactly one table, but this recording produces ${plan.groups.length}, ` +
+        `--stdout needs exactly one table, but this recording produces ${grouped(plan.groups.length)}, ` +
           `one for each sampling rate its channels use ` +
           `(${listed(formatRates(plan.groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
         'Narrow it to one rate with --channels, write --layout long to get them all in ' +

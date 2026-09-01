@@ -204,7 +204,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         code: 'DUPLICATE_LABEL',
         severity: 'warning',
         message:
-          `"${term}" matches ${matched.length} channels (positions ` +
+          `"${term}" matches ${counted(matched.length, 'channel')} (positions ` +
           `${listed(matched.map((s) => `#${s.index}`))}); all of them were selected.`,
         hint: `Use --channels "#${matched[0]?.index ?? 0}" to pick just one.`,
       });
@@ -242,7 +242,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       code: 'MIXED_SAMPLING_RATES',
       severity: 'warning',
       message:
-        `Channels use ${groups.length} different sampling rates ` +
+        `Channels use ${counted(groups.length, 'different sampling rate')} ` +
         `(${listed(formatRates(groups.map((g) => g.rate)).map((r) => `${r} Hz`))}).`,
       hint:
         layout === 'long'

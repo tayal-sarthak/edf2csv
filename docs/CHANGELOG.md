@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.26
+
+### six counts with the plural written out, which the pluraliser's check cannot see
+
+The check that holds every count to going through `counted` finds them by the ternary that
+chooses the plural — `${n} record${n === 1 ? '' : 's'}` — which is the shape it was written to
+replace. Six counts have no ternary, because the sentence only fires when there is more than
+one, so the `s` is written out:
+
+```
+warning: 2 signals share the label "T8-P8" (positions #0, #1).
+warning: Channels use 40 different sampling rates (40 Hz, 39 Hz, ... and 32 more).
+error: "ECG" matches 2 channels (positions #0, #1); all of them were selected.
+error: --stdout needs exactly one table, but this recording produces 3, one for each ...
+```
+
+None went through the pluraliser and none was grouped. An EDF header's signal-count field is
+four characters, so a montage really can carry thousands of channels sharing one label, or
+thousands of distinct rates — and those sentences would have read `1024 channels` and `2048
+different sampling rates`.
+
+The sixth is the other end: `Header declares 0 signals; expected at least 1.`, where the count
+is zero or below and the helper changes nothing at all. It goes through it anyway, because the
+rule is what the check is for.
+
+**The shape the check now looks for is the expression, not the words around it.** A count is a
+`.length`, a `.size`, or something named `…Count`, and one of those printed on its own has to
+be inside `counted`, `grouped` or `listed`. The one exception is the batch's `[3/40]` marker,
+where the denominator is a position in a counter rather than a number in a sentence — and it
+is recognised by the `/` before it and the `]` after it, not by a list of allowed lines.
+
+That makes four rules the same check now holds: every count goes through the pluraliser, every
+count set against another is grouped the same way, `toLocaleString` appears once in the tree,
+and a count is never written out bare.
+
 ## 0.8.25
 
 ### the file the grouping sweep never opened, where the byte counts are nine digits

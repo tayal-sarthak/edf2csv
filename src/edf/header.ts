@@ -434,7 +434,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   if (signalCount <= 0) {
     throw new EdfError(
       'INVALID_SIGNAL_COUNT',
-      `Header declares ${signalCount} signals; expected at least 1.`,
+      `Header declares ${counted(signalCount, 'signal')}; expected at least 1.`,
       BAD_FIELD_HINT,
     );
   }
@@ -986,7 +986,9 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         the reader to "address it by position with #N". The number is the same; the form that
         works is not.
       */
-      message: `${indices.length} signals share the label "${label}" (positions ${listed(indices.map((i) => `#${i}`))}).`,
+      message:
+        `${counted(indices.length, 'signal')} share the label "${label}" ` +
+        `(positions ${listed(indices.map((i) => `#${i}`))}).`,
       hint: 'Their columns are suffixed with the signal number so they stay distinguishable.',
     });
   }
@@ -1150,7 +1152,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       code: 'MIXED_SAMPLING_RATES',
       severity: 'warning',
       message:
-        `Channels use ${rates.size} different sampling rates ` +
+        `Channels use ${counted(rates.size, 'different sampling rate')} ` +
         `(${listed(formatRates([...rates].sort((a, b) => b - a)).map((r) => `${r} Hz`))}).`,
       hint: 'They are written to one file per rate so no channel is resampled.',
     });

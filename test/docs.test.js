@@ -520,6 +520,46 @@ describe('documentation and source agree on their lists', () => {
       [],
       `a bare count set against a grouped one: ${paired.join(', ')}`,
     );
+
+    /*
+      And a count with its plural written out beside it, which neither check above can see.
+
+      `counted` is found by looking for the ternary that chooses the plural, and these have no
+      ternary: the sentence only fires when there is more than one, so the `s` is hard-coded.
+      Six of them — `2 signals share the label`, `"ECG" matches 2 channels`, `Channels use 3
+      different sampling rates` twice, the `--stdout` refusal's table count, and a header
+      declaring `0 signals` — so none went through the pluraliser and none was grouped, on
+      figures a 9,999-channel header can push into four digits.
+
+      The shape that finds them is the expression rather than the words around it: a count is
+      a `.length`, a `.size` or something named `…Count`. The one exception is the batch's
+      `[3/40]` marker, where the denominator is a position in a counter rather than prose.
+    */
+    const ungrouped = [];
+    for (const where of files) {
+      const text = await read(where);
+      for (const line of text.split('\n')) {
+        const code = line.trim();
+        if (code.startsWith('*') || code.startsWith('//')) continue;
+        for (const match of line.matchAll(/\$\{([^{}]*)\}/gu)) {
+          const expression = (match[1] ?? '').trim();
+          if (!/(\.length|\.size|Count)$/u.test(expression)) continue;
+          if (/^(counted|grouped|listed)\(/u.test(expression)) continue;
+          // `[${index + 1}/${inputs.length}]` — a counter, not a sentence. Read from the
+          // line rather than from the match, since the `/` belongs to the interpolation
+          // before this one and has already been consumed.
+          const before = line[match.index - 1];
+          const after = line[match.index + match[0].length];
+          if (before === '/' && after === ']') continue;
+          ungrouped.push(`${where}: \${${expression}}`);
+        }
+      }
+    }
+    assert.deepEqual(
+      ungrouped,
+      [],
+      `a count printed without the pluraliser: ${ungrouped.join(', ')}`,
+    );
   });
 
   it('shows only format strings describeFormat can return', async () => {
