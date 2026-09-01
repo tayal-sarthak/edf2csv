@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.25
+
+### the file the grouping sweep never opened, where the byte counts are nine digits
+
+0.8.5 grouped the counts this tool prints, and 0.8.24 caught one it had missed. This is the
+file it never reached: `run.ts`, where the stdout audit reports what did not arrive.
+
+```
+error: Writing to stdout failed: 17890161 of 112867284 bytes did not reach the destination,
+       which stopped accepting them part way through.
+error: Writing to stdout failed: none of the 112867284 bytes reached the destination.
+```
+
+Nine digits, twice, in the sentence whose whole job is to say how much of the file is missing —
+which is the case 0.8.5 named: "where it actually costs something is a sentence holding two
+figures for the reader to subtract by eye."
+
+The checksum's own shortfall is the third:
+
+```
+Expected 19643392 bytes to checksum but the file ended at 8388608; it appears to have changed
+size while it was being read.
+```
+
+with, one function away in the same file, the reader's version of the same failure already
+reading `Expected 8,386,560 bytes of data at record 0 but only 2,899,456 bytes were available`.
+
+```
+error: Writing to stdout failed: 17,890,161 of 112,867,284 bytes did not reach the destination.
+Expected 19,643,392 bytes to checksum but the file ended at 8,388,608.
+```
+
+**The check that missed them, widened.** 0.8.24 added one for `${n} of ${counted(total, …)}`,
+which is the phrase that had been wrong twice. It only looked at pairs whose right-hand side
+was already a `counted` call, so a pair written out of two bare numbers — which is what these
+were — was invisible to it. It now flags any `X of Y` where one side goes through the grouping
+and the other is written out bare, and leaves alone a pair where neither does, or where the
+other side is a different quantity entirely: "3 records of 1s" sets a count against a number of
+seconds, which is `plain`'s job and not a count at all.
+
 ## 0.8.24
 
 ### 2999 of its 3,000, in the sentence that exists to compare them

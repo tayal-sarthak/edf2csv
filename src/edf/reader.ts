@@ -120,8 +120,12 @@ export class EdfFile {
       if (bytesRead <= 0) {
         throw new EdfError(
           'UNREADABLE',
-          `Expected ${this.fileSize} bytes to checksum but the file ended at ${at}; ` +
-            `it appears to have changed size while it was being read.`,
+          // Both figures grouped, like the shortfall message this file raises one function
+          // over — `Expected 8,386,560 bytes of data at record 0 but only 2,899,456 bytes
+          // were available` — and for the reason 0.8.5 gives: the sentence exists to put one
+          // against the other, and at nine digits that is work the separators do.
+          `Expected ${grouped(this.fileSize)} bytes to checksum but the file ended at ` +
+            `${grouped(at)}; it appears to have changed size while it was being read.`,
           'Make sure the recording is not still being written to, then try again.',
         );
       }

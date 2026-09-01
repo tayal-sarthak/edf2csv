@@ -494,12 +494,24 @@ describe('documentation and source agree on their lists', () => {
       Whitespace collapsed first, since these messages are built across several lines.
     */
     const paired = [];
+    const isGrouped = (expression) =>
+      expression.startsWith('grouped(') || expression.startsWith('counted(');
     for (const where of files) {
       const text = (await read(where)).replace(/\s+/gu, ' ');
-      for (const match of text.matchAll(/\$\{([^{}]*)\} of (?:its |the )?`? ?\+? ?`?\$\{counted\(/gu)) {
-        const expression = (match[1] ?? '').trim();
-        if (!expression.startsWith('grouped(') && !expression.startsWith('counted(')) {
-          paired.push(`${where}: \${${expression}} of ...`);
+      for (const match of text.matchAll(
+        /\$\{([^{}]*)\} of (?:its |the )?(?:`? ?\+? ?`? ?)\$\{([^{}]*)\}/gu,
+      )) {
+        const left = (match[1] ?? '').trim();
+        const right = (match[2] ?? '').trim();
+        /*
+          One side grouped and the other written out bare is the mismatch. Neither grouped is
+          a pair of small fixed numbers and is left alone, and so is a side that goes through
+          some other formatter — "3 records of 1s" sets a count against a number of seconds,
+          which `plain` writes and which is not a count at all.
+        */
+        const bare = (expression) => !expression.includes('(');
+        if (isGrouped(left) !== isGrouped(right) && (bare(left) || bare(right))) {
+          paired.push(`${where}: ${match[0]}`);
         }
       }
     }

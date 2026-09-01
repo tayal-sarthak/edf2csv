@@ -26,7 +26,7 @@ import {
   csvRow,
   escapeCsvField,
 } from '../format/csv.js';
-import { counted, listed } from '../format/list.js';
+import { counted, grouped, listed } from '../format/list.js';
 import { escapeCharacter, escapeJsonText, unprintableIn } from '../format/unprintable.js';
 import {
   makeSampleFormatter,
@@ -1657,15 +1657,18 @@ export function auditStdout(): { count: (bytes: number) => void; verify: () => v
       if (landed === 0) {
         throw new ConversionError(
           'WRITE_FAILED',
-          `Writing to stdout failed: none of the ${expected} bytes reached the destination.`,
+          `Writing to stdout failed: none of the ${counted(expected, 'byte')} reached the destination.`,
           'The destination is almost certainly out of space. Nothing was written, so there ' +
             'is nothing there to discard.',
         );
       }
       throw new ConversionError(
         'WRITE_FAILED',
-        `Writing to stdout failed: ${expected - landed} of ${expected} bytes did not reach ` +
-          `the destination, which stopped accepting them part way through.`,
+        // The pair a reader subtracts by eye, so both go through the grouping — the rule
+        // 0.8.5 set and reached only as far as the messages already built with `counted`.
+        `Writing to stdout failed: ${grouped(expected - landed)} of ` +
+          `${counted(expected, 'byte')} did not reach the destination, which stopped ` +
+          `accepting them part way through.`,
         'What is there ends mid-row and should not be used. The destination is almost ' +
           'certainly out of space — a short write is how a filesystem reports filling up ' +
           'mid-write, and nothing after it raised an error because there was nothing after it.',

@@ -790,7 +790,7 @@ recording produces 0, one for each sampling rate its channels use ()" and pointe
 When stdout is redirected to a regular file, `edf2csv` checks at the end that the descriptor grew by as many bytes as it was handed, and fails if it did not:
 
 ```
-error: Writing to stdout failed: 150904 of 2063736 bytes did not reach the destination,
+error: Writing to stdout failed: 150,904 of 2,063,736 bytes did not reach the destination,
        which stopped accepting them part way through.
        What is there ends mid-row and should not be used. The destination is
        almost certainly out of space — a short write is how a filesystem reports
