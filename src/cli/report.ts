@@ -441,7 +441,22 @@ export function formatInfo(
  * Field names match `metadata.json` where the two describe the same thing, so a survey and
  * a conversion can be read by the same code.
  */
-export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | null = 2): string {
+export function infoJson(
+  file: EdfFile,
+  plan: ConversionPlan,
+  /**
+   * The event count, on the files where `--info` has already read and counted them.
+   *
+   * `formatInfo` has taken this since 0.7.x and prints it — "Would write annotations.csv with
+   * 3 events" — and the same number was dropped on the way to the JSON, which is the surface
+   * a script reads and the reason `--info --json` exists. Null where the count is not in
+   * hand, by the same rule `estimate` is null for a run that writes no signal table: a
+   * continuous file is read only as far as its origin, so its events have not been counted
+   * and there is no honest number to put here.
+   */
+  events: number | null = null,
+  indent: number | null = 2,
+): string {
   const { header } = file;
   const fileFor = new Map<number, string>();
   for (const group of plan.groups) {
@@ -470,6 +485,9 @@ export function infoJson(file: EdfFile, plan: ConversionPlan, indent: number | n
       // of the fields above are lengths and neither says where that length sits.
       first_sample_seconds: plan.range.recordingStartSeconds,
       annotation_channels: file.annotationSignals.length,
+      // Named as `summaryJson` names the same count, so a prediction and a conversion read
+      // the same field.
+      annotations: events,
       channels: file.dataSignals.map((signal) => ({
         signal_index: signal.index,
         column: plan.columnNames.get(signal.index) ?? '',

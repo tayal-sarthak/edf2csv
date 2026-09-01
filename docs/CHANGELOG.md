@@ -8,6 +8,50 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.3
+
+### the event count --info had counted and --info --json did not carry
+
+`--info` counts the events on the files where it has already read them, and prints the
+number:
+
+```
+$ edf2csv night.edf --annotations-only --info
+Would write annotations.csv with 41 events and channels.csv, and no signal data.
+```
+
+`--info --json` — the same question asked by the script that needs the answer — described
+the same file with `annotation_channels: 1` and stopped there. The count was computed three
+lines earlier, handed to `formatInfo`, and dropped on the way to the other surface.
+
+```
+$ edf2csv night.edf --annotations-only --info --json | jq .annotations
+null                                                   # the field did not exist
+```
+
+That is the wrong way round. The text form is read by a person who is looking at the file
+anyway; the JSON form exists to be read across a directory of recordings, and "how many
+events are in here" is one of the two questions a survey is for. The other one — how many
+rows the signal table would have — has been in `estimate` since the mode existed.
+
+`annotations`, which is what the conversion summary already calls the same count, so a
+prediction and a result read the same field. Counted through the same window predicate the
+conversion filters by, so `--start` and `--end` move it.
+
+**Null, not zero, where it is not known.** A discontinuous file has its whole annotation
+channel read, because that is where its record start times are; a continuous one is read only
+as far as the first record that states one. So the count is in hand for one of the two, and
+the text form has said which since it started printing it: "How many events there are cannot
+be told from the header, and finding out means reading the annotation channel record by
+record." `estimate` is already null on the same reasoning for a run that writes no signal
+table, and 0 would be a number this mode is in no position to state.
+
+**The guard.** `names every field the JSON calls something metadata.json calls something
+else` exists to stop a new field quietly becoming a fourth name mismatch. This one is not a
+fourth: it is the same `annotations` / `conversion.annotations_written` pair the summary
+already has, and the test now holds the survey's count against the summary's on every
+recording it converts whole.
+
 ## 0.8.2
 
 ### the one calibration warning of four that fills the cells, and said nothing about it

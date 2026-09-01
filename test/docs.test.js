@@ -5524,6 +5524,16 @@ describe('documentation and source agree on their lists', () => {
           `${name}: annotations`,
         );
         /*
+          The survey carries the same count under the same name from 0.8.3, so it joins that
+          pair rather than becoming a fourth mismatch. It is a prediction, so it is only
+          equal to what was written while the whole recording is converted — which is what
+          these four runs do — and it is null on a continuous file, where `--info` reads only
+          as far as the origin and has not counted anything.
+        */
+        if (survey.annotations !== null) {
+          assert.equal(survey.annotations, summary.annotations, `${name}: survey annotations`);
+        }
+        /*
           Minus `STALE_OUTPUT`, which is the relationship rather than plain equality.
 
           This asserted the two lists were equal, and passed because each recording here is
@@ -5550,10 +5560,10 @@ describe('documentation and source agree on their lists', () => {
       // that has not happened; and the three facts about a run that has.
       assert.deepEqual(
         [...surveyOnly].sort(),
-        ['column', 'digital_max', 'digital_min', 'estimate', 'exceeds_spreadsheet_limit',
-          'first_sample_seconds', 'label', 'output_file', 'physical_max', 'physical_min',
-          'prefiltering', 'samples_per_record', 'signal_index', 'time_span_seconds',
-          'transducer', 'unit', 'warnings'].sort(),
+        ['annotations', 'column', 'digital_max', 'digital_min', 'estimate',
+          'exceeds_spreadsheet_limit', 'first_sample_seconds', 'label', 'output_file',
+          'physical_max', 'physical_min', 'prefiltering', 'samples_per_record', 'signal_index',
+          'time_span_seconds', 'transducer', 'unit', 'warnings'].sort(),
         'a survey field has appeared that metadata.json has no name for',
       );
       assert.deepEqual(
