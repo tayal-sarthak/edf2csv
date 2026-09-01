@@ -327,16 +327,18 @@ Temp rectal,2,Temp rectal,degC,1,1,34,40,-2048,2047,,,signals_1hz.csv,yes
 | `unit` | The physical dimension from the header, verbatim: `uV`, `mV`, `degC`, `%`. Files vary in spelling and some leave it blank. Nothing is normalised. |
 | `sampling_rate_hz` | `samples_per_record / record_duration_seconds`. This decides which output file the channel lands in. Written `Infinity` when the record duration is too small to divide into, where both JSON documents have to write `null`. |
 | `samples_per_record` | Samples this channel stores in each EDF data record, straight from the header. |
-| `physical_min`, `physical_max` | Calibration range in the unit above, as declared. |
-| `digital_min`, `digital_max` | Calibration range in raw converter counts, as declared. |
+| `physical_min`, `physical_max` | Calibration range in the unit above, as declared. Written as plain decimal at any magnitude, the way `signals.csv` writes the values they scale: a channel calibrated to ±1e-16 T reads `-0.0000000000000001`, not `-1e-16`, so the column holds one notation whatever its rows mix. |
+| `digital_min`, `digital_max` | Calibration range in raw converter counts, as declared, in the same plain decimal. |
 | `transducer` | Free-text electrode or sensor description from the header, often blank. |
 | `prefiltering` | Free-text filter description from the header, for example `HP:0.1Hz LP:75Hz N:50Hz`. Often blank. Read it before you filter the data again. |
 | `output_file` | Name of the CSV holding this channel's samples, or empty when the channel wasn't converted. |
 | `converted` | `yes` or `no`. |
 
-The four calibration columns are written as they appear in the header, so a channel whose
+The four calibration columns carry the values the header declares, so a channel whose
 `physical_min` sits above its `physical_max` survives into the file that way rather than being
-corrected. That by itself is not what makes a channel inverted. The gain is
+corrected. The notation is this file's rather than the header's — `-1.00e-9` in the header is
+`-0.000000001` here — since a column that is decimal text in one row and exponent text in the
+next is a column a reader has to parse twice. That by itself is not what makes a channel inverted. The gain is
 `(physical_max - physical_min) / (digital_max - digital_min)`, so it is the sign of the whole
 fraction that decides: reverse one pair and the polarity is inverted, reverse both and the gain
 comes out positive and the channel is perfectly ordinary — no warning, and none is warranted.

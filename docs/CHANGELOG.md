@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.14
+
+### the third CSV, which kept the notation the other two refuse
+
+Three CSVs come out of a conversion, and two of them refuse exponent notation on the same
+grounds.
+
+`fixed`, for `signals.csv`:
+
+> `toFixed` switches to exponent notation at 1e21, which would put "1e+21" in a column whose
+> every other cell is plain fixed-decimal — and a reader parsing the column as decimal text
+> has no reason to expect it.
+
+`plain`, written for `annotations.csv`:
+
+> a file saying `+0.0000001` came back as `1e-7` in a column whose every other cell is a plain
+> decimal
+
+`channels.csv` was the third, and wrote its calibration through bare `String`.
+
+```csv
+column,...,physical_min,physical_max,digital_min,digital_max,...
+eeg,...,-100,100,-2048,2047,...
+mag,...,-1e-16,1e-16,-32768,32767,...
+```
+
+Two notations in one column, and the row that changes notation is the one whose values
+`signals.csv` writes out to twenty-three decimal places. These are the four cells
+output-files.md points at for recovering digital codes from physical ones — "the header
+calibration in `channels.csv` gives you `digital_min`, `digital_max`, `physical_min` and
+`physical_max` to work from" — so it is also the pair a reader holds side by side, one of them
+always plain and the other not.
+
+The page said they were "written as they appear in the header", which was not true either:
+`-1.00e-9` in the header came out `-1e-9`, because the number had already been parsed. The
+value is the header's; the notation is now this file's, and it is the one the other two CSVs
+use.
+
+**Not the sampling rate**, which is the one number in that row that is about the *file* rather
+than the channel: it decides which `signals_<rate>hz.csv` the samples land in, and `rateSlug`
+builds that name out of the same exponent form. `Infinity` still prints as `Infinity` there,
+where both JSON documents have to write `null`.
+
 ## 0.8.13
 
 ### the one option the archive's own record did not mention

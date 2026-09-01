@@ -2758,6 +2758,31 @@ describe('converting', () => {
     });
   });
 
+  it('writes the calibration in the notation signals.csv uses, not the exponent one', async () => {
+    /*
+      `plain` exists because `String` switches to exponent notation below 1e-6 and above 1e21,
+      and annotations.csv's `onset_s` was written through it: "a file saying `+0.0000001` came
+      back as `1e-7` in a column whose every other cell is a plain decimal". `fixed` refuses
+      the same form in signals.csv, saying "a reader parsing the column as decimal text has no
+      reason to expect it". channels.csv was the third CSV and used `String`.
+
+      The magnetometer is the file that shows it: ±1e-16 T. Its `physical_min` read `-1e-16`
+      in the pair of columns output-files.md points at for recovering the digital codes, over
+      a signals.csv writing all 23 decimals of every value.
+    */
+    const dir = await outDir();
+    await convert(fixture('magnetometer.edf'), { outputDir: dir });
+    const [header, row] = await readCsv(dir, 'channels.csv');
+    const columns = header.split(',');
+    const cells = row.split(',');
+    for (const name of ['physical_min', 'physical_max', 'digital_min', 'digital_max']) {
+      const cell = cells[columns.indexOf(name)];
+      assert.doesNotMatch(cell, /e/iu, `${name} is exponent text: ${cell}`);
+      assert.equal(Number(cell) === 0 || Number.isFinite(Number(cell)), true, `${name}: ${cell}`);
+    }
+    assert.match(cells[columns.indexOf('physical_min')], /^-0\.0+1$/u);
+  });
+
   it('does not report a precision the caller chose as a loss of precision', async () => {
     /*
       `--decimals` exists to set a coarser precision, so raising VALUE_RESOLUTION for it is

@@ -1249,12 +1249,30 @@ async function writeChannelsCsv(
         String(signal.index),
         signal.label,
         signal.physicalDimension,
+        /*
+          Plain decimal, at whatever magnitude the header declares.
+
+          `String` switches to exponent notation below 1e-6 and above 1e21, which `plain`
+          exists to undo — annotations.csv's two numeric columns were given it because "an
+          EDF+ TAL states its onset as ordinary decimal text, so a file saying `+0.0000001`
+          came back as `1e-7` in a column whose every other cell is a plain decimal", and
+          `fixed` refuses the same form in signals.csv for the same reason: "a reader parsing
+          the column as decimal text has no reason to expect it." channels.csv was the third
+          CSV and the one that kept it. A magnetometer calibrated to ±1e-16 T had its
+          `physical_min` written `-1e-16` beside a `digital_min` of `-32768`, in the pair of
+          columns this documentation points at for recovering the digital codes, over a
+          signals.csv writing every one of those values out in full — and a channel calibrated
+          to ±100 in the row above it, so the column held both notations at once.
+        */
+        // Not the rate, which is the one number in this row that is about the *file*: it
+        // decides which signals_<rate>hz.csv the channel lands in, and `rateSlug` writes that
+        // name from the same exponent form. Nor samples_per_record, which is a count.
         String(signal.samplingRate),
         String(signal.samplesPerRecord),
-        String(signal.physicalMin),
-        String(signal.physicalMax),
-        String(signal.digitalMin),
-        String(signal.digitalMax),
+        plain(signal.physicalMin),
+        plain(signal.physicalMax),
+        plain(signal.digitalMin),
+        plain(signal.digitalMax),
         signal.transducer,
         signal.prefiltering,
         fileFor.get(signal.index) ?? '',
