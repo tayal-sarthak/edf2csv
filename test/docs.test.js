@@ -4965,6 +4965,7 @@ describe('documentation and source agree on their lists', () => {
     await walk('src');
 
     const hintless = [];
+    const placeholders = [];
     let raised = 0;
     for (const where of files) {
       const text = await read(where);
@@ -5011,10 +5012,33 @@ describe('documentation and source agree on their lists', () => {
         if (!/(^|[\s,{])hint:/mu.test(body)) {
           hintless.push(`${code} at ${where}:${text.slice(0, at).split('\n').length}`);
         }
+        // The same body, asked the other question; see the placeholder check below.
+        const said = body.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/\/\/[^\n]*/gu, '');
+        const placeholder = /<[a-z][a-z ]*>/u.exec(said);
+        if (placeholder) placeholders.push(`${code}: ${placeholder[0]}`);
       }
     }
     assert.ok(raised >= 46, `expected the tool's diagnostics, found ${raised}`);
     assert.deepEqual(hintless, [], `a warning with nothing to say about the output: ${hintless.join(', ')}`);
+
+    /*
+      And no hint names a placeholder where it could name the value.
+
+      A hint that offers a command has to offer one that can be typed: 0.7.18 and 0.7.19 went
+      through them making sure each could be pasted, and 0.7.x refused `<recording>` outright
+      because "pasted, `<recording>` is a redirect". `EMPTY_LABEL` said `--channels
+      "#<position>"` under a sentence opening "Signal 0", so the reader was asked to carry the
+      number across and put it in themselves — while `NONPRINTABLE_LABEL`, two hundred lines
+      away in the same file, writes the position into the same flag.
+
+      Only hints. The usage builder prints `It takes one: --out <dir>.`, which describes what
+      the flag wants rather than offering a command, and is the same `<dir>` `--help` uses.
+    */
+    assert.deepEqual(
+      placeholders,
+      [],
+      `a hint offering a placeholder instead of a value: ${placeholders.join(', ')}`,
+    );
   });
 
   it('describes every rejected value through the one function that formats them', async () => {

@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.32
+
+### a hint asking the reader to supply a number the message had just given
+
+```
+warning: Signal 0 has no label. It will appear as "signal_0".
+         The name is built from the position rather than read from the header,
+         so it moves if the file's channels do. Select the channel as --channels
+         "#<position>" to say which one you mean without depending on it.
+```
+
+The position is 0. It is the second word of the sentence above.
+
+A hint that offers a command has to offer one that can be typed. 0.7.18 and 0.7.19 went
+through them making sure each could be pasted; 0.7.x refused `<recording>` in one outright,
+because "pasted, `<recording>` is a redirect: the shell looks for a file called `recording` and
+the command never runs". And `NONPRINTABLE_LABEL`, two hundred lines away in the same file,
+writes the number into the same flag — `--channels "#0"` — for the same reason.
+
+This one, added in 0.8.6, asked the reader to carry the number across from the message and put
+it in themselves.
+
+```
+         so it moves if the file's channels do. Select the channel as --channels
+         "#0" to say which one you mean without depending on it.
+```
+
+**The check** is a second question asked of the object bodies the warning-hint scan already
+reads out: no diagnostic may print a `<placeholder>` where it could print the value. Comments
+inside the body are stripped first, since this codebase discusses `signal_<index>` and
+`_ch<index>` at length in exactly the places that must not print them.
+
+The usage builder keeps its own: `It takes one: --out <dir>.` describes what the flag wants
+rather than offering something to paste, and `<dir>` is the word `--help` uses for it.
+
 ## 0.8.31
 
 ### the OUTPUT column naming a file that will exist nowhere

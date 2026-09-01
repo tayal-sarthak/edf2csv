@@ -363,7 +363,7 @@ A channel's label field is blank.
 warning: Signal 0 has no label. It will appear as "signal_0".
          The name is built from the position rather than read from the header,
          so it moves if the file's channels do. Select the channel as --channels
-         "#<position>" to say which one you mean without depending on it.
+         "#0" to say which one you mean without depending on it.
 ```
 
 Unless another channel is literally labelled `signal_0`, which EDF permits — labels are free text and nothing enforces anything about them. Then the synthesised name and the real one collide and both columns are suffixed with their position, and the warning says so rather than naming a column that will not exist:

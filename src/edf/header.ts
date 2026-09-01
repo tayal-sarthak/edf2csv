@@ -852,9 +852,18 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
             `${taken.length === 1 ? 'signal' : 'signals'} ${listed(taken.map(String))} already ` +
             `${taken.length === 1 ? 'carries' : 'carry'} as a label, so both columns are ` +
             `suffixed with their position instead.`,
+      /*
+        The position, not the word "position".
+
+        A hint that offers a command has to offer one that can be typed — 0.7.18 and 0.7.19
+        went through the others making sure each one could be pasted, and NONPRINTABLE_LABEL
+        two hundred lines up writes `--channels "#${i}"` with the number in it. This one said
+        `--channels "#<position>"` while the sentence above it began "Signal 0", so the
+        reader was asked to carry a number across from the message and put it in themselves.
+      */
       hint:
         'The name is built from the position rather than read from the header, so it moves ' +
-        'if the file\'s channels do. Select the channel as --channels "#<position>" to say ' +
+        `if the file's channels do. Select the channel as --channels "#${index}" to say ` +
         'which one you mean without depending on it.',
     });
   }
