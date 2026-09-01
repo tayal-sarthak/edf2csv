@@ -5099,7 +5099,14 @@ describe('--stdout', () => {
       Every `--stdout` refusal, not the ones that came to mind. This test was written in
       0.5.79 and did not enumerate `--stdout --out` or `--stdout --checksum`, which were
       still printing flush left with no prefix — the very shape it exists to hold.
+
+      Nor the empty folder, which is not a `--stdout` refusal at all and printed flush left
+      until 0.8.1 for exactly that reason: the list is of the flags this test was about, and
+      a usage error that arrives without a flag was never on it. It is also the one a batch
+      script meets first, since a glob that expands to nothing is handed over by the shell.
     */
+    const empty = await mkdtemp(path.join(tmpdir(), 'edf2csv-none-'));
+    temporaries.push(empty);
     const refusals = [
       [fixture('tiny.edf'), '--stdout', '--json'],
       [fixture('tiny.edf'), fixture('annotations.edf'), '--stdout'],
@@ -5111,6 +5118,7 @@ describe('--stdout', () => {
       [fixture('mixed-rates.edf'), '--stdout'],
       [fixture('tiny.edf'), '--duration', '1', '--end', '2'],
       [fixture('tiny.edf'), '--layout', 'sideways'],
+      [empty],
     ];
     for (const args of refusals) {
       const { code, stdout, stderr } = await cli(args);

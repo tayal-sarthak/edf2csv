@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.1
+
+### two failures a batch script cannot grep for
+
+Two failures printed flush left, with no prefix, on the stream the reference page says to
+grep.
+
+```
+$ edf2csv ./study/*/ --out converted
+No EDF or BDF recordings found in "study/night-1", "study/night-2".
+$ echo $?
+2
+```
+
+`grep '^error:'` over that run comes back empty, and the run failed. 0.5.79 took this shape
+off the two `--stdout` refusals — "a refusal that does not match `^error:` is invisible to
+the grep that finds every other one" — and 0.7.5 took it off seven more. These two were
+never on either list: one is not a `--stdout` refusal, and neither carries a flag at all.
+
+They are also the pair a batch script meets first. A glob that expands to a directory
+holding nothing, and a folder the process cannot open, are both things the shell hands over
+rather than things anybody types.
+
+```
+error: /data/locked: could not be read, so any recordings inside it were skipped.
+error: Nothing could be converted.
+       That path could not be read, so whether it holds recordings is unknown.
+```
+
+The second sentence splits at its own colon so the head stays one line, which is the rule
+`formatDiagnostics` holds every warning to and the reason the prefix is greppable at all.
+The line above it — the unreadable path — has carried `error: ` since it was written, so
+one run was printing both shapes, three lines apart.
+
+**The guard.** `shapes every refusal like the others` walks a list of invocations and asserts
+`^error: ` on the first line and a seven-space indent on every continuation. The list was
+written in 0.5.79 out of the flags that release was about, and its own comment already says
+what that costs — 0.7.x found two more `--stdout` pairs missing from it. The empty folder is
+the third, and it is on the list now. Reverting the prefix makes it fail.
+
 ## 0.8.0
 
 ### annotations.csv's description column, held to the two rules its neighbours are

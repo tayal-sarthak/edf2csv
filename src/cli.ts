@@ -317,20 +317,33 @@ export async function main(argv: readonly string[]): Promise<number> {
       And the sentence itself claimed a fact the run is in no position to state: nothing was
       found because nothing was looked at.
     */
+    /*
+      `error: ` and the seven-space continuation, like every other refusal.
+
+      These two are the last pair printing flush left with no prefix — the shape 0.5.79 took
+      off the `--stdout` refusals and 0.7.5 took off the rest, on the reasoning both of those
+      set out: stderr is what a script greps, and a failure that does not match `^error:` is
+      invisible to the grep that finds every other one. These are the two a batch script
+      meets first, since a glob that expands to nothing and a folder that cannot be read are
+      both things the shell hands over rather than things anybody types.
+
+      The sentence splits at its own colon so the greppable head stays one line, which is the
+      rule `formatDiagnostics` holds every warning to.
+    */
     if (unreadable.length > 0) {
       process.stderr.write(
-        `${wrap(
-          `Nothing could be converted: ${unreadable.length === 1 ? 'that path' : 'those paths'} ` +
-            `could not be read, so whether ${unreadable.length === 1 ? 'it holds' : 'they hold'} ` +
-            `recordings is unknown.`,
-        )}\n`,
+        'error: Nothing could be converted.\n' +
+          detail(
+            `${unreadable.length === 1 ? 'That path' : 'Those paths'} could not be read, so ` +
+              `whether ${unreadable.length === 1 ? 'it holds' : 'they hold'} recordings is unknown.`,
+          ),
       );
       return EXIT_ERROR;
     }
     process.stderr.write(
       // Escaped, like every other path this prints. These come from the command line, which
       // makes them no safer: a shell glob expands to whatever the directory holds.
-      `No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${printable(p)}"`))}.\n`,
+      `error: No EDF or BDF recordings found in ${listed(positionals.map((p) => `"${printable(p)}"`))}.\n`,
     );
     return EXIT_USAGE;
   }

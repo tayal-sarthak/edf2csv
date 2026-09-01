@@ -71,7 +71,7 @@ Which of its names the output takes is decided by the names, never by the order 
 Anything in the folder that is not a recording is skipped, and a folder holding none says so rather than converting nothing in silence:
 
 ```
-No EDF or BDF recordings found in "/data/empty".
+error: No EDF or BDF recordings found in "/data/empty".
 ```
 
 `--stdout` still takes a single recording, since one stream holds one recording's table.
@@ -119,15 +119,15 @@ What `--info` prints is checked the same way a conversion's `--stdout` is: redir
 An input can be a recording or a folder of them, and several can be given at once. A recording that cannot be read is a file error (exit 1); a folder holding none is a usage error (exit 2), since the command as written asked for nothing:
 
 ```
-No EDF or BDF recordings found in "/data/empty".
+error: No EDF or BDF recordings found in "/data/empty".
 ```
 
 A folder the process cannot open is a different answer and gets a different one. "None here" is something the run can state; "could not look" is not, so it says that instead, and exits 1 rather than 2 — the command was fine, the filesystem refused:
 
 ```
 error: /data/locked: could not be read, so any recordings inside it were skipped.
-Nothing could be converted: that path could not be read, so whether it holds
-recordings is unknown.
+error: Nothing could be converted.
+       That path could not be read, so whether it holds recordings is unknown.
 ```
 
 When some recordings *were* found alongside it, the closing line counts the unreadable paths beside the conversions, since how many recordings they held is the thing nobody knows:
