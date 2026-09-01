@@ -1236,7 +1236,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | `--channels` given with no names | `--channels was given but lists no channel names.` |
 | `--decimals` missing or out of range | `--decimals must be a whole number between 0 and 20` |
 | A channel name that matches nothing | `No channel named "ECQ". Did you mean "ECG"?` |
-| `--channels` naming the annotation channel | `"EDF Annotations" is this recording's annotation channel, not a signal` |
+| `--channels` naming the annotation channel, or coming close to it | `"EDF Annotations" is this recording's annotation channel, not a signal`; a near miss names the spelling the file carries |
 | `--jobs` or `--layout` given a value it cannot act on | `--layout must be "wide" or "long", got "tall"` |
 | A position that doesn't exist | `No channel at position #9.` |
 | An unparseable time value | `--start "banana" is not a time I understand.` |

@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.20
+
+### the annotation channel answered by name, and not by a name one character off
+
+0.5.122 gave `--channels "EDF Annotations"` its own answer, and the comment above it says why
+the old one was wrong:
+
+> Asking for it got "No channel named \"EDF Annotations\". Run with --info to list the channels
+> in this file", which is false about the file and points at a table that does not list it
+> either, so following the advice returns the reader to the same message.
+
+That fix matched the label exactly. One character off, and the reader got the sentence back:
+
+```
+$ edf2csv night.edf --channels "EDF Annotation"
+error: No channel named "EDF Annotation".
+       Run with --info to list the channels in this file.
+```
+
+So did `--channels annotations`, which is the label with everything but the noun left off, and
+so did `EDF Annotations` typed at a BDF+ recording, whose channel is spelled `BDF Annotations`.
+All three are how somebody who has read about EDF+ types it — and all three are false about the
+file and point at the same table.
+
+```
+error: There is no channel named "annotations"; the nearest thing to it is this recording's
+       annotation channel "EDF Annotations", which holds event text rather than samples, so it
+       has no column to select.
+       Its events are already written to annotations.csv by any conversion of this file — pass
+       --annotations-only for those and no signal data.
+```
+
+A near miss names the spelling the file carries rather than the one that was typed, which is
+the thing the reader needs and the one thing the old message never had.
+
+**Only when no signal label is close**, so a "Did you mean" about a real column always wins:
+`--channels ECQ` on a recording holding `ECG` still gets `ECG`. And by the same distance rule
+that suggestion uses — pulled into one function rather than written twice, since a rule with
+two copies is a rule that will give two answers.
+
 ## 0.8.19
 
 ### eleven refusals that opened with the word undefined

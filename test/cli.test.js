@@ -1049,13 +1049,37 @@ describe('--info', () => {
       [fixture('biosemi-plus.bdf'), 'BDF Annotations'],
       // Case-insensitively, like every other term.
       [fixture('annotations.edf'), 'edf annotations'],
+      /*
+        And near it, which is the shape somebody who has read about EDF+ actually types.
+
+        The exact spelling got the whole explanation and one character off got "No channel
+        named "EDF Annotation". Run with --info to list the channels in this file" — the
+        sentence this test exists to say is false about the file, and the pointer at a table
+        that does not list the channel either. The other format's prefix and the bare noun are
+        the same miss again.
+      */
+      [fixture('annotations.edf'), 'EDF Annotation'],
+      [fixture('annotations.edf'), 'annotations'],
+      [fixture('biosemi-plus.bdf'), 'EDF Annotations'],
     ]) {
       const asked = await cli([recording, '--info', '--channels', label]);
       assert.equal(asked.code, 2, asked.stderr);
-      assert.match(asked.stderr, /is this recording's annotation channel, not a signal/u, asked.stderr);
-      assert.doesNotMatch(asked.stderr, /No channel named/u, asked.stderr);
+      assert.match(asked.stderr, /annotation channel, not a signal|annotation channel "/u, asked.stderr);
       assert.match(asked.stderr, /--annotations-only/u, asked.stderr);
+      assert.match(asked.stderr, /"(EDF|BDF) annotations?"/iu, asked.stderr);
     }
+
+    // A near miss names the label the file carries, not the one that was typed, so what to
+    // look for is on the screen.
+    const near = await cli([fixture('biosemi-plus.bdf'), '--info', '--channels', 'EDF Annotations']);
+    assert.match(near.stderr, /annotation channel "BDF Annotations"/u, near.stderr);
+
+    /*
+      A signal that is close always wins: the annotation channel is the answer only when no
+      column is, and by the same distance rule the suggestion itself uses.
+    */
+    const typo = await cli([fixture('mixed-rates.edf'), '--info', '--channels', 'ECQ']);
+    assert.match(typo.stderr, /No channel named "ECQ"\. Did you mean "ECG"\?/u, typo.stderr);
 
     // And the advice works: that flag on that file writes the events it was after.
     const out = path.join(dir, 'events');

@@ -281,16 +281,45 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       const asAnnotations = signals.find(
         (signal) => signal.isAnnotations && signal.label.toLowerCase() === term.toLowerCase(),
       );
-      if (asAnnotations) {
+      /*
+        And a term that is merely near it, which the paragraph above describes and did not
+        cover.
+
+        The exact spelling got the whole explanation; one character off got "No channel named
+        "EDF Annotation". Run with --info to list the channels in this file" — which is the
+        sentence that comment calls false about the file and a pointer at a table that does
+        not list the channel either. `EDF Annotations` on a BDF+ recording is the same miss by
+        the prefix, and `--channels annotations` by everything but the noun; all three are how
+        somebody who has read about EDF+ actually types it.
+
+        Only when no signal label is close, so a suggestion about a real column always wins,
+        and by the same distance rule that suggestion uses rather than a second one.
+      */
+      const hint = suggest(term, candidates);
+      const nearAnnotations =
+        hint === ''
+          ? signals.find(
+              (signal) =>
+                signal.isAnnotations &&
+                signal.label !== '' &&
+                nearness(term, signal.label) <= reach(term),
+            )
+          : undefined;
+      const annotationChannel = asAnnotations ?? nearAnnotations;
+      if (annotationChannel) {
+        const exact = annotationChannel.label.toLowerCase() === term.toLowerCase();
         throw new ChannelSelectionError(
-          `"${term}" is this recording's annotation channel, not a signal: it holds event ` +
+          (exact
+            ? `"${term}" is this recording's annotation channel, not a signal: it holds event `
+            : `There is no channel named "${term}"; the nearest thing to it is this ` +
+              `recording's annotation channel "${annotationChannel.label}", which holds event `) +
             `text rather than samples, so it has no column to select.\n` +
             `Its events are already written to annotations.csv by any conversion of this ` +
             `file — pass --annotations-only for those and no signal data.`,
         );
       }
       throw new ChannelSelectionError(
-        `No channel named "${term}".${suggest(term, candidates)}\n` +
+        `No channel named "${term}".${hint}\n` +
           `Run with --info to list the channels in this file.`,
       );
     }
@@ -303,6 +332,22 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
     throw new ChannelSelectionError('No channels were selected.');
   }
   return { signals: selected, ambiguous };
+}
+
+/**
+ * How far a label is from what was typed, and how far the suggestion reaches.
+ *
+ * Two functions ask the same question — the "did you mean" list, and the annotation channel
+ * one branch above it — and a rule with two copies is a rule that will get two answers.
+ */
+function nearness(term: string, label: string): number {
+  const needle = term.toLowerCase();
+  const lower = label.toLowerCase();
+  return needle !== '' && lower.includes(needle) ? 0 : editDistance(needle, lower);
+}
+
+function reach(term: string): number {
+  return Math.max(2, Math.floor(term.length / 3));
 }
 
 function suggest(term: string, candidates: readonly EdfSignal[]): string {
@@ -319,14 +364,9 @@ function suggest(term: string, candidates: readonly EdfSignal[]): string {
     mean "ECG"?`: a suggestion that is retypeable, close, and about the wrong signal. Taking it
     converts a heart trace under the belief it is an EEG, and the run succeeds.
   */
-  const needle = term.toLowerCase();
   const scored = unique
-    .map((label) => {
-      const lower = label.toLowerCase();
-      const distance = needle !== '' && lower.includes(needle) ? 0 : editDistance(needle, lower);
-      return { label, distance };
-    })
-    .filter((c) => c.label !== '' && c.distance <= Math.max(2, Math.floor(term.length / 3)))
+    .map((label) => ({ label, distance: nearness(term, label) }))
+    .filter((c) => c.label !== '' && c.distance <= reach(term))
     .sort((a, b) => a.distance - b.distance);
   if (scored.length === 0) return '';
   /*

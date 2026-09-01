@@ -316,7 +316,15 @@ error: "EDF Annotations" is this recording's annotation channel, not a signal: i
        this file — pass --annotations-only for those and no signal data.
 ```
 
-Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.
+A term that is merely *near* the label gets the same answer, naming the spelling the file carries — `EDF Annotation`, `annotations`, and `EDF Annotations` on a BDF+ recording are how somebody who has read about EDF+ actually types it:
+
+```
+error: There is no channel named "annotations"; the nearest thing to it is this recording's annotation channel "EDF Annotations", which holds event text rather than samples, so it has no column to select.
+```
+
+Only when no signal label is close, so a "Did you mean" about a real column always wins, and by the same distance rule that suggestion uses.
+
+Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. The near spellings went on getting it until 0.8.20. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.
 
 ### Labels that literally start with #
 
