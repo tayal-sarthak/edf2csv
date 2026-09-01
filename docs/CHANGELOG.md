@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.34
+
+### two sentences about a result, both false in the one mode that produces it
+
+The api page describes `ConvertResult` field by field, and two of those descriptions are false
+in one mode.
+
+> `outputDir` — The directory that was written, exactly as it will be found on disk.
+> `files` lists only the files that were written.
+
+Under `toStdout` no directory is written and no file is:
+
+```js
+const result = await convert('night.edf', { toStdout: true });
+result.outputDir;        // "-"
+result.files;            // [{ name: "signals.csv", rows: 102400 }]
+```
+
+`path.join(result.outputDir, result.files[0].name)` is `-/signals.csv`, and nothing there
+exists. Neither value is wrong — `-` is the conventional name for the stream, and the entry's
+`rows` is the count the command line reports on that path — but the page said neither, and its
+two sentences said the opposite.
+
+Written down now, along with `annotationCount`, which is `0` in this mode whatever the
+recording holds: a stream carries one table and `annotations.csv` is not it. `--info` has said
+the same thing its own way since 0.8.31, where the `OUTPUT` column reads `(stdout)`.
+
+**The test runs the conversion in a child process.** Its first draft stubbed
+`process.stdout.write` around the call so the CSV would not land in the test report — and
+swallowed one of the runner's own lines with it, so the suite reported 495 tests where 496 had
+run. A file's stdout is not something a test in that file can borrow.
+
 ## 0.8.33
 
 ### null for a count the header had already settled

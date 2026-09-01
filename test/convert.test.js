@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 // A real shell, because the property under test is what a shell does with the text.
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   ChannelSelectionError,
@@ -1698,6 +1698,58 @@ describe('option checking', () => {
 
     assert.equal((await codes('annotations.edf', { annotationsOnly: true })).length, 0);
     assert.equal((await codes('annotations.edf', { start: 2.9 })).length, 0, 'signals were written');
+  });
+
+  it('describes a toStdout result the way the api page now says it does', async () => {
+    /*
+      Two sentences on that page were false in this one mode. `outputDir` was documented as
+      "The directory that was written, exactly as it will be found on disk" and is `-`, since
+      no directory is made; `files` was documented as listing "only the files that were
+      written" and holds one entry naming a `signals.csv` that exists nowhere.
+
+      The values are right — `-` is the conventional name for the stream, and the entry's
+      `rows` is the count the command line reports — and the page said neither.
+
+      Run in a child, because the stream really does go to this process's stdout, which here
+      is the test runner's own report. Stubbing `process.stdout.write` around the call swallows
+      whatever the runner writes during it.
+    */
+    const probe = [
+      `import { convert } from ${JSON.stringify(pathToFileURL(path.join(FIXTURES, '..', '..', '..', 'dist/index.js')).href)};`,
+      "const shape = async (options) => {",
+      "  const r = await convert(process.argv[2], { toStdout: true, quiet: true, ...options });",
+      "  return { outputDir: r.outputDir, files: r.files, annotationCount: r.annotationCount, readerHungUp: r.readerHungUp };",
+      "};",
+      "const plain = await shape({});",
+      "const gzip = await shape({ gzip: true });",
+      "await (await import('node:fs/promises')).writeFile(process.argv[3], JSON.stringify({ plain, gzip }));",
+    ].join('\n');
+    const dir = await outDir();
+    await mkdir(dir, { recursive: true });
+    const script = path.join(dir, 'probe.mjs');
+    await writeFile(script, probe);
+
+    const report = path.join(dir, 'shape.json');
+    execFileSync(process.execPath, [script, fixture('annotations.edf'), report], {
+      stdio: ['ignore', 'ignore', 'inherit'],
+    });
+    const { plain, gzip } = JSON.parse(await readFile(report, 'utf8'));
+
+    assert.equal(plain.outputDir, '-');
+    assert.equal(plain.files.length, 1, JSON.stringify(plain.files));
+    assert.equal(plain.files[0].name, 'signals.csv');
+    assert.equal(plain.files[0].rows, 300);
+    // A recording with three events, streamed: the stream carries one table and it is not
+    // annotations.csv.
+    assert.equal(plain.annotationCount, 0);
+    assert.equal(plain.readerHungUp, false);
+    assert.equal(gzip.files[0].name, 'signals.csv.gz');
+
+    const page = (await readFile(path.join(FIXTURES, '..', '..', '..', 'website/content/api.md'), 'utf8'))
+      .replace(/\s+/gu, ' ');
+    for (const phrase of ['`outputDir` is `-`', 'names the table rather than a file']) {
+      assert.ok(page.includes(phrase), `the api page does not say "${phrase}"`);
+    }
   });
 
   it('names the sample interval when the window is thinner than one', async () => {

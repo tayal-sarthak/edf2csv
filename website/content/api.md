@@ -496,7 +496,7 @@ interface ConversionProgress {
 
 ```ts
 interface ConvertResult {
-  outputDir: string;
+  outputDir: string;         // "-" under toStdout, where no directory is made
   files: WrittenFile[];      // { name: string; rows: number }
   readerHungUp: boolean;     // a toStdout reader closed the pipe before the end
   annotationCount: number;   // rows written to annotations.csv
@@ -508,6 +508,8 @@ interface ConvertResult {
 ```
 
 `files` lists only the files that were written, in the order they were written: the signal CSVs first, then `annotations.csv` if the recording has an annotation channel, then `channels.csv`. `metadata.json` is always written but is deliberately not in the list.
+
+`toStdout` is the exception to both of those, and it is the one mode where neither sentence above holds. No directory is made, so `outputDir` is `-` — the conventional name for the stream, and not a path to join anything onto. No file is written either, so the single `files` entry names the table rather than a file: `signals.csv`, or `signals.csv.gz` under `gzip`. Its `rows` is the count that matters and the one the command line reports; the `name` is there so the entry has one, and there is nothing on disk to open by it. `annotationCount` is `0` for the same reason — a stream carries one table, and `annotations.csv` is not it — whatever the recording holds. `--info` says the same thing its own way: since 0.8.31 its `OUTPUT` column reads `(stdout)` and the JSON's `output_file` is `-`.
 
 `result.file` is closed before `convert` returns. Its `header`, `recordCount` and `diagnostics` are plain data and stay readable, but `readRecords` and `readAnnotations` on it throw `UNREADABLE`. Open the file yourself with `EdfFile.open` if you want to keep reading after converting.
 
