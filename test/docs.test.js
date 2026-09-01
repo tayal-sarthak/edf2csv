@@ -5011,6 +5011,54 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(hintless, [], `a warning with nothing to say about the output: ${hintless.join(', ')}`);
   });
 
+  it('describes every rejected value through the one function that formats them', async () => {
+    /*
+      `describeValue` is "how a rejected value reads in the refusal: numbers bare, everything
+      else quoted so its type is visible", and it was pulled into one place in 0.7.247 because
+      there were two copies of it. Two refusals never used it at all — the record bounds and
+      the chunk size in `readRecords` — so a message refusing a value *for not being a number*
+      showed it as one:
+
+          readRecords({ startRecord: '1' })
+          startRecord must be a whole record index, got 1.
+
+      An array came back `got .`, a hole where the value should be; an object came back
+      `got [object Object]`, which is the string `assertInputPath`'s docstring names as the
+      reason that function exists.
+
+      The command line has its own rule and its own helper: an argv value is always text, so
+      `quotedValue` shows its edges with explicit quotation marks — and `--decimals` was the
+      one flag spelling that rule out a second time, under a docstring saying it is spelled
+      once.
+
+      So: every "got …" goes through one of the two.
+    */
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(relative);
+        else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await walk('src');
+
+    const raw = [];
+    let described = 0;
+    for (const where of files) {
+      const text = await read(where);
+      for (const match of text.matchAll(/got "?\$\{([^{}]*)\}"?/gu)) {
+        const expression = (match[1] ?? '').trim();
+        described++;
+        if (!/^(describeValue|quotedValue)\(/u.test(expression)) {
+          raw.push(`${where}: ${match[0]}`);
+        }
+      }
+    }
+    assert.ok(described >= 12, `expected the refusals that quote a value, found ${described}`);
+    assert.deepEqual(raw, [], `a rejected value formatted by hand: ${raw.join(', ')}`);
+  });
+
   it('lists every filesystem failure it says it translates', async () => {
     /*
       "Filesystem failures are translated into plain language rather than passed through as

@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.27
+
+### a value refused for not being a number, shown as one
+
+```js
+for await (const batch of file.readRecords({ startRecord: '1' })) { }
+
+EdfError: readRecords: startRecord must be a whole record index, got 1.
+```
+
+1 *is* a whole record index. The value was refused for being a string, and the message shows it
+as a number, so the reader is left looking for what else could be wrong.
+
+`describeValue` exists for exactly this — "how a rejected value reads in the refusal: numbers
+bare, everything else quoted so its type is visible" — and was pulled into one place in 0.7.247
+because the codebase had two copies of it. These two refusals had never used it at all, so the
+other shapes came out no better:
+
+```
+startRecord: []    ->  got .                 a hole where the value should be
+endRecord:   {}    ->  got [object Object]
+chunkBytes:  '0'   ->  got 0.
+```
+
+`[object Object]` is the string `assertInputPath`'s own docstring names as the reason that
+function exists.
+
+```
+readRecords: startRecord must be a whole record index, got "1".
+readRecords: endRecord must be a whole record index, got {}.
+chunkBytes must be a positive number of bytes, got "0".
+```
+
+**The command line has its own rule**, and its own helper. An argv value is always text, so
+`quotedValue` puts explicit quotation marks round it to show where a shell-built value begins
+and ends. Its docstring lists the flags following that rule and says it is "the same rule,
+spelled once" — and `--decimals`, one of the flags it names, spelled it a second time.
+
+**The check** asks it of every refusal that quotes a value at all: each `got …` in the tree has
+to go through one of the two. There are fourteen, and until now twelve.
+
 ## 0.8.26
 
 ### six counts with the plural written out, which the pluraliser's check cannot see

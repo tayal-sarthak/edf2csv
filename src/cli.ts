@@ -2192,7 +2192,10 @@ function optionalDecimals(raw: unknown): number | undefined {
   // `--decimals` accepts" — a claim this function was in a position to falsify.
   if (!/^\d+$/u.test(text) || !Number.isInteger(value) || value < 0 || value > MAX_DECIMALS) {
     throw new OptionError(
-      `--decimals must be a whole number between 0 and ${MAX_DECIMALS}, got "${String(raw)}".`,
+      // Through `quotedValue`, whose docstring names this flag among the ones following its
+      // rule and which this was the one call site not using — "the same rule, spelled once",
+      // spelled twice.
+      `--decimals must be a whole number between 0 and ${MAX_DECIMALS}, got "${quotedValue(raw)}".`,
     );
   }
   return value;

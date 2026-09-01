@@ -21,7 +21,7 @@ import { readInt16LE } from './bytes.js';
 import { counted, grouped } from '../format/list.js';
 // Crossing into convert/ as header.ts already does for `typeable`: the check belongs to the
 // call rather than to the file, and there is one of it.
-import { assertInputPath } from '../convert/options.js';
+import { assertInputPath, describeValue } from '../convert/options.js';
 
 /**
  * How far `readOrigin` looks for a record that states its own start time.
@@ -360,7 +360,19 @@ export class EdfFile {
       if (value !== undefined && !Number.isInteger(value)) {
         throw new EdfError(
           'BAD_HEADER_FIELD',
-          `readRecords: ${name} must be a whole record index, got ${value}.`,
+          /*
+            Through `describeValue`, like every other refusal that quotes a rejected value.
+
+            Its rule is "numbers bare, everything else quoted so its type is visible", and
+            these two were the sites that never used it — so a refusal *for not being a
+            number* showed the value as one: `readRecords({ startRecord: '1' })` came back
+            `startRecord must be a whole record index, got 1.`, where 1 is a whole record
+            index and the caller is left looking for what else could be wrong. An array came
+            back `got .`, a hole where the value should be, and an object came back
+            `got [object Object]` — the string `assertInputPath`'s own docstring names as the
+            reason it exists.
+          */
+          `readRecords: ${name} must be a whole record index, got ${describeValue(value)}.`,
           'Record boundaries are the unit the file can be read in; a fractional index would decode samples from the middle of a record.',
         );
       }
@@ -383,7 +395,7 @@ export class EdfFile {
     if (!Number.isFinite(budget) || budget < 1) {
       throw new EdfError(
         'UNREADABLE',
-        `chunkBytes must be a positive number of bytes, got ${String(options.chunkBytes)}.`,
+        `chunkBytes must be a positive number of bytes, got ${describeValue(options.chunkBytes)}.`,
         'It is a ceiling on how much of the file is held at once; one record is read whatever it says.',
       );
     }

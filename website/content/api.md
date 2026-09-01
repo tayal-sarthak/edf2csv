@@ -252,6 +252,8 @@ interface RecordBatch {
 }
 ```
 
+A record bound that is not a whole number, and a `chunkBytes` that is not a positive one, are refused as `EdfError`s naming the option — a fractional `startRecord` would decode samples from the middle of a record, and `chunkBytes: NaN` used to come back as a `RangeError` from inside Node's allocator. The refusal quotes the value the way every other one in this package does: numbers bare, everything else quoted so its type shows, so `startRecord: '1'` reads `got "1"` rather than `got 1` in a sentence about not being a number. Bounds outside the file are clamped rather than refused, so `startRecord: -1` starts at 0 and an `endRecord` past the last record stops at it.
+
 Samples aren't decoded for you. `sampleAt(batch, recordOffset, signal, sampleIndex)` returns the raw digital integer, handling the two byte layouts EDF and BDF use (BDF's 24-bit little-endian values are sign-extended correctly). `recordOffset` is the record's position **within the batch**, from 0 to `batch.recordCount - 1`, not its index in the file. Add `batch.firstRecordIndex` when you need the absolute index.
 
 To get physical units, build a scaler once per signal and apply it per sample.
