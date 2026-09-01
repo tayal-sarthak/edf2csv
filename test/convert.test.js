@@ -1472,19 +1472,30 @@ describe('option checking', () => {
       answered `Cannot read "[object Object]"`, and an array answered `Cannot read
       "a.edf,b.edf"` — a path printed back that nobody wrote, because String joins an array.
     */
-    const { OptionError } = await import('../dist/index.js');
-    for (const input of [{ input: 'a.edf' }, 123, null, undefined, ['a.edf', 'b.edf']]) {
-      await assert.rejects(convert(input, { quiet: true }), (error) => {
-        assert.ok(error instanceof OptionError, `${JSON.stringify(input)} threw ${error}`);
-        assert.match(error.message, /^input must be a path to a recording, got /u);
+    /*
+      Asked of `EdfFile.open` as well, which is the function that docstring is *about* — and
+      which is exported from the package root, and is what the api page recommends for
+      reading a header without converting. The check went into `convert` and left it behind,
+      so the sentence describing the defect stayed true of the code it described.
+    */
+    const { OptionError, EdfFile } = await import('../dist/index.js');
+    const notPaths = [{ input: 'a.edf' }, 123, null, undefined, ['a.edf', 'b.edf']];
+    for (const input of notPaths) {
+      for (const call of [() => convert(input, { quiet: true }), () => EdfFile.open(input)]) {
+        await assert.rejects(call(), (error) => {
+          assert.ok(error instanceof OptionError, `${JSON.stringify(input)} threw ${error}`);
+          assert.match(error.message, /^input must be a path to a recording, got /u);
+          return true;
+        });
+      }
+    }
+    // The empty string is a path the filesystem can answer for, and it does — both ways in.
+    for (const call of [() => convert('', { quiet: true }), () => EdfFile.open('')]) {
+      await assert.rejects(call(), (error) => {
+        assert.equal(error.code, 'UNREADABLE');
         return true;
       });
     }
-    // The empty string is a path the filesystem can answer for, and it does.
-    await assert.rejects(convert('', { quiet: true }), (error) => {
-      assert.equal(error.code, 'UNREADABLE');
-      return true;
-    });
   });
 
   it('makes the same check in the functions underneath, which are exported too', async () => {

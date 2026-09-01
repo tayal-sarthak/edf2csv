@@ -8,6 +8,50 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.9
+
+### the function that docstring is about was the one without the check
+
+`assertInputPath` opens with the sentence that describes this release:
+
+> `EdfFile.open` hands whatever it is given to `fs`, and the refusal comes back as an
+> `EdfError` coded `UNREADABLE`, hinted "Check the path is spelled the way it is on disk and
+> that you have permission to read it" — advice about a path, over a value that is not one,
+> filed as a problem with the recording rather than with the call.
+
+The check it introduced went into `convert`. `EdfFile.open` — the function that paragraph is
+about, exported from the package root, and what the api page recommends for reading a header
+without converting anything — did not get it.
+
+```js
+await EdfFile.open({ path: 'a.edf' });
+
+EdfError[UNREADABLE]: Cannot read "[object Object]": The "path" argument must be of type
+                      string or an instance of Buffer or URL. Received an instance of Object.
+              hint:   Check the path is spelled the way it is on disk and that you have
+                      permission to read it.
+```
+
+Node's own argument-type text, in the middle of a sentence about a recording, under advice
+about spelling and permissions over a value that has neither. An array is worse:
+`EdfFile.open(['a.edf', 'b.edf'])` answered `Cannot read "a.edf,b.edf"` — quoting back a path
+nobody wrote, because `String` of an array joins it with commas.
+
+Now the same `OptionError` `convert` raises, so one mistake has one answer whichever entry
+point it arrives at:
+
+```
+OptionError: input must be a path to a recording, got {"path":"a.edf"}.
+```
+
+The empty string is still left to the filesystem, both ways in, for the reason the docstring
+gives: it is a path, there is no such file, and saying so is the truth.
+
+The test for this was already named `rejects an input that is not a path, before it reaches
+the filesystem`, and the one after it is called `makes the same check in the functions
+underneath, which are exported too`. `EdfFile.open` is one of those functions; it now runs
+every case both ways.
+
 ## 0.8.8
 
 ### six flags read as ===true, so a non-boolean meant the opposite of what it said

@@ -19,6 +19,9 @@ import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
 import { readInt16LE } from './bytes.js';
 import { counted, grouped } from '../format/list.js';
+// Crossing into convert/ as header.ts already does for `typeable`: the check belongs to the
+// call rather than to the file, and there is one of it.
+import { assertInputPath } from '../convert/options.js';
 
 /**
  * How far `readOrigin` looks for a record that states its own start time.
@@ -178,6 +181,31 @@ export class EdfFile {
     'Check the path is spelled the way it is on disk and that you have permission to read it.';
 
   static async open(path: string): Promise<EdfFile> {
+    /*
+      A path, checked before `fs` is asked about it.
+
+      `assertInputPath` was written for exactly this and applied one level up. Its docstring
+      names the function it was describing — "`EdfFile.open` hands whatever it is given to
+      `fs`, and the refusal comes back as an `EdfError` coded `UNREADABLE`, hinted 'Check the
+      path is spelled the way it is on disk and that you have permission to read it' — advice
+      about a path, over a value that is not one, filed as a problem with the recording rather
+      than with the call" — and then went into `convert`, leaving `EdfFile.open` itself, which
+      is exported from the package root and is how the api page says to read a header without
+      converting anything, doing the thing being described:
+
+          EdfFile.open({ path: 'a.edf' })
+          EdfError[UNREADABLE]: Cannot read "[object Object]": The "path" argument must be of
+          type string or an instance of Buffer or URL. Received an instance of Object.
+
+      Node's own argument-type text, under a hint about spelling and permissions, over a
+      value that has neither. `EdfFile.open(['a.edf', 'b.edf'])` was worse: it answered
+      `Cannot read "a.edf,b.edf"`, quoting a path the caller never wrote, because `String` of
+      an array joins it with commas.
+
+      The same `OptionError` `convert` raises for the same mistake, so one mistake has one
+      answer whichever entry point it arrives at.
+    */
+    assertInputPath(path);
     const info = await stat(path).catch((cause: unknown) => {
       throw new EdfError(
         'UNREADABLE',
