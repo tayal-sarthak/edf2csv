@@ -200,7 +200,8 @@ try {
       const at = errorLine.indexOf('error: ');
       const before = errorLine.slice(0, at);
       // Whatever precedes it must end in a carriage return and an erase, not in the meter.
-      if (!/\r\[K$/u.test(before) && before !== '') {
+      // `\x1b`, not the byte itself: see the repository-wide check in docs.test.js.
+      if (!/\r\x1b\[K$/u.test(before) && before !== '') {
         problems.push(
           `"error: " does not start its line — preceded by ${JSON.stringify(before)}`,
         );

@@ -4801,6 +4801,60 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(hintless, [], `a fatal error with nothing to do about it: ${hintless.join(', ')}`);
   });
 
+  it('carries none of the bytes it refuses to print, in its own files', async () => {
+    /*
+      `unprintable.ts` defines the class of characters this tool escapes before anything
+      reaches a terminal: control bytes, which drive it, and the bidi overrides, which make it
+      display a run right to left until the run closes. Its own docstring carried one — a
+      U+202E, written in to demonstrate the reordering — so every line after it in the file
+      that defines the class rendered backwards under `cat`, and `less` and `git diff` and a
+      code-review page with it. The hazard, in the source that exists to keep it off a screen.
+
+      The changelog had the same byte taken out of it twice, in 0.7.257 and 0.8.0, on the rule
+      those entries set: write the name, not the character. `terminal.mjs` had a bare ESC
+      inside a regular expression, where `\x1b` reads the same to the engine and does not
+      reorder a terminal.
+
+      Tab, newline and carriage return are in the class and are how a text file is written, so
+      they come out here. Nothing else does — including in the fixtures directory, since the
+      recordings there are generated rather than committed.
+    */
+    const { unprintableIn } = await import('../dist/format/unprintable.js');
+    const skip = new Set(['node_modules', 'dist', 'generated', '.git', 'deleted', '.next']);
+    const readable = /\.(ts|tsx|js|jsx|mjs|cjs|md|json|yml|yaml|cff|html|css|txt|sh)$/u;
+    const offenders = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        if (skip.has(entry.name)) continue;
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) {
+          await walk(relative);
+          continue;
+        }
+        if (!readable.test(entry.name)) continue;
+        const text = await read(relative);
+        // Written as text files are; every other member of the class is what this is about.
+        const found = unprintableIn(text).filter((c) => !'\t\n\r'.includes(c));
+        for (const character of found) {
+          const at = text.indexOf(character);
+          const line = text.slice(0, at).split('\n').length;
+          offenders.push(`${relative}:${line} U+${character.codePointAt(0).toString(16).padStart(4, '0').toUpperCase()}`);
+        }
+      }
+    };
+    for (const top of ['src', 'test', 'docs', 'website/content', 'website/src', '.github']) {
+      await walk(top);
+    }
+    for (const file of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'CITATION.cff', 'package.json']) {
+      const text = await read(file);
+      const found = unprintableIn(text).filter((c) => !'\t\n\r'.includes(c));
+      for (const character of found) {
+        offenders.push(`${file} U+${character.codePointAt(0).toString(16).padStart(4, '0').toUpperCase()}`);
+      }
+    }
+    assert.deepEqual(offenders, [], `a byte this tool escapes, written into its own source: ${offenders.join(', ')}`);
+  });
+
   it('gives every warning something to say about the output too', async () => {
     /*
       The twin of the check above, one severity down. A `Diagnostic` takes a hint and

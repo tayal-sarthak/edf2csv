@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.17
+
+### the module that keeps bidi overrides off a terminal had one in its own docstring
+
+`src/format/unprintable.ts` is the one place that says what a terminal will not print as
+itself: control bytes, which drive it, and the bidirectional overrides, which tell it to
+display a run right to left until the run closes. Every path and every header field this tool
+prints goes through it first.
+
+Its own docstring carried one. A U+202E, written in so the reader could see the reordering it
+describes — which means every line after it in that file renders backwards under `cat`, and
+under `less`, and in `git diff`, and on a code-review page. The hazard, in the source that
+exists to keep it off a screen.
+
+The rule was already set, twice. `docs/CHANGELOG.md` had the same byte taken out of the 0.7.257
+and 0.8.0 entries for the same reason: write the name, not the character. The file those
+entries are about did not get the same treatment.
+
+`test/fuzz/terminal.mjs` had the other kind — a bare ESC inside a regular expression, where
+`\x1b` reads identically to the engine and does not repaint anything.
+
+**The check walks the repository and asks the module.** `src`, `test`, `docs`, the website
+content and components, the workflows, and the markdown at the root: every readable file, run
+through `unprintableIn`, the same function the conversion uses to decide whether an annotation
+description needs a warning. Tab, newline and carriage return come out of it, since they are
+how a text file is written; nothing else does.
+
+Putting the override back makes it fail and name the file, the line and the code point.
+
 ## 0.8.16
 
 ### two exports that answered a wrong argument by quoting somebody else's parameter

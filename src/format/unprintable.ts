@@ -4,9 +4,15 @@
  * Two kinds, and they fail differently. A control byte drives the terminal: `\x1b[2J\x1b[H`
  * clears the screen and homes the cursor, which is enough to hide output or repaint it as
  * something else. A bidirectional override does not drive it at all — it tells the terminal
- * to display a run right to left and to keep doing so until the run closes, so
- * `sleep-‮fdp.edf` arrives on screen as `sleep-fde.pdf`. Neither is a byte anyone types
- * on purpose, and in both cases what is shown is not what is there.
+ * to display a run right to left and to keep doing so until the run closes, so a file named
+ * `sleep-` then U+202E then `fdp.edf` arrives on screen as `sleep-fde.pdf`. Neither is a
+ * byte anyone types on purpose, and in both cases what is shown is not what is there.
+ *
+ * Named rather than written. This paragraph carried the override itself until 0.8.17, so
+ * every line after it in the file that defines the class rendered right to left in a
+ * terminal: the hazard, in the source that exists to keep it off a screen. The changelog
+ * had the same byte taken out of it twice, in the entries for 0.7.257 and 0.8.0, for the
+ * same reason and by the same rule: write the name, not the character.
  *
  * One class, in one place, because three callers need the same answer: `printable` escapes it
  * before a path or a header field reaches the terminal, and the conversion asks whether an
