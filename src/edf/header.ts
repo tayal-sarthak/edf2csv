@@ -31,7 +31,7 @@
 
 import { EdfError } from './errors.js';
 import type { Diagnostic } from './errors.js';
-import { counted, listed } from '../format/list.js';
+import { counted, grouped, listed } from '../format/list.js';
 import { plain } from '../format/number.js';
 // The shell-quoting rule for a label, shared rather than repeated: this hint and
 // `--channels`' own "did you mean" have to print the same command for the same label.
@@ -409,10 +409,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         refuted itself: "needs a 768-byte header, but the file is only 848 bytes". A reader
         following that looks for a truncation that is not there.
       */
-      `File declares ${counted(signalCount, 'signal')}, which needs a ${expectedHeaderBytes}-byte header, ` +
+      `File declares ${counted(signalCount, 'signal')}, which needs a ${grouped(expectedHeaderBytes)}-byte header, ` +
         (fileSize < expectedHeaderBytes
-          ? `but the file is only ${fileSize} bytes.`
-          : `but only ${buf.length} bytes of it were handed to the parser.`),
+          ? `but the file is only ${grouped(fileSize)} bytes.`
+          : `but only ${grouped(buf.length)} bytes of it were handed to the parser.`),
       'Either the recording is truncated inside its own header, or the signal count was ' +
         'read from bytes that are not it. Both leave the channel descriptions unfinished.',
     );
@@ -422,8 +422,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       code: 'HEADER_BYTES_MISMATCH',
       severity: 'warning',
       message:
-        `Header says it is ${headerBytes} bytes, but ${counted(signalCount, 'signal')} ` +
-        `${signalCount === 1 ? 'requires' : 'require'} ${expectedHeaderBytes} bytes. ` +
+        `Header says it is ${grouped(headerBytes)} bytes, but ${counted(signalCount, 'signal')} ` +
+        `${signalCount === 1 ? 'requires' : 'require'} ${grouped(expectedHeaderBytes)} bytes. ` +
         `Using the value computed from the signal count.`,
     });
   }
@@ -963,7 +963,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     // one it came out of, which is a mismatch worth being able to see.
     throw new EdfError(
       'FILE_TOO_SMALL',
-      `File is ${counted(fileSize, 'byte')}, which is less than the ${expectedHeaderBytes} ` +
+      `File is ${counted(fileSize, 'byte')}, which is less than the ${grouped(expectedHeaderBytes)} ` +
         `its own header occupies.`,
       'The header and the size came from different reads: parseHeader was handed a byte ' +
         'count smaller than the header block it was given.',
@@ -992,7 +992,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       empty
         ? 'The file contains a header and no data at all.'
         : `The file contains ${counted(dataBytes, 'byte')} of data, which is less than the ` +
-          `${recordBytes} its header says one data record takes.`,
+          `${grouped(recordBytes)} its header says one data record takes.`,
       empty
         ? 'The recording was probably interrupted before any data was written.'
         : 'Either the recording was cut short part way through its first record, or the ' +
@@ -1018,7 +1018,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       // beside it has been holding to since it was written.
       message:
         `The header declares ${counted(declaredRecordCount, 'data record')} but the file ` +
-        `contains ${recordCount}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
+        `contains ${grouped(recordCount)}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
       hint:
         declaredRecordCount > recordCount
           ? 'The recording looks truncated. It may have been cut short or copied incompletely.'

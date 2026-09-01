@@ -1406,9 +1406,11 @@ describe('EDF+ annotations', () => {
 
     await assert.rejects(() => EdfFile.open(partial), (error) => {
       assert.equal(error.code, 'NO_DATA_RECORDS');
-      // Both numbers, because the interesting comparison is between them.
-      assert.ok(error.message.includes(String(kept)), error.message);
-      assert.ok(error.message.includes(String(recordBytes)), error.message);
+      // Both numbers, because the interesting comparison is between them — and separated,
+      // since 0.8.5 these are six-figure byte counts printed for a person to compare.
+      const grouped = (n) => n.toLocaleString('en-US');
+      assert.ok(error.message.includes(grouped(kept)), error.message);
+      assert.ok(error.message.includes(grouped(recordBytes)), error.message);
       assert.doesNotMatch(error.hint, /before any data was written/u, error.hint);
       return true;
     });

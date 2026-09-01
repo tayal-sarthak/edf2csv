@@ -124,7 +124,7 @@ edf2csv sleep-study.edf --info
 File       sleep-study.edf
 Format     EDF+ (continuous)
 Recorded   2002-03-02 23:10:00
-Duration   8h 00m 0s  (28800 records of 1s)
+Duration   8h 00m 0s  (28,800 records of 1s)
 Size       18.7 MB
 Patient    X X X X
 Recording  Startdate 02-MAR-2002 X X X

@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.5
+
+### two counts of one recording, ten lines apart, grouped two different ways
+
+Three counts of one recording, on one screen of `--info`, written two different ways:
+
+```
+Duration   8h 00m 0s  (28800 records of 1s)
+...
+Would write 3,196,800 rows, roughly 108 MB.
+
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+```
+
+Nothing decided that. Row counts were grouped because whoever wrote them reached for
+`toLocaleString`; everything that went through `counted` was not, because `counted` was
+written as `${n} ${noun}`. The two were never compared.
+
+Where it actually costs something is a sentence holding two figures for the reader to
+subtract by eye:
+
+```
+error: The file contains 589824 bytes of data, which is less than the 983040 its header says
+       one data record takes.
+```
+
+Those are the two numbers that message exists to put side by side — 0.7.x added the second
+one for exactly that reason — and at six digits, unseparated, telling them apart is the work
+the format was meant to save. The same shape is in the reader's shortfall message ("Expected
+2864400 bytes of data at record 24600 but only 0 bytes were available"), in the header-size
+mismatch, in the record-count mismatch, and in the batch's closing line.
+
+`counted` groups now, and so do the bare figures standing beside it in the same sentence,
+through one helper — `grouped` — that names the rule.
+
+**Three call sites collapse into `counted`.** `${rows.toLocaleString('en-US')} ${rows === 1 ?
+'row' : 'rows'}` is what `counted(rows, 'row')` now produces exactly. The check that holds
+every count to going through the pluraliser had been exempting that spelling since it was
+written, and said why: those three "interpolate a thousands-separated `toLocaleString` count
+that `counted` does not produce". The exemption was a description of this defect. It is gone,
+and `toLocaleString` now appears once in the tree — in the helper — which the same check
+asserts, so a fourth call site cannot quietly decide differently.
+
 ## 0.8.4
 
 ### the guard that counted its own trailing comma, and the six errors it let through

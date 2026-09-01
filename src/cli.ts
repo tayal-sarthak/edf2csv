@@ -42,7 +42,7 @@ import { MAX_DECIMALS, OptionError } from './convert/options.js';
 import { TimeRangeError, parseTimeSpec } from './convert/time-range.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './convert/timing.js';
 import { formatDiagnostics, formatInfo, infoJson, formatSummary, printable, printableLines, summaryJson, wrap } from './cli/report.js';
-import { counted, listed } from './format/list.js';
+import { counted, grouped, listed } from './format/list.js';
 import { editDistance } from './format/distance.js';
 import { VERSION } from './version.js';
 
@@ -869,9 +869,9 @@ export async function main(argv: readonly string[]): Promise<number> {
         unreadable.length > 0
           ? `; ${counted(unreadable.length, 'path')} could not be read`
           : '';
-      const failed = converted < inputs.length ? `; ${inputs.length - converted} failed` : '';
+      const failed = converted < inputs.length ? `; ${grouped(inputs.length - converted)} failed` : '';
       process.stderr.write(
-        `\nConverted ${converted} of ${counted(inputs.length, 'recording')}${failed}${unread}.\n`,
+        `\nConverted ${grouped(converted)} of ${counted(inputs.length, 'recording')}${failed}${unread}.\n`,
       );
     }
 
@@ -1284,14 +1284,14 @@ async function convertOne(
         // sample is an ordinary thing to pipe, and this said "Wrote 1 rows to stdout." — the
         // third message in this family, after 0.5.74 and 0.5.78, each found because the sweep
         // that checks for it was narrower than the set of modes that print a count.
-        const written = `${rows.toLocaleString('en-US')} ${rows === 1 ? 'row' : 'rows'}`;
+        const written = counted(rows, 'row');
         emit(
           'err',
           !result.readerHungUp
             ? `Wrote ${written} to stdout.\n`
             : rows < expected
-              ? `Stopped: the reader closed the pipe after ${rows.toLocaleString('en-US')} of ` +
-                `${expected.toLocaleString('en-US')} ${expected === 1 ? 'row' : 'rows'} had been ` +
+              ? `Stopped: the reader closed the pipe after ${grouped(rows)} of ` +
+                `${counted(expected, 'row')} had been ` +
                 `written. The recording was ` +
                 `not converted in full.\n`
               : `Wrote ${written} to stdout, but the reader closed ` +

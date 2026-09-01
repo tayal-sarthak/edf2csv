@@ -1,6 +1,6 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
-import { counted, listed } from '../format/list.js';
+import { counted, grouped, listed } from '../format/list.js';
 import { plain } from '../format/number.js';
 
 export interface AnnotationTimingData {
@@ -321,7 +321,7 @@ export function deriveRecordStarts(
       code: 'ANNOTATION_DECODE_FAILED',
       severity: 'warning',
       message:
-        `${missing.length} of ${counted(file.recordCount, 'data record')} ${one ? 'carries' : 'carry'} no ` +
+        `${grouped(missing.length)} of ${counted(file.recordCount, 'data record')} ${one ? 'carries' : 'carry'} no ` +
         `readable timekeeping annotation (record${one ? '' : 's'} ${shown}), so ` +
         `${one ? 'its' : 'their'} true position in time is unknown.`,
       hint: one

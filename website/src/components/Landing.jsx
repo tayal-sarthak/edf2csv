@@ -11,7 +11,7 @@ import { highlight } from '../lib/highlight.js';
   tool running against a synthetic eight hour sleep recording. Nothing here is a
   mock-up of a product that does not exist yet.
 
-  The recording is 28800 records of 1s: EEG Fpz-Cz, EEG Pz-Oz and EOG horizontal at
+  The recording is 28,800 records of 1s: EEG Fpz-Cz, EEG Pz-Oz and EOG horizontal at
   100 Hz over -250..250 uV, Resp oro-nasal at 10 Hz over -1..1 V, Temp rectal at 1 Hz
   over 34..40 degC, plus an EDF Annotations channel, started 02.03.02 at 23.10.00.
   test/fixtures/sleep-study.mjs builds it; run `--info` on the result to regenerate the
@@ -28,7 +28,7 @@ const INFO_OUTPUT = `$ edf2csv sleep-study.edf --info
 File       sleep-study.edf
 Format     EDF+ (continuous)
 Recorded   2002-03-02 23:10:00
-Duration   8h 00m 0s  (28800 records of 1s)
+Duration   8h 00m 0s  (28,800 records of 1s)
 Size       18.7 MB
 Patient    X X X X
 Recording  Startdate 02-MAR-2002 X X X

@@ -14,7 +14,7 @@ import type { EdfSignal } from '../edf/header.js';
 import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal, makeScaler } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
-import { counted, listed } from '../format/list.js';
+import { counted, grouped, listed } from '../format/list.js';
 import { fixed, timeDecimals } from '../format/number.js';
 import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions } from './options.js';
@@ -396,7 +396,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       code: 'LARGE_OUTPUT',
       severity: 'warning',
       message:
-        `At least one output file will have more than ${SPREADSHEET_ROW_LIMIT.toLocaleString('en-US')} ` +
+        `At least one output file will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} ` +
         `rows, which is more than Excel or Numbers can open.`,
       hint: 'Use --start and --duration to convert a section, or read the file with pandas or R.',
     });

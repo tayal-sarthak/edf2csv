@@ -1014,7 +1014,7 @@ An acquisition that was started and stopped immediately produces exactly this. S
 Or data is there, but less than one record of it — which up to 0.5.86 got the message above, so a 606 KB file holding 589 KB of samples was told no data was written:
 
 ```
-error: The file contains 589824 bytes of data, which is less than the 983040 its header says one data record takes.
+error: The file contains 589,824 bytes of data, which is less than the 983,040 its header says one data record takes.
        Either the recording was cut short part way through its first record, or
        the header describes records larger than the ones actually written. Check
        the samples-per-record fields against the file size.
@@ -1043,7 +1043,7 @@ error: "/data/recordings" is a directory, not an EDF file.
 The mid-conversion case works differently, and is the one place in this section where the conversion has already written something. If the file shrinks or is being rewritten while edf2csv is reading it, the read comes up short and the conversion stops rather than quietly handing back a CSV missing its tail:
 
 ```
-error: Expected 2864400 bytes of data at record 24600 but only 0 bytes were available; the file appears to have changed size while it was being read.
+error: Expected 2,864,400 bytes of data at record 24600 but only 0 bytes were available; the file appears to have changed size while it was being read.
        Make sure the recording is not still being written to, then try again.
        What was written to "out" before it failed is incomplete and should not
        be used.
@@ -1062,7 +1062,7 @@ The reader failed *after* the conversion had started writing, so the run stopped
 **What edf2csv does.** Keeps the reader's own message and its advice, which name the record and the byte counts, and adds what is true of a failure at this point: some of the output exists and is incomplete. The distinction matters because the two used to be reported identically — a read failure was filed under `Writing to "<dir>" failed` with a hint about freeing disk space, which sends you to inspect the one part of the system that was working.
 
 ```
-error: Expected 524288 bytes of data at record 1024 but only 131072 bytes were available; the file
+error: Expected 524,288 bytes of data at record 1024 but only 131,072 bytes were available; the file
        appears to have changed size while it was being read.
        Make sure the recording is not still being written to, then try again.
        What was written to "converted" before it failed is incomplete and should

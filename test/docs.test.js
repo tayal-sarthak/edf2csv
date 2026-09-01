@@ -440,9 +440,15 @@ describe('documentation and source agree on their lists', () => {
       so this asks the question of the whole tree at once.
 
       A count followed by a noun and an inline `? '' : 's'`, which is the shape `counted`
-      replaces exactly. Not `${n === 1 ? 'row' : 'rows'}`: the three of those left interpolate
-      a thousands-separated `toLocaleString` count that `counted` does not produce, and a
-      helper that would is a different change from this one.
+      replaces exactly. The `${n === 1 ? 'row' : 'rows'}` spelling was left alone here until
+      0.8.5, because the three of those interpolated a thousands-separated `toLocaleString`
+      count that `counted` did not produce — which was itself the defect: two counts of one
+      recording, ten lines apart on `--info`, grouped one way and the other. Now that
+      `counted` groups, all three are `counted` calls and there are none left to exempt.
+
+      The second half asks the rule directly. `toLocaleString` appears once in the tree, in
+      the helper, so there is one place that decides how a number is written for a person and
+      no way for a fourth call site to quietly decide differently.
     */
     const files = [];
     const walk = async (dir) => {
@@ -466,6 +472,17 @@ describe('documentation and source agree on their lists', () => {
       }
     }
     assert.deepEqual(byHand, [], `a count pluralised beside counted(): ${byHand.join(', ')}`);
+
+    const grouping = files.filter((where) => where !== 'src/format/list.ts');
+    const ownGrouping = [];
+    for (const where of grouping) {
+      if ((await read(where)).includes('toLocaleString')) ownGrouping.push(where);
+    }
+    assert.deepEqual(
+      ownGrouping,
+      [],
+      `a number grouped outside the helper: ${ownGrouping.join(', ')}`,
+    );
   });
 
   it('shows only format strings describeFormat can return', async () => {

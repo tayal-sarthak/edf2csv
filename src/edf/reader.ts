@@ -18,7 +18,7 @@ import type { EdfHeader, EdfSignal } from './header.js';
 import { decodeRecordAnnotations } from './annotations.js';
 import type { Annotation } from './annotations.js';
 import { readInt16LE } from './bytes.js';
-import { counted } from '../format/list.js';
+import { counted, grouped } from '../format/list.js';
 
 /**
  * How far `readOrigin` looks for a record that states its own start time.
@@ -691,7 +691,7 @@ function changedWhileReading(
 ): EdfError {
   return new EdfError(
     'UNREADABLE',
-    `Expected ${expected} bytes of ${subject} at record ${record} but only ` +
+    `Expected ${grouped(expected)} bytes of ${subject} at record ${record} but only ` +
       `${counted(actual, 'byte')} ${actual === 1 ? 'was' : 'were'} available; the file appears ` +
       `to have changed size while it was being read.`,
     'Make sure the recording is not still being written to, then try again.',

@@ -9,7 +9,7 @@ import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { fixed, formatBytes, formatDuration, plain } from '../format/number.js';
-import { counted } from '../format/list.js';
+import { counted, grouped } from '../format/list.js';
 import { escapeCharacter, unprintablePattern } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
@@ -413,8 +413,7 @@ export function formatInfo(
       // A window narrow enough to select one sample is an ordinary thing to ask for, and this
       // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
       // and missed here, because the recording that test builds never estimates exactly one.
-      `Would write ${plan.estimate.rows.toLocaleString('en-US')} ` +
-        `${plan.estimate.rows === 1 ? 'row' : 'rows'}, roughly ` +
+      `Would write ${counted(plan.estimate.rows, 'row')}, roughly ` +
         `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
     ),
   );
@@ -571,7 +570,7 @@ export function formatSummary(result: ConvertResult): string {
     // unit from every line of a --gzip summary, so the numbers stood on their own.
     rows.push([
       `  ${file.name}`,
-      file.rows.toLocaleString('en-US'),
+      grouped(file.rows),
       // Singular at one, like every other count this prints: a one-row table is what a
       // narrow window produces, and "1 rows" is the same slip 0.5.74 fixed elsewhere.
       /\.csv(\.gz)?$/u.test(file.name) ? (file.rows === 1 ? 'row' : 'rows') : '',

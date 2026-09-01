@@ -67,5 +67,29 @@ export function listed(items: readonly string[], limit = DEFAULT_LIMIT): string 
  *     counted(1, 'entry', 'entries')  -> '1 entry'
  */
 export function counted(n: number, singular: string, plural = `${singular}s`): string {
-  return `${n} ${n === 1 ? singular : plural}`;
+  return `${grouped(n)} ${n === 1 ? singular : plural}`;
+}
+
+/**
+ * A count, in the digit grouping the rest of this tool's counts are printed in.
+ *
+ * `--info` printed two counts of the same recording ten lines apart:
+ *
+ *     Duration   8h 00m 0s  (28800 records of 1s)
+ *     Would write 3,196,800 rows, roughly 108 MB.
+ *
+ * and the warning under them, "more than 1,048,576 rows, which is more than Excel or Numbers
+ * can open", made three. Row counts were grouped because they were written that way; every
+ * count that went through `counted` was not, because it was written the other way. Nothing
+ * decided that — the two were never compared.
+ *
+ * Which matters most where two figures sit in one sentence to be compared against each
+ * other: "The file contains 39321 bytes of data, which is less than the 65536 its header
+ * says one data record takes" is a subtraction the reader is being asked to do by eye.
+ *
+ * Named so the neighbours of a `counted` call can be printed the same way without a third
+ * copy of the locale string, and so there is one place to change if that is ever wrong.
+ */
+export function grouped(n: number): string {
+  return n.toLocaleString('en-US');
 }
