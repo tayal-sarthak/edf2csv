@@ -5763,6 +5763,57 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('names what the long layout does to the value column, which it did not', async () => {
+    /*
+      The page enumerates the long layout's costs and stopped at two: the file size, and
+      `time_s` taking one precision for every rate "because a single column cannot mean three
+      things". The third is the column that argument applies to most directly. `value` holds
+      every channel's numbers, each in its own unit and at its own precision — so a recording
+      of µV, mV and °C writes all three down one column, and `long["value"].mean()` returns a
+      number that is the average of microvolts and degrees.
+
+      The page's own example two paragraphs up is `groupby("channel")["value"].describe()`,
+      which is the form that is safe, with nothing saying why the bare one is not.
+
+      Checked against a conversion rather than asserted, so the sentence stays true of the
+      tool: the units have to really differ and the precisions have to really differ.
+    */
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-long-'));
+    try {
+      const out = path.join(work, 'long');
+      const source = path.join(ROOT, 'test/fixtures/generated', 'mixed-rates.edf');
+      await run(process.execPath, [CLI, source, '--out', out, '--layout', 'long', '--quiet']);
+
+      const channels = (await readFile(path.join(out, 'channels.csv'), 'utf8')).trim().split('\n');
+      const columns = channels[0].split(',');
+      const units = new Map(
+        channels.slice(1).map((row) => {
+          const cells = row.split(',');
+          return [cells[columns.indexOf('column')], cells[columns.indexOf('unit')]];
+        }),
+      );
+      assert.ok(new Set(units.values()).size > 1, 'the fixture no longer mixes units');
+
+      const rows = (await readFile(path.join(out, 'signals.csv'), 'utf8')).trim().split('\n');
+      const places = new Map();
+      for (const row of rows.slice(1)) {
+        const [, channel, value] = row.split(',');
+        places.set(channel, (value.split('.')[1] ?? '').length);
+      }
+      assert.equal(places.size, units.size, 'every channel should appear in the one column');
+      assert.ok(new Set(places.values()).size > 1, 'the value column no longer mixes precisions');
+
+      const page = (await read('website/content/sampling-rates.md')).replace(/\s+/gu, ' ');
+      assert.ok(!/Two costs\./u.test(page), 'the page still counts two of the three');
+      assert.match(page, /Three costs\./u);
+      for (const phrase of ['each in its own unit and at its own precision', 'channels.csv']) {
+        assert.ok(page.includes(phrase), `the long-layout section does not say "${phrase}"`);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('says where the time slice it recommends does not work', async () => {
     /*
       The same question as the pivot below, asked of the default layout.

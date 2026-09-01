@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.21
+
+### the long layout's third cost, on the page that counted two
+
+sampling-rates.md is the page about what a mixed-rate recording costs you, and it ends its
+`--layout long` section by counting what that layout costs:
+
+> **Two costs.** The file is larger ... And `time_s` takes one precision for every rate — the
+> finest any of them needs — because a single column cannot mean three things.
+
+There are three, and the third is the column that argument applies to most directly. `value`
+holds every channel's numbers, each in its own unit and at its own precision:
+
+```csv
+time_s,channel,value
+0.00000000,EEG Fpz-Cz,0.061
+0.00000000,ECG,0.00122
+0.00000000,Temp rectal,37.00073
+```
+
+Microvolts, millivolts and degrees Celsius down one column, at three, five and five decimal
+places. So `long["value"].mean()` averages a voltage with a temperature and returns a number,
+and nothing about the file says it should not have. The page's own example two paragraphs
+above is `groupby("channel")["value"].describe()` — the form that is safe — with nothing
+saying why the bare one is not.
+
+The behaviour is right. Forcing one precision on the column would pad values to a width the
+recording does not support, and there is no unit that a voltage and a temperature share. The
+wide layout does not have this to answer, because there a channel is a column and the column
+is the thing you name; the long layout hands that job to `channels.csv`, which is where each
+channel's unit is, and to `conversion.rate_groups` in `metadata.json`, which carries the
+per-channel `decimals` beside it. What was missing is the sentence saying so, on the page
+whose whole subject is this trade.
+
+**The check converts before it reads.** A mixed-unit recording is converted long, and the
+units in `channels.csv` and the decimal places in the `value` column both have to really
+differ, before the page is asked whether it counts to three. So the sentence cannot outlive
+the behaviour it describes.
+
 ## 0.8.20
 
 ### the annotation channel answered by name, and not by a name one character off
