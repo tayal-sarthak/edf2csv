@@ -151,6 +151,42 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--help/);
   });
 
+  it('says zero events for a file with no annotation channel, rather than not knowing', async () => {
+    /*
+      `annotations` is `null` when `--info` has not counted the events, because counting them
+      means reading the annotation channel record by record. A recording with no annotation
+      channel has nothing to read: the answer is none, and the header settles it — the line
+      above says `annotation_channels: 0`.
+
+      Plain EDF is most of what anyone surveys, so a script asking "which of these carry
+      events" got `null` for exactly the files it could have been told about. The text form
+      has never had the ambiguity: it answers the same file with "and no annotations.csv
+      either, since this recording has no annotation channel".
+    */
+    const plain = JSON.parse((await cli([fixture('tiny.edf'), '--info', '--json'])).stdout);
+    assert.equal(plain.annotation_channels, 0);
+    assert.equal(plain.annotations, 0, 'a file with no channel has no events');
+
+    // A discontinuous file has its whole channel read, so the count is real.
+    const counted = JSON.parse((await cli([fixture('discontinuous.edf'), '--info', '--json'])).stdout);
+    assert.equal(counted.annotations, 0);
+
+    // A continuous one is read as far as its origin, so it is still not counted.
+    const partial = JSON.parse((await cli([fixture('annotations.edf'), '--info', '--json'])).stdout);
+    assert.equal(partial.annotation_channels, 1);
+    assert.equal(partial.annotations, null, 'a channel that was not read has no honest count');
+
+    /*
+      And the zero does not turn into the wrong warning. `--annotations-only` on a file with
+      no annotation channel is `NO_ANNOTATIONS`'s original case — "this recording has no
+      annotation channel" — not the one 0.8.7 added, which says the channel carries no events.
+    */
+    const asked = await cli([fixture('tiny.edf'), '--info', '--annotations-only']);
+    const warnings = asked.stderr.split('\n').filter((l) => l.startsWith('warning:'));
+    assert.equal(warnings.length, 1, asked.stderr);
+    assert.match(warnings[0], /has no annotation channel/u, warnings[0]);
+  });
+
   it('names the stream in the OUTPUT column when the run writes no file', async () => {
     /*
       "Named as they will be written. --info is read to find out what a run leaves behind,

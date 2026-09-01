@@ -1005,11 +1005,27 @@ async function showInfo(
       a conversion filters them by, rather than a second copy of it.
     */
     const eventWindow = requestedAnnotationWindow(shared, plan.range.recordingStartSeconds);
-    const knownEvents = needsEveryRecordStart
-      ? annotationData.annotations.filter(
-          (a) => a.onset >= eventWindow.from && a.onset < eventWindow.to,
-        ).length
-      : null;
+    /*
+      And zero where the header settles it, which `null` was claiming not to know.
+
+      `null` is this document's word for "not counted, because counting means reading the
+      channel record by record". A recording with no annotation channel has nothing to read
+      and nothing to count: the answer is none, and the header says so on the line above —
+      `annotation_channels: 0`. Plain EDF is most of the recordings anyone surveys, so a
+      script asking "which of these carry events" got `null` for the ones it could have been
+      told about and had to open them again to find out.
+
+      The text form has never had this ambiguity. It answers the same file with "and no
+      annotations.csv either, since this recording has no annotation channel", from the same
+      fact, in words.
+    */
+    const knownEvents = !hasAnnotations
+      ? 0
+      : needsEveryRecordStart
+        ? annotationData.annotations.filter(
+            (a) => a.onset >= eventWindow.from && a.onset < eventWindow.to,
+          ).length
+        : null;
     plan.diagnostics.push(...timing.diagnostics);
     /*
       What the conversion would say about the durations it would write.
@@ -1045,7 +1061,10 @@ async function showInfo(
       discontinuous file the whole channel has been read, and this is what the conversion
       will say, predicted before it runs.
     */
-    if (!plan.writeSignals && knownEvents === 0) {
+    if (hasAnnotations && !plan.writeSignals && knownEvents === 0) {
+      // A file with no annotation channel is `noAnnotations`'s case, not this one: it says
+      // "--annotations-only was requested but this recording has no annotation channel",
+      // where this would say the channel carries no events. Only one of them is true.
       plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, eventWindow));
     }
 

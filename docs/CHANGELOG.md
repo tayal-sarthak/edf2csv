@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.33
+
+### null for a count the header had already settled
+
+0.8.3 gave `--info --json` the event count the text form prints, and made it `null` where the
+count is not in hand — because counting means reading the annotation channel record by record,
+and a continuous recording is read only as far as its origin.
+
+It said `null` for plain EDF too.
+
+```
+$ edf2csv rec.edf --info --json | jq '{annotation_channels, annotations}'
+{
+  "annotation_channels": 0,
+  "annotations": null
+}
+```
+
+There is no channel to read. The answer is none, and the line above it settles that without
+reading anything. Plain EDF and plain BDF are most of what anyone surveys, so a script asking
+"which of these recordings carry events" got "not counted" for exactly the files it could have
+been told about, and had to open each one again to find out.
+
+The text form has never had the ambiguity. It answers the same file with "and no
+annotations.csv either, since this recording has no annotation channel" — from the same fact,
+in words, on the same run.
+
+`annotations: 0` now, and `null` kept for what it was for: a channel that exists and was not
+read to the end.
+
+**One latent consequence, closed with it.** 0.8.7 raises its warning from `--info` when the run
+writes no signal table and the event count is zero. A plain EDF under `--annotations-only` now
+meets that condition, and would have been told "This recording's annotation channel carries no
+events" about a channel it does not have — beside `NO_ANNOTATIONS`'s original raising saying
+the opposite thing correctly. Only one of them is ever true, so only one of them fires.
+
 ## 0.8.32
 
 ### a hint asking the reader to supply a number the message had just given
