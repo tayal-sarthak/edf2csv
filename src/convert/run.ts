@@ -410,6 +410,16 @@ async function findStaleOutput(
 }
 
 export function defaultOutputDir(inputPath: string): string {
+  /*
+    The third export whose only argument is a path, and the one left handing a wrong value on.
+
+    `path.basename` refuses a non-string with Node's own text — `The "path" argument must be
+    of type string. Received type number (5)` — which names a parameter of `path`, not one of
+    this function, and reaches a caller who never called `path`. `convert` got this check in
+    0.7.x and `EdfFile.open` in 0.8.9; this is what the api page tells you to call to find out
+    where those two would write, so it is reached by exactly the same caller.
+  */
+  assertInputPath(inputPath);
   const base = path.basename(inputPath, path.extname(inputPath));
   return path.join(path.dirname(inputPath), `${base}_csv`);
 }

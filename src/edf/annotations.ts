@@ -16,6 +16,8 @@
  */
 
 import { decodeText } from './bytes.js';
+// Crossing into convert/ as header.ts and reader.ts already do: the check belongs to the call.
+import { OptionError, describeValue } from '../convert/options.js';
 
 const SEP_TEXT = 0x14; // separates onset/duration from text, and text from text
 const SEP_DURATION = 0x15; // separates onset from duration
@@ -118,6 +120,26 @@ export function decodeRecordAnnotations(
   recordIndex: number,
   carriesTimekeeping = true,
 ): DecodedRecordAnnotations {
+  /*
+    The bytes, checked before anything is read out of them.
+
+    The api page offers this function on its own — "For decoding annotation bytes yourself,
+    `decodeRecordAnnotations(bytes, recordIndex)` handles one record's worth of the channel" —
+    so it is reached by a caller holding a slice they cut themselves. Hand it anything but a
+    typed array and the loop below reported the shape of its own local:
+
+        decodeRecordAnnotations(Buffer.from(text).toString(), 0)
+        TypeError: bytes.subarray is not a function
+
+    which names a variable inside this function and a method the caller never called. The
+    same `OptionError` the two path-taking exports raise, for the reason given there: the call
+    is what is wrong, not the recording.
+  */
+  if (!ArrayBuffer.isView(bytes)) {
+    throw new OptionError(
+      `bytes must be one record's annotation channel, got ${describeValue(bytes)}.`,
+    );
+  }
   const annotations: Annotation[] = [];
   let recordStart: number | null = null;
   let isFirstTal = true;

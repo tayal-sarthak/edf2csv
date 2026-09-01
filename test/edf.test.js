@@ -532,6 +532,26 @@ describe('errors', () => {
     });
   });
 
+  it('refuses annotation bytes that are not bytes, rather than reporting its own local', async () => {
+    /*
+      The api page offers `decodeRecordAnnotations(bytes, recordIndex)` on its own, for a
+      caller holding a slice they cut themselves. Anything but a typed array reached the loop
+      inside and came back as `TypeError: bytes.subarray is not a function` — the name of a
+      local in this function and a method the caller never called.
+    */
+    const { decodeRecordAnnotations, OptionError } = await import('../dist/index.js');
+    for (const bytes of ['+0\u0014\u0014\0', null, undefined, [1, 2, 3], 5]) {
+      assert.throws(() => decodeRecordAnnotations(bytes, 0), (error) => {
+        assert.ok(error instanceof OptionError, `${String(bytes)} threw ${error}`);
+        assert.match(error.message, /^bytes must be one record's annotation channel, got /u);
+        return true;
+      });
+    }
+    // A real slice still decodes, including the Buffer subclass the reader hands it.
+    assert.equal(decodeRecordAnnotations(new Uint8Array(4), 0).malformed, 0);
+    assert.equal(decodeRecordAnnotations(Buffer.alloc(4), 0).malformed, 0);
+  });
+
   it('refuses a file size that is not one, rather than deriving NaN from it', async () => {
     /*
       Every count `parseHeader` reports about the data comes out of its second argument, and

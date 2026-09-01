@@ -1478,10 +1478,19 @@ describe('option checking', () => {
       reading a header without converting. The check went into `convert` and left it behind,
       so the sentence describing the defect stayed true of the code it described.
     */
-    const { OptionError, EdfFile } = await import('../dist/index.js');
+    const { OptionError, EdfFile, defaultOutputDir } = await import('../dist/index.js');
     const notPaths = [{ input: 'a.edf' }, 123, null, undefined, ['a.edf', 'b.edf']];
     for (const input of notPaths) {
-      for (const call of [() => convert(input, { quiet: true }), () => EdfFile.open(input)]) {
+      /*
+        `defaultOutputDir` too, which is what the api page tells you to call to find out where
+        the other two would write — the same caller, one function over. It handed the value to
+        `path.basename`, which refuses it with Node's own text naming a parameter of `path`.
+      */
+      for (const call of [
+        () => convert(input, { quiet: true }),
+        () => EdfFile.open(input),
+        async () => defaultOutputDir(input),
+      ]) {
         await assert.rejects(call(), (error) => {
           assert.ok(error instanceof OptionError, `${JSON.stringify(input)} threw ${error}`);
           assert.match(error.message, /^input must be a path to a recording, got /u);

@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.16
+
+### two exports that answered a wrong argument by quoting somebody else's parameter
+
+Two more exported functions handed a wrong argument on to something else and reported its
+complaint.
+
+```js
+defaultOutputDir(5);
+// TypeError: The "path" argument must be of type string. Received type number (5)
+
+decodeRecordAnnotations(text, 0);
+// TypeError: bytes.subarray is not a function
+```
+
+The first names a parameter of `node:path`, over a call the reader made to this package. The
+second names a local variable of the function that raised it, and a method the caller never
+called. Neither says which argument was wrong or what it should have been.
+
+Both are reached by exactly the caller the api page sends there. `defaultOutputDir(inputPath)`
+is what that page offers for finding out where `convert` would write — the same path, the same
+caller, one function over from the two that were given this check in 0.7.x and 0.8.9. And
+`decodeRecordAnnotations` is offered for a caller cutting the slice themselves: "For decoding
+annotation bytes yourself, `decodeRecordAnnotations(bytes, recordIndex)` handles one record's
+worth of the channel."
+
+```
+OptionError: input must be a path to a recording, got 5.
+OptionError: bytes must be one record's annotation channel, got null.
+```
+
+The same `OptionError` `convert` and `EdfFile.open` raise, and for the reason
+`assertInputPath` gives: the call is what is wrong, not the recording.
+
+`ArrayBuffer.isView` rather than an `instanceof Uint8Array`, so the `Buffer` the reader hands
+this function on its own path — and any other typed-array view a caller has cut — still goes
+through.
+
 ## 0.8.15
 
 ### a header object claiming NaN records, from an argument nobody checked
