@@ -8,6 +8,57 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.7
+
+### an --annotations-only run that produced one header line and called it done
+
+`emptyWindow` is the warning for a conversion whose window selects no samples, and its
+docstring states the rule it is there to keep:
+
+> everywhere else that a request produces nothing this tool says so: a `--channels` term
+> matching nothing is an error, and `--annotations-only` on a file with no events raises
+> `NO_ANNOTATIONS`.
+
+The second half was true only of a file with no annotation *channel*. Give `--annotations-only`
+a recording whose channel carries nothing but the timekeeping entries that place each data
+record, or a window its events fall outside, and:
+
+```
+$ edf2csv night.edf --annotations-only --start 2.9s --out out --strict
+Wrote out
+  annotations.csv  0  rows
+  channels.csv     1  row
+Done in 12ms.
+$ echo $?
+0
+```
+
+One header line, and nothing else the run was asked for. `--strict` passes. That is exactly
+the shape `EMPTY_WINDOW` exists to refuse on the signal side — "a header-only file is exactly
+what a successful extraction of an empty range looks like" — arriving by the other route.
+
+```
+warning: None of this recording's 3 events fall inside the requested window, so annotations.csv holds its header and no rows.
+         --start and --end are read on the recording's own clock, which --info
+         prints as "Timed from", and an event is kept when its onset falls
+         inside the window.
+```
+
+The two causes are separated because the advice differs. A channel of pure timekeeping has
+nothing to export and never will. A window that excluded everything is a thing the caller can
+change, and the commonest reason is reading it off a clock the recording does not use — a
+file whose first record sits at 1000 s is asked for with `--start 1000`.
+
+**Only where there is no signal table either**, so the empty annotations.csv is the whole of
+what the run produced. A window that happens to select no events from a conversion that is
+also writing signals is ordinary, and warning there would fire on most windows of most
+annotated recordings, which is how a warning stops being read.
+
+**`--info` predicts it for a discontinuous recording** — whose whole annotation channel it
+reads, because that is where the record start times are — and not for a continuous one, which
+it reads as far as the origin and no further. That is the same limit its `annotations` field
+reports as null, and it declines to guess rather than raising a warning off a partial read.
+
 ## 0.8.6
 
 ### five warnings that said what was wrong and not what it meant for the output

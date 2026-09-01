@@ -1603,6 +1603,39 @@ describe('option checking', () => {
     assert.match(page, /it never fires at all/u, 'the API page still promises it always fires');
   });
 
+  it('says so when the only table it was asked for comes out empty', async () => {
+    /*
+      `emptyWindow`'s docstring states the rule: "everywhere else that a request produces
+      nothing this tool says so: a --channels term matching nothing is an error, and
+      --annotations-only on a file with no events raises NO_ANNOTATIONS." The second half
+      held only for a file with no annotation *channel*. A channel carrying nothing but
+      timekeeping, or a window its events fall outside, wrote an annotations.csv of one
+      header line, printed "0 rows", exited 0 and passed --strict.
+
+      Both causes, because the two get different advice, and the ordinary window — one that
+      selects no events from a run that is also writing signals — stays silent, since
+      warning there would fire on most windows of most annotated recordings.
+    */
+    const codes = async (input, options) => {
+      const result = await convert(fixture(input), {
+        outputDir: await outDir(), quiet: true, ...options,
+      });
+      return result.diagnostics.filter((d) => d.code === 'NO_ANNOTATIONS');
+    };
+
+    const windowed = await codes('annotations.edf', { annotationsOnly: true, start: 2.9 });
+    assert.equal(windowed.length, 1, 'a window that excluded every event said nothing');
+    assert.match(windowed[0].message, /None of this recording's 3 events/u);
+    assert.match(windowed[0].hint, /Timed from/u);
+
+    const timekeepingOnly = await codes('discontinuous.edf', { annotationsOnly: true });
+    assert.equal(timekeepingOnly.length, 1, 'a channel with no events said nothing');
+    assert.match(timekeepingOnly[0].message, /carries no events/u);
+
+    assert.equal((await codes('annotations.edf', { annotationsOnly: true })).length, 0);
+    assert.equal((await codes('annotations.edf', { start: 2.9 })).length, 0, 'signals were written');
+  });
+
   it('leaves the values it should accept alone', async () => {
     for (const options of [{ decimals: 0 }, { decimals: 20 }, { start: 0 }, { duration: 1 },
       // A blank beside a real name is a list that names something, and still selects it.

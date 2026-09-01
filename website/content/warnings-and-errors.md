@@ -85,7 +85,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `DUPLICATE_LABEL` | Two or more channels share a label, a channel's own label was taken by another's `_ch` suffix or by `time_s`, or a `--channels` term matched several |
 | `DISCONTINUOUS` | The recording is marked EDF+D, or its records are out of order, overlap in time, contradict an EDF+C marking, sit too far from zero to tell apart, or have nowhere to record where they are |
 | `ANNOTATION_DECODE_FAILED` | An annotation entry, a record's timestamp, or an event's duration couldn't be read — or a duration read perfectly well and states a length below zero |
-| `NO_ANNOTATIONS` | `--annotations-only` was used on a file with no annotation channel |
+| `NO_ANNOTATIONS` | `--annotations-only` found no events to export: no annotation channel, a channel holding only timekeeping, or a window that excluded every event |
 | `MIXED_SAMPLING_RATES` | The channels being converted run at different rates, so one output file is written per rate — or one file for all of them under `--layout long` |
 | `NO_SIGNAL_CHANNELS` | The file contains annotations and nothing else |
 | `LARGE_OUTPUT` | An output file will be too big for a spreadsheet application |
@@ -729,9 +729,9 @@ Until 0.7.52 the second was dropped in silence: `--info` printed `Recorded 2020-
 
 ### NO_ANNOTATIONS
 
-You passed `--annotations-only` but the recording has no annotation channel.
+There are no events to export. Raised in three situations: the recording has no annotation channel at all, it has one that carries no events, or a requested window excluded every event it does carry.
 
-**Cause.** Plain EDF and plain BDF carry no annotations at all. Only EDF+ and BDF+ files have an `EDF Annotations` or `BDF Annotations` channel.
+**Cause.** Plain EDF and plain BDF carry no annotations at all. Only EDF+ and BDF+ files have an `EDF Annotations` or `BDF Annotations` channel. A file that has one may still hold nothing but the timekeeping entries that say where each data record sits, which are never exported. And `--start`, `--end` and `--duration` filter events by onset, so a window can select none of them.
 
 **What edf2csv does.** Writes `channels.csv` and `metadata.json` but no `annotations.csv` and no signal files, because you asked for annotations and there are none. The command still exits 0. `--info --annotations-only` raises the same warning without converting anything, so `--strict` catches it either way.
 
@@ -741,11 +741,27 @@ warning: --annotations-only was requested but this recording has no annotation c
          --annotations-only to get the signals.
 ```
 
+The other two are raised where the run has no signal table either, so the empty `annotations.csv` is the whole of what it produced. A window that selects no events from a conversion that is also writing signals is ordinary and is not warned about — it would fire on most windows of most annotated recordings.
+
+```
+warning: None of this recording's 3 events fall inside the requested window, so annotations.csv holds its header and no rows.
+         --start and --end are read on the recording's own clock, which --info
+         prints as "Timed from", and an event is kept when its onset falls
+         inside the window.
+warning: This recording's annotation channel carries no events, so annotations.csv holds its header and no rows.
+         The channel holds only the timekeeping entries that say where each data
+         record sits, and those are never exported.
+```
+
+`--info` predicts these two only for a discontinuous recording, whose whole annotation channel it reads to find the record start times. A continuous one is read as far as its origin and no further, so the count is not in hand and `--info` does not guess at it — the same reason its `annotations` field is `null` there.
+
 **What to do.** Run `--info` and look at the `Format` line. If it says `EDF` rather than `EDF+`, there were never any events to extract. Convert without `--annotations-only` to get the signal data:
 
 ```bash
 edf2csv recording.edf
 ```
+
+If the warning is about a window, check `--info`'s `Timed from` line: a recording whose first record sits at 1000 s is asked for with `--start 1000`, not with `--start 0`.
 
 ## Output shape
 

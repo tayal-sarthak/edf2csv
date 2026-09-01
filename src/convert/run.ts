@@ -264,6 +264,26 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       );
       written.push(result);
       annotationsWritten = result.rows;
+      /*
+        A run whose only table came out empty, which nothing said.
+
+        `emptyWindow`'s own docstring states the rule this was breaking: "everywhere else that
+        a request produces nothing this tool says so: a --channels term matching nothing is an
+        error, and --annotations-only on a file with no events raises NO_ANNOTATIONS." The
+        second half is true only of a file with no annotation *channel*. Give the flag a
+        recording whose channel carries nothing but timekeeping, or a window its events fall
+        outside, and the run writes an annotations.csv holding one header line, prints "Wrote
+        … annotations.csv 0 rows", exits 0 and passes --strict — which is exactly the shape
+        EMPTY_WINDOW exists to refuse on the signal side, arriving by the other route.
+
+        Only when there is no signal table either, so this is the whole of what the run
+        produced. A windowed conversion of a recording whose events sit elsewhere is
+        ordinary and its signals are the point; warning there would fire on most windows of
+        most annotated recordings, which is how a warning stops being read.
+      */
+      if (!plan.writeSignals && annotationsWritten === 0) {
+        plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, window));
+      }
     }
 
     written.push(
@@ -1710,6 +1730,37 @@ export function noAnnotations(file: EdfFile, options: ConvertOptions): Diagnosti
       '--annotations-only was requested but this recording has no annotation channel, ' +
       'so there are no events to export.',
     hint: 'Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.',
+  };
+}
+
+/**
+ * `--annotations-only` that wrote no events, and why.
+ *
+ * The two causes are told apart because the answers are different. A channel holding nothing
+ * but timekeeping entries has nothing to export and never will; a window that excluded every
+ * event is a thing the caller can change, and the commonest reason is reading the window off
+ * a clock the recording does not use — `--start` and `--end` are on the recording's own,
+ * which `--info` prints as "Timed from".
+ *
+ * `NO_ANNOTATIONS` rather than a new code, since it is the same statement its other raising
+ * makes — there are no events to export — about the same flag, and a code is matched on by
+ * scripts that should not have to learn a second one for the same fact.
+ */
+export function emptyAnnotations(total: number, window: { from: number; to: number }): Diagnostic {
+  const windowed = (window.from !== -Infinity || window.to !== Infinity) && total > 0;
+  return {
+    code: 'NO_ANNOTATIONS',
+    severity: 'warning',
+    message: windowed
+      ? `None of this recording's ${counted(total, 'event')} fall inside the requested ` +
+        `window, so annotations.csv holds its header and no rows.`
+      : `This recording's annotation channel carries no events, so annotations.csv holds ` +
+        `its header and no rows.`,
+    hint: windowed
+      ? '--start and --end are read on the recording\'s own clock, which --info prints as ' +
+        '"Timed from", and an event is kept when its onset falls inside the window.'
+      : 'The channel holds only the timekeeping entries that say where each data record ' +
+        'sits, and those are never exported.',
   };
 }
 

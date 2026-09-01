@@ -29,6 +29,7 @@ import {
   defaultOutputDir,
   describeFsError,
   descriptionDiagnostics,
+  emptyAnnotations,
   durationDiagnostics,
   requestedAnnotationWindow,
   noAnnotations,
@@ -1029,6 +1030,17 @@ async function showInfo(
     // And what those descriptions carry; see descriptionDiagnostics. Only reached where the
     // events have been read, which is the same set of files the duration warnings cover.
     plan.diagnostics.push(...descriptionDiagnostics(annotationData.annotations, eventWindow));
+    /*
+      And the empty-table warning, where the count is in hand to raise it from.
+
+      `knownEvents` is null on a continuous file, whose annotation channel is read only as far
+      as its origin — so `--info` cannot say this about one and does not guess. On a
+      discontinuous file the whole channel has been read, and this is what the conversion
+      will say, predicted before it runs.
+    */
+    if (!plan.writeSignals && knownEvents === 0) {
+      plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, eventWindow));
+    }
 
     /*
       And the warning about the signal file this conversion would not write.
