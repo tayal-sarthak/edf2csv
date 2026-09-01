@@ -45,6 +45,12 @@ export function assertOptions(options: {
   layout?: string | undefined;
   channels?: readonly string[] | undefined;
   outputDir?: string | undefined;
+  annotationsOnly?: boolean | undefined;
+  gzip?: boolean | undefined;
+  bom?: boolean | undefined;
+  force?: boolean | undefined;
+  checksum?: boolean | undefined;
+  toStdout?: boolean | undefined;
 }): void {
   const { decimals } = options;
   if (decimals !== undefined) {
@@ -135,6 +141,29 @@ export function assertOptions(options: {
   */
   if (options.outputDir === '') {
     throw new OptionError('outputDir is empty. Give a directory, for example "./converted".');
+  }
+
+  /*
+    The six flags, every one of which is read as `=== true` where it is read.
+
+    Which means a value that is not a boolean is not merely tolerated: it is taken as the
+    opposite of what it says. `convert(file, { annotationsOnly: 'true' })` wrote every signal
+    the caller had asked to leave out; `{ gzip: 1 }` wrote plain CSVs under names ending
+    `.csv`, so a caller who then opened `signals.csv.gz` found nothing there. No error, no
+    warning, and output that looks like a deliberate choice — which is the sentence at the
+    top of this file, describing the case it was written for.
+
+    `1` and `'true'` are how a flag arrives from `JSON.parse` of a config file, from a query
+    string, or from a CLI wrapper that did not coerce; none of them is a caller being
+    careless in a way TypeScript would catch, since the callers this reaches are the ones not
+    using it. The layout check above states the rule these were missing from: "Every other
+    option that has a shape is checked here."
+  */
+  for (const name of ['annotationsOnly', 'gzip', 'bom', 'force', 'checksum', 'toStdout'] as const) {
+    const value = options[name];
+    if (value !== undefined && typeof value !== 'boolean') {
+      throw new OptionError(`${name} must be true or false, got ${describeValue(value)}.`);
+    }
   }
 
   const { channels } = options;

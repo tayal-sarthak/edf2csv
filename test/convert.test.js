@@ -1430,6 +1430,21 @@ describe('option checking', () => {
         it by accident; building the path in code is how the library does.
       */
       [{ outputDir: '' }, /outputDir is empty\. Give a directory/u],
+      /*
+        And the six flags, every one read as `=== true` where it is read — so a value that is
+        not a boolean was taken as the opposite of what it says. `annotationsOnly: 'true'`
+        wrote every signal the caller had asked to leave out, and `gzip: 1` wrote plain CSVs
+        under plain names, so a caller who then opened `signals.csv.gz` found nothing. Both
+        resolved, and said nothing. `1` and `'true'` are how a flag arrives out of a parsed
+        config file or a wrapper that did not coerce, which is exactly the caller not using
+        the types.
+      */
+      [{ annotationsOnly: 'true' }, /annotationsOnly must be true or false, got "true"/u],
+      [{ gzip: 1 }, /gzip must be true or false, got 1/u],
+      [{ bom: 'yes' }, /bom must be true or false, got "yes"/u],
+      [{ force: 'no' }, /force must be true or false, got "no"/u],
+      [{ checksum: 0 }, /checksum must be true or false, got 0/u],
+      [{ toStdout: null }, /toStdout must be true or false, got null/u],
     ];
 
     for (const [options, expected] of cases) {

@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.8
+
+### six flags read as ===true, so a non-boolean meant the opposite of what it said
+
+`options.ts` exists because the command line validated its values and the library did not, and
+its opening paragraph says which of the three failures that produced is worst: "no error, no
+warning, and output that looks like a deliberate choice."
+
+Six options were still doing that. Every flag is read as `=== true` at the point it is used,
+so a value that is not a boolean is not merely tolerated — it is taken as the opposite of
+what it says.
+
+```js
+await convert('night.edf', { outputDir: 'out', annotationsOnly: 'true' });
+// resolves. out/ holds signals.csv, 8 hours of it.
+```
+
+The caller asked for the events and not the signals, and got the signals. `gzip: 1` is the
+same shape one flag over: plain CSVs written under plain names, so a script that goes on to
+open `signals.csv.gz` finds nothing there and the conversion it is reading reported success.
+`bom`, `force`, `checksum` and `toStdout` round out the set.
+
+`1` and `'true'` are not a TypeScript user being careless — TypeScript rejects both. They are
+how a flag arrives out of `JSON.parse` of a config file, out of a query string, or out of a
+wrapper that forwarded a CLI argument without coercing it, which is to say out of exactly the
+callers that are not using the types. The same reasoning `channels: 'ECG'` was refused for in
+0.7.x: "a caller building the array from user input arrives here."
+
+The `layout` check three lines above states the rule these were missing from — "Every other
+option that has a shape is checked here" — and `layout` itself was added the same way, in
+0.5.0, and did not join them until somebody looked.
+
+Refused before the output directory exists, like every other `OptionError`, so a rejected
+flag leaves nothing on disk.
+
 ## 0.8.7
 
 ### an --annotations-only run that produced one header line and called it done
