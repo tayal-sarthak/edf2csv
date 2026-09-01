@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.35
+
+### npm test wrote a gzip stream to the terminal
+
+`npm test` wrote a gzip stream to the terminal.
+
+```
+$ npm test | xxd | head -1
+00000000: 1f8b 0800 0000 0000 0013 4dcf 3b0e 0231  ..........M.;..1
+```
+
+675 control bytes in the run, 45 of them ESC, 165 NUL — from a tool that refuses to write
+compressed bytes to a terminal itself, on the reasoning that "gzip itself has declined to write
+compressed data to a terminal for thirty years", and that keeps a pseudo-terminal sweep whose
+job is to assert nothing but text reaches the screen.
+
+The source is one test, and a good one. `leaves no listener behind on a stream it does not own`
+converts a fixture to stdout fifteen times, twice — plain and gzipped — and checks that the
+writer took its `error` listener back off `process.stdout` each time. The listener count has to
+be read in the process doing the converting, so the conversion has to be real; and `toStdout`
+in a test means the runner's own report.
+
+It converts in a child process now, which reads the counts where they mean something and hands
+them back through a file. Its own stdout is discarded, and `npm test` writes nothing but text.
+
+Reverting the fix that test guards — `BufferedLineWriter`'s `#release()` — still makes it fail
+with "listeners were left behind", from the child, as it did from here.
+
+**Found by the same mistake, one release earlier.** 0.8.34's first draft stubbed
+`process.stdout.write` around a `toStdout` conversion so the CSV would not land in the report,
+and swallowed one of the runner's own lines with it: the suite reported 495 tests where 496 had
+run. A test cannot borrow the stdout of the process reporting it, and two tests were trying to.
+
 ## 0.8.34
 
 ### two sentences about a result, both false in the one mode that produces it

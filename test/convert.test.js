@@ -3256,24 +3256,43 @@ describe('converting', () => {
       compressor's destination, so the release could not reach the listener that mattered.
       One flag away from what was covered, on the identical failure.
     */
+    /*
+      Converted in a child, because `toStdout` writes to this process's stdout — which, in a
+      test, is the runner's own report. Thirty conversions of a fixture put thirty CSVs into
+      it and, under `--gzip`, thirty deflate streams: 675 control bytes and 45 ESCs reaching
+      the terminal of anyone running `npm test`, from a tool that refuses to write compressed
+      bytes to a terminal itself and keeps a pty sweep to prove nothing else does either.
+
+      The counts have to be taken where the converting happens, so the child takes them and
+      writes them out; its own stdout is discarded.
+    */
+    const probe = [
+      `import { convert } from ${JSON.stringify(pathToFileURL(path.join(FIXTURES, '..', '..', '..', 'dist/index.js')).href)};`,
+      "import { writeFile } from 'node:fs/promises';",
+      "const gzip = process.argv[3] === 'true';",
+      "const warnings = [];",
+      "process.on('warning', (w) => warnings.push(w.name));",
+      "const before = process.stdout.listenerCount('error');",
+      'for (let i = 0; i < 15; i++) {',
+      '  await convert(process.argv[2], { toStdout: true, quiet: true, gzip });',
+      '}',
+      'await new Promise((resolve) => setTimeout(resolve, 50));',
+      "await writeFile(process.argv[4], JSON.stringify({ before, after: process.stdout.listenerCount('error'), warnings }));",
+    ].join('\n');
+    const dir = await outDir();
+    await mkdir(dir, { recursive: true });
+    const script = path.join(dir, 'leak.mjs');
+    await writeFile(script, probe);
+
     for (const gzip of [false, true]) {
-      const before = process.stdout.listenerCount('error');
-      const warnings = [];
-      const onWarning = (warning) => warnings.push(warning.name);
-      process.on('warning', onWarning);
-      try {
-        for (let i = 0; i < 15; i++) {
-          await convert(fixture('tiny.edf'), { toStdout: true, quiet: true, gzip });
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      } finally {
-        process.off('warning', onWarning);
-      }
-      assert.equal(
-        process.stdout.listenerCount('error'),
-        before,
-        `listeners were left behind with gzip: ${gzip}`,
+      const report = path.join(dir, `leak-${gzip}.json`);
+      execFileSync(
+        process.execPath,
+        [script, fixture('tiny.edf'), String(gzip), report],
+        { stdio: ['ignore', 'ignore', 'inherit'] },
       );
+      const { before, after, warnings } = JSON.parse(await readFile(report, 'utf8'));
+      assert.equal(after, before, `listeners were left behind with gzip: ${gzip}`);
       assert.ok(
         !warnings.includes('MaxListenersExceededWarning'),
         `Node warned with gzip: ${gzip}: ${warnings.join(', ')}`,
