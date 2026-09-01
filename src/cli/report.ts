@@ -198,10 +198,30 @@ export function formatInfo(
   */
   lines.push(`File       ${printable(file.path)}`);
   lines.push(`Format     ${describeFormat(header)}`);
+  /*
+    The two raw fields, with edges.
+
+    Echoed bare, they ran into each other and into the parenthetical, and a header field is
+    free to be empty or to be nothing but padding — `trimField` takes the padding off, so
+    both of those arrive here as "". A file whose date field is blank printed
+
+        Recorded    22.15.00 (unparseable)
+
+    where the one value on the line is the *time* and nothing says so, and a file with both
+    blank printed `Recorded     (unparseable)`: a label, a gap, and a verdict about nothing
+    visible. `  .  .  ` in both fields came out `.  . .  .`, which is four fields or two
+    depending on how the reader counts.
+
+    Quoted, which is what `START_TIME_UNREADABLE` — the warning printed under this very line,
+    about these very fields — has always done: `("" and "")`. Same argument 0.7.x made for the
+    time-range refusals, in its words: without them "the value ran into the sentence ... and
+    the surrounding spaces — the actual reason a shell-built argument went wrong — are
+    invisible". `--info --json` has the two as separate strings and never had the problem.
+  */
   lines.push(
     `Recorded   ${
       formatWallClock(header.startDateTime)?.replace('T', ' ') ??
-      `${printable(header.startDateRaw)} ${printable(header.startTimeRaw)} (unparseable)`
+      `"${printable(header.startDateRaw)}" "${printable(header.startTimeRaw)}" (unparseable)`
     }`,
   );
   lines.push(

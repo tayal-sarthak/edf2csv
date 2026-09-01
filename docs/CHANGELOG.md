@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.22
+
+### a header field with no edges, on the line that exists to show it
+
+EDF gives the start date and time eight characters each and enforces nothing about them, so
+`--info` echoes both raw fields when they cannot be read. It echoed them bare, and a header
+field is free to be empty — `trimField` takes the padding off, so a field of spaces arrives as
+`""` too.
+
+```
+Recorded    22.15.00 (unparseable)
+```
+
+The date is the blank one. Nothing on the line says so, and the single value shown sits where a
+reader expects the date. With both fields blank it reads
+
+```
+Recorded     (unparseable)
+```
+
+— a label, a gap, and a verdict about nothing visible. `  .  .  ` in both fields came out
+`.  . .  .`, which is two fields or four depending on how you count.
+
+The warning printed directly under that line, about those very fields, has always quoted them:
+
+```
+warning: The header's start date and time ("" and "") are not a date and a time, so the
+         recording has no start instant.
+```
+
+So has `--info --json`, which carries `start_date_raw` and `start_time_raw` as separate
+strings. The text line was the one surface where the two fields had no edges — the same
+argument 0.7.x made when it put quotation marks round a time-range value, in its words: without
+them "the value ran into the sentence ... and the surrounding spaces — the actual reason a
+shell-built argument went wrong — are invisible".
+
+```
+Recorded   "" "22.15.00" (unparseable)
+Recorded   ".  ." ".  ." (unparseable)
+```
+
+A readable header is untouched: it prints the instant, with nothing quoted.
+
 ## 0.8.21
 
 ### the long layout's third cost, on the page that counted two

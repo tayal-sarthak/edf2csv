@@ -488,6 +488,47 @@ describe('terminal safety', () => {
     assert.deepEqual(offending, []);
   });
 
+  it('gives the raw date and time edges, since a header field may be empty', async () => {
+    /*
+      `--info` echoes both raw fields with "(unparseable)" beside them, and echoed them bare.
+      A header field is free to be empty or to be nothing but padding — `trimField` takes the
+      padding off, so both arrive as "" — and neither showed:
+
+          Recorded    22.15.00 (unparseable)     the DATE is the blank one
+          Recorded     (unparseable)             both are
+          Recorded   .  . .  . (unparseable)     two fields of "  .  .  "
+
+      `START_TIME_UNREADABLE`, printed under that very line about those very fields, has
+      always quoted them: `("" and "")`. The same argument 0.7.x made for the time-range
+      refusals, where a value without edges "ran into the sentence".
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-rawdate-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const channel = {
+      label: 'ch', dimension: 'uV', physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+      samplesPerRecord: 2, gen: () => 0,
+    };
+
+    for (const [startDate, startTime, expected] of [
+      ['', '', '"" ""'],
+      ['', '22.15.00', '"" "22.15.00"'],
+      ['02.03.02', '', '"02.03.02" ""'],
+      ['  .  .  ', '  .  .  ', '".  ." ".  ."'],
+    ]) {
+      const recording = path.join(dir, `${startDate.length}-${startTime.length}.edf`);
+      writeEdf({ path: recording, startDate, startTime, numRecords: 1, recordDuration: 1, signals: [channel] });
+      const { code, stdout } = await cli([recording, '--info']);
+      assert.equal(code, 0);
+      const line = stdout.split('\n').find((l) => l.startsWith('Recorded'));
+      assert.equal(line, `Recorded   ${expected} (unparseable)`, line);
+    }
+
+    // A readable header still prints the instant, with nothing quoted.
+    const { stdout } = await cli([fixture('tiny.edf'), '--info']);
+    assert.match(stdout, /^Recorded {3}2009-06-05 12:34:56$/mu, stdout);
+  });
+
   it('never writes raw control bytes to stdout', async () => {
     const { code, stdout } = await cli([fixture('quirky-labels.edf'), '--info']);
     assert.equal(code, 0);

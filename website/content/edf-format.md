@@ -113,7 +113,8 @@ A few practical details. The spec writes the separator as a dot, but real files 
 dates and `:` and `-` in times, and all of those are accepted. A seconds value of 60 (a leap
 second) is accepted and read as 59. An impossible date such as `31.02.02` is rejected outright
 rather than silently rolled forward into March, and then `--info` prints the raw fields marked
-`(unparseable)`.
+`(unparseable)` — in quotation marks, since either field may be empty or nothing but padding,
+and `Recorded    22.15.00 (unparseable)` gives no way to see which of the two is the blank one.
 
 ### The reserved field, where EDF+C and EDF+D live
 
