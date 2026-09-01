@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.15
+
+### a header object claiming NaN records, from an argument nobody checked
+
+Every count `parseHeader` reports about a recording's data comes out of its second argument —
+how many bytes the file holds — and nothing asked what that argument was.
+
+```js
+parseHeader(bytes).recordCount;
+// NaN
+
+parseHeader(bytes).diagnostics[0].message;
+// "The header declares 2 data records but the file contains NaN. Converting the NaN records
+//  that are present."
+```
+
+A header object claiming NaN records, a warning that says NaN out loud, and no error. The
+duration is `recordCount * recordDuration` everywhere this value goes, so it is NaN from there
+on, and the one line that mentions the problem is a warning about the *file* rather than about
+the call.
+
+It is written that way by a caller who does not have the types — `parseHeader(bytes)` is how
+its one-argument neighbours are called, and `EdfFile.open` is the only thing in this package
+that ever passes a real size.
+
+`null` was worse from 0.8.5, when the counts in these messages started being grouped: grouping
+`null` is a TypeError out of the number formatter, naming nothing the caller wrote. That is the
+second reason an argument is checked rather than coerced, and the reason `'848'` is refused
+too — the same standard `parseTimeSpec(30, '--start')` has always held, and the one
+`assertInputPath` holds the first argument of `EdfFile.open` to since 0.8.9.
+
+```
+OptionError: fileSize must be the number of bytes in the file, got undefined.
+```
+
+A negative count is refused with it. A file has no negative length, and `File is -5 bytes; an
+EDF header alone needs at least 256` was the sentence it used to produce.
+
 ## 0.8.14
 
 ### the third CSV, which kept the notation the other two refuse

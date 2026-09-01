@@ -532,6 +532,33 @@ describe('errors', () => {
     });
   });
 
+  it('refuses a file size that is not one, rather than deriving NaN from it', async () => {
+    /*
+      Every count `parseHeader` reports about the data comes out of its second argument, and
+      nothing asked what it was. Omitted — which is how a JavaScript caller writes a call
+      whose neighbours take one argument — the arithmetic ran on `undefined`:
+
+          parseHeader(bytes).recordCount   // NaN
+          "The header declares 2 data records but the file contains NaN. Converting the NaN
+           records that are present."
+
+      A header object claiming NaN records and a warning saying NaN out loud, with no error;
+      and `recordCount * recordDuration` is NaN from there on. `null` became a TypeError from
+      inside the number formatter at 0.8.5, when these counts started being grouped.
+    */
+    const { parseHeader, OptionError } = await import('../dist/index.js');
+    const bytes = await readFile(fixture('tiny.edf'));
+    for (const size of [undefined, null, NaN, Infinity, -5, '848', {}]) {
+      assert.throws(() => parseHeader(bytes, size), (error) => {
+        assert.ok(error instanceof OptionError, `${String(size)} threw ${error}`);
+        assert.match(error.message, /^fileSize must be the number of bytes in the file, got /u);
+        return true;
+      });
+    }
+    // And the real size still parses, which is the only thing EdfFile.open ever passes.
+    assert.equal(parseHeader(bytes, bytes.length).recordCount, 2);
+  });
+
   it('says which of the two is short when a header will not fit', async () => {
     /*
       `parseHeader` takes the header block and the size of the file it came out of, and the

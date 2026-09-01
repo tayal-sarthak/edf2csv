@@ -36,6 +36,7 @@ import { plain } from '../format/number.js';
 // The shell-quoting rule for a label, shared rather than repeated: this hint and
 // `--channels`' own "did you mean" have to print the same command for the same label.
 import { typeable } from '../convert/channels.js';
+import { OptionError, describeValue } from '../convert/options.js';
 import { decodeLatin1 } from './bytes.js';
 
 /** Label the EDF+ spec reserves for the annotations channel. */
@@ -344,6 +345,33 @@ function resolveStartDateTime(
  * @param fileSize Total size of the file on disk, used to derive the real record count.
  */
 export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
+  /*
+    The second argument, checked before anything is derived from it.
+
+    Every count this function reports about the data comes out of `fileSize`, and nothing
+    asked what it was. Omit it — which a JavaScript caller does by writing the call the way
+    the one-argument functions beside it are written — and the arithmetic runs on `undefined`:
+
+        parseHeader(bytes).recordCount            // NaN
+        parseHeader(bytes).diagnostics[0].message
+        // "The header declares 2 data records but the file contains NaN. Converting the NaN
+        //  records that are present."
+
+    A header object claiming NaN records, a warning that says NaN out loud, and no error —
+    and `recordCount * recordDuration`, which is how the duration is worked out everywhere
+    this value goes, is NaN from there on. `null` was worse from 0.8.5, when the counts in
+    these messages started being grouped: grouping it is a TypeError raised from inside the
+    number formatter, naming nothing the caller wrote.
+
+    The same `OptionError` `assertInputPath` raises for the first argument of `EdfFile.open`,
+    for the same reason given there: it is the call that is wrong, not the recording.
+  */
+  if (typeof fileSize !== 'number' || !Number.isFinite(fileSize) || fileSize < 0) {
+    throw new OptionError(
+      `fileSize must be the number of bytes in the file, got ${describeValue(fileSize)}.`,
+    );
+  }
+
   const diagnostics: Diagnostic[] = [];
   const sawComma = { value: false };
 
