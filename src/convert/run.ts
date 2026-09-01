@@ -506,7 +506,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
         `Cannot create "${dir}": ${describeFsError(cause)}.`,
-        'Check the path exists and that you have permission to write there.',
+        createHint(cause),
       );
     }
   }
@@ -519,7 +519,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
         `Cannot create "${dir}": ${describeFsError(cause)}.`,
-        'Check the path exists and that you have permission to write there.',
+        createHint(cause),
       );
     }
     claimed = false;
@@ -1490,31 +1490,65 @@ function writeHint(cause: unknown, toStdout = false): string {
   const preamble = toStdout
     ? 'What reached stdout before it failed is incomplete and should not be used. '
     : 'The files written so far are incomplete and should not be used. ';
-  const elsewhere = toStdout ? 'redirect it somewhere else' : 'choose another with --out';
+  return (
+    preamble +
+    destinationAdvice(
+      cause,
+      toStdout ? 'redirect it somewhere else' : 'choose another with --out',
+      toStdout ? 'redirect it somewhere shorter' : 'choose a shorter destination with --out',
+    )
+  );
+}
+
+/**
+ * The same question asked before anything has been written: the output directory could not be
+ * created.
+ *
+ * Both raisings carried one sentence for every errno — "Check the path exists and that you
+ * have permission to write there" — which is the shape `writeHint` above was written to
+ * replace, in the words of its own docstring: "Wrong advice is worse than none: it sends
+ * someone to check `df` on a disk that is fine, and the thing that is actually wrong stays
+ * unexamined." A full disk, a read-only volume and a path past the filesystem's length limit
+ * all got advice about a path that exists and a permission that is not the problem, two lines
+ * under a message where `describeFsError` had already named the cause exactly.
+ *
+ * No preamble, because nothing has been written yet — which is the only thing that differs
+ * between the two, so the sentences themselves are shared rather than copied.
+ */
+function createHint(cause: unknown): string {
+  return destinationAdvice(
+    cause,
+    'choose another with --out',
+    'choose a shorter destination with --out',
+  );
+}
+
+/** The sentence an errno earns, with the two phrases that name where "somewhere else" is. */
+function destinationAdvice(cause: unknown, elsewhere: string, shorter: string): string {
   const code = (cause as NodeJS.ErrnoException | null)?.code;
   switch (code) {
     case 'ENOSPC':
-      return `${preamble}The destination is out of space; free some up or ${elsewhere}.`;
+      return `The destination is out of space; free some up or ${elsewhere}.`;
     case 'EDQUOT':
-      return `${preamble}You are over your disk quota on this filesystem; ${elsewhere}.`;
+      return `You are over your disk quota on this filesystem; ${elsewhere}.`;
     case 'EACCES':
     case 'EPERM':
-      return `${preamble}You do not have permission to write there; ${elsewhere}.`;
+      return `You do not have permission to write there; ${elsewhere}.`;
     case 'EROFS':
-      return `${preamble}That filesystem is mounted read-only; ${elsewhere}.`;
+      return `That filesystem is mounted read-only; ${elsewhere}.`;
     case 'EISDIR':
-      return `${preamble}A directory is sitting where that file belongs; remove or rename it, or ${elsewhere}.`;
+      return `A directory is sitting where that file belongs; remove or rename it, or ${elsewhere}.`;
     case 'ENOENT':
-      return `${preamble}Part of that path no longer exists; make sure nothing is removing it while the conversion runs.`;
+      return `Part of that path no longer exists; make sure nothing is removing it while the conversion runs.`;
     case 'ENAMETOOLONG':
-      return `${preamble}That path is longer than the filesystem allows; ${toStdout ? 'redirect it somewhere shorter' : 'choose a shorter destination with --out'}.`;
+      return `That path is longer than the filesystem allows; ${shorter}.`;
     case 'EMFILE':
     case 'ENFILE':
-      return `${preamble}Too many files are open; a recording with many sampling rates opens one output file per rate, so --channels narrows it.`;
+      return `Too many files are open; a recording with many sampling rates opens one output file per rate, so --channels narrows it.`;
     case 'EPIPE':
-      return `${preamble}Whatever was reading the output closed it before the conversion finished.`;
+      return 'Whatever was reading the output closed it before the conversion finished.';
     default:
-      return `${preamble}Check the destination and run the conversion again.`;
+      return 'Check the destination and run the conversion again.';
   }
 }
 

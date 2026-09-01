@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.12
+
+### the failure one step before the one whose advice follows its cause
+
+`writeHint` picks a sentence from the errno, and its docstring says why:
+
+> Every write failure carried the same advice — "Free up space or choose another destination
+> with --out" — which fits exactly one errno. ... Wrong advice is worse than none: it sends
+> someone to check `df` on a disk that is fine, and the thing that is actually wrong stays
+> unexamined.
+
+The failure one step earlier — the output directory could not be created — carried one
+sentence for every errno, and still did.
+
+```
+error: Cannot create "/mnt/archive/out": the filesystem is read-only.
+       Check the path exists and that you have permission to write there.
+
+error: Cannot create "aaaa…aaa": the path is too long.
+       Check the path exists and that you have permission to write there.
+```
+
+The path exists. The permission is not the problem. And the line above has already named the
+cause exactly — `describeFsError` was given nine sentences for these errnos, and 0.7.258
+finished the job of keeping Node's own text off the screen — so the message knows what went
+wrong and the advice under it does not use that.
+
+One errno was already singled out, which is how these gaps look from the inside: a parent
+directory that is a regular file gets "Choose a destination whose parent directories are
+directories, with --out." One member of the family with advice, eight without.
+
+The sentences are the ones `writeHint` already has, shared rather than copied — the only
+thing that differs is the preamble, and a create failure has none, because nothing has been
+written yet:
+
+```
+error: Cannot create "out": permission denied.
+       You do not have permission to write there; choose another with --out.
+```
+
+The test uses `ENAMETOOLONG`, which needs no permissions and no special filesystem: every
+platform this runs on caps a path component at 255 bytes.
+
 ## 0.8.11
 
 ### the raising that comment was written about was the one still doing it

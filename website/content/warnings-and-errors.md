@@ -1128,7 +1128,11 @@ The destination can't be used. Raised when the path given to `--out` is an exist
 ```
 error: "notes.txt" is a file, but the converted data needs a directory.
        Choose a directory with --out.
+error: Cannot create "/mnt/archive/out": the filesystem is read-only.
+       That filesystem is mounted read-only; choose another with --out.
 ```
+
+The hint is chosen from what actually failed, the same way [`WRITE_FAILED`](#write_failed)'s is and from the same list of sentences. Until 0.8.12 both raisings here carried one line whatever the cause — "Check the path exists and that you have permission to write there" — so a full disk, a read-only volume and a path past the filesystem's length limit were all answered with advice about a path that exists and a permission that is not the problem, two lines under a message that had already named the cause exactly.
 
 Filesystem failures are translated into plain language rather than passed through as system codes — here, and since 0.7.258 in `WRITE_FAILED` below, which is where the last of Node's own text was still reaching the screen. The whole list, in the words the message uses: permission denied; the disk is full; you are over your disk quota on this filesystem; part of the path is a file, not a directory; the filesystem is read-only; the path is too long; a directory is sitting there already; too many files are open; part of the path does not exist.
 

@@ -3805,6 +3805,32 @@ describe('converting', () => {
     await convert(fixture('tiny.edf'), { outputDir: dir, force: true });
   });
 
+  it('answers a destination it cannot create with advice about what went wrong', async () => {
+    /*
+      Both raisings carried one sentence whatever the cause — "Check the path exists and that
+      you have permission to write there" — which is the shape `writeHint` was written to
+      replace one function over, in the words of its own docstring: "Wrong advice is worse
+      than none: it sends someone to check `df` on a disk that is fine, and the thing that is
+      actually wrong stays unexamined." A path past the filesystem's length limit was told to
+      check that it exists, two lines under a message saying the path is too long.
+
+      ENAMETOOLONG because it needs no permissions and no special filesystem: every platform
+      this runs on caps a path component at 255 bytes.
+    */
+    const { ConversionError } = await import('../dist/index.js');
+    const dir = path.join(await outDir(), 'a'.repeat(300));
+    await assert.rejects(() => convert(fixture('tiny.edf'), { outputDir: dir }), (error) => {
+      assert.ok(error instanceof ConversionError);
+      assert.equal(error.code, 'OUTPUT_UNWRITABLE');
+      assert.match(error.message, /the path is too long/u);
+      assert.match(error.hint, /longer than the filesystem allows; choose a shorter destination/u);
+      assert.doesNotMatch(error.hint, /Check the path exists/u, 'the path is not what is wrong');
+      // And no preamble about files: this fails before anything has been written.
+      assert.doesNotMatch(error.hint, /files written so far/u);
+      return true;
+    });
+  });
+
   it('never overwrites the input when its name collides with a generated file', async () => {
     const dir = await outDir();
     await mkdir(dir, { recursive: true });

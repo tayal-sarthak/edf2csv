@@ -173,9 +173,9 @@ export class EdfFile {
     `Cannot read "rec.edf": no such file` was the one diagnostic this tool prints that does not
     end in a full stop — 68 of its 69 do — and the only member of its family with nothing
     indented under it. `Cannot create "out": part of the path does not exist.` has carried
-    "Check the path exists and that you have permission to write there." since the destination
-    errors were given sentences, the mid-conversion UNREADABLE beside it carries one too, and
-    this is the form a mistyped path actually reaches.
+    advice under it since the destination errors were given sentences — one line for every
+    cause until 0.8.12, and the cause's own since — the mid-conversion UNREADABLE beside it
+    carries one too, and this is the form a mistyped path actually reaches.
   */
   static readonly #UNREADABLE_HINT =
     'Check the path is spelled the way it is on disk and that you have permission to read it.';
