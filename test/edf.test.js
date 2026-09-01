@@ -532,6 +532,38 @@ describe('errors', () => {
     });
   });
 
+  it('says which of the two is short when a header will not fit', async () => {
+    /*
+      `parseHeader` takes the header block and the size of the file it came out of, and the
+      two do not have to agree — `EdfFile.open` reads 256 bytes before anything else, so they
+      agree there, and a library caller holding both is where they part. Quoting the file size
+      either way produced a sentence that refutes itself:
+
+          parseHeader(new Uint8Array(100), 5000)
+          File is 5,000 bytes; an EDF header alone needs at least 256.
+
+      5,000 is not less than 256, and the number the reader is handed to check against the
+      file is the one that is fine. The FILE_TOO_SMALL raised fifty lines further down was
+      fixed for exactly this and its comment describes this one; this is that fix arriving.
+    */
+    const { parseHeader } = await import('../dist/index.js');
+
+    assert.throws(() => parseHeader(new Uint8Array(100), 100), (error) => {
+      assert.equal(error.code, 'FILE_TOO_SMALL');
+      assert.match(error.message, /^File is 100 bytes; an EDF header alone needs at least 256\.$/u);
+      assert.match(error.hint, /truncated, or is not an EDF or BDF recording/u);
+      return true;
+    });
+
+    assert.throws(() => parseHeader(new Uint8Array(100), 5000), (error) => {
+      assert.equal(error.code, 'FILE_TOO_SMALL');
+      assert.match(error.message, /only 100 of this 5,000-byte file reached the parser/u);
+      assert.doesNotMatch(error.message, /File is 5,000 bytes/u, 'the file is not the short one');
+      assert.match(error.hint, /fewer bytes than the header it was asked to read/u);
+      return true;
+    });
+  });
+
   it('refuses a file that is not EDF at all', async () => {
     await assert.rejects(
       () => EdfFile.open(fileURLToPath(import.meta.url)),

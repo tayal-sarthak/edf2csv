@@ -348,11 +348,32 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   const sawComma = { value: false };
 
   if (buf.length < FIXED_HEADER_BYTES) {
+    /*
+      Which of the two is actually short — the same question the FILE_TOO_SMALL fifty lines
+      down was fixed for, in the words its comment still uses: "The file size was quoted
+      either way, so a caller that had read too little ... produced arithmetic that refuted
+      itself." This is the raising that comment describes, and it went on doing it:
+
+          parseHeader(new Uint8Array(100), 5000)
+          File is 5,000 bytes; an EDF header alone needs at least 256.
+
+      5,000 is not less than 256. A reader following that sentence looks for a truncation
+      that is not there, and the number they are given to check against the file is the one
+      that is fine. Reached from the library, where the caller holds both — `EdfFile.open`
+      reads 256 bytes before it reads anything else, so the two agree by construction there.
+    */
+    const short = fileSize < FIXED_HEADER_BYTES;
     throw new EdfError(
       'FILE_TOO_SMALL',
-      `File is ${counted(fileSize, 'byte')}; an EDF header alone needs at least ${FIXED_HEADER_BYTES}.`,
-      'A file this small is truncated, or is not an EDF or BDF recording at all: every one of ' +
-        'them opens with a fixed 256-byte header.',
+      short
+        ? `File is ${counted(fileSize, 'byte')}; an EDF header alone needs at least ${FIXED_HEADER_BYTES}.`
+        : `An EDF header alone needs ${FIXED_HEADER_BYTES} bytes, but only ` +
+          `${grouped(buf.length)} of this ${grouped(fileSize)}-byte file reached the parser.`,
+      short
+        ? 'A file this small is truncated, or is not an EDF or BDF recording at all: every one of ' +
+          'them opens with a fixed 256-byte header.'
+        : 'parseHeader takes the header block and the size of the file it came out of. This ' +
+          'call was given fewer bytes than the header it was asked to read.',
     );
   }
 

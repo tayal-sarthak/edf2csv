@@ -972,7 +972,7 @@ Nothing is written for all but one of them: they are raised while the header is 
 
 ### FILE_TOO_SMALL
 
-The file isn't large enough to hold what it declares. Raised in three situations: the file is under 256 bytes and so can't hold even the fixed header; the file is too short to hold the 256 bytes per signal that its declared signal count requires; or the file is smaller than the header size computed from that count.
+The file isn't large enough to hold what it declares. Raised in three situations: the file is under 256 bytes and so can't hold even the fixed header; the file is too short to hold the 256 bytes per signal that its declared signal count requires; or the file is smaller than the header size computed from that count. Each says which of its two figures is the short one, rather than quoting the file size either way — a library caller who hands `parseHeader` a header block and a file size that disagree gets told which.
 
 ```
 error: File is 100 bytes; an EDF header alone needs at least 256.

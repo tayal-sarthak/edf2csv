@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.11
+
+### the raising that comment was written about was the one still doing it
+
+```js
+parseHeader(new Uint8Array(100), 5000);
+
+EdfError[FILE_TOO_SMALL]: File is 5,000 bytes; an EDF header alone needs at least 256.
+```
+
+5,000 is not less than 256. The sentence refutes itself, and the number it hands the reader to
+check against the file is the one that is fine.
+
+`parseHeader` takes two things — the header block, and the size of the file it came out of —
+and they are allowed to disagree, because a caller supplies both. `EdfFile.open` reads 256
+bytes before it reads anything else, so on that path they agree by construction; a library
+caller holding a buffer and a size is where they part, and that caller is who this function is
+exported for.
+
+The FILE_TOO_SMALL raised fifty lines further down was fixed for exactly this, and its comment
+is still there describing the raising above it:
+
+> Which of the two is actually short. The file size was quoted either way, so a caller that
+> had read too little — the signal count parsed one way here and another way there — produced
+> arithmetic that refuted itself: "needs a 768-byte header, but the file is only 848 bytes".
+> A reader following that looks for a truncation that is not there.
+
+Both now say which:
+
+```
+An EDF header alone needs 256 bytes, but only 100 of this 5,000-byte file reached the parser.
+       parseHeader takes the header block and the size of the file it came out of. This call
+       was given fewer bytes than the header it was asked to read.
+```
+
+and the hint follows the branch, since "A file this small is truncated" is not true of a
+5,000-byte file and there is nothing about the recording to fix.
+
 ## 0.8.10
 
 ### a file this tool writes that its own leftover check does not recognise
