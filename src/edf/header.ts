@@ -351,6 +351,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     throw new EdfError(
       'FILE_TOO_SMALL',
       `File is ${counted(fileSize, 'byte')}; an EDF header alone needs at least ${FIXED_HEADER_BYTES}.`,
+      'A file this small is truncated, or is not an EDF or BDF recording at all: every one of ' +
+        'them opens with a fixed 256-byte header.',
     );
   }
 
@@ -384,12 +386,14 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     throw new EdfError(
       'INVALID_SIGNAL_COUNT',
       `Header declares ${signalCount} signals; expected at least 1.`,
+      BAD_FIELD_HINT,
     );
   }
   if (!(recordDuration > 0)) {
     throw new EdfError(
       'INVALID_RECORD_DURATION',
       `Header declares a data record duration of ${plain(recordDuration)}s; expected a positive number.`,
+      BAD_FIELD_HINT,
     );
   }
 
@@ -409,6 +413,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         (fileSize < expectedHeaderBytes
           ? `but the file is only ${fileSize} bytes.`
           : `but only ${buf.length} bytes of it were handed to the parser.`),
+      'Either the recording is truncated inside its own header, or the signal count was ' +
+        'read from bytes that are not it. Both leave the channel descriptions unfinished.',
     );
   }
   if (headerBytes !== expectedHeaderBytes) {
@@ -933,6 +939,9 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     throw new EdfError(
       'NO_SAMPLES',
       'No signal in this file carries any samples (every channel declares 0 samples per record).',
+      'The header describes the channels and nothing has data behind them, so there is no ' +
+        'record to read. A header written before recording began, or copied from another ' +
+        'file, produces this.',
     );
   }
 
@@ -956,6 +965,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       'FILE_TOO_SMALL',
       `File is ${counted(fileSize, 'byte')}, which is less than the ${expectedHeaderBytes} ` +
         `its own header occupies.`,
+      'The header and the size came from different reads: parseHeader was handed a byte ' +
+        'count smaller than the header block it was given.',
     );
   }
   const recordCount = Math.floor(dataBytes / recordBytes);

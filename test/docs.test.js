@@ -4705,6 +4705,16 @@ describe('documentation and source agree on their lists', () => {
       Quotes are skipped whole rather than parsed, so an apostrophe in a message and a comma
       inside a `${...}` are both invisible to the count. That holds while no template literal
       here nests another backtick string, which is asserted below rather than assumed.
+
+      A trailing comma separates nothing, and a comment is not an argument. Counting the
+      trailing comma gave every raising written across several lines — which is every one
+      whose message is long enough to need them — one argument it does not have; a prose
+      comma inside a block comment between two arguments gave another. Together they passed this on
+      six of the twenty-one while reporting none: both file-too-small raisings, a signal
+      count of zero, a record duration of zero, and a file whose every channel declares no
+      samples. Those are the first errors anyone meets pointing this at something that is not
+      an EDF recording, and the check written to find exactly that shape agreed each of them
+      had a hint.
     */
     const files = [];
     const walk = async (dir) => {
@@ -4721,6 +4731,8 @@ describe('documentation and source agree on their lists', () => {
       let depth = 1;
       let commas = 0;
       let nested = false;
+      let lastComma = -1;
+      let close = text.length;
       for (let i = open + 1; depth > 0 && i < text.length; i++) {
         const c = text[i];
         if (c === "'" || c === '"' || c === '`') {
@@ -4735,11 +4747,26 @@ describe('documentation and source agree on their lists', () => {
           }
           continue;
         }
+        if (c === '/' && text[i + 1] === '*') {
+          i = text.indexOf('*/', i + 2) + 1;
+          continue;
+        }
+        if (c === '/' && text[i + 1] === '/') {
+          i = text.indexOf('\n', i);
+          continue;
+        }
         if (c === '(' || c === '[' || c === '{') depth++;
-        else if (c === ')' || c === ']' || c === '}') depth--;
-        else if (c === ',' && depth === 1) commas++;
+        else if (c === ')' || c === ']' || c === '}') {
+          depth--;
+          if (depth === 0) close = i;
+        } else if (c === ',' && depth === 1) {
+          commas++;
+          lastComma = i;
+        }
       }
-      return { args: commas + 1, nested };
+      // The one before the closing parenthesis is punctuation, not a separator.
+      const trailing = lastComma !== -1 && text.slice(lastComma + 1, close).trim() === '';
+      return { args: commas + 1 - (trailing ? 1 : 0), nested };
     };
 
     const hintless = [];

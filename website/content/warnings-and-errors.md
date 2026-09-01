@@ -946,9 +946,11 @@ The file isn't large enough to hold what it declares. Raised in three situations
 
 ```
 error: File is 100 bytes; an EDF header alone needs at least 256.
+       A file this small is truncated, or is not an EDF or BDF recording at all:
+       every one of them opens with a fixed 256-byte header.
 ```
 
-This is a truncated download, an incomplete copy, or a file that isn't EDF at all. Check the file size against the original.
+This is a truncated download, an incomplete copy, or a file that isn't EDF at all. Check the file size against the original. All three raisings carry a second line saying so; until 0.8.4 none of them did, because the check that holds every fatal parser error to having one counted its own trailing comma as an argument.
 
 ### BAD_HEADER_FIELD
 
@@ -967,6 +969,7 @@ The header declares zero or fewer signals.
 
 ```
 error: Header declares 0 signals; expected at least 1.
+       The file may be truncated, byte-shifted, or not an EDF file at all.
 ```
 
 A recording with no channels can't be converted. This usually means a corrupt header rather than a genuinely empty recording.
@@ -977,6 +980,7 @@ The header declares a data record duration that isn't a positive number.
 
 ```
 error: Header declares a data record duration of 0s; expected a positive number.
+       The file may be truncated, byte-shifted, or not an EDF file at all.
 ```
 
 Record duration is the divisor that turns samples per record into a sampling rate, so a zero or negative value makes every rate in the file undefined.
@@ -987,6 +991,9 @@ Every channel in the file declares zero samples per data record, so the file has
 
 ```
 error: No signal in this file carries any samples (every channel declares 0 samples per record).
+       The header describes the channels and nothing has data behind them, so
+       there is no record to read. A header written before recording began, or
+       copied from another file, produces this.
 ```
 
 The same code appears as a warning when a single channel is empty. As an error it means all of them are.

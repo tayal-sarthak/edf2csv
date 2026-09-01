@@ -8,6 +8,60 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.4
+
+### the guard that counted its own trailing comma, and the six errors it let through
+
+0.7.260 added a check that walks `src`, finds every `new EdfError(`, counts its top-level
+arguments and fails on any with fewer than three — because the third is the hint, the
+indented line that says what to do about the error. It reported nothing, and six of the
+twenty-one raisings had no hint.
+
+It counted the trailing comma.
+
+```ts
+throw new EdfError(
+  'FILE_TOO_SMALL',
+  `File is ${counted(fileSize, 'byte')}; an EDF header alone needs at least 256.`,
+);   //                                                                        ^ argument three
+```
+
+Every raising whose message is long enough to need more than one line ends that way, so the
+check agreed that almost all of them had a hint whether or not they did. A prose comma inside
+a block comment sitting between two arguments did the same thing for a seventh, and covered
+the one raising that had a comment in it.
+
+What was actually hintless is the set anyone meets first:
+
+```
+$ edf2csv notes.txt
+error: File is 33 bytes; an EDF header alone needs at least 256.
+
+$ edf2csv byte-shifted.edf
+error: Header declares 0 signals; expected at least 1.
+
+$ edf2csv byte-shifted.edf
+error: Header declares a data record duration of 0s; expected a positive number.
+```
+
+The first is what pointing this at a file that is not a recording produces. The other two are
+what a byte-shifted read produces — and `BAD_HEADER_FIELD`, raised from the same parse of the
+same bytes, has said "The file may be truncated, byte-shifted, or not an EDF file at all"
+since 0.7.259. Two errors out of one cause, one of them explaining it and the others not.
+
+All six now carry one, and the two that were never about corruption say what they are about
+instead: a file whose every channel declares zero samples has a header written before
+anything was recorded, and a `fileSize` smaller than the header block handed alongside it is
+a caller reading the two from different places.
+
+Every one of these hints was already on warnings-and-errors.md in prose — "This is a
+truncated download, an incomplete copy, or a file that isn't EDF at all" has been under
+`FILE_TOO_SMALL` the whole time. The page had the answer; the error, which is the only part
+of it most people see, did not.
+
+**The check.** A trailing comma separates nothing and a comment is not an argument, so it
+skips both. Reverting any one of the six hints makes it fail and name the line.
+
 ## 0.8.3
 
 ### the event count --info had counted and --info --json did not carry
