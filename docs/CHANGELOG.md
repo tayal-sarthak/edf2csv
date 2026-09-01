@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.10
+
+### a file this tool writes that its own leftover check does not recognise
+
+`STALE_OUTPUT` names files from an earlier conversion that this one did not replace, and it
+decides what counts as an earlier conversion's file with one regular expression. That
+expression has now been wrong three times in the same direction: a name the writer produces
+that the reader does not recognise, so the leftover goes unreported — which is the one
+situation the warning exists for.
+
+The third is `signals_Infinityhz.csv`. A record duration too small to divide into overflows
+the sampling rate; `rateSlug` says `Infinityhz`, the writer opens that file, and
+`TIME_RESOLUTION` prints beside it to say no rows will go in it. Convert such a recording and
+then convert anything else into the same directory:
+
+```
+warning: signals_1e+308hz.csv is left over from an earlier conversion into this directory
+         and was not rewritten.
+         Delete it, or convert into a fresh directory, so the two runs do not get mixed up.
+```
+
+`signals_Infinityhz.csv` is sitting next to it, written by the same run, and is not mentioned
+— so "delete it" leaves the directory holding a file from the conversion the reader was just
+told to clean up after.
+
+The cause is the fix for the second one. `_\d[\w.+-]*hz` requires a digit after the
+underscore, and its comment says why: "Requiring a digit after the underscore keeps a user's
+own `signals_notes.csv` out." `Infinity` starts with an `I`. The rule that kept somebody
+else's file out kept one of this tool's own out with it, so the name is spelled into the
+pattern rather than the digit rule loosened.
+
+**The check.** Behaviour rather than the expression: a directory is filled with one file per
+name `rateSlug` can produce — 256 Hz, 12.5, 1, 0.5, 1e-7, 1e308, Infinity — plus a
+`signals_notes.csv` that belongs to nobody but the user, and a conversion into it has to name
+all seven and none of the eighth. A rate is a positive count of samples over a duration held
+above zero, so 0 and Infinity are its ends and NaN is not reachable.
+
 ## 0.8.9
 
 ### the function that docstring is about was the one without the check

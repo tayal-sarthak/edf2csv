@@ -3837,6 +3837,38 @@ describe('converting', () => {
     assert.ok(!stale.message.includes('metadata.json'), 'metadata.json is rewritten every run');
   });
 
+  it('recognises every rate-group name it can write as its own output', async () => {
+    /*
+      The pattern that decides what counts as this tool's own output has been wrong twice, in
+      the same direction: a name the writer produces that the reader does not recognise, so
+      the leftover goes unreported — which is the one situation the warning exists for. First
+      the exponent and collision forms, then `signals_Infinityhz.csv`.
+
+      That last one comes from a record duration too small to divide into: the rate overflows,
+      `rateSlug` says `Infinityhz`, and the file is opened with the TIME_RESOLUTION warning
+      beside it saying no rows will go in it. A mixed-rate file of that shape leaves two
+      `signals_*` files behind and only one of them was named.
+
+      Asked of the names rather than of the regular expression, and of every rate a header can
+      reach: a duration is held above zero, so a rate is a positive count over a positive
+      duration and cannot be NaN — 0 and Infinity are its ends.
+    */
+    const { rateSlug } = await import('../dist/index.js');
+    const dir = await outDir();
+    await convert(fixture('tiny.edf'), { outputDir: dir });
+
+    const names = [256, 12.5, 1, 0.5, 1e-7, 1e308, Infinity].map((r) => `signals_${rateSlug(r)}.csv`);
+    for (const name of names) await writeFile(path.join(dir, name), '');
+    // A file of the user's own, which the digit rule after the underscore is there to keep out.
+    await writeFile(path.join(dir, 'signals_notes.csv'), '');
+
+    const second = await convert(fixture('tiny.edf'), { outputDir: dir, force: true });
+    const stale = second.diagnostics.find((d) => d.code === 'STALE_OUTPUT');
+    assert.ok(stale, 'seven leftover rate-group files were not reported at all');
+    for (const name of names) assert.ok(stale.message.includes(name), `${name} was not named`);
+    assert.ok(!stale.message.includes('signals_notes.csv'), 'a file of the user own was claimed');
+  });
+
   it('says nothing about leftovers when a rerun replaces everything', async () => {
     const dir = await outDir();
     await convert(fixture('tiny.edf'), { outputDir: dir });

@@ -346,9 +346,22 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
   recent changes and both silently stopped being recognised as this tool's own output, so
   leftovers of exactly those kinds went unreported: the one situation the warning exists
   for. Requiring a digit after the underscore keeps a user's own `signals_notes.csv` out.
+
+  And `signals_Infinityhz.csv`, which is a name this tool writes and the digit rule then
+  excluded. A record duration too small to divide into overflows the rate — `rateSlug` says
+  `Infinityhz` and the writer opens that file, with the TIME_RESOLUTION warning beside it
+  saying no rows will go in it — so a mixed-rate run of such a file leaves two `signals_*`
+  files behind and the next conversion into that directory named one of them:
+
+      warning: signals_1e+308hz.csv is left over from an earlier conversion into this
+               directory and was not rewritten.
+
+  with `signals_Infinityhz.csv` sitting beside it, from the same run, unmentioned. Spelled
+  out rather than loosened, so a user's own `signals_notes.csv` stays out for the reason
+  above; the check below holds the pattern against every name `rateSlug` can produce.
 */
 const OUTPUT_PATTERN =
-  /^(signals(_\d[\w.+-]*hz(_\d+)?)?\.csv(\.gz)?|annotations\.csv(\.gz)?|channels\.csv(\.gz)?|metadata\.json)$/u;
+  /^(signals(_(\d[\w.+-]*|Infinity)hz(_\d+)?)?\.csv(\.gz)?|annotations\.csv(\.gz)?|channels\.csv(\.gz)?|metadata\.json)$/u;
 
 /**
  * Detect output from a previous run that this one did not replace.
