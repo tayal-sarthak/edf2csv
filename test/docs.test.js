@@ -4801,6 +4801,85 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(hintless, [], `a fatal error with nothing to do about it: ${hintless.join(', ')}`);
   });
 
+  it('gives every warning something to say about the output too', async () => {
+    /*
+      The twin of the check above, one severity down. A `Diagnostic` takes a hint and
+      `formatDiagnostics` prints it on the indented line under the message; 0.8.4 held every
+      `EdfError` to having one, and nothing asked it of the forty-six warnings — of which
+      five did not, all of them in the header parser and so all of them raised before a
+      sample has been read, which is to say on the `--info` most people run first.
+
+      What each of them was missing is the same half of the answer: what it means for the
+      output. `TRAILING_BYTES` said bytes were ignored and not that every complete record was
+      converted; `RECORD_COUNT_UNKNOWN` said the header does not know and not where the count
+      it used came from; `EMPTY_LABEL` named the column and not that the name is positional.
+
+      Object literals, so the scan finds `code:` and reads out the braces around it, skipping
+      strings and comments for the reason the error scan gives.
+    */
+    const files = [];
+    const walk = async (dir) => {
+      for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
+        const relative = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(relative);
+        else if (entry.name.endsWith('.ts')) files.push(relative);
+      }
+    };
+    await walk('src');
+
+    const hintless = [];
+    let raised = 0;
+    for (const where of files) {
+      const text = await read(where);
+      for (let at = text.indexOf("code: '"); at !== -1; at = text.indexOf("code: '", at + 1)) {
+        raised++;
+        let depth = 0;
+        let open = -1;
+        for (let i = at; i >= 0; i--) {
+          if (text[i] === '}') depth++;
+          else if (text[i] === '{') {
+            if (depth === 0) {
+              open = i;
+              break;
+            }
+            depth--;
+          }
+        }
+        let d = 1;
+        let i = open + 1;
+        for (; d > 0 && i < text.length; i++) {
+          const c = text[i];
+          if (c === '/' && text[i + 1] === '*') {
+            i = text.indexOf('*/', i + 2) + 1;
+            continue;
+          }
+          if (c === '/' && text[i + 1] === '/') {
+            i = text.indexOf('\n', i);
+            continue;
+          }
+          if (c === "'" || c === '"' || c === '`') {
+            const quote = c;
+            i++;
+            while (i < text.length && text[i] !== quote) {
+              if (text[i] === '\\') i++;
+              i++;
+            }
+            continue;
+          }
+          if (c === '{' || c === '(' || c === '[') d++;
+          else if (c === '}' || c === ')' || c === ']') d--;
+        }
+        const body = text.slice(open, i);
+        const code = /code: '([A-Z_]+)'/u.exec(body)?.[1] ?? '?';
+        if (!/(^|[\s,{])hint:/mu.test(body)) {
+          hintless.push(`${code} at ${where}:${text.slice(0, at).split('\n').length}`);
+        }
+      }
+    }
+    assert.ok(raised >= 46, `expected the tool's diagnostics, found ${raised}`);
+    assert.deepEqual(hintless, [], `a warning with nothing to say about the output: ${hintless.join(', ')}`);
+  });
+
   it('lists every filesystem failure it says it translates', async () => {
     /*
       "Filesystem failures are translated into plain language rather than passed through as

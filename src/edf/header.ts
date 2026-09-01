@@ -425,6 +425,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         `Header says it is ${grouped(headerBytes)} bytes, but ${counted(signalCount, 'signal')} ` +
         `${signalCount === 1 ? 'requires' : 'require'} ${grouped(expectedHeaderBytes)} bytes. ` +
         `Using the value computed from the signal count.`,
+      hint:
+        'Where the data starts is worked out from the signal count, not from this field, so ' +
+        'nothing is read from the wrong offset. A writer that got this one wrong may have ' +
+        'got others wrong too.',
     });
   }
 
@@ -799,6 +803,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
             `${taken.length === 1 ? 'signal' : 'signals'} ${listed(taken.map(String))} already ` +
             `${taken.length === 1 ? 'carries' : 'carry'} as a label, so both columns are ` +
             `suffixed with their position instead.`,
+      hint:
+        'The name is built from the position rather than read from the header, so it moves ' +
+        'if the file\'s channels do. Select the channel as --channels "#<position>" to say ' +
+        'which one you mean without depending on it.',
     });
   }
 
@@ -1008,6 +1016,9 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       message:
         `The header does not say how many data records the file has (-1), which the spec allows ` +
         `for recordings still in progress. Using the ${counted(recordCount, 'record')} the file actually contains.`,
+      hint:
+        'That count comes from the size of the file, so a recording still being written ' +
+        'converts as much of it as was on disk when this run read it.',
     });
   } else if (declaredRecordCount !== recordCount) {
     diagnostics.push({
@@ -1031,6 +1042,10 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       code: 'TRAILING_BYTES',
       severity: 'warning',
       message: `${counted(trailingBytes, 'byte')} after the last complete data record ${trailingBytes === 1 ? 'was' : 'were'} ignored.`,
+      hint:
+        'A record is the unit this format is addressed in, and a partial one says nothing ' +
+        'about which samples it holds or when they were taken. Every complete record was ' +
+        'converted.',
     });
   }
 
@@ -1063,6 +1078,16 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         with both.
       */
       message: `This file has no signal channels; it contains only ${isBdf ? 'BDF+' : 'EDF+'} annotations.`,
+      /*
+        What the file is, not what the run will write. The warning underneath it — raised by
+        the conversion rather than by the parser — already answers the second question, in
+        those words: "annotations.csv holds whatever events it carries. channels.csv lists
+        signal channels, so it has none to list." Two consecutive hints saying that would be
+        worse than the one that was missing.
+      */
+      hint:
+        `An ${isBdf ? 'BDF+' : 'EDF+'} file of events and no signal is an ordinary thing: a ` +
+        'scoring file distributed beside the recording it annotates has exactly this shape.',
     });
   }
 

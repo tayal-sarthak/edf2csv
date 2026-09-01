@@ -116,6 +116,9 @@ The header contains a field stating its own length in bytes. This warning fires 
 
 ```
 warning: Header says it is 99 bytes, but 2 signals require 768 bytes. Using the value computed from the signal count.
+         Where the data starts is worked out from the signal count, not from
+         this field, so nothing is read from the wrong offset. A writer that got
+         this one wrong may have got others wrong too.
 ```
 
 **What to do.** Nothing, if the rest of the conversion looks right. Check the `--info` channel table: if the labels and units are readable text and the sampling rates are plausible, the header was parsed correctly and only the length field was wrong. Garbled labels alongside this warning point at a genuinely damaged file.
@@ -130,6 +133,8 @@ The header declares `-1` data records rather than a count.
 
 ```
 warning: The header does not say how many data records the file has (-1), which the spec allows for recordings still in progress. Using the 4 records the file actually contains.
+         That count comes from the size of the file, so a recording still being
+         written converts as much of it as was on disk when this run read it.
 ```
 
 **What to do.** Confirm the recording is finished and not still being written to. Converting a file that's actively growing risks a mid-read failure (see `UNREADABLE` below). If the file is closed, the derived count is the right one.
@@ -158,6 +163,9 @@ Some bytes sit after the last complete data record, too few to form another reco
 
 ```
 warning: 7 bytes after the last complete data record were ignored.
+         A record is the unit this format is addressed in, and a partial one
+         says nothing about which samples it holds or when they were taken.
+         Every complete record was converted.
 ```
 
 **What to do.** Usually nothing. A handful of ignored bytes at the end of a long recording is a fraction of a second. If the count is large relative to one record's size, that's a sign of a more serious problem and is worth investigating alongside `RECORD_COUNT_MISMATCH`.
@@ -353,6 +361,9 @@ A channel's label field is blank.
 
 ```
 warning: Signal 0 has no label. It will appear as "signal_0".
+         The name is built from the position rather than read from the header,
+         so it moves if the file's channels do. Select the channel as --channels
+         "#<position>" to say which one you mean without depending on it.
 ```
 
 Unless another channel is literally labelled `signal_0`, which EDF permits — labels are free text and nothing enforces anything about them. Then the synthesised name and the real one collide and both columns are suffixed with their position, and the warning says so rather than naming a column that will not exist:
@@ -780,6 +791,9 @@ The file has no signal channels: it contains only an EDF+ annotations channel.
 
 ```
 warning: This file has no signal channels; it contains only EDF+ annotations.
+         An EDF+ file of events and no signal is an ordinary thing: a scoring
+         file distributed beside the recording it annotates has exactly this
+         shape.
 warning: No signal file is written: there is no signal data in this recording to put in one.
          annotations.csv holds whatever events it carries. channels.csv lists
          signal channels, so it has none to list.

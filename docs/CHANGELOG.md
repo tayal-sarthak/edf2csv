@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.6
+
+### five warnings that said what was wrong and not what it meant for the output
+
+0.8.4 held every fatal parser error to carrying a hint — the indented line that says what to
+do about it. Nothing asked the same of the warnings, and five of the forty-six had none.
+
+All five are raised by the header parser, which is to say all five are printed before a
+sample has been read: they are what `--info` says about a file somebody is deciding whether
+to convert.
+
+```
+warning: 12 bytes after the last complete data record were ignored.
+warning: The header does not say how many data records the file has (-1), which the spec allows for recordings still in progress. Using the 4 records the file actually contains.
+warning: Signal 0 has no label. It will appear as "signal_0".
+```
+
+Each is missing the same half of the answer — what it means for the output. Bytes were
+ignored, and every complete record was converted. The header does not know the count, and the
+one being used came from the size of the file, so a recording still being written converts as
+much of it as was on disk. The column is called `signal_0`, and that name is built from the
+channel's position rather than read from the header, so it moves if the file's channels do.
+
+Every one of those sentences was already on warnings-and-errors.md, under the code's own
+heading, in the paragraph headed **What to do**. The page had the answer; the warning, which
+is the only part of it most people see, did not — the same gap 0.8.2 closed for
+`DEGENERATE_PHYSICAL_RANGE` and 0.8.4 for six errors.
+
+`NO_SIGNAL_CHANNELS` gets a different kind, deliberately. The warning printed directly under
+it already says what the run will write, in those words, so a second hint saying it again
+would be worse than the one that was missing. What was not said is that this file is not
+broken: an EDF+ file of events and no signal is what a scoring file distributed beside a
+recording looks like.
+
+**The check.** The twin of 0.8.4's, one severity down: it finds every `code:` in the tree,
+reads out the braces around it and asserts a `hint:` inside. Reverting any of the five makes
+it fail and name the code.
+
+It also caught one of these hints while it was being written — 0.7.253's check that a BDF+
+recording is never told about EDF+ rejected the wording above, which had `EDF+` hard-coded on
+a line reached by both formats.
+
 ## 0.8.5
 
 ### two counts of one recording, ten lines apart, grouped two different ways
