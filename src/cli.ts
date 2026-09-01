@@ -604,6 +604,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       start: optionalTime(values['start'], '--start'),
       startText: typeof values['start'] === 'string' ? values['start'] : undefined,
       duration: optionalTime(values['duration'], '--duration'),
+      durationText: typeof values['duration'] === 'string' ? values['duration'] : undefined,
       end: optionalTime(values['end'], '--end'),
       endText: typeof values['end'] === 'string' ? values['end'] : undefined,
       decimals: optionalDecimals(values['decimals']),

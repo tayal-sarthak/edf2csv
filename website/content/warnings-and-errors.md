@@ -1243,6 +1243,7 @@ These mean the command was invoked in a way that can't be carried out. They exit
 | `--duration` and `--end` together | `Use either --duration or --end, not both.` |
 | `--start` at or past the end of the recording | `--start "600s" is at or past the end of this 2s recording.` |
 | A window that ends before it starts | `The requested window ends at "1s", which is not after its start at "5s".` |
+| `--duration` of zero | `--duration "0s" is not a length of time, so the window ends where it starts, at "5s".` The flag is named, since it is the only value that can be wrong here |
 | One recording's output inside another's | `"study/rec/inner.edf" would be converted into "out/rec/inner", which is inside "out/rec"` |
 | `--stdout` given a folder | `--stdout writes a single CSV, and a folder is converted as a batch even when it holds one recording.` |
 | `--stdout` with nothing to stream | `--stdout has no signal data to write because --annotations-only was given.` |

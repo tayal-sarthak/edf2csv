@@ -56,6 +56,8 @@ export interface PlanOptions {
   /** The `--start` value exactly as typed, for error messages. */
   startText?: string | undefined;
   duration?: number | undefined;
+  /** The `--duration` value exactly as typed, for error messages. */
+  durationText?: string | undefined;
   end?: number | undefined;
   /** The `--end` value exactly as typed, for error messages. */
   endText?: string | undefined;
@@ -175,6 +177,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     start: options.start,
     startText: options.startText,
     duration: options.duration,
+    durationText: options.durationText,
     end: options.end,
     endText: options.endText,
     recordDuration: input.recordDuration,

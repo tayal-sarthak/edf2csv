@@ -357,6 +357,28 @@ describe('argument errors exit 2', () => {
     const noStart = await cli([fixture('tiny.edf'), '--end', '0', '--info']);
     assert.equal(noStart.code, 2);
     assert.match(noStart.stderr, /ends at "0", which is not after its start at 0s/u);
+
+    /*
+      And `--duration 0`, where the two ends are the same and neither of them is what is
+      wrong. `end = start + duration` and a negative duration is refused earlier, so a window
+      that ends where it starts and came from `--duration` came from a duration of zero —
+      the one value in the command that is wrong, and the one the message never named:
+
+          edf2csv rec.edf --start 5s --duration 0
+          error: The requested window ends at 5s, which is not after its start at "5s".
+
+      Two mentions of the value that is fine. `--duration` had no typed text to quote because
+      nothing passed it; it does now, like `--start` and `--end`.
+    */
+    for (const args of [['--duration', '0'], ['--start', '5s', '--duration', '0s']]) {
+      const zero = await cli([fixture('long-stream.edf'), ...args, '--info']);
+      assert.equal(zero.code, 2, zero.stderr);
+      assert.match(zero.stderr, /^error: --duration "0s?" is not a length of time/u, zero.stderr);
+      assert.match(zero.stderr, /Give a length above zero/u, zero.stderr);
+    }
+    // Both ends given is still the message about both ends.
+    const both = await cli([fixture('long-stream.edf'), '--start', '5s', '--end', '2s', '--info']);
+    assert.match(both.stderr, /The requested window ends at "2s"/u, both.stderr);
   });
 
   it('rejects an unparseable time', async () => {

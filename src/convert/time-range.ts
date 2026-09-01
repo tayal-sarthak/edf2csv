@@ -392,6 +392,8 @@ export function resolveRange(options: {
   /** The `--start` value exactly as typed, quoted back in the past-the-end error. */
   startText?: string | undefined;
   duration?: number | undefined;
+  /** The `--duration` value exactly as typed, quoted back in the window error. */
+  durationText?: string | undefined;
   end?: number | undefined;
   /** The `--end` value exactly as typed, quoted back in the window error. */
   endText?: string | undefined;
@@ -490,16 +492,35 @@ export function resolveRange(options: {
     );
   }
   if (endSeconds <= startSeconds) {
-    // Quote whatever the caller actually gave, for the same reason as the error above. The
-    // end is only echoed when --end was passed: with --duration the end is computed here,
-    // so there is no typed value to quote and the arithmetic result is the honest thing.
+    // Quote whatever the caller actually gave, for the same reason as the error above.
     const endShown =
       options.end !== undefined && options.endText !== undefined
         ? quoted(options.endText, endSeconds)
         : formatSeconds(endSeconds);
     const startShown = quoted(options.startText, startSeconds);
+    /*
+      Name the option that caused it, when only one of them could have.
+
+      `end = start + duration`, and a negative duration is refused before this, so a window
+      that ends where it starts and was built from `--duration` was built from a duration of
+      zero — the one value in the command that is wrong. The message named neither it nor the
+      flag:
+
+          edf2csv rec.edf --start 5s --duration 0
+          error: The requested window ends at 5s, which is not after its start at "5s".
+
+      Two mentions of the value that is fine, none of the one that is not, in a file whose
+      other refusals quote what was typed on the reasoning that "`--start 4h` came back as
+      '--start 14400s is at or past the end', which reads as a value the user never gave".
+      `--duration` had no typed text to quote because nothing passed it; it does now, like
+      its two neighbours.
+    */
     throw new TimeRangeError(
-      `The requested window ends at ${endShown}, which is not after its start at ${startShown}.`,
+      options.end === undefined && options.duration !== undefined
+        ? `--duration ${quoted(options.durationText, options.duration)} is not a length of ` +
+          `time, so the window ends where it starts, at ${startShown}. Give a length above ` +
+          `zero, or leave --duration out to convert to the end.`
+        : `The requested window ends at ${endShown}, which is not after its start at ${startShown}.`,
     );
   }
 

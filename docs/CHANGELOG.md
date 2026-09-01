@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.29
+
+### the refusal for --duration 0 that names everything except --duration
+
+```
+$ edf2csv rec.edf --start 5s --duration 0
+error: The requested window ends at 5s, which is not after its start at "5s".
+```
+
+Two mentions of the value that is fine, none of the one that is not. `--duration` appears
+nowhere, and neither does `0`.
+
+The end is `start + duration`, and a negative duration is refused before this — so a window
+that ends where it starts and was built from `--duration` was built from a duration of zero.
+That is the only thing in the command that can be wrong, and it is the only thing the message
+left out.
+
+The file this lives in is full of the opposite argument. `--start 4h` is quoted back as `4h`
+rather than as 14400 seconds, "which reads as a value the user never gave". `--start "  5s  "`
+keeps its spaces inside quotation marks, since "the surrounding spaces — the actual reason a
+shell-built argument went wrong — are invisible" without them. `--duration` had no typed text
+to quote back because nothing ever passed it: `startText` and `endText` were plumbed through
+`buildPlan` from the command line and `durationText` was not.
+
+```
+error: --duration "0s" is not a length of time, so the window ends where it starts, at "5s".
+       Give a length above zero, or leave --duration out to convert to the end.
+```
+
+A window given both ends keeps the message about both ends — there the two values really are
+the pair to compare, and either could be the wrong one.
+
+`durationText` joins its two neighbours on `PlanOptions` and `resolveRange`, so a library
+caller accepting `5m` from its own users can quote back what they typed, which is what the api
+page already offers `parseTimeSpec` for.
+
 ## 0.8.28
 
 ### two library arguments answered with a code about the recording

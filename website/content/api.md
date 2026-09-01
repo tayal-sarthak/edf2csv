@@ -475,6 +475,7 @@ interface ConvertOptions {
   // Quoted back in time-range errors so they name the value the caller gave, not its
   // parsed form. Optional; the parsed seconds are used when absent.
   startText?: string;
+  durationText?: string;
   endText?: string;
 }
 
