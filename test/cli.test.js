@@ -530,6 +530,24 @@ describe('terminal safety', () => {
     assert.equal(converted.code, 0, converted.stderr);
     assert.ok(!converted.stderr.includes('\u202e'), 'an override reached the summary');
 
+    /*
+      And the two JSON documents, which carried it raw until 0.8.17.
+
+      `JSON.stringify` escapes U+0000 to U+001F because JSON requires it and leaves everything
+      else as itself, so the surface a script pipes into `jq` — and the `metadata.json` a
+      person runs `cat` on — reordered the line where the text form did not. A `\uXXXX`
+      escape is the same string to `JSON.parse`, so nothing downstream reads a different
+      value; this is not the trade FORMULA_LABEL describes for a CSV cell.
+    */
+    const surveyed = await cli([tricked, '--info', '--json']);
+    assert.equal(surveyed.code, 0, surveyed.stderr);
+    assert.ok(!surveyed.stdout.includes('\u202e'), 'an override reached the survey document');
+    assert.equal(JSON.parse(surveyed.stdout).path, tricked, 'the escape changed the value');
+
+    const archive = await readFile(path.join(dir, 'out', 'metadata.json'), 'utf8');
+    assert.ok(!archive.includes('\u202e'), 'an override reached metadata.json');
+    assert.equal(JSON.parse(archive).source.path, tricked, 'the escape changed the value');
+
     // A name carrying a bidi mark is left alone: it is not an override, and it is how a
     // right-to-left name is ordinarily written.
     const marked = path.join(dir, 'sleep-\u200fname.edf');

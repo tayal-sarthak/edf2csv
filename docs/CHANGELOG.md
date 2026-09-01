@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.18
+
+### the two JSON documents carried the override the text form escapes
+
+`--info` escapes a path before printing it, on the reasoning its own comment gives: "A path is
+untrusted text: a folder may be named with an ESC byte, and a file name may hold a newline on
+every platform this runs on." 0.7.257 extended that to the bidirectional overrides, which do
+not drive a terminal but tell it to display everything after them right to left.
+
+The two JSON documents did not.
+
+```
+$ edf2csv sleep-<U+202E>fdp.edf --info
+File       sleep-\u202efdp.edf
+
+$ edf2csv sleep-<U+202E>fdp.edf --info --json | jq .path
+"sleep-fde.pdf"
+```
+
+`JSON.stringify` escapes U+0000 to U+001F because JSON requires it, and leaves everything else
+as itself. So the surface a script pipes into `jq`, and the `metadata.json` somebody runs `cat`
+over, carried the override where the surface a person reads escapes it — and `metadata.json` is
+the one that stays on disk beside the output for as long as the conversion does.
+
+It costs nothing here. `\u202e` is the same string to `JSON.parse`, so no consumer reads a
+different value, and both documents still parse to exactly the path on disk. That is what
+separates this from the CSV, where `FORMULA_LABEL` and `NONPRINTABLE_LABEL` warn rather than
+rewrite, because rewriting the cell would mean the file no longer says what the recording says.
+
+Through the module that defines the class, so the answer is the same one `printable` gives —
+minus tab, newline and carriage return, which is how a pretty-printed document is laid out and
+which `JSON.stringify` has already escaped anywhere a value really holds one.
+
 ## 0.8.17
 
 ### the module that keeps bidi overrides off a terminal had one in its own docstring

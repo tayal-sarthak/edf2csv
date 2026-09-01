@@ -27,7 +27,7 @@ import {
   escapeCsvField,
 } from '../format/csv.js';
 import { counted, listed } from '../format/list.js';
-import { escapeCharacter, unprintableIn } from '../format/unprintable.js';
+import { escapeCharacter, escapeJsonText, unprintableIn } from '../format/unprintable.js';
 import {
   makeSampleFormatter,
   makeTimeFormatter,
@@ -1961,7 +1961,10 @@ async function writeMetadata(
     })),
   };
 
-  await writeOutputFile(outputDir, 'metadata.json', JSON.stringify(metadata, null, 2) + '\n');
+  // Escaped like the two --json documents: metadata.json records the input's path, and a
+  // `cat` of it should not be able to reorder the terminal. See escapeJsonText.
+  const document = escapeJsonText(JSON.stringify(metadata, null, 2));
+  await writeOutputFile(outputDir, 'metadata.json', `${document}\n`);
 }
 
 

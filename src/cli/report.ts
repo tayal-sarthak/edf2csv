@@ -10,7 +10,7 @@ import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { fixed, formatBytes, formatDuration, plain } from '../format/number.js';
 import { counted, grouped } from '../format/list.js';
-import { escapeCharacter, unprintablePattern } from '../format/unprintable.js';
+import { escapeCharacter, escapeJsonText, unprintablePattern } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -462,7 +462,7 @@ export function infoJson(
     for (const channel of group.channels) fileFor.set(channel.signal.index, group.fileName);
   }
 
-  return JSON.stringify(
+  const document = JSON.stringify(
     {
       tool: TOOL,
       path: file.path,
@@ -535,6 +535,8 @@ export function infoJson(
     null,
     indent ?? undefined,
   );
+  // A path is untrusted text on this surface too; see escapeJsonText.
+  return escapeJsonText(document);
 }
 
 /**
@@ -616,7 +618,7 @@ function elapsed(milliseconds: number): string {
 const TOOL = { name: 'edf2csv', version: VERSION } as const;
 
 export function summaryJson(result: ConvertResult, indent: number | null = 2): string {
-  return JSON.stringify(
+  const document = JSON.stringify(
     {
       tool: TOOL,
       output_dir: result.outputDir,
@@ -630,4 +632,6 @@ export function summaryJson(result: ConvertResult, indent: number | null = 2): s
     null,
     indent ?? undefined,
   );
+  // A path is untrusted text on this surface too; see escapeJsonText.
+  return escapeJsonText(document);
 }

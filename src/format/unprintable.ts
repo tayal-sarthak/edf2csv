@@ -42,6 +42,37 @@ export function escapeCharacter(character: string): string {
   return code > 0xff ? `\\u${code.toString(16)}` : `\\x${code.toString(16).padStart(2, '0')}`;
 }
 
+/**
+ * A JSON document with the class escaped, so printing one cannot drive a terminal.
+ *
+ * `JSON.stringify` escapes U+0000 to U+001F because JSON requires it, and leaves everything
+ * else as itself — so the two JSON surfaces carried what the text ones escape. `--info` prints
+ * a path through `printable`, on the reasoning its own comment gives ("a path is untrusted
+ * text: a folder may be named with an ESC byte"); `--info --json` and `metadata.json` printed
+ * the same path raw, and a recording named `sleep-` with an override before `fdp.edf` reordered
+ * the line under `jq`, under `cat metadata.json`, and in whatever log the document was piped to.
+ *
+ * Free, unlike the CSV case. A `\uXXXX` escape is the same string to `JSON.parse`, so no
+ * consumer sees a different value — which is why this is not the trade `FORMULA_LABEL` and
+ * `NONPRINTABLE_LABEL` describe, where rewriting the cell would mean the CSV no longer says
+ * what the recording says.
+ *
+ * Not through `escapeCharacter`, whose `\xNN` form is what a person reads and is not JSON.
+ */
+export function escapeJsonText(json: string): string {
+  return json.replace(unprintablePattern('gu'), (character) => {
+    /*
+      Tab, newline and carriage return are how a pretty-printed document is laid out, and
+      those occurrences are between the strings rather than inside them — `JSON.stringify`
+      has already escaped any that a value really holds. Escaping them here turned every line
+      break into the text `\u000a` and the document stopped being JSON at all.
+    */
+    if (character === '\t' || character === '\n' || character === '\r') return character;
+    const code = character.codePointAt(0) as number;
+    return `\\u${code.toString(16).padStart(4, '0')}`;
+  });
+}
+
 /** Every distinct unprintable character in `text`, in the order they first appear. */
 export function unprintableIn(text: string): string[] {
   const found = new Set<string>();
