@@ -181,6 +181,17 @@ export function formatInfo(
    * beside the point on a file whose events had just been read and counted.
    */
   events: number | null = null,
+  /**
+   * Whether the run would stream to stdout, in which case no file is written at all.
+   *
+   * The OUTPUT column is "Named as they will be written. --info is read to find out what a
+   * run leaves behind, and a script that opens the name it was given must find a file there"
+   * — and under `--stdout` it named `signals.csv`, or `signals.csv.gz`, for a run that
+   * creates no directory and no file. The same table already tells a channel that will not
+   * be converted from one the file gives nothing to convert; this is the third thing it
+   * could not say.
+   */
+  toStdout = false,
 ): string {
   const { header } = file;
   const lines: string[] = [];
@@ -338,8 +349,13 @@ export function formatInfo(
         choice nobody made.
       */
       plan.writeSignals
-        ? (fileFor.get(signal.index) ??
-          (signal.samplesPerRecord === 0 ? '(no samples)' : '(not selected)'))
+        ? fileFor.has(signal.index)
+          ? toStdout
+            ? '(stdout)'
+            : (fileFor.get(signal.index) as string)
+          : signal.samplesPerRecord === 0
+            ? '(no samples)'
+            : '(not selected)'
         : '(no signal data)',
     ]);
   }
@@ -475,6 +491,8 @@ export function infoJson(
    */
   events: number | null = null,
   indent: number | null = 2,
+  /** See `formatInfo`: under `--stdout` there is no file to name. */
+  toStdout = false,
 ): string {
   const { header } = file;
   const fileFor = new Map<number, string>();
@@ -520,7 +538,16 @@ export function infoJson(
         digital_max: signal.digitalMax,
         transducer: signal.transducer,
         prefiltering: signal.prefiltering,
-        output_file: fileFor.get(signal.index) ?? null,
+        /*
+          `-`, the placeholder `ConvertResult.outputDir` already uses for this mode, and not
+          `null`: null is this document's word for "would not be converted", which is a
+          different thing from "converted, to a stream".
+        */
+        output_file: fileFor.has(signal.index)
+          ? toStdout
+            ? '-'
+            : (fileFor.get(signal.index) as string)
+          : null,
       })),
       /*
         Null rather than zero when the run writes no signal table.

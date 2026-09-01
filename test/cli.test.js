@@ -151,6 +151,38 @@ describe('argument errors exit 2', () => {
     assert.match(stderr, /--help/);
   });
 
+  it('names the stream in the OUTPUT column when the run writes no file', async () => {
+    /*
+      "Named as they will be written. --info is read to find out what a run leaves behind,
+      and a script that opens the name it was given must find a file there." Under `--stdout`
+      the OUTPUT column said `signals.csv`, and with `--gzip` `signals.csv.gz` — a name that
+      exists nowhere, for a run documented as creating no directory.
+
+      The same table already tells a channel nobody selected from one the file gives nothing
+      to convert. This is the third thing it could not say.
+    */
+    const streamed = await cli([fixture('tiny.edf'), '--info', '--stdout']);
+    assert.equal(streamed.code, 0, streamed.stderr);
+    assert.match(streamed.stdout, /^0 {2}ch1 .*\(stdout\)$/mu, streamed.stdout);
+    assert.doesNotMatch(streamed.stdout, /signals\.csv/u, streamed.stdout);
+
+    const compressed = await cli([fixture('tiny.edf'), '--info', '--stdout', '--gzip']);
+    assert.doesNotMatch(compressed.stdout, /signals\.csv\.gz/u, compressed.stdout);
+
+    /*
+      And the JSON, where `null` is already this document's word for "would not be converted".
+      A channel streamed to stdout is converted, so it gets the `-` that `ConvertResult`
+      already uses for the same mode rather than the word for the other case.
+    */
+    const surveyed = await cli([fixture('tiny.edf'), '--info', '--stdout', '--json']);
+    const channels = JSON.parse(surveyed.stdout).channels;
+    assert.deepEqual(channels.map((c) => c.output_file), ['-', '-'], surveyed.stdout);
+
+    // A conversion to a directory still names the file, which is what the column is for.
+    const written = await cli([fixture('tiny.edf'), '--info']);
+    assert.match(written.stdout, /^0 {2}ch1 .*signals\.csv$/mu, written.stdout);
+  });
+
   it('refuses a short option written with an equals sign, which POSIX reads as the value', async () => {
     /*
       A short option's value follows the letter directly or comes as the next argument, so the

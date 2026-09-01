@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.31
+
+### the OUTPUT column naming a file that will exist nowhere
+
+```
+$ edf2csv rec.edf --info --stdout --gzip
+
+#  COLUMN  LABEL  UNIT  RATE   RANGE        OUTPUT
+0  ch1     ch1    uV    10 Hz  -100 to 100  signals.csv.gz
+```
+
+There is no `signals.csv.gz`. `--stdout` "writes the signal CSV to stdout and creates no
+directory", which is how this documentation puts it two pages over, and the OUTPUT column named
+a file that will exist nowhere.
+
+The column's own rule says why that matters:
+
+> Named as they will be written. `--info` is read to find out what a run leaves behind, and a
+> script that opens the name it was given must find a file there.
+
+The table already tells three states apart — a channel `--channels` excluded, a channel the
+file gives no samples, and a run writing no signal table at all — each with its own
+parenthetical, because "the human table was the one place claiming a choice nobody made". This
+is the fourth thing it could not say.
+
+```
+0  ch1     ch1    uV    10 Hz  -100 to 100  (stdout)
+```
+
+**And the JSON.** `output_file` is `null` there when a channel would not be converted, so a
+channel that *is* converted, to a stream, cannot borrow that word. It gets `-`, which is
+already what `ConvertResult.outputDir` carries for the same mode.
+
+`Would write 20 rows, roughly 495 B.` is untouched: rows are rows and bytes are bytes wherever
+they go, and under `--gzip` that line has always said "before compression".
+
 ## 0.8.30
 
 ### a hint that named two causes, neither of them the common one

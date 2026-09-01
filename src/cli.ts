@@ -1108,8 +1108,8 @@ async function showInfo(
     */
     const audit = auditStdout();
     const description = asJson
-      ? `${infoJson(file, plan, knownEvents, jsonIndent)}\n`
-      : `${formatInfo(file, plan, knownEvents)}\n`;
+      ? `${infoJson(file, plan, knownEvents, jsonIndent, toStdout)}\n`
+      : `${formatInfo(file, plan, knownEvents, toStdout)}\n`;
     process.stdout.write(description);
     audit?.count(Buffer.byteLength(description));
     audit?.verify();
