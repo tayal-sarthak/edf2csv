@@ -1054,7 +1054,7 @@ Both numbers are there because the interesting comparison is between them: a hea
 
 ### UNREADABLE
 
-The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected.
+The file can't be opened or read. Raised when the path doesn't exist, when permission is denied, when it isn't a regular file, and when a read during conversion returns fewer bytes than expected. Not for a bad argument to `readRecords`: that was coded `UNREADABLE` until 0.8.28 and is an `OptionError` now, since the file was fine and the call was not.
 
 ```
 error: Cannot read "recording.edf": no such file.

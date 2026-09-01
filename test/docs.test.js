@@ -4874,7 +4874,13 @@ describe('documentation and source agree on their lists', () => {
         if (args < 3) hintless.push(`${where}:${text.slice(0, at).split('\n').length}`);
       }
     }
-    assert.ok(raisings >= 21, `expected the parser's raisings, found ${raisings}`);
+    /*
+      Nineteen since 0.8.28, when the two `readRecords` argument checks became `OptionError`s:
+      they were about the caller's value rather than the file, and an `EdfError` code says the
+      recording is at fault. The floor is here so the scan cannot silently stop finding
+      raisings at all, not to pin the number.
+    */
+    assert.ok(raisings >= 19, `expected the parser's raisings, found ${raisings}`);
     assert.deepEqual(hintless, [], `a fatal error with nothing to do about it: ${hintless.join(', ')}`);
   });
 

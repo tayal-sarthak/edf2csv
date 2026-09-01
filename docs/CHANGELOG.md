@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.28
+
+### two library arguments answered with a code about the recording
+
+```js
+for await (const batch of file.readRecords({ startRecord: 1.5 })) { }
+
+EdfError: readRecords: startRecord must be a whole record index, got 1.5.
+error.code === 'BAD_HEADER_FIELD'
+```
+
+The reference defines that code as "A field that should contain a number doesn't", about the
+recording's header. The number here came from the caller. A script that branches on it to
+report a corrupt recording — which is the use the page recommends, "Match on `code`, not on
+`message`" — blames the file for its own bug.
+
+`chunkBytes` did the same under `UNREADABLE`, which means the file could not be opened or read.
+It could. The allocation size was wrong.
+
+Both are `OptionError`s now, which is the class this series settled on for exactly this: 0.8.9
+gave it to `EdfFile.open` for a path that is not one, 0.8.15 to `parseHeader` for a byte count
+that is not one, 0.8.16 to `defaultOutputDir` and `decodeRecordAnnotations`. The reason is the
+one `assertInputPath` states — the call is what is wrong, not the recording — and these were
+the last two library arguments still answered with a code about the file.
+
+**This changes the class a caller catches**, which a patch release does not usually do. It only
+reaches a call that was already a bug: every `readRecords` that passes whole-number bounds and
+a positive `chunkBytes` is untouched, and bounds outside the file are still clamped rather than
+refused.
+
+The advice moves into the message, since `OptionError` carries no `hint` field — the same shape
+`layout must be "wide" or "long"` and the rest of that family already have.
+
+One consequence worth naming: 0.8.4's check that every `new EdfError(` passes a hint counts the
+raisings so it cannot silently stop finding them, and the tree now has nineteen rather than
+twenty-one. The floor moved with them; it is there to prove the scan works, not to pin a number.
+
 ## 0.8.27
 
 ### a value refused for not being a number, shown as one

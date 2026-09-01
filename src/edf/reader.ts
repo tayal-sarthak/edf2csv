@@ -21,7 +21,7 @@ import { readInt16LE } from './bytes.js';
 import { counted, grouped } from '../format/list.js';
 // Crossing into convert/ as header.ts already does for `typeable`: the check belongs to the
 // call rather than to the file, and there is one of it.
-import { assertInputPath, describeValue } from '../convert/options.js';
+import { OptionError, assertInputPath, describeValue } from '../convert/options.js';
 
 /**
  * How far `readOrigin` looks for a record that states its own start time.
@@ -358,8 +358,20 @@ export class EdfFile {
       ['endRecord', options.endRecord],
     ] as const) {
       if (value !== undefined && !Number.isInteger(value)) {
-        throw new EdfError(
-          'BAD_HEADER_FIELD',
+        /*
+          An `OptionError`, because it is the call that is wrong and not the recording.
+
+          This raised an `EdfError` coded `BAD_HEADER_FIELD` — a code the reference defines
+          as "a field that should contain a number doesn't", about the file's header — for a
+          number the *caller* passed. A script branching on that code to report a corrupt
+          recording blamed the recording for its own bug, and `chunkBytes` below did the same
+          under `UNREADABLE`, which means the file could not be read.
+
+          The same class `EdfFile.open` raises for a path that is not one and `parseHeader`
+          for a byte count that is not one, both settled in this same series, and for the
+          reason `assertInputPath` gives.
+        */
+        throw new OptionError(
           /*
             Through `describeValue`, like every other refusal that quotes a rejected value.
 
@@ -372,8 +384,9 @@ export class EdfFile {
             `got [object Object]` — the string `assertInputPath`'s own docstring names as the
             reason it exists.
           */
-          `readRecords: ${name} must be a whole record index, got ${describeValue(value)}.`,
-          'Record boundaries are the unit the file can be read in; a fractional index would decode samples from the middle of a record.',
+          `readRecords: ${name} must be a whole record index, got ${describeValue(value)}. ` +
+            'Record boundaries are the unit the file can be read in; a fractional index ' +
+            'would decode samples from the middle of a record.',
         );
       }
     }
@@ -393,10 +406,11 @@ export class EdfFile {
     */
     const budget = options.chunkBytes ?? DEFAULT_CHUNK_BYTES;
     if (!Number.isFinite(budget) || budget < 1) {
-      throw new EdfError(
-        'UNREADABLE',
-        `chunkBytes must be a positive number of bytes, got ${describeValue(options.chunkBytes)}.`,
-        'It is a ceiling on how much of the file is held at once; one record is read whatever it says.',
+      // `OptionError` for the same reason as the record bounds above; see there.
+      throw new OptionError(
+        `chunkBytes must be a positive number of bytes, got ${describeValue(options.chunkBytes)}. ` +
+          'It is a ceiling on how much of the file is held at once; one record is read ' +
+          'whatever it says.',
       );
     }
     /*

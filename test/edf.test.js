@@ -864,8 +864,13 @@ describe('reading samples', () => {
     /*
       `chunkBytes: NaN` came back as `RangeError: The value of "size" is out of range` from
       inside Node's Buffer.alloc, with no mention of the option that caused it — while a
-      fractional startRecord gets a typed EdfError naming the field. Every other option here
+      fractional startRecord gets a typed error naming the field. Every other option here
       is checked; this one reached the allocator.
+
+      An `OptionError` since 0.8.28, not an `EdfError`. Both of these are the caller's
+      argument rather than the file's header, and they were coded `UNREADABLE` and
+      `BAD_HEADER_FIELD` — "the file could not be read" and "a field that should contain a
+      number doesn't" — so a script branching on either blamed the recording for its own bug.
     */
     const file = await load('tiny.edf');
     for (const value of [Number.NaN, 0, -5, Number.POSITIVE_INFINITY]) {
@@ -874,7 +879,8 @@ describe('reading samples', () => {
           for await (const unused of file.readRecords({ chunkBytes: value })) break;
         },
         (error) => {
-          assert.equal(error.constructor.name, 'EdfError');
+          assert.equal(error.constructor.name, 'OptionError');
+          assert.equal(error.code, undefined, 'a recording code would blame the recording');
           assert.match(error.message, /chunkBytes must be a positive number of bytes/u);
           return true;
         },
@@ -991,13 +997,25 @@ describe('record bounds', () => {
   // reading from 1.5 began half a record in and decoded every sample from the wrong
   // offset — returning channel 2's values under channel 1's signal, with no error.
   it('rejects a fractional record index rather than reading from mid-record', async () => {
+    /*
+      As an `OptionError` since 0.8.28. It was an `EdfError` coded `BAD_HEADER_FIELD` — which
+      the reference defines as "a field that should contain a number doesn't", about the
+      file's header — for a number the caller passed, so a script branching on that code to
+      report a corrupt recording blamed the recording for its own bug.
+    */
+    const { OptionError } = await import('../dist/index.js');
     const file = await load('tiny.edf');
-    for (const options of [{ startRecord: 1.5 }, { endRecord: 0.5 }]) {
+    for (const options of [{ startRecord: 1.5 }, { endRecord: 0.5 }, { startRecord: '1' }]) {
       await assert.rejects(
         async () => {
           for await (const _ of file.readRecords(options)) break;
         },
-        /whole record index/u,
+        (error) => {
+          assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
+          assert.equal(error.code, undefined, 'a recording code would blame the recording');
+          assert.match(error.message, /whole record index/u);
+          return true;
+        },
         `should reject ${JSON.stringify(options)}`,
       );
     }
