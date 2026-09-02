@@ -598,9 +598,27 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       const affected = fields.filter(([, text]) => [...text].some(isControlCharacter));
       const control = affected.flatMap(([, text]) => [...text].filter(isControlCharacter));
       if (control.length > 0) {
-        const shown = [...new Set(control)]
-          .map((c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`)
-          .join(', ');
+        /*
+          How many of them get named is the header's decision, and it was unbounded.
+
+          Every other enumeration whose length the file controls goes through `listed`, which
+          is the helper written for exactly this — "without letting the file decide how long
+          the sentence gets". This one joined the whole set. Four free-text fields of 16, 8, 80
+          and 80 bytes can carry 63 distinct control codes between them, and did:
+
+              warning: Signal 0's label, unit and transducer contain 63 control characters
+              (\x01, \x02, \x03, ... \x9e), which will appear in the CSV column name and in
+              channels.csv exactly as the header has them.
+
+          549 characters on one line, from a warning whose point is the short sentence around
+          the list. The count is already in that sentence — "63 control characters" — so the
+          tail the cut hides is the part the reader was told twice.
+        */
+        const shown = listed(
+          [...new Set(control)].map(
+            (c) => `\\x${(c.codePointAt(0) as number).toString(16).padStart(2, '0')}`,
+          ),
+        );
         const inLabel = affected.some(([name]) => name === 'label');
         // "label and unit", not "label, unit" — `listed` is for long enumerations that get
         // truncated, and this is a sentence with at most four items in it.

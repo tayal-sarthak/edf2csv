@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.37
+
+### a warning the header could make 549 characters long
+
+`listed` exists so a file cannot decide how long a sentence gets — its own doc comment opens on
+a 1,600-character warning about two hundred sampling rates. Twelve diagnostics enumerate
+something the recording controls, and eleven of them go through it.
+
+The twelfth joins its whole set. Four free-text header fields of 16, 8, 80 and 80 bytes hold 63
+distinct control codes comfortably, and a file carrying them got:
+
+```
+warning: Signal 0's label, unit and transducer contain 63 control characters (\x01, \x02,
+\x03, \x04, \x05, \x06, \x07, \x08, \x09, \x0a, \x0b, \x0c, \x0d, \x0e, \x0f, \x10, \x11,
+\x12, \x13, \x14, \x15, \x16, \x17, \x18, \x19, \x1a, \x1b, \x1c, \x1d, \x1e, \x1f, \x7f,
+\x80, ... \x9e), which will appear in the CSV column name and in channels.csv exactly as the
+header has them.
+```
+
+549 characters on one line, from a warning whose value is the short sentence wrapped around the
+list — which field carries them, and where they land. The count is in that sentence already, so
+the tail the cut hides is the only part the reader is told twice.
+
+Through `listed` it is 222 characters, and the first eight bytes are still named:
+
+```
+Signal 0's label, unit and transducer contain 63 control characters (\x01, \x02, \x03, \x04,
+\x05, \x06, \x07, \x08 and 55 more), which will appear in the CSV column name and in
+channels.csv exactly as the header has them.
+```
+
 ## 0.8.36
 
 ### a callback that threw, from a call that supplied none

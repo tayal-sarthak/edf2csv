@@ -1071,6 +1071,45 @@ describe('column naming', () => {
     assert.ok(unit.includes(String.fromCharCode(7)), unit);
   });
 
+  it('keeps the list of bytes it names to a readable length', async () => {
+    /*
+      The header decides how many distinct control codes it carries, and it decided how long
+      this warning got. Four free-text fields of 16, 8, 80 and 80 bytes hold 63 of them
+      comfortably, and the message joined all 63:
+
+          warning: Signal 0's label, unit and transducer contain 63 control characters
+          (\x01, \x02, ... \x9e), which will appear in the CSV column name and in
+          channels.csv exactly as the header has them.
+
+      549 characters on one line. `listed` is the helper this codebase wrote for that exact
+      problem, and every other file-sized enumeration in a diagnostic already goes through it.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-manyctrl-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const many = path.join(scratch, 'many-control.edf');
+    const range = (start, count) =>
+      Array.from({ length: count }, (_, i) => String.fromCharCode(start + i)).join('');
+    writeEdf({
+      path: many, numRecords: 1, recordDuration: 1,
+      signals: [{
+        label: range(1, 15), dimension: range(16, 8), transducer: range(24, 8) + range(127, 32),
+        physMin: -100, physMax: 100, digMin: -1000, digMax: 1000, samplesPerRecord: 2,
+        gen: () => 1,
+      }],
+    });
+    const file = await EdfFile.open(many);
+    const raised = file.diagnostics.filter((d) => d.code === 'NONPRINTABLE_LABEL');
+    await file.close();
+    assert.equal(raised.length, 1, JSON.stringify(file.diagnostics));
+    const { message } = raised[0];
+    // The count is still exact; it is the naming of every one of them that is cut.
+    assert.match(message, /contain 63 control characters/u, message);
+    assert.match(message, /\(\\x01, \\x02, \\x03, \\x04, \\x05, \\x06, \\x07, \\x08 and 55 more\)/u, message);
+    // 549 characters before, 222 after, on a header that is free to ask for more of them.
+    assert.ok(message.length < 250, `${message.length} characters: ${message}`);
+  });
+
   it('leaves an ordinary label alone', async () => {
     for (const name of ['tiny.edf', 'mixed-rates.edf', 'quirky-labels.edf', 'annotations.edf']) {
       const file = await EdfFile.open(fixture(name));
