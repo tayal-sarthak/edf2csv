@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.38
+
+### the fourteenth refusal, in none of the shape the other thirteen keep
+
+Every usage error this tool prints opens with `error: ` and indents its advice seven spaces
+under it. `cli.test.js` holds thirteen of them to that shape, on the reasoning that a refusal
+which does not match `^error:` is invisible to the grep that finds all the others.
+
+The empty command line was the fourteenth, and it was neither.
+
+```
+$ edf2csv
+No input file given.
+
+edf2csv 0.8.37
+Convert EDF, EDF+ and BDF recordings to CSV
+... 66 more lines
+```
+
+Flush left, no prefix, and all 68 lines of `--help` written to **stderr** — a page of options
+in a batch log, under a line no filter catches. Nothing tested it beyond its exit code.
+
+It is not a rare way in. `edf2csv $FILE` with `FILE` unset arrives here with no positionals at
+all: the same accident as the `--out "$DEST"` that the paragraph twenty lines below in the same
+file is written about, one variable earlier.
+
+```
+$ edf2csv
+error: No input file given.
+       Pass a recording, or a folder of them.
+
+Run edf2csv --help to see the options.
+```
+
+which is the shape `edf2csv --nope` has always had. The shape test takes the empty command line
+now, and the flush-left pointer to `--help` — shared by every refusal raised before there is a
+file to act on — comes off before the advice block is measured, so it holds that pair as well.
+
 ## 0.8.37
 
 ### a warning the header could make 549 characters long

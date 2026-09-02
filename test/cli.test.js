@@ -5338,6 +5338,10 @@ describe('--stdout', () => {
       [fixture('tiny.edf'), '--duration', '1', '--end', '2'],
       [fixture('tiny.edf'), '--layout', 'sideways'],
       [empty],
+      // And the empty command line, which is the same kind of refusal one variable earlier:
+      // `edf2csv $FILE` with `FILE` unset arrives with no positionals at all. It printed its
+      // sentence flush left and then all 68 lines of `--help` onto stderr.
+      [],
       // The short-option `=` form, refused before parseArgs sees it — so it is the one
       // refusal in this list that never passes through `usageMessage`'s shaping.
       [fixture('tiny.edf'), '-q=1'],
@@ -5347,7 +5351,11 @@ describe('--stdout', () => {
       const { code, stdout, stderr } = await cli(args);
       assert.equal(code, 2, `${args.join(' ')} did not exit 2:\n${stderr}`);
       assert.equal(stdout, '', `${args.join(' ')} wrote to stdout`);
-      const lines = stderr.trimEnd().split('\n');
+      // Refusals raised before there is a file to act on close with a flush-left pointer to
+      // `--help`, a blank line below the advice. That pointer is not part of the advice
+      // block, so it comes off before the block's shape is checked.
+      const body = stderr.trimEnd().replace(/\n\nRun edf2csv --help to see the options\.$/u, '');
+      const lines = body.split('\n');
       assert.match(lines[0], /^error: /u, `${args.join(' ')} first line: ${lines[0]}`);
       for (const line of lines.slice(1)) {
         assert.match(line, /^ {7}\S/u, `${args.join(' ')} continuation: ${JSON.stringify(line)}`);

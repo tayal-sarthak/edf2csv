@@ -263,7 +263,23 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   if (positionals.length === 0) {
-    process.stderr.write(`No input file given.\n\n${USAGE}`);
+    /*
+      Shaped like the other refusals, and the last one that was not.
+
+      Every usage error this tool prints opens `error: <what>` with its advice indented under
+      it, because a refusal that does not match `^error:` is invisible to the grep that finds
+      all the others. This one printed its sentence flush left and then all 68 lines of
+      `--help` onto stderr — a page of options in a batch log, under a line no filter catches.
+
+      It is not a rare one either. `edf2csv $FILE` with `FILE` unset arrives here with no
+      positionals at all, which is the same accident as the `--out "$DEST"` the comment below
+      is about, one variable earlier.
+    */
+    process.stderr.write(
+      'error: No input file given.\n' +
+        '       Pass a recording, or a folder of them.\n\n' +
+        'Run edf2csv --help to see the options.\n',
+    );
     return EXIT_USAGE;
   }
 
