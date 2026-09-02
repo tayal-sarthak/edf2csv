@@ -51,6 +51,7 @@ export function assertOptions(options: {
   force?: boolean | undefined;
   checksum?: boolean | undefined;
   toStdout?: boolean | undefined;
+  onProgress?: unknown;
 }): void {
   const { decimals } = options;
   if (decimals !== undefined) {
@@ -164,6 +165,29 @@ export function assertOptions(options: {
     if (value !== undefined && typeof value !== 'boolean') {
       throw new OptionError(`${name} must be true or false, got ${describeValue(value)}.`);
     }
+  }
+
+  /*
+    The one option that is called rather than read, and the only one that was not checked.
+
+    `convert` invokes it as `options.onProgress?.(...)` once a record has been written, so a
+    value that is not a function passes every check here, opens the destination, writes rows
+    into it and then fails from inside the loop:
+
+        convert('rec.edf', { outputDir: 'out', onProgress: 'every record' })
+        ConversionError: The onProgress callback threw: options.onProgress is not a function
+
+    A callback that threw is what that sentence reports, and no callback was given; the text
+    after the colon names an expression inside this package. Worse is what it leaves: `out`
+    exists with a half-written signals.csv in it, which is the case the paragraph at the top
+    of this file describes — "`start: NaN` created the output directory, wrote signals.csv,
+    and then failed with a message about the input being unreadable — a partial conversion,
+    blamed on the file". Checked here, the same call writes nothing and says which argument
+    is wrong.
+  */
+  const { onProgress } = options;
+  if (onProgress !== undefined && typeof onProgress !== 'function') {
+    throw new OptionError(`onProgress must be a function, got ${describeValue(onProgress)}.`);
   }
 
   const { channels } = options;

@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.36
+
+### a callback that threw, from a call that supplied none
+
+`convert` checks every option it reads. The one it *calls* was not checked.
+
+```js
+await convert('rec.edf', { outputDir: 'out', onProgress: 'every record' });
+ConversionError: The onProgress callback threw: options.onProgress is not a function
+```
+
+A callback that threw is what that sentence reports, and the call supplied none. The text after
+the colon names an expression inside this package, which is not a thing the caller can act on.
+
+Worse is what it leaves behind. `onProgress` is invoked once a record has been written, so a
+value that is not a function passes every check, opens the destination, writes rows into it, and
+only then fails from inside the loop — `out/` is left holding a half-written `signals.csv`. That
+is the case the paragraph at the top of `options.ts` was written about: a partial conversion,
+blamed on the file.
+
+Checked with the rest, the same call writes nothing and names the argument:
+
+```
+OptionError: onProgress must be a function, got "every record".
+```
+
+The rejection table in `convert.test.js` already asserts both halves — the error type and that
+the output directory does not exist — so the two new rows cover the message and the empty disk.
+
 ## 0.8.35
 
 ### npm test wrote a gzip stream to the terminal

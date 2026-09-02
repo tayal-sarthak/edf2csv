@@ -1474,6 +1474,20 @@ describe('option checking', () => {
       [{ force: 'no' }, /force must be true or false, got "no"/u],
       [{ checksum: 0 }, /checksum must be true or false, got 0/u],
       [{ toStdout: null }, /toStdout must be true or false, got null/u],
+      /*
+        And the one option that is called rather than read, which no check here covered.
+
+        `convert` invokes it as `options.onProgress?.(...)` after a record is written, so a
+        value that is not a function passed every check above, claimed the destination, wrote
+        rows into it and then failed from inside the loop with `ConversionError: The
+        onProgress callback threw: options.onProgress is not a function` — a sentence
+        reporting a callback that threw, over a call that supplied none, ending in the name
+        of an expression inside this package. The directory it names is left on disk with a
+        half-written signals.csv in it, which is the case the assertion below this loop is
+        about and the one the top of options.ts describes.
+      */
+      [{ onProgress: 'every record' }, /onProgress must be a function, got "every record"/u],
+      [{ onProgress: true }, /onProgress must be a function, got true/u],
     ];
 
     for (const [options, expected] of cases) {
