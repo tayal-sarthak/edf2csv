@@ -15,7 +15,7 @@ import path from 'node:path';
 
 import type { RecordBatch } from '../edf/reader.js';
 import { EdfFile } from '../edf/reader.js';
-import { describeFormat, formatRates, formatWallClock, startsFormula } from '../edf/header.js';
+import { describeFormat, formatRate, formatRates, formatWallClock, startsFormula } from '../edf/header.js';
 import type { Diagnostic } from '../edf/errors.js';
 import { EdfError } from '../edf/errors.js';
 import type { Annotation } from '../edf/annotations.js';
@@ -1231,6 +1231,30 @@ async function writeChannelsCsv(
     for (const channel of group.channels) fileFor.set(channel.signal.index, group.fileName);
   }
 
+  /*
+    A rate rendered the way the file name beside it in the same row was rendered.
+
+    `sampling_rate_hz` and `output_file` are two cells of one row about one rate, and they were
+    written from different renderings of it — the cell from `String`, the name from
+    `formatRates` over the whole set. They agree on every rate `String` prints plainly and part
+    company on the ones it does not:
+
+        a,0,a,uV,1e-19,100,...,signals_1_000e-19hz.csv,yes
+
+    A reader joining that column against the files on disk finds `1e-19` naming
+    `1_000e-19hz`, and `--info` printing a third thing again — except that `--info`'s RATE
+    column is `1.000e-19 Hz`, which is the name's own form. channels.csv was the one surface
+    rendering the rate for itself.
+
+    Rendered together because that is how the names are: two rates a sixth decimal apart round
+    to one string, and `formatRates` widens the whole set when they do, so a per-rate rendering
+    would disagree with the names again on exactly those files.
+  */
+  const groupRates = plan.groups.map((group) => group.rate);
+  const rateText = new Map<number, string>(
+    formatRates(groupRates).map((text, i) => [groupRates[i] as number, text]),
+  );
+
   const lines = [
     csvRow([
       'column',
@@ -1274,10 +1298,9 @@ async function writeChannelsCsv(
           signals.csv writing every one of those values out in full — and a channel calibrated
           to ±100 in the row above it, so the column held both notations at once.
         */
-        // Not the rate, which is the one number in this row that is about the *file*: it
-        // decides which signals_<rate>hz.csv the channel lands in, and `rateSlug` writes that
-        // name from the same exponent form. Nor samples_per_record, which is a count.
-        String(signal.samplingRate),
+        // Nor the rate, which is rendered above against the names it has to match. Nor
+        // samples_per_record, which is a count.
+        rateText.get(signal.samplingRate) ?? formatRate(signal.samplingRate),
         String(signal.samplesPerRecord),
         plain(signal.physicalMin),
         plain(signal.physicalMax),

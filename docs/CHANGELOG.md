@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.39
+
+### one rate, two renderings, in neighbouring cells of the same row
+
+`sampling_rate_hz` and `output_file` are two cells of one channels.csv row, about one rate. They
+were written from two different renderings of it — the cell from `String`, the name from
+`formatRates` over the whole set — and nothing compared them.
+
+They agree on every rate `String` prints plainly, which is why this held for twenty-two
+versions. 100 samples in a record of 1e21 seconds is 1e-19 Hz:
+
+```
+column,signal_index,label,unit,sampling_rate_hz,...,output_file,converted
+s0,0,s0,uV,1e-19,100,...,signals_1_000e-19hz.csv,yes
+s1,1,s1,uV,2e-19,200,...,signals_2_000e-19hz.csv,yes
+```
+
+`1e-19` in the column output-files.md describes as the one that "decides which output file the
+channel lands in", naming `1_000e-19hz`. `--info` prints the same channel as `1.000e-19 Hz`
+against the same file, and metadata.json holds the number itself — so channels.csv was the one
+surface rendering the rate for itself.
+
+The comment above the cell asserted the opposite, that `rateSlug` "writes that name from the
+same exponent form". It does not: it writes it from `formatRate`, which rounds, and the cell
+went through neither.
+
+Rendered through `formatRates` over the plan's rates — the same call the names come from — the
+row reads `1.000e-19` beside `signals_1_000e-19hz.csv`. Rendered *together* rather than one at
+a time, because that is how the names are built: two rates a sixth decimal apart round to one
+string, and `formatRates` widens the whole set when they do.
+
+The test holds the two cells against each other rather than against two strings, so the
+agreement is what is checked, and asserts the file each row names is on disk.
+
 ## 0.8.38
 
 ### the fourteenth refusal, in none of the shape the other thirteen keep

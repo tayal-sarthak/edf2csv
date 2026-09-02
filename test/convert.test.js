@@ -2961,6 +2961,47 @@ describe('converting', () => {
     assert.match(cells[columns.indexOf('physical_min')], /^-0\.0+1$/u);
   });
 
+  it('writes the rate in the notation the file name beside it uses', async () => {
+    /*
+      `sampling_rate_hz` and `output_file` are two cells of one row about one rate, written
+      from two renderings of it: the cell from `String`, the name from `formatRates` over the
+      whole set. They agree wherever `String` prints a rate plainly, and part company where it
+      does not — 100 samples in a record of 1e21 seconds is 1e-19 Hz:
+
+          a,0,a,uV,1e-19,100,...,signals_1_000e-19hz.csv,yes
+
+      `--info` prints `1.000e-19 Hz` against the same file, so channels.csv was the one
+      surface rendering the rate for itself.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-ratecell-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { existsSync } = await import('node:fs');
+    const tiny = path.join(scratch, 'tiny-rates.edf');
+    writeEdf({
+      path: tiny, numRecords: 1, recordDuration: 1e21,
+      signals: [100, 200].map((samplesPerRecord, i) => ({
+        label: `s${i}`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+        digMax: 2047, samplesPerRecord, gen: () => 1,
+      })),
+    });
+    const dir = await outDir();
+    await convert(tiny, { outputDir: dir });
+    const [header, ...rows] = await readCsv(dir, 'channels.csv');
+    const columns = header.split(',');
+    assert.equal(rows.length, 2, rows.join('\n'));
+    for (const row of rows) {
+      const cells = row.split(',');
+      const rate = cells[columns.indexOf('sampling_rate_hz')];
+      const file = cells[columns.indexOf('output_file')];
+      // The slug is the rendered rate with its point turned into an underscore, so the two
+      // cells are held against each other rather than against two hard-coded strings.
+      assert.equal(file, `signals_${rate.replace('.', '_')}hz.csv`, row);
+      assert.equal(existsSync(path.join(dir, file)), true, `${file} was named but not written`);
+    }
+    assert.equal(rows[0].split(',')[columns.indexOf('sampling_rate_hz')], '1.000e-19', rows[0]);
+  });
+
   it('does not report a precision the caller chose as a loss of precision', async () => {
     /*
       `--decimals` exists to set a coarser precision, so raising VALUE_RESOLUTION for it is
