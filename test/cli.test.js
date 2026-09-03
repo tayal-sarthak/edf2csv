@@ -4082,6 +4082,46 @@ describe('messages that enumerate what the file contains', () => {
     assert.ok(malformed.stderr.split('\n')[1].length < 200, 'the position hint is capped too');
   });
 
+  it('groups the count of what a list left out, like the counts beside it', async () => {
+    /*
+      `listed`'s tail was the one count in this tool printed without digit grouping, because it
+      is built inside the helper rather than at a call site, and `counted` was the only door
+      into `grouped`. The sentence it lands in has two grouped counts of its own:
+
+          1,010 of 1,010 data records carry no readable timekeeping annotation
+          (records 0, 1, 2, 3, 4, 5, 6, 7 and 1002 more), so their true position in
+          time is unknown.
+
+      Three counts of the same set of records, two spellings, and the reader is meant to
+      subtract one from another by eye — which is the case `grouped`'s own comment is about.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-tail-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const unreadable = path.join(dir, 'no-timekeeping.edf');
+    writeEdf({
+      path: unreadable, reserved: 'EDF+D', numRecords: 1010, recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+      // The mandatory signed onset is missing, so no record states a readable start.
+      talsForRecord: () => 'XX\x14\x00+1.5\x14event\x14\x00',
+    });
+
+    const { stderr } = await cli([unreadable, '--out', path.join(dir, 'out')]);
+    // Flattened, since the sentence is wrapped across continuation lines on the way out.
+    const sentence = stderr.replace(/\s+/gu, ' ').match(/[\d,]+ of [\d,]+ data records.*?unknown\./u);
+    assert.ok(sentence, stderr);
+    assert.match(sentence[0], /1,010 of 1,010 data records/u, sentence[0]);
+    assert.match(sentence[0], /and 1,002 more/u, sentence[0]);
+    // The shape, rather than three more string assertions: no run of four digits in it is
+    // left ungrouped, whichever count it came from.
+    assert.doesNotMatch(sentence[0], /(?<![\d,])\d{4}(?![\d,])/u, sentence[0]);
+  });
+
   it('leaves an ordinary recording listed in full', async () => {
     // The list is the useful part when it fits: these rates are what --channels chooses between.
     const { stderr } = await cli([fixture('mixed-rates.edf'), '--info']);

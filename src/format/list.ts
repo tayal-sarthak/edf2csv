@@ -47,7 +47,24 @@ export function listed(items: readonly string[], limit = DEFAULT_LIMIT): string 
   */
   if (items.length <= limit + 1) return items.join(', ');
   const shown = items.slice(0, limit).join(', ');
-  return `${shown} and ${items.length - limit} more`;
+  /*
+    Grouped, like every other count this tool prints.
+
+    This one is written in the same sentences as the grouped ones and was the only bare
+    number among them. A discontinuous recording whose timekeeping is unreadable throughout
+    put all three side by side:
+
+        1,010 of 1,010 data records carry no readable timekeeping annotation
+        (records 0, 1, 2, 3, 4, 5, 6, 7 and 1002 more), so their true position in
+        time is unknown.
+
+    Two counts of the same set of records, a comma apart, spelled two ways — and the reader
+    is meant to subtract one from the other to see how many were named. `grouped`'s own
+    comment is about exactly that: "two figures sit in one sentence to be compared against
+    each other". The tail count escaped it because it is built here rather than at a call
+    site, and `counted` was the only door into `grouped`.
+  */
+  return `${shown} and ${grouped(items.length - limit)} more`;
 }
 
 /**

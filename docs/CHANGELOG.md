@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.41
+
+### the one count that never reached the function that groups them
+
+`grouped` exists because two counts of the same thing in one sentence have to be comparable by
+eye — its comment quotes "The file contains 39321 bytes of data, which is less than the 65536
+its header says one data record takes" as the case it was written for.
+
+One count in this tool never went through it. `listed` builds the tail of a truncated list —
+"and 192 more" — inside the helper rather than at a call site, and `counted` was the only door
+into `grouped`.
+
+It lands in sentences that grouped everything else. A discontinuous recording whose timekeeping
+is unreadable throughout puts all three counts a comma apart:
+
+```
+warning: 1,010 of 1,010 data records carry no readable timekeeping annotation (records
+         0, 1, 2, 3, 4, 5, 6, 7 and 1002 more), so their true position in time is unknown.
+```
+
+Two spellings of the same kind of number in one sentence, one of which the reader is meant to
+subtract from another. Now:
+
+```
+warning: 1,010 of 1,010 data records carry no readable timekeeping annotation (records
+         0, 1, 2, 3, 4, 5, 6, 7 and 1,002 more), so their true position in time is unknown.
+```
+
+Twelve messages enumerate through `listed`, so this reaches all of them — the leftover-file
+warning, the sampling-rate list, the channel positions.
+
+The test asserts the two counts it expects and then the shape: no run of four digits anywhere in
+the sentence is left ungrouped, whichever count produced it.
+
 ## 0.8.40
 
 ### the OUTPUT column said stdout; the warning under it said signals.csv
