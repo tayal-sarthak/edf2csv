@@ -5299,6 +5299,37 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('names stdout in the warnings about the rows it put there', async () => {
+    /*
+      Three of the plan's warnings name `signals.csv`, the file the wide layout writes — and a
+      `--stdout` run writes no file at all. `--info --stdout` printed both halves two lines
+      apart, having named the destination correctly in its own table since 0.8.31:
+
+          0  ch1  ch1  uV  3000000000000000 Hz  -100 to 100  (stdout)
+          warning: ... so consecutive rows in signals.csv carry the same time_s value.
+
+      A reader is told the rows go to the terminal, then sent to look in a file for them.
+    */
+    const raised = [
+      ['repeating-fast.edf', /consecutive rows in the CSV on stdout carry the same time_s/u],
+      ['unprintable-step.bdf', /round to the same value in the CSV on stdout\./u],
+    ];
+    for (const [name, expected] of raised) {
+      for (const mode of [['--stdout'], ['--info', '--stdout']]) {
+        const { code, stderr } = await cli([fixture(name), ...mode]);
+        assert.equal(code, 0, `${name} ${mode.join(' ')}: ${stderr}`);
+        assert.match(stderr, expected, `${name} ${mode.join(' ')}: ${stderr}`);
+        assert.doesNotMatch(stderr, /signals\S*\.csv/u, `${name} ${mode.join(' ')}: ${stderr}`);
+      }
+      // And a run that really does write one still names it, which is the whole value of
+      // the sentence when there is a file to open.
+      const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-dest-'));
+      temporaries.push(dir);
+      const { stderr } = await cli([fixture(name), '--out', path.join(dir, 'out')]);
+      assert.match(stderr, /signals\S*\.csv/u, stderr);
+    }
+  });
+
   it('shapes every refusal like the others, so a log can be grepped for one', async () => {
     /*
       Every usage error in this tool prints "error: <what>" with its advice indented seven

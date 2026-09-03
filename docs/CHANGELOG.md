@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.40
+
+### the OUTPUT column said stdout; the warning under it said signals.csv
+
+`--info --stdout` printed the destination twice, two lines apart, two different ways:
+
+```
+#  COLUMN  LABEL  UNIT  RATE                 RANGE        OUTPUT
+0  ch1     ch1    uV    3000000000000000 Hz  -100 to 100  (stdout)
+warning: Channels at 3000000000000000 Hz sample faster than the time column can
+         distinguish, so consecutive rows in signals.csv carry the same time_s value.
+```
+
+The OUTPUT column has said `(stdout)` since 0.8.31. The warning under it names a file the run
+will not write — so a reader is told the rows go to the terminal and then sent to look in a
+file for them. The conversion itself said the same thing:
+
+```
+$ edf2csv repeating-fast.edf --stdout > rows.csv
+warning: ... so consecutive rows in signals.csv carry the same time_s value.
+```
+
+Three warnings do it — both `TIME_RESOLUTION` branches and `VALUE_RESOLUTION` — because they
+name `group.fileName`, and the plan had no idea the table was going to a terminal. It does not
+need to: `--stdout` is refused unless the recording makes exactly one table, so nothing about
+the plan changes. Only the three sentences that say where the rows land.
+
+```
+warning: ... so consecutive rows in the CSV on stdout carry the same time_s value.
+warning: gravimeter steps by less than any number of decimals this can print, so some
+         consecutive samples round to the same value in the CSV on stdout.
+```
+
+A run that writes a file still names it, which is the whole value of the sentence when there is
+something to open. The test checks both, in both modes.
+
 ## 0.8.39
 
 ### one rate, two renderings, in neighbouring cells of the same row

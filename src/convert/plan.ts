@@ -77,6 +77,14 @@ export interface PlanOptions {
    * at different rates in one table without inventing samples.
    */
   layout?: 'wide' | 'long' | undefined;
+  /**
+   * Whether the one table this produces goes to stdout rather than to a directory.
+   *
+   * Read only by the warnings that name where their rows land. Nothing about the plan itself
+   * changes — `--stdout` is refused unless the recording makes exactly one table — but three
+   * of those warnings named `signals.csv`, a file such a run never writes.
+   */
+  toStdout?: boolean | undefined;
 }
 
 export interface ConversionPlan {
@@ -272,6 +280,23 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     it was written from was not, and the hint printed four lines below here has said "the
     fifteen places a double can hold exactly" ever since.
   */
+  /*
+    Where the rows a warning is about actually land.
+
+    Three warnings below name `group.fileName`, which is the file the wide layout writes — and
+    under `--stdout` no file is written at all. `repeating-fast.edf --info --stdout` printed
+    both halves two lines apart:
+
+        0  ch1  ch1  uV  3000000000000000 Hz  -100 to 100  (stdout)
+        warning: Channels at 3000000000000000 Hz sample faster than the time column can
+                 distinguish, so consecutive rows in signals.csv carry the same time_s value.
+
+    The OUTPUT column has said `(stdout)` since 0.8.31. The warning under it did not, so a
+    reader is told the rows go to the terminal and then sent to look in a file for them.
+  */
+  const destination = (group: RateGroup): string =>
+    options.toStdout === true ? 'the CSV on stdout' : group.fileName;
+
   for (const group of groups) {
     const step = group.rate > 0 ? 1 / group.rate : 0;
     /*
@@ -295,7 +320,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         code: 'TIME_RESOLUTION',
         severity: 'warning',
         message:
-          `Channels in ${group.fileName} work out to a sampling rate of ${formatRate(group.rate)} Hz ` +
+          `Channels in ${destination(group)} work out to a sampling rate of ${formatRate(group.rate)} Hz ` +
           `— their samples per record over a record duration too small to divide into — so ` +
           `their samples cannot be placed in time and no rows are written for them.`,
         hint:
@@ -308,7 +333,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         severity: 'warning',
         message:
           `Channels at ${formatRate(group.rate)} Hz sample faster than the time column can ` +
-          `distinguish, so consecutive rows in ${group.fileName} carry the same time_s value.`,
+          `distinguish, so consecutive rows in ${destination(group)} carry the same time_s value.`,
         /*
           "or convert one rate at a time with --channels" was advice that does nothing.
 
@@ -363,7 +388,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       message:
         `${listed(short.map((c) => c.column))} ${short.length === 1 ? 'steps' : 'step'} by less ` +
         `than any number of decimals this can print, so some consecutive samples round to ` +
-        `the same value in ${group.fileName}.`,
+        `the same value in ${destination(group)}.`,
       hint:
         'Every sample is written, in order, and the physical values are computed at full ' +
         'precision either way. What is lost is only in the printed text.',

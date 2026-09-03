@@ -628,6 +628,9 @@ export async function main(argv: readonly string[]): Promise<number> {
       gzip: values['gzip'] === true,
       bom: values['bom'] === true,
       layout: optionalLayout(values['layout']),
+      // Read by the three plan warnings that name where their rows land, so `--info --stdout`
+      // says the same thing in its warnings as it does in its OUTPUT column.
+      toStdout,
     };
 
     // Validated before the --info branch, not inside the conversion path: a flag that
