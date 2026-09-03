@@ -1201,6 +1201,34 @@ describe('--info', () => {
     }
   });
 
+  it('does not answer --info with an instruction to run --info', async () => {
+    /*
+      `--info` takes `--channels` — it is how a selection is checked before converting with
+      it — and a term matching nothing is refused there exactly as in a conversion. So the
+      refusal handed back the command that had just printed it:
+
+          $ edf2csv rec.edf --info --channels nope
+          error: No channel named "nope".
+                 Run with --info to list the channels in this file.
+
+      The listing is what `--info` does. What stopped it was the `--channels` beside it, and
+      the advice never mentioned that.
+    */
+    for (const mode of [[], ['--info']]) {
+      const { code, stderr } = await cli([fixture('tiny.edf'), ...mode, '--channels', 'nope']);
+      assert.equal(code, 2, `${mode.join(' ')}: ${stderr}`);
+      assert.match(
+        stderr,
+        /Run with --info and no --channels to list the channels in this file\./u,
+        `${mode.join(' ')}: ${stderr}`,
+      );
+    }
+    // The command it names really does list them, on the file it was refused for.
+    const listing = await cli([fixture('tiny.edf'), '--info']);
+    assert.equal(listing.code, 0, listing.stderr);
+    assert.match(listing.stdout, /COLUMN\s+LABEL/u, listing.stdout);
+  });
+
   it('answers for the annotation channel by name rather than denying it exists', async () => {
     /*
       `EDF Annotations` is the label the specification reserves, --info counts it on the

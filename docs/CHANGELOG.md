@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.42
+
+### advice to run the command that printed it
+
+`--info` takes `--channels`. That is how a selection is checked before a conversion is run with
+it, and a term matching nothing is refused there exactly as it is in a conversion — with the
+command that had just printed the refusal:
+
+```
+$ edf2csv rec.edf --info --channels nope
+error: No channel named "nope".
+       Run with --info to list the channels in this file.
+```
+
+Following it returns the same message. The listing is what `--info` does; what stopped it was
+the `--channels` beside it, and the advice never mentioned that.
+
+```
+error: No channel named "nope".
+       Run with --info and no --channels to list the channels in this file.
+```
+
+True in a conversion as well, and more precise there than it was: dropping `--channels` alone
+converts the whole file rather than listing anything, so both halves are worth naming.
+
+This is the same fault 0.5.122 fixed for the annotation channel — advice "pointing at a table
+that does not list the channel either, so following it brought the reader back to the same
+message" — reached this time through the mode rather than through the channel. The FAQ and the
+CLI reference print the refusal, and both are updated.
+
+Two other hints say "Run with --info" from places `--info` can reach. They are not this one and
+are not fixed here.
+
 ## 0.8.41
 
 ### the one count that never reached the function that groups them

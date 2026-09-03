@@ -318,9 +318,24 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
             `file — pass --annotations-only for those and no signal data.`,
         );
       }
+      /*
+        Advice that works in the mode it was given in.
+
+        `--info` takes `--channels` too — it is how you check a selection before converting
+        with it — and a term that matches nothing is refused there exactly as it is here. So
+        `edf2csv rec.edf --info --channels nope` answered:
+
+            error: No channel named "nope".
+                   Run with --info to list the channels in this file.
+
+        which is the command that just printed it. The listing is what `--info` does; what
+        stopped it was the `--channels` beside it. Naming both makes the sentence true of a
+        conversion as well, where dropping `--channels` alone would convert the whole file
+        rather than list anything.
+      */
       throw new ChannelSelectionError(
         `No channel named "${term}".${hint}\n` +
-          `Run with --info to list the channels in this file.`,
+          `Run with --info and no --channels to list the channels in this file.`,
       );
     }
     if (matched.length > 1) ambiguous.push({ term, matched: [...matched] });
