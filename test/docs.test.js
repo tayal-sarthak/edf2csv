@@ -2453,19 +2453,33 @@ describe('documentation and source agree on their lists', () => {
           return null;
         }
       };
+      /*
+        In both modes, which is what the other direction below has always done.
+
+        This swept the bare conversion only, so the page was never held to `--annotations-only`
+        — the mode whose entire output is the events, and the one `--info --strict` is
+        recommended for screening a folder before. Five of this project's own fixtures raise
+        `NO_ANNOTATIONS` when converted that way and nothing under `--info`, because a
+        continuous file's annotation channel is read only as far as the first record that
+        states a start time.
+      */
       let compared = 0;
       for (const name of names) {
         const recording = path.join(ROOT, 'test/fixtures/generated', name);
-        const described = await codes([recording, '--info', '--json']);
-        const converted = await codes([recording, '--out', path.join(work, name), '--json', '--quiet']);
-        if (!described || !converted) continue;
-        compared++;
-        for (const code of converted) {
-          if (described.has(code)) continue;
-          assert.ok(
-            documented.has(code),
-            `${name}: a conversion raises ${code} and --info does not, and the page does not say so`,
-          );
+        for (const extra of [[], ['--annotations-only']]) {
+          const described = await codes([recording, '--info', '--json', ...extra]);
+          const out = path.join(work, `${name}${extra.join('')}`);
+          const converted = await codes([recording, '--out', out, '--json', '--quiet', ...extra]);
+          if (!described || !converted) continue;
+          compared++;
+          for (const code of converted) {
+            if (described.has(code)) continue;
+            assert.ok(
+              documented.has(code),
+              `${name} ${extra.join(' ')}: a conversion raises ${code} and --info does not, ` +
+                'and the page does not say so',
+            );
+          }
         }
       }
       assert.ok(compared > 20, `expected most fixtures to be comparable, got ${compared}`);
@@ -2502,6 +2516,45 @@ describe('documentation and source agree on their lists', () => {
           }
         }
       }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
+  it('states the screening gap --annotations-only has, and has the one it states', async () => {
+    /*
+      `--info --strict` is what cli-reference recommends for screening a folder before
+      converting it, and under `--annotations-only` it passes files the conversion fails.
+      Whether an annotation channel carries events rather than only the timekeeping entries
+      that place each record is a question about the whole channel, and on a continuous file
+      `--info` reads it only as far as the first record that states a start time.
+
+      The sweep above now crosses `--annotations-only`, so a code in this gap has to be named
+      on the page. This holds the page's own example to the exit codes it claims.
+    */
+    const recording = path.join(ROOT, 'test/fixtures/generated/contiguous-fractional.edf');
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-aogap-'));
+    try {
+      const screened = await run(process.execPath, [
+        CLI, recording, '--info', '--json', '--annotations-only', '--strict',
+      ]);
+      assert.deepEqual(JSON.parse(screened.stdout).warnings ?? [], [], screened.stdout);
+
+      const converted = await run(process.execPath, [
+        CLI, recording, '--out', path.join(work, 'out'), '--json', '--quiet',
+        '--annotations-only', '--strict',
+      ]).then(() => assert.fail('the conversion did not fail on the warning'), (error) => error);
+      assert.equal(converted.code, 1);
+      const codes = JSON.parse(converted.stdout).warnings.map((w) => w.code);
+      assert.deepEqual(codes, ['NO_ANNOTATIONS'], converted.stdout);
+
+      const page = (await read('website/content/warnings-and-errors.md')).replace(/\s+/gu, ' ');
+      assert.match(
+        page,
+        /The same bound hides `NO_ANNOTATIONS` under `--annotations-only`/u,
+        'the page no longer says that --annotations-only screening cannot see this',
+      );
+      assert.match(page, /`--info --annotations-only --strict` exits 0 where converting the same file exits 1/u);
     } finally {
       await rm(work, { recursive: true, force: true });
     }

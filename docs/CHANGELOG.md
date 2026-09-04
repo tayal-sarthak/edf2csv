@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.44
+
+### the screening flag that passed what the conversion failed
+
+`--info --strict` is what cli-reference recommends for screening a folder before converting it.
+Under `--annotations-only` it passes files the conversion fails:
+
+```
+$ edf2csv contiguous-fractional.edf --info --annotations-only --strict ; echo $?
+0
+$ edf2csv contiguous-fractional.edf --out csv --annotations-only --strict
+warning: This recording's annotation channel carries no events, so annotations.csv
+         holds its header and no rows.
+$ echo $?
+1
+```
+
+Five of this project's own fixtures do it. Whether an annotation channel carries *events*
+rather than only the timekeeping entries that place each record is a question about the whole
+channel, and on a continuous file `--info` reads it only as far as the first record stating a
+start time — the same bound the page already documents for `ANNOTATION_DECODE_FAILED`, one
+warning over.
+
+The page had the opposite on it. `NO_ANNOTATIONS` is listed as something `--info` used to be
+unable to raise "until 0.7.101" — true of that raising, which is a header fact, and not of the
+second one 0.8.7 added.
+
+**Why nothing caught it.** The sweep that holds the page to the warnings a conversion raises and
+`--info` does not compared a bare conversion only. The sweep in the *other* direction — added
+later, for stale exemptions — has crossed `--annotations-only` all along. One test, two loops,
+two different sets of modes, and the mode missing from the first is the one whole output is the
+thing being asked about.
+
+Both loops cross both modes now, the page says what the bound hides and what it does not, and a
+second test holds that paragraph's own example to the exit codes it claims.
+
 ## 0.8.43
 
 ### one warning code, two raisers, disagreeing about the layout in one run
