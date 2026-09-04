@@ -447,8 +447,9 @@ the channel's position in the file, and tells you:
 
 ```
 warning: 2 signals share the label "T8-P8" (positions #0, #1).
-         Their columns are suffixed with the signal number so they stay
-         distinguishable.
+         Their names are suffixed with the signal number so they stay
+         distinguishable: a column name each in the wide layout, and a distinct
+         value in the channel column under --layout long.
 ```
 
 The two columns then appear as `T8-P8_ch0` and `T8-P8_ch1`. When you want one specifically,

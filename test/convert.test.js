@@ -1119,6 +1119,44 @@ describe('column naming', () => {
     }
   });
 
+  it('does not promise a column per channel in the layout that has none', async () => {
+    /*
+      One run raised DUPLICATE_LABEL twice, from two places, disagreeing about the layout it
+      was writing:
+
+          warning: 2 signals share the label "T8" (positions #0, #1).
+                   Their columns are suffixed with the signal number so they stay
+                   distinguishable.
+          warning: Signal 2 is labelled "T8_ch0", ... so it is named "T8_ch0_ch2" in the
+                   channel column.
+
+      A long signals.csv has three columns — time_s, channel, value — and none of them comes
+      from a label. The plan raises the second warning and knows the layout; the header raises
+      the first and is parsed before any layout is chosen, so its sentence names both.
+    */
+    const long = await outDir();
+    const result = await convert(fixture('label-suffix-collision.edf'), {
+      outputDir: long, layout: 'long',
+    });
+    const duplicates = result.diagnostics.filter((d) => d.code === 'DUPLICATE_LABEL');
+    assert.ok(duplicates.length >= 2, JSON.stringify(result.diagnostics));
+    // Checked against the file rather than against a phrase: these are the only columns.
+    assert.equal((await readCsv(long, 'signals.csv'))[0], 'time_s,channel,value');
+    for (const diagnostic of duplicates) {
+      assert.doesNotMatch(diagnostic.hint, /\bcolumns are suffixed\b/u, diagnostic.hint);
+      assert.match(diagnostic.hint, /channel column|Channel names are unique/u, diagnostic.hint);
+    }
+
+    // And the wide layout, where a column per channel is exactly what it gets.
+    const wide = await outDir();
+    const columns = await convert(fixture('label-suffix-collision.edf'), { outputDir: wide });
+    const fromHeader = columns.diagnostics.find(
+      (d) => d.code === 'DUPLICATE_LABEL' && /share the label/u.test(d.message),
+    );
+    assert.match(fromHeader.hint, /a column name each in the wide layout/u, fromHeader.hint);
+    assert.equal((await readCsv(wide, 'signals.csv'))[0], 'time_s,T8_ch0_ch0,T8_ch1,T8_ch0_ch2');
+  });
+
   it('checks the suffix against the file, not only against the label it disambiguates', async () => {
     // `_ch<index>` is unique among the channels sharing a label, and nothing stopped it from
     // landing on a label some other channel already had. T8, T8, T8_ch0 — all three legal —

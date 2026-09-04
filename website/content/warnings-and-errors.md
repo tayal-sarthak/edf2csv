@@ -387,8 +387,9 @@ edf2csv preserves labels verbatim in output and only disambiguates when the file
 
 ```
 warning: 2 signals share the label "T8-P8" (positions #0, #1).
-         Their columns are suffixed with the signal number so they stay
-         distinguishable.
+         Their names are suffixed with the signal number so they stay
+         distinguishable: a column name each in the wide layout, and a distinct
+         value in the channel column under --layout long.
 ```
 
 **From channel selection.** A `--channels` term matched more than one channel. Matching is case-insensitive on the whole label, so a term that names a duplicated label selects all of them.

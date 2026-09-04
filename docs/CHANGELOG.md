@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.43
+
+### one warning code, two raisers, disagreeing about the layout in one run
+
+`DUPLICATE_LABEL` is raised from two places. 0.8.24 taught one of them that the long layout has
+no column per channel. The other went on saying it did — in the same run, two lines apart:
+
+```
+warning: 2 signals share the label "T8" (positions #0, #1).
+         Their columns are suffixed with the signal number so they stay
+         distinguishable.
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so it is named "T8_ch0_ch2" in the channel column.
+         Channel names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+A long `signals.csv` has three columns — `time_s`, `channel`, `value` — and none of them comes
+from a label. A channel appears there as a value in the `channel` column, which the second
+warning says and the first denies.
+
+The plan raises the second and knows the layout. The header raises the first and cannot: it
+is parsed before any conversion is planned, and `EdfFile.open` hands its diagnostics to callers
+who have chosen no layout at all. So the sentence names both rather than guessing:
+
+```
+         Their names are suffixed with the signal number so they stay
+         distinguishable: a column name each in the wide layout, and a distinct
+         value in the channel column under --layout long.
+```
+
+The test reads the signals.csv header in each layout and holds the hint against what is really
+there, rather than against a phrase. warnings-and-errors.md and edf-format.md both print this
+warning and are updated with it.
+
 ## 0.8.42
 
 ### advice to run the command that printed it

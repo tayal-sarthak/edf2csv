@@ -1016,7 +1016,31 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       message:
         `${counted(indices.length, 'signal')} share the label "${label}" ` +
         `(positions ${listed(indices.map((i) => `#${i}`))}).`,
-      hint: 'Their columns are suffixed with the signal number so they stay distinguishable.',
+      /*
+        A sentence about the wide layout, printed in both — the same fault 0.8.24 fixed for
+        the other raiser of this code, two lines further down the same run.
+
+        A long signals.csv has three columns, `time_s`, `channel` and `value`, and none of
+        them comes from a label: a channel appears there as a value in the `channel` column.
+        `label-suffix-collision.edf --layout long` printed both halves back to back:
+
+            warning: 2 signals share the label "T8" (positions #0, #1).
+                     Their columns are suffixed with the signal number so they stay
+                     distinguishable.
+            warning: Signal 2 is labelled "T8_ch0", ... so it is named "T8_ch0_ch2" in the
+                     channel column.
+                     Channel names are unique; look this channel up in channels.csv by its
+                     signal_index.
+
+        The plan raises the second and knows the layout. The header raises this one and
+        cannot: it is parsed before any conversion is planned, and `EdfFile.open` hands these
+        diagnostics to callers who have asked for no layout at all. So the sentence names
+        both, rather than guessing which one is being written.
+      */
+      hint:
+        'Their names are suffixed with the signal number so they stay distinguishable: a ' +
+        'column name each in the wide layout, and a distinct value in the channel column ' +
+        'under --layout long.',
     });
   }
 
