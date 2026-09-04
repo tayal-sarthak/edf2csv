@@ -106,8 +106,22 @@ export function deriveRecordStarts(
           among the unreadable ones now, which is the warning printed above this one; this
           sentence keeps to what is true of the entries it is actually about.
         */
+        /*
+          Grouped, like the count of the same records one line above it.
+
+          The message says `counted(lostTimekeeping, 'data record')`; the hint under it counts
+          a subset of those records and spelled the number by hand. When the subset is all of
+          them — which is the ordinary case, since a writer that cannot state an onset tends
+          not to manage it anywhere — the two print the same number two lines apart, one
+          grouped and one not:
+
+              warning: 1,010 data records carry a timekeeping annotation that could not be
+                       read, so they do not say where in time they sit.
+                       1010 of them also carried event text, which went with them and is
+                       counted above.
+        */
         (withText > 0
-          ? `${withText === 1 ? 'One of them' : `${withText} of them`} also carried event text, ` +
+          ? `${withText === 1 ? 'One of them' : `${grouped(withText)} of them`} also carried event text, ` +
             `which went with ${withText === 1 ? 'it' : 'them'} and is counted above. A ` +
             `timekeeping annotation itself states a record's start time and is never exported. `
           : 'No event was lost — a timekeeping annotation states a record\'s start time and ' +

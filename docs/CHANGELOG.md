@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.45
+
+### the same count, grouped in the message and not in the hint
+
+0.8.41 sent `listed`'s tail through `grouped`, which was the count built inside a helper. This
+is the other kind: one written by hand at a call site, in a hint whose own message groups the
+same number two lines above it.
+
+```
+warning: 1,010 data records carry a timekeeping annotation that could not be read, so they
+         do not say where in time they sit.
+         1010 of them also carried event text, which went with them and is counted above.
+```
+
+The subset is usually the whole set — a writer that cannot state one record's onset rarely
+manages the rest — so the two numbers are the same number, printed two ways, two lines apart.
+The message reaches `grouped` through `counted`; the hint spelled `${withText} of them` out.
+
+```
+         1,010 of them also carried event text, which went with them and is counted above.
+```
+
+The singular branch beside it is untouched: "One of them also carried event text" was already
+the right sentence for one.
+
 ## 0.8.44
 
 ### the screening flag that passed what the conversion failed

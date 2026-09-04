@@ -4150,6 +4150,40 @@ describe('messages that enumerate what the file contains', () => {
     assert.doesNotMatch(sentence[0], /(?<![\d,])\d{4}(?![\d,])/u, sentence[0]);
   });
 
+  it('groups the subset count in a hint the way its message groups the whole', async () => {
+    /*
+      The message counts the records through `counted`; the hint under it counts a subset of
+      the same records and spelled the number by hand. When the subset is all of them — the
+      ordinary case, since a writer that cannot state one onset rarely manages the rest — the
+      two print the same number two lines apart, spelled two ways:
+
+          warning: 1,010 data records carry a timekeeping annotation that could not be read,
+                   so they do not say where in time they sit.
+                   1010 of them also carried event text, which went with them and is
+                   counted above.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-withtext-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const recording = path.join(dir, 'unreadable-with-text.edf');
+    writeEdf({
+      path: recording, reserved: 'EDF+C', numRecords: 1010, recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+      // An onset that is not a number, on a TAL that carries event text after it.
+      talsForRecord: () => 'XX\x14event\x14\x00',
+    });
+
+    const { stderr } = await cli([recording, '--out', path.join(dir, 'out')]);
+    const flat = stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /1,010 data records carry a timekeeping annotation/u, flat);
+    assert.match(flat, /1,010 of them also carried event text/u, flat);
+  });
+
   it('leaves an ordinary recording listed in full', async () => {
     // The list is the useful part when it fits: these rates are what --channels chooses between.
     const { stderr } = await cli([fixture('mixed-rates.edf'), '--info']);
