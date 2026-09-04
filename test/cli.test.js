@@ -5401,6 +5401,44 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('does not describe files for a --stdout run that will be refused', async () => {
+    /*
+      `--stdout` writes one table and a mixed-rate recording makes several, so such a run is
+      refused. `--info --stdout` described it anyway, three lines under a column saying
+      `(stdout)` and six above the warning that it would be refused:
+
+          0  EEG Fpz-Cz  ...  256 Hz  -250 to 250  (stdout)
+          Sampling rates differ, so channels are written to 3 files, one per rate.
+          warning: --stdout would refuse this run: needs exactly one table, but this
+                   recording produces 3 ...
+
+      Three statements about one run; the middle one names an outcome neither of the others
+      allows.
+    */
+    const streamed = await cli([fixture('mixed-rates.edf'), '--info', '--stdout']);
+    assert.equal(streamed.code, 0, streamed.stderr);
+    const body = streamed.stdout.replace(/\s+/gu, ' ');
+    assert.doesNotMatch(body, /channels are written to/u, body);
+    assert.match(body, /makes 3 tables, one per rate — more than --stdout can write/u, body);
+    // And the refusal it points at is real, on the same file.
+    const refused = await cli([fixture('mixed-rates.edf'), '--stdout']);
+    assert.equal(refused.code, 2, refused.stderr);
+
+    // The two modes that do write something still say what they write.
+    const directory = await cli([fixture('mixed-rates.edf'), '--info']);
+    assert.match(
+      directory.stdout.replace(/\s+/gu, ' '),
+      /channels are written to 3 files, one per rate/u,
+      directory.stdout,
+    );
+    const long = await cli([fixture('mixed-rates.edf'), '--info', '--layout', 'long', '--stdout']);
+    assert.match(
+      long.stdout.replace(/\s+/gu, ' '),
+      /the long layout puts them in one table anyway/u,
+      long.stdout,
+    );
+  });
+
   it('names stdout in the warnings about the rows it put there', async () => {
     /*
       Three of the plan's warnings name `signals.csv`, the file the wide layout writes — and a

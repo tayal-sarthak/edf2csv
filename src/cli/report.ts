@@ -389,13 +389,34 @@ export function formatInfo(
     the mode whose whole purpose is being read by a person, and it was the last one guessing.
   */
   if (plan.groups.length > 1) {
+    /*
+      And the third thing this sentence could not say, after the OUTPUT column above it.
+
+      `--stdout` on a recording with more than one rate is refused — it writes one table and
+      this makes several — so no file is written and the run does not happen. The sentence
+      described it anyway, three lines under a column saying `(stdout)` and six above the
+      warning that the run would be refused:
+
+          0  EEG Fpz-Cz  ...  256 Hz  -250 to 250  (stdout)
+          Sampling rates differ, so channels are written to 3 files, one per rate.
+          warning: --stdout would refuse this run: needs exactly one table, but this
+                   recording produces 3 ...
+
+      Three statements about one run, and the middle one names an outcome none of the others
+      allows. What the rates decide is how many tables there are; where those go is the
+      question this mode has already answered differently.
+    */
     lines.push(
       wrap(
         plan.layout === 'long'
           ? `Sampling rates differ, and the long layout puts them in one table anyway: each row ` +
             `carries its own time, so nothing has to line up. No channel is resampled.`
-          : `Sampling rates differ, so channels are written to ${counted(plan.groups.length, 'file')}, one per rate. ` +
-            `No channel is resampled.`,
+          : toStdout
+            ? `Sampling rates differ, so this recording makes ${counted(plan.groups.length, 'table')}, ` +
+              `one per rate — more than --stdout can write. Converting into a directory writes one ` +
+              `file each; --layout long puts them all in one table.`
+            : `Sampling rates differ, so channels are written to ${counted(plan.groups.length, 'file')}, one per rate. ` +
+              `No channel is resampled.`,
       ),
     );
   }

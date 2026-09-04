@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.46
+
+### three files named for a run that will not happen
+
+`--stdout` writes one table; a recording whose channels use three sampling rates makes three,
+so such a run is refused. `--info --stdout` described it as though it were not:
+
+```
+#  COLUMN       LABEL        UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz   EEG Fpz-Cz   uV    256 Hz  -250 to 250  (stdout)
+1  ECG          ECG          mV    128 Hz  -5 to 5      (stdout)
+2  Temp rectal  Temp rectal  degC  1 Hz    34 to 40     (stdout)
+
+Sampling rates differ, so channels are written to 3 files, one per rate. No channel is
+resampled.
+
+warning: --stdout would refuse this run: needs exactly one table, but this recording
+         produces 3, one for each sampling rate its channels use (256 Hz, 128 Hz, 1 Hz).
+```
+
+Three statements about one run on one screen. The column says the rows go to the terminal, the
+warning says the run will not happen, and the sentence between them names three files.
+
+What the rates decide is how many *tables* there are. Where those go is the question this mode
+has already answered differently, so the sentence stops answering it:
+
+```
+Sampling rates differ, so this recording makes 3 tables, one per rate — more than --stdout
+can write. Converting into a directory writes one file each; --layout long puts them all in
+one table.
+```
+
+Both of which work on this file — the long layout is the one arrangement `--stdout` can stream
+for a mixed-rate recording, and it already has its own sentence here, unchanged. So does a run
+that writes a directory. The four pages that print this line all print the directory form.
+
+The same fault the OUTPUT column had until 0.8.31, three lines lower down.
+
 ## 0.8.45
 
 ### the same count, grouped in the message and not in the hint
