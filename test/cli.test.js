@@ -1229,6 +1229,56 @@ describe('--info', () => {
     assert.match(listing.stdout, /COLUMN\s+LABEL/u, listing.stdout);
   });
 
+  it('sends no --info reader back to --info, whichever warning it raised', async () => {
+    /*
+      0.8.42 fixed the channel refusal that answered `--info` with `--info`. Two hints were
+      left, and both are reachable the same way — `--info` builds the plan, and since 0.7.84
+      raises the warning about a signal file that will not be written:
+
+          $ edf2csv discontinuous.edf --info --start 4s --end 4.2s
+          warning: No samples fall inside the requested window ...
+                   ... Run with --info to see where the records actually sit.
+
+          $ edf2csv single-rate-empty-channel.edf --info --channels unused
+          warning: No signal file is written ...
+                   channels.csv still describes them. Run with --info to see which
+                   channels do carry samples.
+
+      The second sentence was also false in this mode: `--info` writes no channels.csv.
+
+      Swept over the pairs that reach them rather than asserted twice, and flattened, because
+      the phrase wraps across the seven-space indent and "Run with" can end a line.
+    */
+    const reaching = [
+      ['discontinuous.edf', ['--start', '4s', '--end', '4.2s']],
+      ['discontinuous.edf', ['--start', '2s', '--end', '10s']],
+      ['single-rate-empty-channel.edf', ['--channels', 'unused']],
+      ['tiny.edf', ['--start', '0.31s', '--end', '0.39s']],
+      ['annotations-only.edf', []],
+      ['mixed-rates.edf', []],
+    ];
+    for (const [name, extra] of reaching) {
+      const { code, stdout, stderr } = await cli([fixture(name), '--info', ...extra]);
+      assert.equal(code, 0, `${name} ${extra.join(' ')}: ${stderr}`);
+      const said = `${stdout}${stderr}`.replace(/\s+/gu, ' ');
+      assert.doesNotMatch(said, /Run with --info/u, `${name} ${extra.join(' ')}: ${said}`);
+    }
+
+    // And the replacements say something a reader of either mode can act on.
+    const gap = await cli([fixture('discontinuous.edf'), '--info', '--start', '4s', '--end', '4.2s']);
+    assert.match(
+      gap.stderr.replace(/\s+/gu, ' '),
+      /Convert without --start and --end and read time_s/u,
+      gap.stderr,
+    );
+    const empty = await cli([fixture('single-rate-empty-channel.edf'), '--info', '--channels', 'unused']);
+    assert.match(
+      empty.stderr.replace(/\s+/gu, ' '),
+      /every channel's samples per record is in the channel table --info prints/u,
+      empty.stderr,
+    );
+  });
+
   it('answers for the annotation channel by name rather than denying it exists', async () => {
     /*
       `EDF Annotations` is the label the specification reserves, --info counts it on the
@@ -2993,7 +3043,7 @@ describe('converting several recordings at once', () => {
     assert.equal(converted.code, 0, converted.stderr);
     assert.match(converted.stderr, /no signal data in this recording/u);
     assert.doesNotMatch(converted.stderr, /every channel selected/u);
-    assert.doesNotMatch(converted.stderr, /which channels do carry samples/u);
+    assert.doesNotMatch(converted.stderr, /every channel's samples per record/u);
 
     // The hint's two claims, both checkable: the events are in annotations.csv, and
     // channels.csv lists signal channels so it lists none.

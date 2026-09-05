@@ -29,8 +29,9 @@ Which of these appear is governed by four rules:
   ```
   warning: No signal file is written: every channel selected carries zero samples per data
            record, so there is nothing to put in one.
-           channels.csv still describes them. Run with --info to see which channels do carry
-           samples.
+           Nothing about them is lost: every channel's samples per record is in
+           the channel table --info prints, and in the channels.csv a conversion
+           writes.
   ```
 
   or the recording has no signal channels at all, holding only EDF+ annotations — in which case nothing was selected and there is nothing for `channels.csv` to describe:

@@ -8,6 +8,55 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.47
+
+### the other two hints that answered --info with --info
+
+0.8.42 fixed the channel refusal that answered `--info` with "Run with --info". It said two
+other hints did the same thing. These are those two.
+
+Both are reachable because `--info` does the work that raises them — it builds the plan, and
+since 0.7.84 it raises the warning about a signal file that will not be written:
+
+```
+$ edf2csv discontinuous.edf --info --start 4s --end 4.2s
+warning: No samples fall inside the requested window (4.000s to 4.200s), so the signal
+         file holds its header and no data.
+         The window is inside the recording but lands where there is no data — inside a
+         gap in a discontinuous file, or past the last sample. Run with --info to see
+         where the records actually sit.
+
+$ edf2csv single-rate-empty-channel.edf --info --channels unused
+warning: No signal file is written: every channel selected carries zero samples per data
+         record, so there is nothing to put in one.
+         channels.csv still describes them. Run with --info to see which channels do
+         carry samples.
+```
+
+The second one's first sentence is false in this mode too: `--info` writes no channels.csv.
+
+The replacements are better answers for a conversion as well, which is what settled the
+wording. `--info` does not print where the records sit — it prints a count, a duration, and a
+time span that "includes discontinuities". The positions are in `time_s`, one per row:
+
+```
+         ... past the last sample. Convert without --start and --end and read time_s to
+         see where the records actually sit.
+
+         Nothing about them is lost: every channel's samples per record is in the channel
+         table --info prints, and in the channels.csv a conversion writes.
+```
+
+The third hint, raised where no window was asked for at all, said "Run with --info to see what
+the header declares" and now names where that number lives instead.
+
+warnings-and-errors.md printed the first hint and gave the same advice in prose under it; both
+are corrected. output-files.md printed the second.
+
+The test sweeps the six fixture-and-flag pairs that reach these warnings and asserts `--info`
+never prints the phrase, flattened — it wraps across the seven-space indent, which is why a
+grep for it in one line finds nothing.
+
 ## 0.8.46
 
 ### three files named for a run that will not happen

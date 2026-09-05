@@ -894,11 +894,12 @@ edf2csv study.edf --start 2 --end 10    # asks for a span that holds no records 
 warning: No samples fall inside the requested window (2.000s to 10.000s), so the signal
          file holds its header and no data.
          The window is inside the recording but lands where there is no data —
-         inside a gap in a discontinuous file, or past the last sample. Run with
-         --info to see where the records actually sit.
+         inside a gap in a discontinuous file, or past the last sample. Convert
+         without --start and --end and read time_s to see where the records
+         actually sit.
 ```
 
-**What to do.** Run `--info` to see where the records really are. On an EDF+D file the gaps are the point: the row times are true recording times, so a window chosen from wall-clock arithmetic can miss the data entirely.
+**What to do.** Convert the whole recording and read `time_s`, which carries one true time per row — `--info` gives the count, the duration and a time span that "includes discontinuities", but not the positions. On an EDF+D file the gaps are the point: the row times are true recording times, so a window chosen from wall-clock arithmetic can miss the data entirely.
 
 It is a warning rather than an error because a batch of five hundred recordings shouldn't stop for the one whose gap lines up with the window. Pass `--strict` to make it a failure.
 

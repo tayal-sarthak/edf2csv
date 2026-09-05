@@ -718,10 +718,25 @@ function emptyWindow(
             `${plain(interval)}s, so no sample time falls inside it. Widen it to at least ` +
             'one sample interval, or convert more of the recording and take the row nearest ' +
             'the moment you want.'
-          : 'The window is inside the recording but lands where there is no data — inside a ' +
-            'gap in a discontinuous file, or past the last sample. Run with --info to see ' +
-            'where the records actually sit.'
-      : 'Run with --info to see what the header declares.',
+          : /*
+              Advice that does something in the mode it is printed in.
+
+              `EMPTY_WINDOW` is a fact about the plan, and `--info` builds the plan — so
+              `discontinuous.edf --info --start 4s --end 4.2s` answered with the command that
+              had just printed it. 0.8.42 fixed the same loop in channel selection; these are
+              the two hints that were left.
+
+              The replacement is also the better answer for a conversion. `--info` does not
+              print where the records sit: it prints a count, a duration and a time span that
+              "includes discontinuities". The record positions are in `time_s`, one per row,
+              which is what a conversion without a window writes.
+            */
+            'The window is inside the recording but lands where there is no data — inside a ' +
+            'gap in a discontinuous file, or past the last sample. Convert without --start ' +
+            'and --end and read time_s to see where the records actually sit.'
+      : // The same loop, in the branch where no window was asked for at all.
+        'What the header declares for each channel — its samples per data record — is in ' +
+        'the channel table --info prints and in channels.csv.',
   };
 }
 

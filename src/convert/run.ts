@@ -1805,8 +1805,10 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
     hint: noChannelsAtAll
       ? 'annotations.csv holds whatever events it carries. channels.csv lists signal ' +
         'channels, so it has none to list.'
-      : 'channels.csv still describes them. Run with --info to see which channels do carry ' +
-        'samples.',
+      : // `--info` raises this too, since 0.7.84, and was told to run itself to answer it.
+        // Naming where the number lives works in both modes; naming a command works in one.
+        'Nothing about them is lost: every channel\'s samples per record is in the channel ' +
+        'table --info prints, and in the channels.csv a conversion writes.',
   };
 }
 
