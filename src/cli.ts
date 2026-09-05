@@ -1084,7 +1084,7 @@ async function showInfo(
       // A file with no annotation channel is `noAnnotations`'s case, not this one: it says
       // "--annotations-only was requested but this recording has no annotation channel",
       // where this would say the channel carries no events. Only one of them is true.
-      plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, eventWindow));
+      plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, eventWindow, plan.gzip));
     }
 
     /*

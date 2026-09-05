@@ -38,7 +38,7 @@ import {
 import type { SampleFormatter } from '../format/number.js';
 import { TIME_COLUMN } from './channels.js';
 import { assertInputPath } from './options.js';
-import { buildPlan, withoutFileRateWarning } from './plan.js';
+import { buildPlan, outputCsvName, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './timing.js';
 import { sampleTimeIsInRange, toleranceFor } from './time-range.js';
@@ -282,7 +282,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         most annotated recordings, which is how a warning stops being read.
       */
       if (!plan.writeSignals && annotationsWritten === 0) {
-        plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, window));
+        plan.diagnostics.push(emptyAnnotations(annotationData.annotations.length, window, plan.gzip));
       }
     }
 
@@ -1314,7 +1314,7 @@ async function writeChannelsCsv(
     );
   }
 
-  const name = gzip ? 'channels.csv.gz' : 'channels.csv';
+  const name = outputCsvName('channels', gzip);
   await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip, bom);
   return { name, rows: lines.length - 1 };
 }
@@ -1512,7 +1512,7 @@ async function writeAnnotationsCsv(
     );
   }
 
-  const name = gzip ? 'annotations.csv.gz' : 'annotations.csv';
+  const name = outputCsvName('annotations', gzip);
   await writeOutputFile(outputDir, name, lines.join('\n') + '\n', gzip, bom);
   return { name, rows: inWindow.length };
 }
@@ -1802,13 +1802,16 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
       ? 'No signal file is written: there is no signal data in this recording to put in one.'
       : 'No signal file is written: every channel selected carries zero samples per data ' +
         'record, so there is nothing to put in one.',
+    // Named as they will be written. `plan.gzip` is on the plan because `--info` named
+    // `annotations.csv` for a run that wrote `annotations.csv.gz`; these two sentences are
+    // about the same pair of files and were still naming the uncompressed ones.
     hint: noChannelsAtAll
-      ? 'annotations.csv holds whatever events it carries. channels.csv lists signal ' +
-        'channels, so it has none to list.'
+      ? `${outputCsvName('annotations', plan.gzip)} holds whatever events it carries. ` +
+        `${outputCsvName('channels', plan.gzip)} lists signal channels, so it has none to list.`
       : // `--info` raises this too, since 0.7.84, and was told to run itself to answer it.
         // Naming where the number lives works in both modes; naming a command works in one.
         'Nothing about them is lost: every channel\'s samples per record is in the channel ' +
-        'table --info prints, and in the channels.csv a conversion writes.',
+        `table --info prints, and in the ${outputCsvName('channels', plan.gzip)} a conversion writes.`,
   };
 }
 
@@ -1850,16 +1853,20 @@ export function noAnnotations(file: EdfFile, options: ConvertOptions): Diagnosti
  * makes — there are no events to export — about the same flag, and a code is matched on by
  * scripts that should not have to learn a second one for the same fact.
  */
-export function emptyAnnotations(total: number, window: { from: number; to: number }): Diagnostic {
+export function emptyAnnotations(
+  total: number,
+  window: { from: number; to: number },
+  gzip = false,
+): Diagnostic {
   const windowed = (window.from !== -Infinity || window.to !== Infinity) && total > 0;
   return {
     code: 'NO_ANNOTATIONS',
     severity: 'warning',
     message: windowed
       ? `None of this recording's ${counted(total, 'event')} fall inside the requested ` +
-        `window, so annotations.csv holds its header and no rows.`
-      : `This recording's annotation channel carries no events, so annotations.csv holds ` +
-        `its header and no rows.`,
+        `window, so ${outputCsvName('annotations', gzip)} holds its header and no rows.`
+      : `This recording's annotation channel carries no events, so ` +
+        `${outputCsvName('annotations', gzip)} holds its header and no rows.`,
     hint: windowed
       ? '--start and --end are read on the recording\'s own clock, which --info prints as ' +
         '"Timed from", and an event is kept when its onset falls inside the window.'

@@ -546,6 +546,20 @@ export function rateSlug(rate: number): string {
 }
 
 /**
+ * The name a CSV is written under, which `--gzip` changes.
+ *
+ * `plan.gzip` is recorded rather than inferred because "`--info` named `annotations.csv` for a
+ * run that wrote `annotations.csv.gz`" — and the warnings *about* those files went on doing it
+ * after the file list stopped. A run that says "annotations.csv holds its header and no rows"
+ * three lines above a summary listing `annotations.csv.gz` names two files and writes one.
+ *
+ * Written once here because three places already computed it by hand.
+ */
+export function outputCsvName(base: string, gzip: boolean): string {
+  return `${base}${gzip ? '.csv.gz' : '.csv'}`;
+}
+
+/**
  * Characters the time column occupies, measured over both ends of the window and signed.
  *
  * Both estimates measured the column against `range.endSeconds` alone, unsigned — while the

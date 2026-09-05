@@ -5451,6 +5451,54 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('names the compressed file --gzip actually writes, in the warnings about it', async () => {
+    /*
+      The plan records `gzip` rather than inferring it from the group file names, because
+      "`--info` named `annotations.csv` for a run that wrote `annotations.csv.gz`". The
+      warnings *about* those files went on doing it after the file list stopped:
+
+          warning: This recording's annotation channel carries no events, so annotations.csv
+                   holds its header and no rows.
+
+          Wrote out
+            annotations.csv.gz  0  rows
+            channels.csv.gz     1  row
+
+      Two names for one file, four lines apart, in the same run.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-gzname-'));
+    temporaries.push(dir);
+    // A warning block is its first line plus the indented advice under it.
+    const blocks = (stderr) =>
+      stderr.split(/\n(?=warning: )/u).filter((block) => block.startsWith('warning: '));
+
+    const cases = [
+      ['contiguous-fractional.edf', ['--annotations-only'], /holds its header and no rows/u],
+      ['annotations-only.edf', [], /holds whatever events it carries/u],
+      ['single-rate-empty-channel.edf', ['--channels', 'unused'], /samples per record is in the channel/u],
+    ];
+    for (const [name, extra, marker] of cases) {
+      const out = path.join(dir, `${name}${extra.join('')}`);
+      const { code, stderr } = await cli([fixture(name), '--out', out, '--gzip', ...extra]);
+      assert.equal(code, 0, `${name}: ${stderr}`);
+      const block = blocks(stderr).find((b) => marker.test(b.replace(/\s+/gu, ' ')));
+      assert.ok(block, `${name}: ${stderr}`);
+      const flat = block.replace(/\s+/gu, ' ');
+      assert.doesNotMatch(flat, /\b(signals|channels|annotations)\.csv(?!\.gz)/u, flat);
+      // Every file it does name is one this run wrote.
+      const written = new Set(await readdir(out));
+      for (const named of flat.match(/\b[\w.]+\.csv\.gz\b/gu) ?? []) {
+        assert.ok(written.has(named), `${name}: named ${named}, wrote ${[...written].join(', ')}`);
+      }
+    }
+
+    // And without --gzip the same warnings name the plain files, which are the ones there.
+    const plain = path.join(dir, 'plain');
+    const { stderr } = await cli([fixture('contiguous-fractional.edf'), '--out', plain, '--annotations-only']);
+    assert.match(stderr, /annotations\.csv holds its header and no rows/u, stderr);
+    assert.ok((await readdir(plain)).includes('annotations.csv'));
+  });
+
   it('does not describe files for a --stdout run that will be refused', async () => {
     /*
       `--stdout` writes one table and a mixed-rate recording makes several, so such a run is

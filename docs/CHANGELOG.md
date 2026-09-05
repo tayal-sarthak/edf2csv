@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.48
+
+### warnings about a file that named the one --gzip did not write
+
+The plan records whether the CSVs are compressed rather than working it out from the group file
+names, and the comment on that field says why: "`--info` named `annotations.csv` for a run that
+wrote `annotations.csv.gz`".
+
+The warnings *about* those files never got the same treatment. They name the uncompressed file
+in a run that writes only the compressed one, four lines above a summary that lists it:
+
+```
+$ edf2csv rec.edf --out out --gzip --annotations-only
+warning: This recording's annotation channel carries no events, so annotations.csv holds
+         its header and no rows.
+
+Wrote out
+  annotations.csv.gz  0  rows
+  channels.csv.gz     1  row
+```
+
+`annotations.csv` is not there. Neither is the `channels.csv` that the "no signal file"
+warning's hint points a reader at.
+
+```
+warning: This recording's annotation channel carries no events, so annotations.csv.gz holds
+         its header and no rows.
+warning: No signal file is written: there is no signal data in this recording to put in one.
+         annotations.csv.gz holds whatever events it carries. channels.csv.gz lists signal
+         channels, so it has none to list.
+```
+
+Three places computed the `.csv.gz` name by hand; it is written once now, and the two warnings
+that had to name a file read it from the plan. Without `--gzip` every sentence is unchanged.
+
+The test slices stderr into warning blocks, checks the block names no uncompressed CSV, and
+then checks every file it *does* name against `readdir` of the directory the run wrote.
+
+**Not fixed here.** The header's `ZERO_SAMPLES` hint — "It is described in channels.csv but
+left out of the converted data" — has the same fault and no way to know: it is raised while the
+header is parsed, before any conversion is planned.
+
 ## 0.8.47
 
 ### the other two hints that answered --info with --info
