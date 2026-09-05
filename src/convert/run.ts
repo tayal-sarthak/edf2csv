@@ -1836,7 +1836,24 @@ export function noAnnotations(file: EdfFile, options: ConvertOptions): Diagnosti
     message:
       '--annotations-only was requested but this recording has no annotation channel, ' +
       'so there are no events to export.',
-    hint: 'Plain EDF files carry no annotations. Convert without --annotations-only to get the signals.',
+    /*
+      The format the file is in, rather than the one most files are in.
+
+      "Plain EDF files carry no annotations" was said to every recording that reaches here,
+      and two kinds of file reach it that are not plain EDF. A BioSemi `.bdf` was told about a
+      format it is not in — this tool tells EDF and BDF apart everywhere else, down to the
+      `BDF Annotations` label the specification gives the channel.
+
+      And a file whose header says `EDF+C` while carrying no annotation channel at all is not
+      a file for which having no events is ordinary: EDF+ keeps its events in that channel and
+      is required to have one. The sentence read as reassurance about a file that is malformed.
+    */
+    hint: file.header.isEdfPlus
+      ? `The header marks this ${describeFormat(file.header)}, and that format keeps its ` +
+        `events in an annotation channel this file does not have. Convert without ` +
+        `--annotations-only to get the signals.`
+      : `Plain ${file.header.isBdf ? 'BDF' : 'EDF'} files carry no annotations. Convert ` +
+        `without --annotations-only to get the signals.`,
   };
 }
 

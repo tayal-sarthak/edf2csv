@@ -1119,6 +1119,42 @@ describe('column naming', () => {
     }
   });
 
+  it('names the format the file is in when it says annotations are not in it', async () => {
+    /*
+      "Plain EDF files carry no annotations" was the hint for every recording that reaches
+      `--annotations-only` without an annotation channel, and two kinds of file reach it that
+      are not plain EDF. A BioSemi `.bdf` was told about a format it is not in — while the page
+      beside this warning names both: "Plain EDF and plain BDF carry no annotations at all."
+
+      And a header saying `EDF+C` with no annotation channel is not a file for which having no
+      events is ordinary. EDF+ keeps its events in that channel and is required to have one, so
+      the sentence read as reassurance about a file that is malformed.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-noann-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const marked = path.join(scratch, 'plus-without-channel.edf');
+    writeEdf({
+      path: marked, reserved: 'EDF+C', numRecords: 2, recordDuration: 1,
+      signals: [{ label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+        digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s }],
+    });
+
+    const cases = [
+      [fixture('tiny.edf'), /^Plain EDF files carry no annotations\./u],
+      [fixture('biosemi.bdf'), /^Plain BDF files carry no annotations\./u],
+      [marked, /^The header marks this EDF\+ \(continuous\), and that format keeps its events/u],
+    ];
+    for (const [recording, expected] of cases) {
+      const result = await convert(recording, { outputDir: await outDir(), annotationsOnly: true });
+      const raised = result.diagnostics.filter((d) => d.code === 'NO_ANNOTATIONS');
+      assert.equal(raised.length, 1, `${recording}: ${JSON.stringify(result.diagnostics)}`);
+      assert.match(raised[0].hint, expected, `${recording}: ${raised[0].hint}`);
+      // Whatever it says about the format, the way out is the same and still there.
+      assert.match(raised[0].hint, /Convert without --annotations-only to get the signals\./u);
+    }
+  });
+
   it('does not promise a column per channel in the layout that has none', async () => {
     /*
       One run raised DUPLICATE_LABEL twice, from two places, disagreeing about the layout it

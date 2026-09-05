@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.49
+
+### a BDF file told what plain EDF files carry
+
+`--annotations-only` on a recording with no annotation channel warns, and its hint said the same
+thing to every file that got there:
+
+```
+$ edf2csv biosemi.bdf --out csv --annotations-only
+warning: --annotations-only was requested but this recording has no annotation channel, so
+         there are no events to export.
+         Plain EDF files carry no annotations. Convert without --annotations-only to get
+         the signals.
+```
+
+A BioSemi `.bdf` told about a format it is not in. This tool tells EDF and BDF apart everywhere
+else, down to the `BDF Annotations` label the specification gives the channel — and the page
+that prints this warning names both in the paragraph above it: "Plain EDF and plain BDF carry no
+annotations at all."
+
+The second file that gets here is worse served. A header saying `EDF+C` with no annotation
+channel is not a recording for which having no events is ordinary: EDF+ keeps its events in that
+channel and is required to have one. The hint read as reassurance about a file that is
+malformed.
+
+```
+         Plain BDF files carry no annotations. Convert without --annotations-only to get
+         the signals.
+
+         The header marks this EDF+ (continuous), and that format keeps its events in an
+         annotation channel this file does not have. Convert without --annotations-only to
+         get the signals.
+```
+
+The way out is unchanged in all three, and a plain EDF reads exactly as it did — which is what
+the four pages printing this warning show.
+
 ## 0.8.48
 
 ### warnings about a file that named the one --gzip did not write
