@@ -631,9 +631,29 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
         // name in signals.csv; the other three are cells of channels.csv and nothing else.
         // Named down to the cell when there is one of them, because that is the answer to
         // "where did it go" — `channels.csv` alone leaves a reader scanning fourteen columns.
+        /*
+          And whether there is a channels.csv at all, which this took for granted.
+
+          `--stdout` writes the signal table and nothing else — no channels.csv, no
+          annotations.csv, no metadata.json. A control byte in a unit reaches no file at all
+          in that mode, and this said it would be in a cell of one:
+
+              $ edf2csv control-labels.edf --stdout | less
+              warning: Signal 0's label and unit contain 2 control characters (\x1b), which
+                       will appear in the CSV column name and in channels.csv's unit cell
+                       exactly as the header has them.
+                       ... Printing the CSV to a terminal may do more than print it.
+
+          Which is the mode this warning matters most in: `--stdout` *is* printing the CSV to
+          a terminal, and the hint two lines down says so. The header is parsed before any
+          destination is chosen, so the sentence says what is true of both rather than
+          guessing — the same reason the `DUPLICATE_LABEL` hint above names two layouts.
+        */
         const cells = affected.filter(([name]) => name !== 'label').map(([name]) => name);
         const where =
-          cells.length === 1 ? `channels.csv's ${cells[0] as string} cell` : 'channels.csv';
+          cells.length === 1
+            ? `channels.csv's ${cells[0] as string} cell in any conversion that writes one`
+            : 'the channels.csv of any conversion that writes one';
         const lands =
           inLabel && cells.length > 0
             ? `which will appear in the CSV column name and in ${where}`
@@ -645,7 +665,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           severity: 'warning',
           message:
             `Signal ${i}'s ${named} ${affected.length === 1 ? 'contains' : 'contain'} ` +
-            `${counted(control.length, 'control character')} (${shown}), ${lands} exactly as the ` +
+            // A comma before the closing clause, which now has a clause of its own inside it.
+            `${counted(control.length, 'control character')} (${shown}), ${lands}, exactly as the ` +
             `header has ${control.length === 1 ? 'it' : 'them'}.`,
           hint:
             /*

@@ -905,13 +905,14 @@ It is a warning rather than an error because a batch of five hundred recordings 
 
 ### NONPRINTABLE_LABEL
 
-One of a channel's four free-text header fields — label, unit, transducer or prefiltering — contains control characters. The warning names which, because what it costs is not the same: a label becomes the column name in `signals.csv`, while the other three are cells of `channels.csv` and nothing else.
+One of a channel's four free-text header fields — label, unit, transducer or prefiltering — contains control characters. The warning names which, because what it costs is not the same: a label becomes the column name in `signals.csv`, while the other three are cells of `channels.csv` and nothing else — and under `--stdout`, which writes no `channels.csv`, they reach nothing at all, which is why the sentence names the conversion that writes one.
 
 **Cause.** A writer that copied a field out of another system without sanitising it, a header edited by a script, or a corrupt file whose label bytes are not text at all. EDF fields are free text and nothing enforces that they are printable.
 
 ```
 warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear
-         in the CSV column name and in channels.csv's unit cell exactly as the header has them.
+         in the CSV column name and in channels.csv's unit cell in any conversion that
+         writes one, exactly as the header has them.
          Address the channel by position with --channels "#0" rather than by
          name, since the name cannot be typed. Printing the CSV to a terminal
          may do more than print it.
@@ -921,7 +922,8 @@ When only a cell field carries them, the column name is untouched and the channe
 
 ```
 warning: Signal 0's unit contains 1 control character (\x07), which will appear in
-         channels.csv's unit cell exactly as the header has it.
+         channels.csv's unit cell in any conversion that writes one, exactly as the
+         header has it.
          The column name is unaffected, so --channels "ECG" still selects it.
          Printing the CSV to a terminal may do more than print it.
 ```

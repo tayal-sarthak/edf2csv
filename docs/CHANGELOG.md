@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.52
+
+### where an invisible byte went, in the mode where it goes nowhere
+
+This warning exists to say where an invisible byte went. Under `--stdout` it named a file that
+run does not write:
+
+```
+$ edf2csv control-labels.edf --stdout | less
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear in
+         the CSV column name and in channels.csv's unit cell exactly as the header has them.
+         Address the channel by position with --channels "#0" rather than by name, since the
+         name cannot be typed. Printing the CSV to a terminal may do more than print it.
+```
+
+`--stdout` writes the signal table and nothing else — no channels.csv, no annotations.csv, no
+metadata.json — so the ESC byte in the unit reaches nothing at all. And this is the mode the
+warning matters most in: `--stdout` *is* printing the CSV to a terminal, which its own hint says
+two lines down.
+
+The header is parsed before any destination is chosen, so the sentence names both outcomes
+rather than guessing at one — the same answer `DUPLICATE_LABEL`'s hint got in 0.8.43 for the
+layout it could not know:
+
+```
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear in
+         the CSV column name and in channels.csv's unit cell in any conversion that writes
+         one, exactly as the header has them.
+```
+
+The half about the label is unconditional, because it is: a label's bytes reach the column names
+on the stream as surely as they reach a file.
+
+A comma goes in before the closing clause, which now has a clause of its own inside it — so a
+label-only warning reads "…will appear in the CSV column name, exactly as the header has it."
+
+0.8.51 amended two sidecar-naming hints after the fact, where the destination is known. That
+mechanism does not fit this one: its file is named mid-message, inside a sentence assembled from
+which of the four fields carry bytes.
+
 ## 0.8.51
 
 ### advice into a directory a --stdout run never made

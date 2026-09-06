@@ -5451,6 +5451,38 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('does not put a control byte in a file --stdout will not write', async () => {
+    /*
+      This warning's job is to say where an invisible byte went, and under `--stdout` it named
+      a file that run does not write:
+
+          $ edf2csv control-labels.edf --stdout | less
+          warning: Signal 0's label and unit contain 2 control characters (\x1b), which will
+                   appear in the CSV column name and in channels.csv's unit cell exactly as
+                   the header has them.
+                   ... Printing the CSV to a terminal may do more than print it.
+
+      Which is the mode it matters most in: `--stdout` is printing the CSV to a terminal, and
+      the hint two lines below says so. The header is parsed before any destination is chosen,
+      so the sentence names both outcomes rather than guessing at one.
+    */
+    const streamed = await cli([fixture('control-labels.edf'), '--stdout']);
+    assert.equal(streamed.code, 0, streamed.stderr);
+    const flat = streamed.stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /channels\.csv's unit cell in any conversion that writes one/u, flat);
+    // A label's bytes do reach the stream, and that half says so with no condition on it.
+    assert.match(flat, /appear in the CSV column name, exactly as the header has it/u, flat);
+
+    // And the conversion the sentence is conditional on really does put the byte in that cell.
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-ctrlcell-'));
+    temporaries.push(dir);
+    const out = path.join(dir, 'out');
+    const written = await cli([fixture('control-labels.edf'), '--out', out]);
+    assert.equal(written.code, 0, written.stderr);
+    const channels = await readFile(path.join(out, 'channels.csv'), 'utf8');
+    assert.ok(channels.includes(String.fromCharCode(27)), channels.slice(0, 200));
+  });
+
   it('does not point a --stdout run at a sidecar file it will not write', async () => {
     /*
       `--stdout` puts one table on the stream and writes nothing else. Two warnings raised

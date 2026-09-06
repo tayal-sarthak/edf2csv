@@ -1079,7 +1079,7 @@ describe('column naming', () => {
 
           warning: Signal 0's label, unit and transducer contain 63 control characters
           (\x01, \x02, ... \x9e), which will appear in the CSV column name and in
-          channels.csv exactly as the header has them.
+          the channels.csv of any conversion that writes one, exactly as the header has them.
 
       549 characters on one line. `listed` is the helper this codebase wrote for that exact
       problem, and every other file-sized enumeration in a diagnostic already goes through it.
@@ -1107,7 +1107,8 @@ describe('column naming', () => {
     assert.match(message, /contain 63 control characters/u, message);
     assert.match(message, /\(\\x01, \\x02, \\x03, \\x04, \\x05, \\x06, \\x07, \\x08 and 55 more\)/u, message);
     // 549 characters before, 222 after, on a header that is free to ask for more of them.
-    assert.ok(message.length < 250, `${message.length} characters: ${message}`);
+    // 0.8.52 added a clause about the file the cell fields reach, which is fixed text.
+    assert.ok(message.length < 300, `${message.length} characters: ${message}`);
   });
 
   it('leaves an ordinary label alone', async () => {
