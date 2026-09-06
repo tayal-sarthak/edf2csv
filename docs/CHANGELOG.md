@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.50
+
+### null for a destination, and the rows went somewhere else
+
+0.8.36 checked the one option that is called rather than read. This is the one that has a value
+and had only half a check.
+
+`outputDir` was refused for being the empty string and for nothing else, so it failed in both of
+the ways the paragraph above it in `options.ts` describes for the flags.
+
+A value of the wrong type reached `path.join` and came back as Node's own error, about an
+argument this caller never passed:
+
+```js
+await convert('rec.edf', { outputDir: 42 });
+TypeError: The "path" argument must be of type string. Received type number (42)
+```
+
+And `null` was not an error at all:
+
+```js
+await convert('rec.edf', { outputDir: null });   // resolves
+```
+
+`null` is not `undefined`, so it never meant "use the default" — but every read of it is
+`?? default` or a truthiness test, so that is what it did. The rows went to `rec_csv` beside the
+input, a directory the caller had not named, and the call reported success. It is also what
+`JSON.parse` of a config file gives for a field left unset, which is the door `1` and `'true'`
+come through in the check directly below.
+
+```
+OptionError: outputDir must be a path, got 42.
+OptionError: outputDir must be a path, got null.
+```
+
+The rejection table already asserts the error type and that the destination does not exist
+afterwards, so the three new rows cover the message and the empty disk.
+
 ## 0.8.49
 
 ### a BDF file told what plain EDF files carry

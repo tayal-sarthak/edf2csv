@@ -1573,6 +1573,21 @@ describe('option checking', () => {
       */
       [{ outputDir: '' }, /outputDir is empty\. Give a directory/u],
       /*
+        And its shape, which the empty string was the only check on. A value of the wrong type
+        reached `path.join` and came back as `TypeError: The "path" argument must be of type
+        string`, naming an argument this caller never passed.
+
+        `null` was not an error at all. It is not `undefined`, so it never meant "use the
+        default" — but every read of it is `?? default` or a truthiness test, so that is what
+        it did: the rows went to `<recording>_csv` beside the input, a directory the caller
+        had not named, and the call resolved reporting success. It is also the value
+        `JSON.parse` of a config file gives for a field left unset, which is the door the
+        flags above come through.
+      */
+      [{ outputDir: 42 }, /outputDir must be a path, got 42\./u],
+      [{ outputDir: null }, /outputDir must be a path, got null\./u],
+      [{ outputDir: ['out'] }, /outputDir must be a path, got \["out"\]/u],
+      /*
         And the six flags, every one read as `=== true` where it is read — so a value that is
         not a boolean was taken as the opposite of what it says. `annotationsOnly: 'true'`
         wrote every signal the caller had asked to leave out, and `gzip: 1` wrote plain CSVs

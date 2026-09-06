@@ -140,7 +140,27 @@ export function assertOptions(options: {
     directory whose name is a space is a strange thing to ask for, but it is a thing the
     filesystem has and a path is not a keyword.
   */
-  if (options.outputDir === '') {
+  /*
+    And its shape, which was the one option with a value and no check on it.
+
+    The empty string was refused and nothing else was, so `outputDir` failed two ways that the
+    paragraph above describes for the flags. A value of the wrong type reached `path.join` and
+    came back as a Node error about an argument this caller never passed:
+
+        convert('rec.edf', { outputDir: 42 })
+        TypeError: The "path" argument must be of type string. Received type number (42)
+
+    And `null` — which is what `JSON.parse` of a config file gives for a field left unset, the
+    same door `1` and `'true'` come through — was not an error at all. It is not `undefined`,
+    so it never meant "use the default", but every read of it is `?? default` or a truthiness
+    test, so that is what it did: the rows went to `<recording>_csv` beside the input, a
+    directory the caller had not named, and the run reported success.
+  */
+  const { outputDir } = options;
+  if (outputDir !== undefined && typeof outputDir !== 'string') {
+    throw new OptionError(`outputDir must be a path, got ${describeValue(outputDir)}.`);
+  }
+  if (outputDir === '') {
     throw new OptionError('outputDir is empty. Give a directory, for example "./converted".');
   }
 
