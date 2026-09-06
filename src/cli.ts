@@ -30,6 +30,7 @@ import {
   describeFsError,
   descriptionDiagnostics,
   emptyAnnotations,
+  withSidecarsUnwritten,
   durationDiagnostics,
   requestedAnnotationWindow,
   noAnnotations,
@@ -1154,7 +1155,15 @@ async function showInfo(
 
     // Under --json the warnings travel inside the document, exactly as they do for a
     // conversion, so stderr stays empty and the whole result is one parseable thing.
-    const diagnostics = [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics];
+    // `--stdout` writes no sidecars, and `--info --stdout` describes that run; see
+    // withSidecarsUnwritten.
+    const diagnostics = withSidecarsUnwritten(
+      [
+        ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+        ...plan.diagnostics,
+      ],
+      toStdout,
+    );
     if (!asJson && diagnostics.length > 0) {
       /*
         Named when there is more than one recording to confuse it with.

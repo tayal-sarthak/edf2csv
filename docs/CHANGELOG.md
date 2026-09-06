@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.51
+
+### advice into a directory a --stdout run never made
+
+`--stdout` puts one table on the stream and writes nothing else — "No sidecar files are
+written", as the option's own documentation puts it. Two warnings ended by pointing at one of
+those files:
+
+```
+$ edf2csv undated.edf --stdout > rows.csv
+warning: The header's start date and time ("XX.XX.XX" and "YY.YY.YY") are not a date and a
+         time, so the recording has no start instant.
+         ... and metadata.json records start_datetime_local as null.
+
+$ edf2csv far-origin.edf --stdout --channels "#0" > rows.csv
+warning: This recording's timekeeping annotations place it 100000000000000000s from its own
+         start date ...
+         ... Add the onsets in annotations.csv to recover absolute times if you need them.
+```
+
+The second is advice a reader can follow into an empty directory. There is no directory.
+
+Both are raised before the destination is known — one by the header parser, one while the record
+starts are derived — so neither could have checked. They are amended where the answer is, which
+is what `withTimingPromiseKept` already does to a `DISCONTINUOUS` hint the parser could not have
+known was false, and `withoutFileRateWarning` does to a header diagnostic the plan supersedes.
+
+```
+         ... and --stdout writes no metadata.json to record start_datetime_local as null in.
+
+         ... The onsets that recover absolute times are in the annotation channel; --stdout
+         writes no annotations.csv, so convert to a directory for them.
+```
+
+`--info --stdout`, which describes such a run, says the same. A conversion to a directory keeps
+every word it had.
+
+**Not fixed here.** `NONPRINTABLE_LABEL` names `channels.csv`'s cells mid-message rather than in
+a hint, and under `--stdout` the answer it gives is not just misnamed but different: the label's
+bytes reach the stream's column names and the unit's reach nothing at all.
+
 ## 0.8.50
 
 ### null for a destination, and the rows went somewhere else

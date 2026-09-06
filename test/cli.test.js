@@ -5451,6 +5451,55 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('does not point a --stdout run at a sidecar file it will not write', async () => {
+    /*
+      `--stdout` puts one table on the stream and writes nothing else. Two warnings raised
+      before the destination is known ended by pointing at one of the files it does not write:
+
+          warning: The header's start date and time ... are not a date and a time ...
+                   ... and metadata.json records start_datetime_local as null.
+
+          warning: This recording's timekeeping annotations place it 1e17s from its own
+                   start date ...
+                   ... Add the onsets in annotations.csv to recover absolute times.
+
+      The second is advice a reader can follow into an empty directory, and there is no
+      directory. Amended where the destination is known, the way `withTimingPromiseKept`
+      amends a hint the parser could not have checked.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-sidecar-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const undated = path.join(dir, 'no-start-instant.edf');
+    writeEdf({
+      path: undated, startDate: 'XX.XX.XX', startTime: 'YY.YY.YY', numRecords: 2,
+      recordDuration: 1,
+      signals: [{ label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+        digMax: 1000, samplesPerRecord: 4, gen: (r, s) => r * 4 + s }],
+    });
+
+    const cases = [
+      [undated, [], /--stdout writes no metadata\.json/u, /metadata\.json records start_datetime_local as null/u],
+      [fixture('far-origin-collapsed.edf'), ['--channels', '#0'],
+        /--stdout writes no annotations\.csv, so convert to a directory/u,
+        /Add the onsets in annotations\.csv to recover absolute times/u],
+    ];
+    for (const [recording, extra, streamed, written] of cases) {
+      // Both modes that stream: the conversion, and the --info that describes it.
+      for (const mode of [['--stdout'], ['--info', '--stdout']]) {
+        const { code, stderr } = await cli([recording, ...mode, ...extra]);
+        assert.equal(code, 0, `${mode.join(' ')}: ${stderr}`);
+        const flat = stderr.replace(/\s+/gu, ' ');
+        assert.match(flat, streamed, flat);
+        assert.doesNotMatch(flat, written, flat);
+      }
+      // And a conversion that does write them keeps every word.
+      const out = path.join(dir, `out${extra.length}`);
+      const { stderr } = await cli([recording, '--out', out, ...extra]);
+      assert.match(stderr.replace(/\s+/gu, ' '), written, stderr);
+    }
+  });
+
   it('names the compressed file --gzip actually writes, in the warnings about it', async () => {
     /*
       The plan records `gzip` rather than inferring it from the group file names, because

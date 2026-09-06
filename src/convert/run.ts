@@ -201,7 +201,14 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         files: written,
         readerHungUp,
         annotationCount: 0,
-        diagnostics: [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics],
+        // Over both lists, because the timing warnings are pushed onto the plan's.
+        diagnostics: withSidecarsUnwritten(
+          [
+            ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+            ...plan.diagnostics,
+          ],
+          true,
+        ),
         plan,
         file,
         elapsedMs: Date.now() - startedAt,
@@ -1813,6 +1820,62 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
         'Nothing about them is lost: every channel\'s samples per record is in the channel ' +
         `table --info prints, and in the ${outputCsvName('channels', plan.gzip)} a conversion writes.`,
   };
+}
+
+/**
+ * The sidecar files a `--stdout` run does not write, taken out of the sentences about them.
+ *
+ * `--stdout` puts one table on the stream and writes nothing else — "No sidecar files are
+ * written", as `ConvertOptions` puts it. Two diagnostics raised before the destination is
+ * known end by pointing at one of those files:
+ *
+ *     warning: The header's start date and time ("XX.XX.XX" and "YY.YY.YY") are not a date
+ *              and a time, so the recording has no start instant.
+ *              ... and metadata.json records start_datetime_local as null.
+ *
+ *     warning: This recording's timekeeping annotations place it 1e17s from its own start
+ *              date ...
+ *              ... Add the onsets in annotations.csv to recover absolute times.
+ *
+ * Neither file exists after such a run. The second is advice a reader can follow into an
+ * empty directory — there is no directory.
+ *
+ * Amended where the answer is, the same way `withTimingPromiseKept` rewrites a `DISCONTINUOUS`
+ * hint the parser could not have known was false, and `withoutFileRateWarning` drops a header
+ * diagnostic the plan supersedes. A conversion to a directory keeps every word.
+ */
+export function withSidecarsUnwritten(
+  diagnostics: readonly Diagnostic[],
+  toStdout: boolean,
+): Diagnostic[] {
+  if (!toStdout) return [...diagnostics];
+  return diagnostics.map((diagnostic) => {
+    if (
+      diagnostic.code === 'START_TIME_UNREADABLE' &&
+      diagnostic.hint?.includes('metadata.json records')
+    ) {
+      return {
+        ...diagnostic,
+        hint:
+          'time_s is unaffected — it counts from the start of the recording either way. What ' +
+          'cannot be done is turning it into a wall-clock instant, and --stdout writes no ' +
+          'metadata.json to record start_datetime_local as null in.',
+      };
+    }
+    if (
+      diagnostic.code === 'DISCONTINUOUS' &&
+      diagnostic.hint?.includes('onsets in annotations.csv')
+    ) {
+      return {
+        ...diagnostic,
+        hint:
+          'Sample times are written from zero instead, so every row is present and the ' +
+          'column increases. The onsets that recover absolute times are in the annotation ' +
+          'channel; --stdout writes no annotations.csv, so convert to a directory for them.',
+      };
+    }
+    return diagnostic;
+  });
 }
 
 /**
