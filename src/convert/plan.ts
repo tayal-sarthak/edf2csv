@@ -163,6 +163,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     `time_s` column against a `time_s` index — the collision one step later.
   */
   const inLongLayout = (options.layout ?? 'wide') === 'long';
+  const channelsFile = outputCsvName('channels', options.gzip === true);
   for (const signal of renamedByCollision(input.signals, columnNames)) {
     const taker =
       signal.label === TIME_COLUMN
@@ -175,9 +176,17 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         `Signal ${signal.index} is labelled "${signal.label}", which is ${taker}, ` +
         `so ${inLongLayout ? 'it is named' : 'its column is'} "${columnNames.get(signal.index)}"` +
         `${inLongLayout ? ' in the channel column' : ''}.`,
+      /*
+        And the name that file is written under, which `--gzip` changes.
+
+        `outputCsvName` exists because "`--info` named `annotations.csv` for a run that wrote
+        `annotations.csv.gz`", and 0.8.48 took the two warnings in `run.ts` through it. These
+        two hints send a reader to a file by name — it is the whole advice — and named the one
+        a `--gzip` run does not write, four lines above a summary listing `channels.csv.gz`.
+      */
       hint: inLongLayout
-        ? 'Channel names are unique; look this channel up in channels.csv by its signal_index.'
-        : 'Column names are unique; look this channel up in channels.csv by its signal_index.',
+        ? `Channel names are unique; look this channel up in ${channelsFile} by its signal_index.`
+        : `Column names are unique; look this channel up in ${channelsFile} by its signal_index.`,
     });
   }
 
@@ -416,7 +425,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   */
   const untimeable = groups.some((group) => !Number.isFinite(group.rate));
   if (writeSignals && groups.length > 0 && estimate.rows === 0 && !untimeable) {
-    diagnostics.push(emptyWindow(range, input.recordCount, groups));
+    diagnostics.push(emptyWindow(range, input.recordCount, groups, options.gzip === true));
   }
 
   if (estimate.exceedsSpreadsheetLimit) {
@@ -671,6 +680,7 @@ function emptyWindow(
   range: ResolvedRange,
   recordCount: number,
   groups: readonly RateGroup[],
+  gzip: boolean,
 ): Diagnostic {
   const fileCount = groups.length;
   const asked = !range.isWholeRecording;
@@ -750,7 +760,7 @@ function emptyWindow(
             'and --end and read time_s to see where the records actually sit.'
       : // The same loop, in the branch where no window was asked for at all.
         'What the header declares for each channel — its samples per data record — is in ' +
-        'the channel table --info prints and in channels.csv.',
+        `the channel table --info prints and in ${outputCsvName('channels', gzip)}.`,
   };
 }
 

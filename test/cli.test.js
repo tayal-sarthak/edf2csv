@@ -5557,6 +5557,14 @@ describe('--stdout', () => {
       ['contiguous-fractional.edf', ['--annotations-only'], /holds its header and no rows/u],
       ['annotations-only.edf', [], /holds whatever events it carries/u],
       ['single-rate-empty-channel.edf', ['--channels', 'unused'], /samples per record is in the channel/u],
+      /*
+        And the two hints whose whole advice is a file name — the plan raises them, and the
+        plan has carried `gzip` since it was recorded rather than inferred. Both layouts,
+        because `DUPLICATE_LABEL` has a sentence for each.
+      */
+      ['label-suffix-collision.edf', [], /Column names are unique; look this channel up in/u],
+      ['label-suffix-collision.edf', ['--layout', 'long'],
+        /Channel names are unique; look this channel up in/u],
     ];
     for (const [name, extra, marker] of cases) {
       const out = path.join(dir, `${name}${extra.join('')}`);

@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.53
+
+### look it up in a file --gzip did not write
+
+0.8.48 took the two `run.ts` warnings that name a sidecar file through `outputCsvName`. Two
+hints in the plan do the same thing, and they are the ones where the file name *is* the advice:
+
+```
+$ edf2csv two-T8.edf --out out --gzip
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's "_ch"
+         suffix produces, so its column is "T8_ch0_ch2".
+         Column names are unique; look this channel up in channels.csv by its signal_index.
+
+Wrote out
+  signals.csv.gz   9  rows
+  channels.csv.gz  4  rows
+```
+
+"Look this channel up in channels.csv" is the entire instruction, and `channels.csv` is not
+there. The long layout's sentence — "Channel names are unique; look this channel up in
+channels.csv by its signal_index" — is the same.
+
+The plan has carried `gzip` since it was recorded rather than inferred from the group file
+names, for exactly this reason, so both read it now:
+
+```
+         Column names are unique; look this channel up in channels.csv.gz by its signal_index.
+```
+
+`EMPTY_WINDOW`'s hint about what the header declares goes the same way. Without `--gzip` every
+sentence is unchanged, which is what the pages printing them show.
+
+The test from 0.8.48 takes two more rows: it slices stderr into warning blocks, checks the block
+names no uncompressed CSV, and checks every file it does name against `readdir` of the directory
+the run wrote.
+
 ## 0.8.52
 
 ### where an invisible byte went, in the mode where it goes nowhere
