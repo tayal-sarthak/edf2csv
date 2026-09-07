@@ -5451,6 +5451,43 @@ describe('--stdout', () => {
     assert.match(stderr, /both write to stdout/);
   });
 
+  it('calls a label the channel name, which is what both layouts call it', async () => {
+    /*
+      "Which will appear in the CSV column name" is the wide layout's answer, and it was given
+      in both. A long signals.csv has three columns — time_s, channel, value — and a label is
+      not one of them: it is a value in the `channel` column, once per row. So a control byte
+      in a label reaches one cell of the header line under the default layout and every row of
+      the table under `--layout long`, and the sentence naming where it went named only the
+      first. The same fault 0.8.24 fixed for `DUPLICATE_LABEL`'s message and 0.8.43 for its
+      hint, on a message with no room to name both.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-labelname-'));
+    temporaries.push(dir);
+    const esc = String.fromCharCode(27);
+    for (const layout of ['wide', 'long']) {
+      const out = path.join(dir, layout);
+      const { code, stderr } = await cli([
+        fixture('control-labels.edf'), '--out', out, '--layout', layout,
+      ]);
+      assert.equal(code, 0, stderr);
+      const flat = stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /will appear as the channel's name in signals\.csv/u, flat);
+      assert.doesNotMatch(flat, /will appear in the CSV column name/u, flat);
+    }
+
+    // Where it really lands in each, which is why one word cannot be both.
+    const wide = (await readFile(path.join(dir, 'wide', 'signals.csv'), 'utf8')).split('\n');
+    assert.ok(wide[0].includes(esc), wide[0]);
+    assert.ok(!wide[1].includes(esc), wide[1]);
+    const long = (await readFile(path.join(dir, 'long', 'signals.csv'), 'utf8')).split('\n');
+    assert.equal(long[0], 'time_s,channel,value');
+    assert.ok(!long[0].includes(esc), long[0]);
+    // Once per row of that channel, in the channel column, rather than once in the header.
+    const carrying = long.slice(1).filter((row) => row.includes(esc));
+    assert.ok(carrying.length > 1, `${carrying.length} rows carry it`);
+    for (const row of carrying) assert.equal(row.split(',')[1].includes(esc), true, row);
+  });
+
   it('does not put a control byte in a file --stdout will not write', async () => {
     /*
       This warning's job is to say where an invisible byte went, and under `--stdout` it named
@@ -5471,7 +5508,7 @@ describe('--stdout', () => {
     const flat = streamed.stderr.replace(/\s+/gu, ' ');
     assert.match(flat, /channels\.csv's unit cell in any conversion that writes one/u, flat);
     // A label's bytes do reach the stream, and that half says so with no condition on it.
-    assert.match(flat, /appear in the CSV column name, exactly as the header has it/u, flat);
+    assert.match(flat, /appear as the channel's name in signals\.csv, exactly as the header has it/u, flat);
 
     // And the conversion the sentence is conditional on really does put the byte in that cell.
     const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-ctrlcell-'));

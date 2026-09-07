@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.55
+
+### a byte in one header cell, or in every row
+
+0.8.24 taught `DUPLICATE_LABEL`'s message that the long layout has no column per channel; 0.8.43
+taught its hint. `NONPRINTABLE_LABEL` was still saying it:
+
+```
+$ edf2csv control-labels.edf --out csv --layout long
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear in
+         the CSV column name and in channels.csv's unit cell ...
+```
+
+A long `signals.csv` has three columns — `time_s`, `channel`, `value` — and a label is not one
+of them. It is a value in the `channel` column, once per row. So an ESC byte in a label sits in
+one cell of the header line under the default layout and in **every row** of the table under
+`--layout long`, on a warning whose whole job is to say where an invisible byte went and whose
+hint ends "Printing the CSV to a terminal may do more than print it."
+
+The parser cannot know the layout, and unlike those two this sentence has no room to name both:
+it already carries the field list, the byte list, and where the three cell fields land. "The
+channel's name" is what both layouts call it — the term the long layout's own warnings use, and
+what a column name is.
+
+```
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear as
+         the channel's name in signals.csv and in channels.csv's unit cell in any conversion
+         that writes one, exactly as the header has them.
+```
+
+The page said the same thing in prose — "a label becomes the column name in `signals.csv`" — and
+now names both, since it has the room.
+
+The test converts the same fixture both ways and reads the files: one header cell carries the
+byte in the wide layout, and several rows' `channel` cells carry it in the long one.
+
 ## 0.8.54
 
 ### the last two sentences naming a file the run did not write

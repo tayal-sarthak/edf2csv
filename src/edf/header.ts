@@ -654,11 +654,26 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
           cells.length === 1
             ? `channels.csv's ${cells[0] as string} cell in any conversion that writes one`
             : 'the channels.csv of any conversion that writes one';
+        /*
+          "The CSV column name" is the wide layout's answer, given in both.
+
+          A long signals.csv has three columns — time_s, channel, value — and a label is not
+          one of them: it is a value in the `channel` column, once per row. So a control byte
+          in a label reaches one cell of the header line under the default layout and every
+          row of the table under `--layout long`, and the sentence naming where it went named
+          only the first. Same fault 0.8.24 fixed for `DUPLICATE_LABEL`'s message and 0.8.43
+          for its hint.
+
+          The parser cannot know the layout, and unlike those two this sentence does not have
+          room to name both — it already carries the field list, the byte list and where the
+          cell fields land. "The channel's name" is what both layouts call it: the term the
+          long layout's own warnings use, and what a column name is.
+        */
         const lands =
           inLabel && cells.length > 0
-            ? `which will appear in the CSV column name and in ${where}`
+            ? `which will appear as the channel's name in signals.csv and in ${where}`
             : inLabel
-              ? 'which will appear in the CSV column name'
+              ? "which will appear as the channel's name in signals.csv"
               : `which will appear in ${where}`;
         diagnostics.push({
           code: 'NONPRINTABLE_LABEL',
