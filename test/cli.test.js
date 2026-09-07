@@ -5520,6 +5520,52 @@ describe('--stdout', () => {
     assert.ok(channels.includes(String.fromCharCode(27)), channels.slice(0, 200));
   });
 
+  it('does not describe rows of a signal table --annotations-only will not write', async () => {
+    /*
+      `--annotations-only` writes the event list and nothing else, and four hints about record
+      timing describe the rows of a signal table. A recording whose records run backwards got
+      both of these over an annotations.csv holding its header and no rows:
+
+          warning: This is a discontinuous (EDF+D) recording: its data records are not
+                   contiguous in time.
+                   Each row carries its true recording time, so gaps stay visible instead of
+                   being closed.
+          warning: 2 data records start earlier than the record before them.
+                   Rows are written in file order, so the time column will not increase
+                   monotonically.
+
+      There are no rows and there is no time column. What the records do is still a fact about
+      the recording, so the messages stay; the sentences about what a conversion makes of them
+      are the ones that were false.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-norows-'));
+    temporaries.push(dir);
+    const cases = [
+      ['records-backwards.edf', /no time column is affected/u, /Rows are written in file order/u],
+      ['records-overlapping.edf', /no time column is affected/u, /Rows are written in file order/u],
+      ['discontinuous.edf', /nothing here is timed from the records/u,
+        /Each row carries its true recording time/u],
+      ['far-origin-collapsed.edf', /no sample times are written at all/u,
+        /every row is present and the column increases/u],
+    ];
+    for (const [name, expected, forbidden] of cases) {
+      const events = await cli([
+        fixture(name), '--out', path.join(dir, `ao-${name}`), '--annotations-only',
+      ]);
+      assert.equal(events.code, 0, events.stderr);
+      const flat = events.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, expected, flat);
+      assert.doesNotMatch(flat, forbidden, flat);
+      // And the run really does write no signal file for those sentences to be about.
+      const written = await readdir(path.join(dir, `ao-${name}`));
+      assert.ok(!written.some((f) => f.startsWith('signals')), written.join(', '));
+
+      // A conversion that writes one keeps the sentence, which is true of it.
+      const signals = await cli([fixture(name), '--out', path.join(dir, `sig-${name}`)]);
+      assert.match(signals.stderr.replace(/\s+/gu, ' '), forbidden, signals.stderr);
+    }
+  });
+
   it('does not point a --stdout run at a sidecar file it will not write', async () => {
     /*
       `--stdout` puts one table on the stream and writes nothing else. Two warnings raised

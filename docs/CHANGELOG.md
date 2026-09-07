@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.56
+
+### rows, a time column, and a mode that writes neither
+
+`--annotations-only` writes the event list and nothing else — no signal files at all. Four hints
+about record timing describe the rows of one.
+
+A recording whose records run backwards, converted that way, printed both of these over an
+`annotations.csv` holding its header and no rows:
+
+```
+warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in
+         time.
+         Each row carries its true recording time, so gaps stay visible instead of being
+         closed.
+warning: 2 data records start earlier than the record before them.
+         Rows are written in file order, so the time column will not increase monotonically.
+```
+
+There are no rows and there is no time column. A third says "every row is present and the column
+increases" about a run that writes no rows at all.
+
+What the records do is still a fact about the recording, so the messages stay. What changes is
+the sentence describing what a conversion makes of them — the same surgery `withTimingPromiseKept`
+does to the first of these when the record starts cannot be derived, and `withSidecarsNamed` does
+to the files a stream does not write.
+
+```
+warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in
+         time.
+         --annotations-only writes no signal rows, so nothing here is timed from the records.
+         annotations.csv carries each event's own onset, and the record it came from in
+         record_index.
+warning: 2 data records start earlier than the record before them.
+         --annotations-only writes no signal rows, so no time column is affected.
+         annotations.csv's record_index still names the record each event came from.
+```
+
+The test checks four fixtures in both modes, and checks the directory each `--annotations-only`
+run wrote for the absence of the signal file those sentences were about.
+
+**Not fixed here.** `DEGENERATE_PHYSICAL_RANGE` and its neighbours say "every sample converts to
+the same value" and "its cells carry that value" in the same mode. They come from the header
+parser, and their subject is the calibration rather than the timing.
+
 ## 0.8.55
 
 ### a byte in one header cell, or in every row

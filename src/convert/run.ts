@@ -202,12 +202,15 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         readerHungUp,
         annotationCount: 0,
         // Over both lists, because the timing warnings are pushed onto the plan's.
-        diagnostics: withSidecarsNamed(
-          [
-            ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
-            ...plan.diagnostics,
-          ],
-          { toStdout: true, gzip: plan.gzip },
+        diagnostics: withSignalTableUnwritten(
+          withSidecarsNamed(
+            [
+              ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+              ...plan.diagnostics,
+            ],
+            { toStdout: true, gzip: plan.gzip },
+          ),
+          plan.writeSignals,
         ),
         plan,
         file,
@@ -330,13 +333,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       annotationCount: annotationsWritten,
       // The directory path needs it too: `--gzip` changes the names, and two of these
       // sentences are a file name and nothing else. See withSidecarsNamed.
-      diagnostics: withSidecarsNamed(
-        [
-          ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
-          ...plan.diagnostics,
-          ...stale,
-        ],
-        { toStdout: false, gzip: plan.gzip },
+      diagnostics: withSignalTableUnwritten(
+        withSidecarsNamed(
+          [
+            ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+            ...plan.diagnostics,
+            ...stale,
+          ],
+          { toStdout: false, gzip: plan.gzip },
+        ),
+        plan.writeSignals,
       ),
       plan,
       file,
@@ -1832,6 +1838,62 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
 }
 
 /**
+ * The signal table an `--annotations-only` run does not write, taken out of the hints about it.
+ *
+ * That mode writes the event list and nothing else — no signal files at all — and four hints
+ * about record timing describe the rows of one. On a recording whose records run backwards it
+ * printed both of these over an annotations.csv holding its header and no rows:
+ *
+ *     warning: This is a discontinuous (EDF+D) recording: its data records are not
+ *              contiguous in time.
+ *              Each row carries its true recording time, so gaps stay visible instead of
+ *              being closed.
+ *     warning: 2 data records start earlier than the record before them.
+ *              Rows are written in file order, so the time column will not increase
+ *              monotonically.
+ *
+ * There are no rows and no time column. The facts above the hints are about the recording and
+ * stay; what changes is the sentence describing what the conversion will do with them, which
+ * is the same surgery `withTimingPromiseKept` does to the first of these when the record
+ * starts cannot be derived.
+ *
+ * `writesSignals` rather than the option, because the plan is what settles it.
+ */
+export function withSignalTableUnwritten(
+  diagnostics: readonly Diagnostic[],
+  writesSignals: boolean,
+): Diagnostic[] {
+  if (writesSignals) return [...diagnostics];
+  return diagnostics.map((diagnostic) => {
+    if (diagnostic.code !== 'DISCONTINUOUS' || diagnostic.hint === undefined) return diagnostic;
+    if (diagnostic.hint.startsWith('Each row carries its true recording time')) {
+      return {
+        ...diagnostic,
+        hint:
+          '--annotations-only writes no signal rows, so nothing here is timed from the ' +
+          "records. annotations.csv carries each event's own onset, and the record it came " +
+          'from in record_index.',
+      };
+    }
+    if (diagnostic.hint.startsWith('Rows are written in file order')) {
+      return {
+        ...diagnostic,
+        hint:
+          '--annotations-only writes no signal rows, so no time column is affected. ' +
+          "annotations.csv's record_index still names the record each event came from.",
+      };
+    }
+    if (diagnostic.hint.startsWith('Sample times are written from zero')) {
+      return {
+        ...diagnostic,
+        hint: '--annotations-only writes no signal rows, so no sample times are written at all.',
+      };
+    }
+    return diagnostic;
+  });
+}
+
+/**
  * The sidecar files a `--stdout` run does not write, taken out of the sentences about them.
  *
  * `--stdout` puts one table on the stream and writes nothing else — "No sidecar files are
@@ -2100,13 +2162,16 @@ async function writeMetadata(
         decimals: g.channels.map((c) => c.decimals),
       })),
     },
-    notes: withSidecarsNamed(
-      [
-        ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
-        ...plan.diagnostics,
-      ],
-      // metadata.json is only written into a directory, so this one is never the stdout case.
-      { toStdout: false, gzip: plan.gzip },
+    notes: withSignalTableUnwritten(
+      withSidecarsNamed(
+        [
+          ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
+          ...plan.diagnostics,
+        ],
+        // metadata.json is only written into a directory, so this is never the stdout case.
+        { toStdout: false, gzip: plan.gzip },
+      ),
+      plan.writeSignals,
     ).map((d) => ({
       code: d.code,
       severity: d.severity,

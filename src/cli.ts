@@ -31,6 +31,7 @@ import {
   descriptionDiagnostics,
   emptyAnnotations,
   withSidecarsNamed,
+  withSignalTableUnwritten,
   durationDiagnostics,
   requestedAnnotationWindow,
   noAnnotations,
@@ -1157,12 +1158,15 @@ async function showInfo(
     // conversion, so stderr stays empty and the whole result is one parseable thing.
     // `--stdout` writes no sidecars, and `--info --stdout` describes that run; see
     // withSidecarsNamed.
-    const diagnostics = withSidecarsNamed(
-      [
-        ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
-        ...plan.diagnostics,
-      ],
-      { toStdout, gzip: plan.gzip },
+    const diagnostics = withSignalTableUnwritten(
+      withSidecarsNamed(
+        [
+          ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+          ...plan.diagnostics,
+        ],
+        { toStdout, gzip: plan.gzip },
+      ),
+      plan.writeSignals,
     );
     if (!asJson && diagnostics.length > 0) {
       /*
