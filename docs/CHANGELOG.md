@@ -8,6 +8,53 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.54
+
+### the last two sentences naming a file the run did not write
+
+Two sentences were left naming a file that may not be there, and neither could check: one is
+raised while the header is parsed, the other while the record starts are derived.
+
+```
+$ edf2csv one-empty-channel.edf --stdout > rows.csv
+warning: Signal 1 ("unused") carries no samples at all (0 per data record).
+         It is described in channels.csv but left out of the converted data.
+```
+
+The hint is reassurance — the channel is not lost, it is over there — and `--stdout` writes no
+`channels.csv` for it to be in. Under `--gzip` it is there under another name.
+
+```
+$ edf2csv far-origin.edf --out out --gzip
+         ... Add the onsets in annotations.csv to recover absolute times if you need them.
+```
+
+`annotations.csv.gz` is what that run wrote. 0.8.51 fixed this hint for `--stdout` and left the
+name alone.
+
+`withSidecarsUnwritten` becomes `withSidecarsNamed` and takes both facts about the destination,
+so the amendment is one pass rather than two, and it runs on every path now — the stream, the
+directory, and the `notes` array in metadata.json, which had the uncompressed names in it for a
+`--gzip` run.
+
+```
+         It is left out of the converted data, and --stdout writes no channels.csv to
+         describe it in — convert to a directory for that.
+
+         It is described in channels.csv.gz but left out of the converted data.
+
+         ... Add the onsets in annotations.csv.gz to recover absolute times if you need them.
+```
+
+That is the last sentence of this kind that was false. Two places still print `channels.csv`
+under `--gzip` and `--stdout` and are right to: `NONPRINTABLE_LABEL` says "in any conversion
+that writes one", and the `--stdout` refusal for an annotations-only recording says "Convert to
+a directory to get its annotations.csv", which is the way out rather than a claim about this
+run.
+
+The two sweeps — one for the compressed name, one for the sidecars a stream does not write —
+take four more rows between them.
+
 ## 0.8.53
 
 ### look it up in a file --gzip did not write

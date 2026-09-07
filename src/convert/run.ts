@@ -202,12 +202,12 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         readerHungUp,
         annotationCount: 0,
         // Over both lists, because the timing warnings are pushed onto the plan's.
-        diagnostics: withSidecarsUnwritten(
+        diagnostics: withSidecarsNamed(
           [
             ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
             ...plan.diagnostics,
           ],
-          true,
+          { toStdout: true, gzip: plan.gzip },
         ),
         plan,
         file,
@@ -328,7 +328,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       files: written,
       readerHungUp: false,
       annotationCount: annotationsWritten,
-      diagnostics: [...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null), ...plan.diagnostics, ...stale],
+      // The directory path needs it too: `--gzip` changes the names, and two of these
+      // sentences are a file name and nothing else. See withSidecarsNamed.
+      diagnostics: withSidecarsNamed(
+        [
+          ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
+          ...plan.diagnostics,
+          ...stale,
+        ],
+        { toStdout: false, gzip: plan.gzip },
+      ),
       plan,
       file,
       elapsedMs: Date.now() - startedAt,
@@ -1844,13 +1853,35 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
  * hint the parser could not have known was false, and `withoutFileRateWarning` drops a header
  * diagnostic the plan supersedes. A conversion to a directory keeps every word.
  */
-export function withSidecarsUnwritten(
+export function withSidecarsNamed(
   diagnostics: readonly Diagnostic[],
-  toStdout: boolean,
+  { toStdout, gzip }: { toStdout: boolean; gzip: boolean },
 ): Diagnostic[] {
-  if (!toStdout) return [...diagnostics];
+  if (!toStdout && !gzip) return [...diagnostics];
+  const channels = outputCsvName('channels', gzip);
+  const annotations = outputCsvName('annotations', gzip);
   return diagnostics.map((diagnostic) => {
+    /*
+      The header's own `NO_SAMPLES`, which names the file that describes the channel it is
+      about — and under `--stdout` there is no such file, so the reassurance is empty:
+
+          $ edf2csv one-empty-channel.edf --stdout > rows.csv
+          warning: Signal 1 ("unused") carries no samples at all (0 per data record).
+                   It is described in channels.csv but left out of the converted data.
+
+      Under `--gzip` the file is there under another name. Both are settled here.
+    */
+    if (diagnostic.code === 'NO_SAMPLES' && diagnostic.hint?.startsWith('It is described in')) {
+      return {
+        ...diagnostic,
+        hint: toStdout
+          ? 'It is left out of the converted data, and --stdout writes no channels.csv to ' +
+            'describe it in — convert to a directory for that.'
+          : `It is described in ${channels} but left out of the converted data.`,
+      };
+    }
     if (
+      toStdout &&
       diagnostic.code === 'START_TIME_UNREADABLE' &&
       diagnostic.hint?.includes('metadata.json records')
     ) {
@@ -1868,10 +1899,13 @@ export function withSidecarsUnwritten(
     ) {
       return {
         ...diagnostic,
-        hint:
-          'Sample times are written from zero instead, so every row is present and the ' +
-          'column increases. The onsets that recover absolute times are in the annotation ' +
-          'channel; --stdout writes no annotations.csv, so convert to a directory for them.',
+        hint: toStdout
+          ? 'Sample times are written from zero instead, so every row is present and the ' +
+            'column increases. The onsets that recover absolute times are in the annotation ' +
+            'channel; --stdout writes no annotations.csv, so convert to a directory for them.'
+          : 'Sample times are written from zero instead, so every row is present and the ' +
+            `column increases. Add the onsets in ${annotations} to recover absolute times if ` +
+            'you need them.',
       };
     }
     return diagnostic;
@@ -2066,10 +2100,14 @@ async function writeMetadata(
         decimals: g.channels.map((c) => c.decimals),
       })),
     },
-    notes: [
-      ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
-      ...plan.diagnostics,
-    ].map((d) => ({
+    notes: withSidecarsNamed(
+      [
+        ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
+        ...plan.diagnostics,
+      ],
+      // metadata.json is only written into a directory, so this one is never the stdout case.
+      { toStdout: false, gzip: plan.gzip },
+    ).map((d) => ({
       code: d.code,
       severity: d.severity,
       message: d.message,

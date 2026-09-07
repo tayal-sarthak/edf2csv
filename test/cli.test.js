@@ -5512,6 +5512,10 @@ describe('--stdout', () => {
 
     const cases = [
       [undated, [], /--stdout writes no metadata\.json/u, /metadata\.json records start_datetime_local as null/u],
+      // And the header's own, whose reassurance is empty when no channels.csv is written.
+      [fixture('single-rate-empty-channel.edf'), [],
+        /--stdout writes no channels\.csv to describe it in/u,
+        /It is described in channels\.csv but left out/u],
       [fixture('far-origin-collapsed.edf'), ['--channels', '#0'],
         /--stdout writes no annotations\.csv, so convert to a directory/u,
         /Add the onsets in annotations\.csv to recover absolute times/u],
@@ -5526,7 +5530,7 @@ describe('--stdout', () => {
         assert.doesNotMatch(flat, written, flat);
       }
       // And a conversion that does write them keeps every word.
-      const out = path.join(dir, `out${extra.length}`);
+      const out = path.join(dir, `out-${path.basename(recording)}-${extra.length}`);
       const { stderr } = await cli([recording, '--out', out, ...extra]);
       assert.match(stderr.replace(/\s+/gu, ' '), written, stderr);
     }
@@ -5565,6 +5569,13 @@ describe('--stdout', () => {
       ['label-suffix-collision.edf', [], /Column names are unique; look this channel up in/u],
       ['label-suffix-collision.edf', ['--layout', 'long'],
         /Channel names are unique; look this channel up in/u],
+      /*
+        And the last two, which the header and the timing derivation raise before any
+        destination exists. They are amended where the answer is, the way 0.8.51 amended the
+        pair that `--stdout` made false.
+      */
+      ['single-rate-empty-channel.edf', [], /carries no samples at all/u],
+      ['far-origin-collapsed.edf', ['--channels', '#0'], /written from zero instead/u],
     ];
     for (const [name, extra, marker] of cases) {
       const out = path.join(dir, `${name}${extra.join('')}`);
