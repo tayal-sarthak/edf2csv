@@ -1881,6 +1881,46 @@ export function withSignalTableUnwritten(
       does write — still carries the calibration. One message also ends in the conversion:
       "so every sample converts to the same value", over a run converting none.
     */
+    /*
+      And the two that say where a channel's name lands, which is signals.csv in both layouts
+      and neither of them here.
+
+      `--annotations-only` writes no signal table at all, so the name reaches exactly one
+      place: channels.csv's `column` cell, which that run does write — control bytes, `_ch`
+      suffix and all. Both sentences sent the reader to a file that is not there:
+
+          warning: Signal 0's label and unit contain 2 control characters (\x1b), which will
+                   appear as the channel's name in signals.csv and in channels.csv's unit
+                   cell in any conversion that writes one ...
+          warning: 2 signals share the label "T8-P8" (positions #0, #1).
+                   Their names are suffixed with the signal number so they stay
+                   distinguishable: a column name each in the wide layout, and a distinct
+                   value in the channel column under --layout long.
+
+      Neither layout happens. The second sentence offers a choice between two files that are
+      not written.
+    */
+    if (diagnostic.code === 'NONPRINTABLE_LABEL') {
+      return {
+        ...diagnostic,
+        message: diagnostic.message
+          .replace("as the channel's name in signals.csv", "as the channel's name in channels.csv's column cell")
+          .replace("column cell and in channels.csv's", 'column cell and in its')
+          .replace(' in any conversion that writes one', ''),
+      };
+    }
+    if (
+      diagnostic.code === 'DUPLICATE_LABEL' &&
+      diagnostic.hint?.startsWith('Their names are suffixed')
+    ) {
+      return {
+        ...diagnostic,
+        hint:
+          'Their names are suffixed with the signal number so they stay distinguishable. ' +
+          '--annotations-only writes no signal table, so the suffixed names appear only in ' +
+          "channels.csv's column cells.",
+      };
+    }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,

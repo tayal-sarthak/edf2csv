@@ -5520,6 +5520,58 @@ describe('--stdout', () => {
     assert.ok(channels.includes(String.fromCharCode(27)), channels.slice(0, 200));
   });
 
+  it('sends a name to the one file --annotations-only writes it in', async () => {
+    /*
+      Two warnings say where a channel's name lands, and both name signals.csv — a column of it
+      in the wide layout, a value in its channel column in the long one. `--annotations-only`
+      writes no signal table at all, so the name reaches exactly one place: channels.csv's
+      `column` cell, which that run does write, control bytes and `_ch` suffix and all.
+
+          warning: Signal 0's label and unit contain 2 control characters (\x1b), which will
+                   appear as the channel's name in signals.csv and in channels.csv's unit
+                   cell in any conversion that writes one ...
+          warning: 2 signals share the label "T8-P8" (positions #0, #1).
+                   Their names are suffixed with the signal number so they stay
+                   distinguishable: a column name each in the wide layout, and a distinct
+                   value in the channel column under --layout long.
+
+      The second offers a choice between two files, neither of which is written.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-nameland-'));
+    temporaries.push(dir);
+
+    const control = path.join(dir, 'control');
+    const bytes = await cli([fixture('control-labels.edf'), '--out', control, '--annotations-only']);
+    assert.equal(bytes.code, 0, bytes.stderr);
+    const flatBytes = bytes.stderr.replace(/\s+/gu, ' ');
+    assert.match(flatBytes, /as the channel's name in channels\.csv's column cell/u, flatBytes);
+    assert.doesNotMatch(flatBytes, /name in signals\.csv/u, flatBytes);
+
+    const quirky = path.join(dir, 'quirky');
+    const duplicate = await cli([fixture('quirky-labels.edf'), '--out', quirky, '--annotations-only']);
+    const flatDuplicate = duplicate.stderr.replace(/\s+/gu, ' ');
+    assert.match(flatDuplicate, /appear only in channels\.csv's column cells/u, flatDuplicate);
+    assert.doesNotMatch(flatDuplicate, /a column name each in the wide layout/u, flatDuplicate);
+
+    // Both runs write that file and put the names in that cell, which is what the sentences
+    // now say — and no signal file for the sentences they used to say.
+    for (const [out, expected] of [[control, String.fromCharCode(27)], [quirky, 'T8-P8_ch0']]) {
+      const written = await readdir(out);
+      assert.ok(!written.some((f) => f.startsWith('signals')), written.join(', '));
+      const rows = (await readFile(path.join(out, 'channels.csv'), 'utf8')).trim().split('\n');
+      assert.equal(rows[0].split(',')[0], 'column');
+      assert.ok(rows.slice(1).some((r) => r.split(',')[0].includes(expected)), rows.join(' | '));
+    }
+
+    // A run that writes a signal table still gets the sentence about one.
+    const wide = await cli([fixture('quirky-labels.edf'), '--out', path.join(dir, 'wide')]);
+    assert.match(
+      wide.stderr.replace(/\s+/gu, ' '),
+      /a column name each in the wide layout/u,
+      wide.stderr,
+    );
+  });
+
   it('does not describe cells for a run that converts no samples', async () => {
     /*
       The three calibration warnings say what a conversion does with a channel whose header

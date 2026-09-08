@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.58
+
+### a name sent to a file the run did not write, twice
+
+Two warnings say where a channel's name lands, and both name `signals.csv` — a column of it in
+the wide layout, a value in its `channel` column in the long one. `--annotations-only` writes no
+signal table at all.
+
+```
+$ edf2csv control-labels.edf --out csv --annotations-only
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear as
+         the channel's name in signals.csv and in channels.csv's unit cell in any conversion
+         that writes one, exactly as the header has them.
+warning: 2 signals share the label "T8-P8" (positions #0, #1).
+         Their names are suffixed with the signal number so they stay distinguishable: a
+         column name each in the wide layout, and a distinct value in the channel column
+         under --layout long.
+```
+
+The second offers a choice between two files, neither of which is written. And the name does
+land somewhere: `channels.csv`'s `column` cell, which that run does write, control bytes and
+`_ch` suffix and all.
+
+```
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear as
+         the channel's name in channels.csv's column cell and in its unit cell, exactly as
+         the header has them.
+warning: 2 signals share the label "T8-P8" (positions #0, #1).
+         Their names are suffixed with the signal number so they stay distinguishable.
+         --annotations-only writes no signal table, so the suffixed names appear only in
+         channels.csv's column cells.
+```
+
+The "in any conversion that writes one" that 0.8.52 added for `--stdout` comes off here, since
+this mode does write one.
+
+The test reads both directories: no signal file for the sentences that were there, and the names
+in the cell the sentences now point at.
+
 ## 0.8.57
 
 ### cells left empty, in a run with no cells
