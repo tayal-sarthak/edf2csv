@@ -230,6 +230,42 @@ export function assertOptions(options: {
 }
 
 /**
+ * The channel list two exported functions take, checked the way their other argument is.
+ *
+ * `selectChannels(signals, terms)` has checked `terms` since 0.6.x — "`'ECG'` was iterated
+ * character by character and answered `No channel named \"E\"`… naming nothing the caller had
+ * written" — and never checked `signals`, which is the argument in front of it. Passing one
+ * signal where the list goes, or a header where its `signals` goes, came back as
+ * `TypeError: signals.filter is not a function`: a local of this package, over a value the
+ * caller did write.
+ *
+ * `buildColumnNames` is worse off, because a string is iterable. `buildColumnNames('ECG')`
+ * returned `Map { null => 'undefined_chundefined' }` and no error at all — a column name for a
+ * channel that does not exist, keyed by a position that is not one.
+ *
+ * The bad entry is named by position rather than the whole list being printed back: a header
+ * may declare hundreds of channels, and a message is not the place for all of them.
+ */
+export function assertSignals(signals: unknown): void {
+  if (!Array.isArray(signals)) {
+    throw new OptionError(
+      `signals must be the channel list from a header, got ${describeValue(signals)}.`,
+    );
+  }
+  const wrong = signals.findIndex(
+    (signal) =>
+      typeof signal !== 'object' ||
+      signal === null ||
+      typeof (signal as { index?: unknown }).index !== 'number',
+  );
+  if (wrong !== -1) {
+    throw new OptionError(
+      `signals[${wrong}] is not a channel from a header, got ${describeValue(signals[wrong])}.`,
+    );
+  }
+}
+
+/**
  * The recording to read, checked before it is opened.
  *
  * `EdfFile.open` hands whatever it is given to `fs`, and the refusal comes back as an

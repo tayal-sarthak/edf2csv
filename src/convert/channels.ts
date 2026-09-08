@@ -11,7 +11,7 @@
 import type { EdfSignal } from '../edf/header.js';
 import { editDistance } from '../format/distance.js';
 import { listed } from '../format/list.js';
-import { assertOptions } from './options.js';
+import { assertOptions, assertSignals } from './options.js';
 
 /**
  * The name of the column the writer puts in front of the channels, which no channel may take.
@@ -37,6 +37,9 @@ export class ChannelSelectionError extends Error {
  * the file, which is the only thing that reliably tells them apart.
  */
 export function buildColumnNames(signals: readonly EdfSignal[]): Map<number, string> {
+  // The same check `selectChannels` makes below, for the same reason: this is exported, and a
+  // string is iterable, so `buildColumnNames('ECG')` came back as a Map rather than an error.
+  assertSignals(signals);
   const counts = new Map<string, number>();
   for (const signal of signals) {
     if (signal.isAnnotations) continue;
@@ -145,6 +148,8 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
     shape, which is the case that checker exists for, and both now say so.
   */
   assertOptions({ channels: terms });
+  // And the argument in front of it, which that call has never covered.
+  assertSignals(signals);
 
   const candidates = signals.filter((s) => !s.isAnnotations);
   const byLabel = new Map<string, EdfSignal[]>();

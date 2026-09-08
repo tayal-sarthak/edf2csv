@@ -1774,9 +1774,44 @@ describe('option checking', () => {
           },
         );
       }
-      // And a real selection still selects.
+      /*
+        And the argument in front of it, which that check never covered. A signal where the
+        list goes, or a header where its `signals` goes, came back as `TypeError:
+        signals.filter is not a function` — a local of this package, over a value the caller
+        did write.
+
+        `buildColumnNames` takes the same list and is worse off, because a string is iterable:
+        `buildColumnNames('ECG')` returned `Map { null => 'undefined_chundefined' }` and no
+        error — a column name for a channel that does not exist, keyed by a position that is
+        not one.
+      */
+      const { buildColumnNames } = await import('../dist/index.js');
+      for (const [signals, expected] of [
+        ['ECG', /signals must be the channel list from a header, got "ECG"/u],
+        [null, /signals must be the channel list from a header, got null/u],
+        [file.header, /signals must be the channel list from a header, got \{/u],
+        [[{}], /signals\[0\] is not a channel from a header, got \{\}/u],
+        [[file.header.signals[0], 1], /signals\[1\] is not a channel from a header, got 1/u],
+      ]) {
+        for (const call of [
+          () => selectChannels(signals, ['ECG']),
+          () => buildColumnNames(signals),
+        ]) {
+          assert.throws(call, (error) => {
+            assert.ok(error instanceof OptionError, `${String(signals)} threw ${error}`);
+            assert.match(error.message, expected);
+            return true;
+          });
+        }
+      }
+
+      // And a real selection still selects, off a list this names the columns of.
       const picked = selectChannels(file.header.signals, ['#0', 'ECG']);
       assert.deepEqual(picked.signals.map((s) => s.label), ['EEG Fpz-Cz', 'ECG']);
+      assert.deepEqual(
+        [...buildColumnNames(file.header.signals).values()],
+        ['EEG Fpz-Cz', 'ECG', 'Temp rectal'],
+      );
     } finally {
       await file.close();
     }

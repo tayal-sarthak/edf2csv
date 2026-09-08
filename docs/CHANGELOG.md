@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.60
+
+### the argument in front of the one that was checked
+
+`selectChannels(signals, terms)` has checked `terms` since the case that taught it to:
+`'ECG'` was iterated character by character and answered `No channel named "E"`, and `[1]` came
+back as `TypeError: rawTerm.trim is not a function`, "naming nothing the caller had written".
+
+The argument in front of it was never checked at all:
+
+```js
+selectChannels(file.header, ['ECG']);
+TypeError: signals.filter is not a function
+```
+
+A local of this package, over a value the caller did write — passing the header where its
+`signals` goes is the obvious slip, and the sentence names nothing about it.
+
+`buildColumnNames` takes the same list, is documented in the same paragraph, and is worse off,
+because a string is iterable:
+
+```js
+buildColumnNames('ECG');
+Map { null => 'undefined_chundefined' }
+```
+
+No error. A column name for a channel that does not exist, keyed by a position that is not one,
+handed back as though it were an answer.
+
+Both check the list now, through one function, and both say which entry is wrong rather than
+printing the list back — a header may declare hundreds of channels:
+
+```
+OptionError: signals must be the channel list from a header, got "ECG".
+OptionError: signals[1] is not a channel from a header, got 1.
+```
+
 ## 0.8.59
 
 ### a third place for a renamed channel, and the only one left
