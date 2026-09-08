@@ -163,19 +163,35 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     `time_s` column against a `time_s` index — the collision one step later.
   */
   const inLongLayout = (options.layout ?? 'wide') === 'long';
+  const writeSignals = options.annotationsOnly !== true;
   const channelsFile = outputCsvName('channels', options.gzip === true);
   for (const signal of renamedByCollision(input.signals, columnNames)) {
     const taker =
       signal.label === TIME_COLUMN
         ? 'the name of the time column every signals.csv starts with'
         : `also the column name another channel's "_ch" suffix produces`;
+    /*
+      And the third place a renamed channel can be named, which is the only one left when no
+      signal table is written at all.
+
+      0.8.24 gave this sentence a long-layout branch, because a long signals.csv names a
+      channel in its `channel` column rather than in a column of its own. `--annotations-only`
+      writes neither: it writes channels.csv and annotations.csv, and the rename shows up in
+      the `column` cell of the first. So the mode that never gets a signal table was told its
+      column had been renamed, by a run that wrote no column anywhere.
+
+      The rename still happens and still matters — the names have to agree with channels.csv
+      and across runs, which is the reason the paragraph above gives.
+    */
+    const named = !writeSignals
+      ? `it is named "${columnNames.get(signal.index)}" in ${channelsFile}'s column cell`
+      : inLongLayout
+        ? `it is named "${columnNames.get(signal.index)}" in the channel column`
+        : `its column is "${columnNames.get(signal.index)}"`;
     diagnostics.push({
       code: 'DUPLICATE_LABEL',
       severity: 'warning',
-      message:
-        `Signal ${signal.index} is labelled "${signal.label}", which is ${taker}, ` +
-        `so ${inLongLayout ? 'it is named' : 'its column is'} "${columnNames.get(signal.index)}"` +
-        `${inLongLayout ? ' in the channel column' : ''}.`,
+      message: `Signal ${signal.index} is labelled "${signal.label}", which is ${taker}, so ${named}.`,
       /*
         And the name that file is written under, which `--gzip` changes.
 
@@ -184,9 +200,10 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
         two hints send a reader to a file by name — it is the whole advice — and named the one
         a `--gzip` run does not write, four lines above a summary listing `channels.csv.gz`.
       */
-      hint: inLongLayout
-        ? `Channel names are unique; look this channel up in ${channelsFile} by its signal_index.`
-        : `Column names are unique; look this channel up in ${channelsFile} by its signal_index.`,
+      hint:
+        inLongLayout || !writeSignals
+          ? `Channel names are unique; look this channel up in ${channelsFile} by its signal_index.`
+          : `Column names are unique; look this channel up in ${channelsFile} by its signal_index.`,
     });
   }
 
@@ -202,7 +219,6 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     recordStarts: input.recordStarts,
   });
 
-  const writeSignals = options.annotationsOnly !== true;
 
   let chosen: EdfSignal[] = input.signals.filter((s) => !s.isAnnotations);
 

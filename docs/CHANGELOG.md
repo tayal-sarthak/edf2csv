@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.59
+
+### a third place for a renamed channel, and the only one left
+
+A channel whose label collides with a name another channel's `_ch` suffix produces gets renamed,
+and the warning says where the new name shows up. 0.8.24 gave that sentence a second branch,
+because a long `signals.csv` names a channel in its `channel` column rather than in a column of
+its own.
+
+`--annotations-only` writes neither table, and got the first branch:
+
+```
+$ edf2csv two-T8.edf --out csv --annotations-only
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so its column is "T8_ch0_ch2".
+         Column names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+There is no column. The rename still happens and still matters — the names have to agree with
+channels.csv and across runs, which is the reason the code gives for renaming at all — and it
+shows up in exactly one place: that file's `column` cell.
+
+```
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so it is named "T8_ch0_ch2" in channels.csv's column cell.
+         Channel names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+"Channel names", since that mode has no column names to be unique either. The other two branches
+are unchanged, and the test checks all three against the `column` cell each run actually writes.
+
 ## 0.8.58
 
 ### a name sent to a file the run did not write, twice

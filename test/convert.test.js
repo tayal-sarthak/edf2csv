@@ -1156,6 +1156,48 @@ describe('column naming', () => {
     }
   });
 
+  it('names the third place a renamed channel can land, when it is the only one', async () => {
+    /*
+      0.8.24 gave this sentence a long-layout branch, because a long signals.csv names a
+      channel in its `channel` column rather than in a column of its own. `--annotations-only`
+      writes neither table, and was told its column had been renamed:
+
+          warning: Signal 2 is labelled "T8_ch0", which is also the column name another
+                   channel's "_ch" suffix produces, so its column is "T8_ch0_ch2".
+                   Column names are unique; look this channel up in channels.csv by its
+                   signal_index.
+
+      The rename still happens — the names have to agree with channels.csv and across runs —
+      and it shows up in exactly one place: that file's `column` cell.
+    */
+    const modes = [
+      [{}, /so its column is "T8_ch0_ch2"\./u],
+      [{ layout: 'long' }, /so it is named "T8_ch0_ch2" in the channel column\./u],
+      [{ annotationsOnly: true }, /so it is named "T8_ch0_ch2" in channels\.csv's column cell\./u],
+    ];
+    for (const [options, expected] of modes) {
+      const dir = await outDir();
+      const result = await convert(fixture('label-suffix-collision.edf'), { outputDir: dir, ...options });
+      const renamed = result.diagnostics.find(
+        (d) => d.code === 'DUPLICATE_LABEL' && /is labelled/u.test(d.message),
+      );
+      assert.ok(renamed, JSON.stringify(result.diagnostics));
+      assert.match(renamed.message, expected, renamed.message);
+      // The cell it names is the one the run writes the name into.
+      const columns = (await readCsv(dir, 'channels.csv')).slice(1).map((r) => r.split(',')[0]);
+      assert.ok(columns.includes('T8_ch0_ch2'), columns.join(', '));
+    }
+
+    // And the hint calls it a column only where there is one.
+    const events = await convert(fixture('label-suffix-collision.edf'), {
+      outputDir: await outDir(), annotationsOnly: true,
+    });
+    const hint = events.diagnostics.find(
+      (d) => d.code === 'DUPLICATE_LABEL' && /is labelled/u.test(d.message),
+    ).hint;
+    assert.match(hint, /^Channel names are unique/u, hint);
+  });
+
   it('does not promise a column per channel in the layout that has none', async () => {
     /*
       One run raised DUPLICATE_LABEL twice, from two places, disagreeing about the layout it
