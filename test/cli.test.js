@@ -5520,6 +5520,54 @@ describe('--stdout', () => {
     assert.ok(channels.includes(String.fromCharCode(27)), channels.slice(0, 200));
   });
 
+  it('does not describe cells for a run that converts no samples', async () => {
+    /*
+      The three calibration warnings say what a conversion does with a channel whose header
+      cannot map cleanly: leaves the cell empty, fills it with the one value the mapping has,
+      keeps the inversion. `--annotations-only` converts no samples, so none of it happens —
+      and one of the messages ends in the conversion too:
+
+          warning: Signal 1 ("flatphys") has physical minimum equal to physical maximum (5),
+                   so every sample converts to the same value.
+                   Its cells carry that value rather than being left empty ...
+
+      What is wrong with the header is still worth saying, and the channels.csv that run does
+      write still carries the calibration.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-nocells-'));
+    temporaries.push(dir);
+    const cases = [
+      ['degenerate-range.edf', /so there are no cells to leave empty/u, /cells are left empty rather than/u],
+      ['degenerate-range.edf', /records the calibration, one point wide/u, /Its cells carry that value/u],
+      ['quirky-labels.edf', /in the order the header gives them, inversion included/u,
+        /converted exactly as the header specifies/u],
+    ];
+    for (const [name, expected, forbidden] of cases) {
+      const events = await cli([
+        fixture(name), '--out', path.join(dir, `ao-${name}-${expected.source.length}`),
+        '--annotations-only',
+      ]);
+      assert.equal(events.code, 0, events.stderr);
+      const flat = events.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, expected, flat);
+      assert.doesNotMatch(flat, forbidden, flat);
+      // And a conversion that does write cells keeps the sentence about them.
+      const signals = await cli([fixture(name), '--out', path.join(dir, `sig-${name}-${expected.source.length}`)]);
+      assert.match(signals.stderr.replace(/\s+/gu, ' '), forbidden, signals.stderr);
+    }
+
+    // The message's own tail moves with it: nothing converts, so nothing "converts".
+    const events = await cli([
+      fixture('degenerate-range.edf'), '--out', path.join(dir, 'mood'), '--annotations-only',
+    ]);
+    const flat = events.stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /so every sample would convert to the same value/u, flat);
+    // And what that run does write still carries the calibration the hint sends them to.
+    const channels = await readFile(path.join(dir, 'mood', 'channels.csv'), 'utf8');
+    assert.match(channels, /^column,signal_index/u, channels.slice(0, 80));
+    assert.equal(channels.trim().split('\n').length, 4, channels);
+  });
+
   it('does not describe rows of a signal table --annotations-only will not write', async () => {
     /*
       `--annotations-only` writes the event list and nothing else, and four hints about record

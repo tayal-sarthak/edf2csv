@@ -1865,6 +1865,50 @@ export function withSignalTableUnwritten(
 ): Diagnostic[] {
   if (writesSignals) return [...diagnostics];
   return diagnostics.map((diagnostic) => {
+    /*
+      And the three calibration warnings, whose hints are about cells.
+
+      Each describes what a conversion does with a channel whose header cannot map cleanly —
+      leaves the cell empty, fills it with the one value the mapping has, keeps the inversion —
+      and `--annotations-only` converts no samples, so none of it happens:
+
+          warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its
+                   values cannot be scaled.
+                   Its cells are left empty rather than filled with a value the header cannot
+                   justify.
+
+      What is wrong with the header is still worth saying, and channels.csv — which that run
+      does write — still carries the calibration. One message also ends in the conversion:
+      "so every sample converts to the same value", over a run converting none.
+    */
+    if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
+      return {
+        ...diagnostic,
+        hint:
+          'No samples are converted with --annotations-only, so there are no cells to leave ' +
+          'empty. channels.csv still records the digital range the header gives.',
+      };
+    }
+    if (diagnostic.code === 'DEGENERATE_PHYSICAL_RANGE') {
+      return {
+        ...diagnostic,
+        message: diagnostic.message.replace(
+          'so every sample converts to the same value.',
+          'so every sample would convert to the same value.',
+        ),
+        hint:
+          'No samples are converted with --annotations-only. channels.csv still records the ' +
+          'calibration, one point wide.',
+      };
+    }
+    if (diagnostic.code === 'INVERTED_PHYSICAL_RANGE') {
+      return {
+        ...diagnostic,
+        hint:
+          'No samples are converted with --annotations-only. channels.csv records the ' +
+          'physical minimum and maximum in the order the header gives them, inversion included.',
+      };
+    }
     if (diagnostic.code !== 'DISCONTINUOUS' || diagnostic.hint === undefined) return diagnostic;
     if (diagnostic.hint.startsWith('Each row carries its true recording time')) {
       return {

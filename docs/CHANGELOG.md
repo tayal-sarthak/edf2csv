@@ -8,6 +8,48 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.57
+
+### cells left empty, in a run with no cells
+
+The three calibration warnings say what a conversion does with a channel whose header cannot map
+cleanly: leaves the cell empty, fills it with the one value the mapping has, keeps the inversion.
+`--annotations-only` converts no samples, so none of it happens.
+
+```
+$ edf2csv degenerate.edf --out csv --annotations-only
+warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values
+         cannot be scaled.
+         Its cells are left empty rather than filled with a value the header cannot justify.
+warning: Signal 1 ("flatphys") has physical minimum equal to physical maximum (5), so every
+         sample converts to the same value.
+         Its cells carry that value rather than being left empty, since the mapping is
+         defined — it just has one point in it.
+```
+
+There are no cells. The second message ends in the conversion as well — "so every sample
+converts to the same value", over a run converting none.
+
+What is wrong with the header is still worth saying, and the `channels.csv` such a run does
+write still carries the calibration, so that is where the hints point now:
+
+```
+warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values
+         cannot be scaled.
+         No samples are converted with --annotations-only, so there are no cells to leave
+         empty. channels.csv still records the digital range the header gives.
+warning: Signal 1 ("flatphys") has physical minimum equal to physical maximum (5), so every
+         sample would convert to the same value.
+         No samples are converted with --annotations-only. channels.csv still records the
+         calibration, one point wide.
+```
+
+One word of the message moves with them — "converts" to "would convert" — which is the mood a
+statement about a conversion that is not happening takes.
+
+Same pass 0.8.56 added, three codes further on. A run that writes a signal table reads exactly as
+it did.
+
 ## 0.8.56
 
 ### rows, a time column, and a mode that writes neither
