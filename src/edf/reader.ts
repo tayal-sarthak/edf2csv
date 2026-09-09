@@ -450,6 +450,45 @@ export class EdfFile {
 
   /** Read one sample as its raw digital value. */
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number {
+    /*
+      In range, because out of it this invented a number.
+
+      The arithmetic below turns four values into a byte position and reads there. Nothing
+      stopped that position from landing outside the sample it names. Past the end of the
+      buffer, `bytes[position]` is `undefined`, which `| 0` and `<< 8` both turn into 0 — so a
+      read past the batch came back as a plausible sample of zero. Inside the buffer but past
+      the channel's own samples, it came back as the *next channel's* data: a 256-sample
+      channel asked for sample 261 returned 243, which is a real number from the recording
+      and belongs to another column.
+
+      Both are reachable from the mistake the api page warns about in the sentence that
+      describes this method — "`recordOffset` is the record's position within the batch, from
+      0 to `batch.recordCount - 1`, not its index in the file". A caller who passes the
+      absolute index reads past the batch and gets zeros for every sample of it.
+
+      Two integer comparisons each, on a call that then formats a number.
+    */
+    if (
+      !Number.isInteger(recordOffset) ||
+      recordOffset < 0 ||
+      recordOffset >= batch.recordCount
+    ) {
+      throw new OptionError(
+        `recordOffset must be a record's position within this batch, 0 to ` +
+          `${batch.recordCount - 1}, got ${describeValue(recordOffset)}. Absolute record ` +
+          `indexes are batch.firstRecordIndex higher.`,
+      );
+    }
+    if (
+      !Number.isInteger(sampleIndex) ||
+      sampleIndex < 0 ||
+      sampleIndex >= signal.samplesPerRecord
+    ) {
+      throw new OptionError(
+        `sampleIndex must be 0 to ${signal.samplesPerRecord - 1} for this channel, got ` +
+          `${describeValue(sampleIndex)}.`,
+      );
+    }
     const position =
       recordOffset * this.header.recordBytes +
       signal.byteOffsetInRecord +

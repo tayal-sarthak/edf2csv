@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.62
+
+### a sample from the next channel, and a zero from past the end
+
+`sampleAt` turns four values into a byte position and reads there. Nothing stopped that position
+from landing outside the sample it names, and both ways out of range returned a number.
+
+Past the end of the buffer, `bytes[position]` is `undefined`, which `| 0` and `<< 8` both turn
+into 0:
+
+```js
+file.sampleAt(batch, batch.recordCount + 3, signal, 0);   // 0
+```
+
+Inside the buffer but past the channel's own samples, it returned the **next channel's** data:
+
+```js
+signal.samplesPerRecord;                       // 256
+file.sampleAt(batch, 0, signal, 261);          // 243
+```
+
+243 is a real number out of the recording. It belongs to another column.
+
+Both are reachable from the mistake the api page warns about in the very sentence that describes
+this method — "`recordOffset` is the record's position within the batch, from 0 to
+`batch.recordCount - 1`, not its index in the file". A caller who passes the absolute index
+reads past the batch and gets zeros for every sample of it, with nothing said.
+
+```
+OptionError: sampleIndex must be 0 to 255 for this channel, got 261.
+OptionError: recordOffset must be a record's position within this batch, 0 to 2, got 3.
+             Absolute record indexes are batch.firstRecordIndex higher.
+```
+
+Two integer comparisons each, on a call that goes on to format a number; the suite runs in the
+time it did. This is the one place in the package that could hand back a sample the recording
+does not contain, on a tool whose promise is that it never invents a number.
+
 ## 0.8.61
 
 ### NaN for every sample, from a header or from a mistake

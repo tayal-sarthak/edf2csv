@@ -1645,6 +1645,61 @@ describe('the read budget', () => {
     }
   });
 
+  it('refuses a sample position outside the one it names', async () => {
+    /*
+      `sampleAt` turns four values into a byte position and reads there, and nothing stopped
+      that position from landing outside the sample it names.
+
+      Past the end of the buffer, `bytes[position]` is `undefined`, which `| 0` and `<< 8`
+      both turn into 0 — so the read came back as a plausible sample of zero. Inside the
+      buffer but past the channel's own samples, it came back as the next channel's data: a
+      256-sample channel asked for sample 261 returned 243, a real number from the recording
+      belonging to another column.
+
+      Both are reachable from the mistake the api page warns about in the sentence describing
+      this method — "`recordOffset` is the record's position within the batch ... not its
+      index in the file". A caller who passes the absolute index reads past the batch and
+      gets zeros for the whole of it.
+    */
+    const { OptionError } = await import('../dist/index.js');
+    const file = await EdfFile.open(fixture('mixed-rates.edf'));
+    try {
+      const signal = file.dataSignals[0];
+      let batch;
+      for await (const chunk of file.readRecords({})) { batch = chunk; break; }
+      // The samples it does name are unchanged.
+      assert.deepEqual(
+        [0, 1, 2, 3].map((i) => file.sampleAt(batch, 0, signal, i)),
+        [0, 74, 147, 219],
+      );
+
+      for (const [recordOffset, sampleIndex, expected] of [
+        [0, signal.samplesPerRecord, /sampleIndex must be 0 to 255 for this channel, got 256/u],
+        [0, -4, /sampleIndex must be 0 to 255 for this channel, got -4/u],
+        [batch.recordCount, 0, /recordOffset must be a record's position within this batch, 0 to 2, got 3/u],
+        [0.5, 0, /got 0\.5/u],
+      ]) {
+        assert.throws(
+          () => file.sampleAt(batch, recordOffset, signal, sampleIndex),
+          (error) => {
+            assert.ok(error instanceof OptionError, `${recordOffset},${sampleIndex}: ${error}`);
+            assert.match(error.message, expected);
+            return true;
+          },
+        );
+      }
+
+      // The documented mistake, named in the message it now gets.
+      const absolute = batch.firstRecordIndex + batch.recordCount;
+      assert.throws(
+        () => file.sampleAt(batch, absolute, signal, 0),
+        /Absolute record indexes are batch\.firstRecordIndex higher/u,
+      );
+    } finally {
+      await file.close();
+    }
+  });
+
   it('reads a window without reserving room for the whole recording', async () => {
     const file = await EdfFile.open(fixture('long-stream.edf'));
     try {
