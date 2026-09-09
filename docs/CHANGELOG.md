@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.63
+
+### EDF, confidently, about a BDF+ recording
+
+Five exported helpers read a value off their argument and asked nothing about it. This is the
+rest of the family 0.8.36, 0.8.50, 0.8.60, 0.8.61 and 0.8.62 worked through.
+
+`describeFormat` reads two booleans, both as truthiness tests, so anything without them answers
+`"EDF"`. That includes the `EdfFile` whose `.header` it wants — one property away, and the way
+the api page writes every other call:
+
+```js
+describeFormat(file);          // "EDF"
+describeFormat(file.header);   // "BDF+ (discontinuous)"
+```
+
+Not an error and not a fallback. A confident wrong answer about the file in hand.
+
+`formatRate(NaN)` came back as the string `"NaN"`, and `rateSlug(NaN)` as `"NaNhz"` — a file name
+this tool cannot write, handed to exactly the caller its own doc comment is about: "a caller
+reaching for the exported slug function to predict a filename". `formatRates` on anything but a
+list was a `TypeError` naming one of its locals.
+
+`formatWallClock` threw `RangeError: Invalid time value` out of the middle of itself on a Date
+that cannot be stated. That is not a bad argument, it is a date this function has a word for:
+`null`, which is what it returns for a recording with no start instant, what
+`START_TIME_UNREADABLE` says about the same fact, and what metadata.json writes.
+
+```
+OptionError: header must be a parsed EDF header, got {}.
+OptionError: hz must be a sampling rate in hertz, got NaN.
+OptionError: rates must be a list of sampling rates, got 3.
+OptionError: date must be a Date or null, got "2020-01-01".
+```
+
+The answers they do give are unchanged, `formatRate(Infinity)` included — a record duration too
+small to divide into is a real rate this prints, and channels.csv writes it.
+
 ## 0.8.62
 
 ### a sample from the next channel, and a zero from past the end

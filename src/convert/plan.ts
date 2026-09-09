@@ -567,6 +567,8 @@ function slugFor(rendered: string): string {
  * same way, through the line above, so only the rendering differs and nothing can drift.
  */
 export function rateSlug(rate: number): string {
+  // `formatRate` checks the argument; the two spell a rendered rate the same way, so they
+  // refuse the same values too.
   return slugFor(formatRate(rate));
 }
 

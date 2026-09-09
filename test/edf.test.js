@@ -1645,6 +1645,59 @@ describe('the read budget', () => {
     }
   });
 
+  it('checks the argument of every exported helper that reads a field off one', async () => {
+    /*
+      `describeFormat` reads two booleans off its argument, both as truthiness tests, so
+      anything without them answers "EDF". That includes the `EdfFile` whose `.header` it
+      wants, which is one property away and is how the api page writes every other call:
+
+          describeFormat(file)          // "EDF", on a discontinuous BDF+ recording
+          describeFormat(file.header)   // "BDF+ (discontinuous)"
+
+      Not an error, not a fallback — a confident wrong answer about the file in hand.
+
+      `formatRate(NaN)` came back as the string "NaN" and `rateSlug(NaN)` as "NaNhz", a file
+      name this tool cannot write, handed to the caller its own doc comment describes as
+      "reaching for the exported slug function to predict a filename". `formatWallClock` threw
+      a RangeError from inside `toISOString` on a Date that cannot be stated, where `null` is
+      what it returns for a recording with no start instant.
+    */
+    const { OptionError, describeFormat, formatRate, formatRates, rateSlug, formatWallClock } =
+      await import('../dist/index.js');
+    const file = await EdfFile.open(fixture('biosemi-plus.bdf'));
+    try {
+      assert.equal(describeFormat(file.header), 'BDF+ (discontinuous)');
+      for (const [call, expected] of [
+        [() => describeFormat(file), /header must be a parsed EDF header/u],
+        [() => describeFormat({}), /header must be a parsed EDF header, got \{\}/u],
+        [() => describeFormat(null), /header must be a parsed EDF header, got null/u],
+        [() => formatRate(NaN), /hz must be a sampling rate in hertz, got NaN/u],
+        [() => formatRate('256'), /hz must be a sampling rate in hertz, got "256"/u],
+        [() => rateSlug(NaN), /hz must be a sampling rate in hertz, got NaN/u],
+        [() => formatRates(3), /rates must be a list of sampling rates, got 3/u],
+        [() => formatWallClock('2020-01-01'), /date must be a Date or null, got "2020-01-01"/u],
+      ]) {
+        assert.throws(call, (error) => {
+          assert.ok(error instanceof OptionError, `threw ${error}`);
+          assert.match(error.message, expected);
+          return true;
+        });
+      }
+
+      // The answers they do give are unchanged, including the two that are not numbers.
+      assert.equal(formatRate(256), '256');
+      assert.equal(formatRate(Infinity), 'Infinity');
+      assert.equal(rateSlug(12.5), '12_5hz');
+      assert.deepEqual(formatRates([100, 1]), ['100', '1']);
+      assert.equal(formatWallClock(new Date(0)), '1970-01-01T00:00:00');
+      // A Date that cannot be stated is a recording with no start instant, which is null.
+      assert.equal(formatWallClock(new Date(NaN)), null);
+      assert.equal(formatWallClock(null), null);
+    } finally {
+      await file.close();
+    }
+  });
+
   it('refuses a sample position outside the one it names', async () => {
     /*
       `sampleAt` turns four values into a byte position and reads there, and nothing stopped

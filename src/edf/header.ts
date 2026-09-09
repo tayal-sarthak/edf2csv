@@ -1285,6 +1285,18 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
  */
 export function formatWallClock(date: Date | null): string | null {
   if (!date) return null;
+  if (!(date instanceof Date)) {
+    throw new OptionError(`date must be a Date or null, got ${describeValue(date)}.`);
+  }
+  /*
+    And an unparseable one, which is a date this cannot state rather than a bad argument.
+
+    `new Date('the third').toISOString()` is a `RangeError: Invalid time value` out of the
+    middle of this function. `null` is what this returns for a recording with no start
+    instant, and that is what an invalid Date is: `START_TIME_UNREADABLE` says the same thing
+    about the same fact, and metadata.json writes `start_datetime_local: null` for it.
+  */
+  if (Number.isNaN(date.getTime())) return null;
   return date.toISOString().slice(0, 19);
 }
 
@@ -1303,6 +1315,25 @@ export function formatWallClock(date: Date | null): string | null {
  * it right; this was the only place that did not.
  */
 export function describeFormat(header: EdfHeader): string {
+  /*
+    The argument, which this read two booleans off and asked no questions about.
+
+    Both reads are truthiness tests, so anything without them answers `'EDF'` — including the
+    `EdfFile` whose `.header` this wants, which is one property away and is how the api page
+    writes every other call. `describeFormat(file)` on a discontinuous BDF+ recording returned
+    `'EDF'`: not an error, not a fallback, a confident wrong answer about the file in hand.
+
+    The same check `makeScaler` got in 0.8.61, for the same reason — an exported function that
+    reads fields off an object cannot tell a header from anything else that lacks them.
+  */
+  if (
+    typeof header !== 'object' ||
+    header === null ||
+    typeof header.isBdf !== 'boolean' ||
+    typeof header.isEdfPlus !== 'boolean'
+  ) {
+    throw new OptionError(`header must be a parsed EDF header, got ${describeValue(header)}.`);
+  }
   const base = header.isBdf ? 'BDF' : 'EDF';
   if (!header.isEdfPlus) return base;
   return `${base}+ (${header.continuity === 'EDF+D' ? 'discontinuous' : 'continuous'})`;
@@ -1310,6 +1341,13 @@ export function describeFormat(header: EdfHeader): string {
 
 /** Render a sampling rate without trailing noise: 256, 0.5, 12.5. */
 export function formatRate(hz: number): string {
+  // A number, like the neighbours. `formatRate(NaN)` came back as the string "NaN", and
+  // `rateSlug` turned it into "NaNhz" — a file name this tool cannot write, handed to a
+  // caller the doc comment below describes as "reaching for the exported slug function to
+  // predict a filename". A rate that is not a number is not a rate.
+  if (typeof hz !== 'number' || Number.isNaN(hz)) {
+    throw new OptionError(`hz must be a sampling rate in hertz, got ${describeValue(hz)}.`);
+  }
   if (Number.isInteger(hz)) {
     /*
       The same six decimals, in the notation `toFixed` cannot reach.
@@ -1350,6 +1388,11 @@ export function formatRate(hz: number): string {
  * two.
  */
 export function formatRates(rates: readonly number[]): string[] {
+  // `rates.map` on anything else is a TypeError naming a local of this package; the members
+  // are `formatRate`'s business, one line down.
+  if (!Array.isArray(rates)) {
+    throw new OptionError(`rates must be a list of sampling rates, got ${describeValue(rates)}.`);
+  }
   const rounded = rates.map(formatRate);
   const distinct = new Set(rates).size;
   return new Set(rounded).size === distinct ? rounded : rates.map((hz) => String(hz));
