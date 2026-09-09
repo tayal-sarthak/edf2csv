@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.61
+
+### NaN for every sample, from a header or from a mistake
+
+Every branch of `makeScaler` reads four numbers off the signal it is given, and the first one —
+the branch that catches a header contradicting itself — asks `digitalMax === digitalMin`.
+
+On an object that has neither, that is `undefined === undefined`.
+
+```js
+const scale = makeScaler({});
+scale(5);   // NaN
+scale(32767); // NaN
+```
+
+A working function, returning NaN for every sample. Which is exactly what a real channel with a
+zero digital span returns, and the api page documents that column of empty cells as meaning the
+header contradicts itself — a sentence about the recording, for a call that passed the wrong
+object. The diagnostic that normally accompanies it, `DEGENERATE_DIGITAL_RANGE`, comes from the
+header parser and is not raised here at all, so there is nothing beside the NaNs to tell a
+caller which of the two they have.
+
+```
+OptionError: signal must be a channel from a header, got 42.
+OptionError: signal.digitalMin must be a number, got undefined.
+OptionError: signal.physicalMax must be a number, got undefined.
+```
+
+The field is named, since three of the four can be present and one missing.
+
+The degenerate channel still returns its NaN — that is the answer the documented sentence is
+about, and the test takes it off a fixture that really has one.
+
 ## 0.8.60
 
 ### the argument in front of the one that was checked

@@ -1817,6 +1817,49 @@ describe('option checking', () => {
     }
   });
 
+  it('tells a wrong argument from a header that contradicts itself', async () => {
+    /*
+      Every branch of `makeScaler` reads four numbers off the signal, and the first — the one
+      that catches a header contradicting itself — is `digitalMax === digitalMin`. On an
+      object with neither, that is `undefined === undefined`, which is true. So
+      `makeScaler({})` came back as a working function returning NaN for every sample, which
+      is exactly what a real channel with a zero digital span returns.
+
+      The api page recommends this function for reading physical units out of a file, and the
+      empty column it produces is documented as meaning "the header contradicts itself" — a
+      sentence about the recording, over a call that passed the wrong object. The diagnostic
+      that normally accompanies it comes from the header parser and is not raised here.
+    */
+    const { OptionError, makeScaler, EdfFile } = await import('../dist/index.js');
+    for (const [signal, expected] of [
+      [null, /signal must be a channel from a header, got null/u],
+      [42, /signal must be a channel from a header, got 42/u],
+      [{}, /signal\.digitalMin must be a number, got undefined/u],
+      [{ digitalMin: 0, digitalMax: 10, physicalMin: 0 }, /signal\.physicalMax must be a number/u],
+      [{ digitalMin: '0', digitalMax: 10, physicalMin: 0, physicalMax: 1 },
+        /signal\.digitalMin must be a number, got "0"/u],
+    ]) {
+      assert.throws(() => makeScaler(signal), (error) => {
+        assert.ok(error instanceof OptionError, `${JSON.stringify(signal)} threw ${error}`);
+        assert.match(error.message, expected);
+        return true;
+      });
+    }
+
+    // The degenerate channel still gets its NaN, which is the answer that sentence is about.
+    const flat = await EdfFile.open(fixture('degenerate-range.edf'));
+    try {
+      const degenerate = flat.dataSignals.find((s) => s.digitalMin === s.digitalMax);
+      assert.ok(degenerate, 'the fixture no longer carries a zero digital span');
+      assert.ok(Number.isNaN(makeScaler(degenerate)(0)));
+      // And an ordinary one still scales.
+      const ordinary = flat.dataSignals.find((s) => s.digitalMin !== s.digitalMax);
+      assert.equal(Number.isFinite(makeScaler(ordinary)(0)), true);
+    } finally {
+      await flat.close();
+    }
+  });
+
   it('reports progress bytes that lag the file, and says so', async () => {
     /*
       `bytesWritten` is counted as the writers flush, so it is zero until the first flush —

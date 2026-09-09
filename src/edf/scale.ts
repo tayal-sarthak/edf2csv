@@ -25,10 +25,38 @@
  */
 
 import type { EdfSignal } from './header.js';
+import { OptionError, describeValue } from '../convert/options.js';
 
 export type Scaler = (digital: number) => number;
 
+/** The four header fields this reads, in the order a message should name them. */
+const CALIBRATION = ['digitalMin', 'digitalMax', 'physicalMin', 'physicalMax'] as const;
+
 export function makeScaler(signal: EdfSignal): Scaler {
+  /*
+    The argument, checked like the arguments of the other exported functions.
+
+    Every branch below reads four numbers off `signal`, and the first of them — the one that
+    catches a header contradicting itself — is `digitalMax === digitalMin`. On an object that
+    has neither, that comparison is `undefined === undefined`, which is true. So
+    `makeScaler({})` came back as a working function returning NaN for every sample, which is
+    exactly what a real channel with a zero digital span returns.
+
+    A caller cannot tell the two apart. The api page recommends this function for reading
+    physical units out of a file, and the empty column it produces is documented as meaning
+    "the header contradicts itself" — a sentence about the recording, over a call that passed
+    the wrong object. The diagnostic that normally accompanies it, DEGENERATE_DIGITAL_RANGE,
+    comes from the header parser and is not raised here at all.
+  */
+  if (typeof signal !== 'object' || signal === null) {
+    throw new OptionError(`signal must be a channel from a header, got ${describeValue(signal)}.`);
+  }
+  const missing = CALIBRATION.find((name) => typeof signal[name] !== 'number');
+  if (missing !== undefined) {
+    throw new OptionError(
+      `signal.${missing} must be a number, got ${describeValue(signal[missing])}.`,
+    );
+  }
   const { digitalMin, digitalMax, physicalMin, physicalMax } = signal;
 
   // A zero digital span leaves the mapping undefined — the header contradicts itself,
