@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.67
+
+### make sure nothing is removing a directory that was never there
+
+`destinationAdvice` answers an errno with a sentence, and the same sentences serve two callers:
+one before anything is written, one when a write fails part-way through a conversion.
+`createHint`'s own docstring says the preamble "is the only thing that differs between the two,
+so the sentences themselves are shared rather than copied".
+
+`ENOENT` is the sentence where that was not so.
+
+```
+$ edf2csv rec.edf --out /mnt/archive/out
+error: Cannot create "/mnt/archive/out": part of the path does not exist.
+       Part of that path no longer exists; make sure nothing is removing it while the
+       conversion runs.
+```
+
+Nothing is removing it and nothing was there. Mid-conversion a missing component really is a
+directory that went away under a run that had already written into it, and checking what is
+removing it is the thing to do. Before anything is written it is the opposite question: the
+destination's parents are created recursively, so reaching `ENOENT` there means a component that
+*cannot* be created.
+
+```
+error: Cannot create "/mnt/archive/out": part of the path does not exist.
+       Part of that path cannot be created — a symbolic link with nothing behind it, or a
+       mount point that is not mounted; choose another with --out.
+```
+
+Which is how it is usually reached: a nightly job writing into a drive that did not come back.
+The other nine errnos are unchanged, and `--out a/b/c` still creates all three.
+
 ## 0.8.66
 
 ### recordings inside it, said of a file

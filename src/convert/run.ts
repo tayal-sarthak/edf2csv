@@ -1598,6 +1598,8 @@ function writeHint(cause: unknown, toStdout = false): string {
       cause,
       toStdout ? 'redirect it somewhere else' : 'choose another with --out',
       toStdout ? 'redirect it somewhere shorter' : 'choose a shorter destination with --out',
+      'Part of that path no longer exists; make sure nothing is removing it while the ' +
+        'conversion runs.',
     )
   );
 }
@@ -1622,11 +1624,18 @@ function createHint(cause: unknown): string {
     cause,
     'choose another with --out',
     'choose a shorter destination with --out',
+    'Part of that path cannot be created — a symbolic link with nothing behind it, or a ' +
+      'mount point that is not mounted; choose another with --out.',
   );
 }
 
 /** The sentence an errno earns, with the two phrases that name where "somewhere else" is. */
-function destinationAdvice(cause: unknown, elsewhere: string, shorter: string): string {
+function destinationAdvice(
+  cause: unknown,
+  elsewhere: string,
+  shorter: string,
+  missing: string,
+): string {
   const code = (cause as NodeJS.ErrnoException | null)?.code;
   switch (code) {
     case 'ENOSPC':
@@ -1640,8 +1649,26 @@ function destinationAdvice(cause: unknown, elsewhere: string, shorter: string): 
       return `That filesystem is mounted read-only; ${elsewhere}.`;
     case 'EISDIR':
       return `A directory is sitting where that file belongs; remove or rename it, or ${elsewhere}.`;
+    /*
+      The one errno whose sentence is not the same question at both call sites.
+
+      Mid-conversion, a missing component is a directory that went away under a run that had
+      already written into it, and "make sure nothing is removing it" is the thing to check.
+      Before anything is written it is the opposite: the destination's parents are created
+      recursively, so reaching ENOENT there means a component that cannot be created — a
+      symbolic link with nothing behind it, or a mount point that is not mounted.
+
+          $ edf2csv rec.edf --out /mnt/archive/out
+          error: Cannot create "/mnt/archive/out": part of the path does not exist.
+                 Part of that path no longer exists; make sure nothing is removing it
+                 while the conversion runs.
+
+      Nothing is removing it and nothing was there. `createHint`'s own docstring says the
+      preamble "is the only thing that differs between the two, so the sentences themselves
+      are shared rather than copied" — and this is the sentence where that was not so.
+    */
     case 'ENOENT':
-      return `Part of that path no longer exists; make sure nothing is removing it while the conversion runs.`;
+      return missing;
     case 'ENAMETOOLONG':
       return `That path is longer than the filesystem allows; ${shorter}.`;
     case 'EMFILE':

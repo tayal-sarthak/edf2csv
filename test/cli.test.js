@@ -5525,6 +5525,41 @@ describe('--stdout', () => {
     assert.ok((await readdir(path.join(dir, 'out'))).includes('night-01'));
   });
 
+  it('does not blame a race for a destination that was never there', async () => {
+    /*
+      `destinationAdvice` answers an errno with a sentence, and the same sentences serve two
+      callers: one before anything is written, one when a write fails mid-conversion.
+      `createHint`'s docstring says the preamble "is the only thing that differs between the
+      two, so the sentences themselves are shared rather than copied".
+
+      ENOENT is the one where that was not so. Mid-conversion a missing component is a
+      directory that went away under a run that had written into it. Before anything is
+      written, the parents are created recursively, so ENOENT means a component that cannot be
+      created — a link with nothing behind it, or a mount point that is not mounted:
+
+          error: Cannot create "/mnt/archive/out": part of the path does not exist.
+                 Part of that path no longer exists; make sure nothing is removing it while
+                 the conversion runs.
+
+      Nothing is removing it and nothing was there.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-enoent-'));
+    temporaries.push(dir);
+    await symlink(path.join(dir, 'not-mounted'), path.join(dir, 'archive'));
+
+    const { code, stderr } = await cli([
+      fixture('tiny.edf'), '--out', path.join(dir, 'archive', 'out'),
+    ]);
+    assert.equal(code, 1, stderr);
+    const flat = stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /Cannot create .*: part of the path does not exist/u, flat);
+    assert.match(flat, /cannot be created — a symbolic link with nothing behind it/u, flat);
+    assert.doesNotMatch(flat, /nothing is removing it/u, flat);
+    // Deeper parents are still created, which is why this errno means what it now says.
+    const nested = await cli([fixture('tiny.edf'), '--out', path.join(dir, 'a', 'b', 'c')]);
+    assert.equal(nested.code, 0, nested.stderr);
+  });
+
   it('says a link to nothing is one, rather than that it already exists', async () => {
     /*
       `stat` follows symbolic links, so a dangling one is invisible to the check that tells a
