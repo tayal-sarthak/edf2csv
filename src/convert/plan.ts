@@ -17,7 +17,7 @@ import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { counted, grouped, listed } from '../format/list.js';
 import { fixed, plain, timeDecimals } from '../format/number.js';
 import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
-import { assertOptions } from './options.js';
+import { assertOptions, assertPlanInput } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
 import type { ResolvedRange } from './time-range.js';
 
@@ -139,6 +139,10 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   // First, and before a directory is created or a stream opened, so a rejected option
   // leaves nothing behind. See assertOptions for what used to get through.
   assertOptions(options);
+  // And the argument in front of it, which carries the numbers every figure below is derived
+  // from — and was never looked at. See assertPlanInput for what a plan made of two missing
+  // ones said about the conversion.
+  assertPlanInput(input);
 
   const diagnostics: Diagnostic[] = [];
   const columnNames = buildColumnNames(input.signals);

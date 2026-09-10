@@ -1817,6 +1817,54 @@ describe('option checking', () => {
     }
   });
 
+  it('checks what buildPlan is told about the recording, not only what it is asked for', async () => {
+    /*
+      `assertOptions` runs at the top of `buildPlan` and covers the second argument. The first
+      carries the numbers every figure in the plan is derived from, and was not looked at.
+
+      Two of them missing produced a plan rather than an error — three rate groups, `rows: 0`,
+      `range.endSeconds: null` — a plan saying the conversion writes nothing, handed back as an
+      answer. A record count below zero was worse:
+
+          TimeRangeError: --start 0s is at or past the end of this -5s recording.
+
+      a flag the caller never passed, about a recording that cannot exist, blaming the request
+      for the input. And `recordDuration: '1'` was coerced by the arithmetic and accepted,
+      where the same string is refused for `end` two functions down.
+    */
+    const { OptionError, buildPlan } = await import('../dist/index.js');
+    const file = await EdfFile.open(fixture('mixed-rates.edf'));
+    try {
+      const input = {
+        signals: file.header.signals,
+        recordDuration: file.header.recordDuration,
+        recordCount: file.recordCount,
+        hasAnnotationChannel: false,
+        recordStarts: null,
+      };
+      // The plan it does make is unchanged.
+      assert.equal(buildPlan(input, {}).estimate.rows, 1155);
+
+      for (const [changed, expected] of [
+        [{ recordCount: undefined }, /recordCount must be a whole number of data records, got undefined/u],
+        [{ recordCount: -5 }, /recordCount must be a whole number of data records, got -5/u],
+        [{ recordCount: 2.5 }, /got 2\.5/u],
+        [{ recordDuration: undefined }, /recordDuration must be a positive number of seconds, got undefined/u],
+        [{ recordDuration: 0 }, /got 0\./u],
+        [{ recordDuration: '1' }, /got "1"/u],
+        [{ signals: file.header }, /signals must be the channel list from a header/u],
+      ]) {
+        assert.throws(() => buildPlan({ ...input, ...changed }, {}), (error) => {
+          assert.ok(error instanceof OptionError, `${JSON.stringify(changed)} threw ${error}`);
+          assert.match(error.message, expected);
+          return true;
+        });
+      }
+    } finally {
+      await file.close();
+    }
+  });
+
   it('tells a wrong argument from a header that contradicts itself', async () => {
     /*
       Every branch of `makeScaler` reads four numbers off the signal, and the first — the one

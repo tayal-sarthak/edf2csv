@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.64
+
+### a plan for a recording of minus five seconds
+
+`assertOptions` runs at the top of `buildPlan` and covers the second argument completely. The
+first carries the numbers every figure in the plan is derived from, and was not looked at.
+
+Two of them missing produced a plan rather than an error:
+
+```js
+buildPlan({ signals, recordDuration: 1 }, {});
+// groups: 3, estimate.rows: 0, range.endSeconds: null
+```
+
+Three rate groups and a conversion that writes nothing, handed back as an answer. That is the
+"takes the whole recording without saying so" the option checker was written to stop, one field
+over.
+
+A record count below zero was worse:
+
+```
+TimeRangeError: --start 0s is at or past the end of this -5s recording.
+```
+
+A flag the caller never passed, about a recording that cannot exist, blaming the request for the
+input. And `recordDuration: '1'` was coerced by the arithmetic and accepted, where the same
+string is refused for `end` two functions down.
+
+```
+OptionError: recordCount must be a whole number of data records, got -5.
+OptionError: recordDuration must be a positive number of seconds, got "1".
+```
+
+A real header cannot produce any of these: the parser refuses a record duration that is not a
+positive number, `"Infinity"` included. The channel list goes through the check 0.8.60 added, so
+passing the header where its `signals` goes is caught here too.
+
 ## 0.8.63
 
 ### EDF, confidently, about a BDF+ recording

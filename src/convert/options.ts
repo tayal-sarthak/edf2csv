@@ -266,6 +266,48 @@ export function assertSignals(signals: unknown): void {
 }
 
 /**
+ * What `buildPlan` is told about the recording, checked the way what it is asked for is.
+ *
+ * `assertOptions` runs at the top of `buildPlan` and covers the second argument completely.
+ * The first was not looked at, and it is the one carrying the numbers every figure in the plan
+ * is derived from. Two of them missing produced a plan rather than an error:
+ *
+ *     buildPlan({ signals, recordDuration: 1 }, {})
+ *     // groups: 3, estimate.rows: 0, range.endSeconds: null
+ *
+ * A plan saying the conversion writes nothing, handed back as an answer — which is the "takes
+ * the whole recording without saying so" this checker exists to stop, one field over. A record
+ * count below zero was worse: it came back as
+ *
+ *     TimeRangeError: --start 0s is at or past the end of this -5s recording.
+ *
+ * a flag the caller never passed, about a recording that cannot exist, blaming the request for
+ * the input. And `recordDuration: '1'` was coerced by the arithmetic and accepted, where the
+ * same string is refused for `end` two functions down.
+ *
+ * A real header cannot produce any of them: the parser refuses a record duration that is not a
+ * positive number, "Infinity" included.
+ */
+export function assertPlanInput(input: {
+  signals?: unknown;
+  recordDuration?: unknown;
+  recordCount?: unknown;
+}): void {
+  assertSignals(input.signals);
+  const { recordDuration, recordCount } = input;
+  if (typeof recordDuration !== 'number' || !Number.isFinite(recordDuration) || recordDuration <= 0) {
+    throw new OptionError(
+      `recordDuration must be a positive number of seconds, got ${describeValue(recordDuration)}.`,
+    );
+  }
+  if (!Number.isInteger(recordCount) || (recordCount as number) < 0) {
+    throw new OptionError(
+      `recordCount must be a whole number of data records, got ${describeValue(recordCount)}.`,
+    );
+  }
+}
+
+/**
  * The recording to read, checked before it is opened.
  *
  * `EdfFile.open` hands whatever it is given to `fs`, and the refusal comes back as an
