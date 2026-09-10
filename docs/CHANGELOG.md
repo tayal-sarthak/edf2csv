@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.65
+
+### already exists, said of a link to nothing
+
+`stat` follows symbolic links. So a link whose target is gone is invisible to the check that
+tells a file from a directory, and `mkdir`'s `EEXIST` fell through to the one sentence that is
+not true of it:
+
+```
+$ edf2csv rec.edf --out nightly-out
+error: "nightly-out" already exists.
+       Pass --force to overwrite it, or --out to choose a different directory.
+```
+
+Nothing is there. And following that advice made it worse:
+
+```
+$ edf2csv rec.edf --out nightly-out --force
+error: Writing to "nightly-out" failed: part of the path does not exist.
+       The files written so far are incomplete and should not be used. Part of that path no
+       longer exists; make sure nothing is removing it while the conversion runs.
+```
+
+A conversion failure, about files that were never written, telling the reader to make sure
+nothing is removing a directory that never existed.
+
+```
+error: "nightly-out" is a symbolic link to something that does not exist, so nothing can be
+       written there.
+       Remove the link, or choose a directory with --out. --force replaces a previous output
+       directory and cannot follow a link to nowhere.
+```
+
+Both with and without `--force`, since neither can write through it. A directory that really is
+there still says "already exists", with the advice that works on it.
+
+A broken link in a destination is how a batch meets this: the run before wrote into a mount that
+has since gone.
+
 ## 0.8.64
 
 ### a plan for a recording of minus five seconds

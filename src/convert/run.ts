@@ -7,7 +7,7 @@
  */
 
 import { createWriteStream, fstatSync } from 'node:fs';
-import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { finished } from 'node:stream/promises';
 import type { Writable } from 'node:stream';
 import { createGzip, gzipSync } from 'node:zlib';
@@ -568,6 +568,34 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
         'OUTPUT_UNWRITABLE',
         `"${dir}" is a file, but the converted data needs a directory.`,
         'Choose a directory with --out.',
+      );
+    }
+    /*
+      A link to nothing, which `stat` cannot see and `mkdir` will not write through.
+
+      `stat` follows symbolic links, so a dangling one leaves `existing` null and fell through
+      to the sentence below — which is the one claim that is not true of it:
+
+          $ edf2csv rec.edf --out link-to-nowhere
+          error: "link-to-nowhere" already exists.
+                 Pass --force to overwrite it, or --out to choose a different directory.
+
+      Nothing is there. And following that advice made it worse: `--force` reached the writer
+      and came back as `Writing to "link-to-nowhere" failed: part of the path does not exist.
+      The files written so far are incomplete and should not be used` — a conversion failure,
+      about files that were never written, advising the reader to make sure nothing is
+      removing a directory that never existed.
+
+      A broken link in a batch's destination is how this arrives: the run before it wrote into
+      a mount that has since gone.
+    */
+    if (!existing && (await lstat(dir).catch(() => null))) {
+      throw new ConversionError(
+        'OUTPUT_UNWRITABLE',
+        `"${dir}" is a symbolic link to something that does not exist, so nothing can be ` +
+          `written there.`,
+        'Remove the link, or choose a directory with --out. --force replaces a previous ' +
+          'output directory and cannot follow a link to nowhere.',
       );
     }
     if (!force) {

@@ -1141,14 +1141,20 @@ edf2csv recording.edf --out ./converted-v2
 
 ### OUTPUT_UNWRITABLE
 
-The destination can't be used. Raised when the path given to `--out` is an existing regular file rather than a directory, and when creating the directory fails.
+The destination can't be used. Raised when the path given to `--out` is an existing regular file rather than a directory, when it is a symbolic link whose target is gone, and when creating the directory fails.
 
 ```
 error: "notes.txt" is a file, but the converted data needs a directory.
        Choose a directory with --out.
+error: "nightly-out" is a symbolic link to something that does not exist, so nothing
+       can be written there.
+       Remove the link, or choose a directory with --out. --force replaces a previous
+       output directory and cannot follow a link to nowhere.
 error: Cannot create "/mnt/archive/out": the filesystem is read-only.
        That filesystem is mounted read-only; choose another with --out.
 ```
+
+The link case read `"nightly-out" already exists` until 0.8.65 — `stat` follows symbolic links, so a dangling one is invisible to the check above it — and `--force`, which that sentence recommends, then failed from inside the writer with "The files written so far are incomplete and should not be used" over files that were never written.
 
 The hint is chosen from what actually failed, the same way [`WRITE_FAILED`](#write_failed)'s is and from the same list of sentences. Until 0.8.12 both raisings here carried one line whatever the cause — "Check the path exists and that you have permission to write there" — so a full disk, a read-only volume and a path past the filesystem's length limit were all answered with advice about a path that exists and a permission that is not the problem, two lines under a message that had already named the cause exactly.
 

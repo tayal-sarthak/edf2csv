@@ -5488,6 +5488,47 @@ describe('--stdout', () => {
     for (const row of carrying) assert.equal(row.split(',')[1].includes(esc), true, row);
   });
 
+  it('says a link to nothing is one, rather than that it already exists', async () => {
+    /*
+      `stat` follows symbolic links, so a dangling one is invisible to the check that tells a
+      file from a directory, and `mkdir`'s EEXIST fell through to the one sentence that is not
+      true of it:
+
+          error: "link-to-nowhere" already exists.
+                 Pass --force to overwrite it, or --out to choose a different directory.
+
+      Nothing is there. And following that advice made it worse — `--force` reached the writer
+      and came back as `Writing to "link-to-nowhere" failed: part of the path does not exist.
+      The files written so far are incomplete and should not be used`: a conversion failure,
+      about files that were never written, telling the reader to make sure nothing is removing
+      a directory that never existed.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-deadlink-'));
+    temporaries.push(dir);
+    const dead = path.join(dir, 'nowhere');
+    await symlink(path.join(dir, 'missing'), dead);
+
+    for (const extra of [[], ['--force']]) {
+      const { code, stderr } = await cli([fixture('tiny.edf'), '--out', dead, ...extra]);
+      assert.equal(code, 1, `${extra.join(' ')}: ${stderr}`);
+      const flat = stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /is a symbolic link to something that does not exist/u, flat);
+      assert.doesNotMatch(flat, /already exists/u, flat);
+      assert.doesNotMatch(flat, /files written so far are incomplete/u, flat);
+      // Nothing was written through it either.
+      assert.equal((await readdir(dir)).sort().join(','), 'nowhere');
+    }
+
+    // A directory that really is there still says so, with the advice that works on it.
+    const real = path.join(dir, 'real');
+    await mkdir(real);
+    const occupied = await cli([fixture('tiny.edf'), '--out', real]);
+    assert.equal(occupied.code, 1, occupied.stderr);
+    assert.match(occupied.stderr, /already exists/u, occupied.stderr);
+    const forced = await cli([fixture('tiny.edf'), '--out', real, '--force']);
+    assert.equal(forced.code, 0, forced.stderr);
+  });
+
   it('does not put a control byte in a file --stdout will not write', async () => {
     /*
       This warning's job is to say where an invisible byte went, and under `--stdout` it named
