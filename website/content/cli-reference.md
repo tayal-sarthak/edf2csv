@@ -38,7 +38,7 @@ A recording that cannot be read is reported and the rest still convert — one u
 The same goes for anything the walk cannot look at: a sub-directory it may not list, or a link whose target is not there — a night linked to a drive that is not mounted, say. It is named on stderr and counts against the run, because the walk cannot know what was behind it and converting less than you asked for is not a success. Once each, however many ways it was reached, the same as the recordings:
 
 ```
-error: study/night-02: could not be read, so any recordings inside it were skipped.
+error: study/night-02: could not be read, so whether it holds recordings is unknown. It was skipped.
 ```
 
 A recording named more than once is converted once, however it was named — twice on the command line, or once directly and once inside a folder that was also given. A shell produces that by accident easily enough (`edf2csv *.edf recording.edf`), and it is not ambiguous.
@@ -136,7 +136,7 @@ error: No EDF or BDF recordings found in "/data/empty".
 A folder the process cannot open is a different answer and gets a different one. "None here" is something the run can state; "could not look" is not, so it says that instead, and exits 1 rather than 2 — the command was fine, the filesystem refused:
 
 ```
-error: /data/locked: could not be read, so any recordings inside it were skipped.
+error: /data/locked: could not be read, so whether it holds recordings is unknown. It was skipped.
 error: Nothing could be converted.
        That path could not be read, so whether it holds recordings is unknown.
 ```

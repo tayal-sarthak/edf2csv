@@ -5488,6 +5488,43 @@ describe('--stdout', () => {
     for (const row of carrying) assert.equal(row.split(',')[1].includes(esc), true, row);
   });
 
+  it('says the same thing about an unreadable path as the summary under it does', async () => {
+    /*
+      The walk reports two different things as unreadable: a directory whose `readdir` failed,
+      and any entry whose `stat` failed — a broken link, whatever it pointed at. It cannot tell
+      them apart, which is the reason its own comment gives for reporting all of them: "The
+      walk cannot know what was behind a link it cannot follow."
+
+      So "any recordings inside it" was an assertion about a container, made about a list that
+      may hold none — and cli-reference printed it two lines above the sentence that says the
+      opposite, about the same path:
+
+          error: /data/locked: could not be read, so any recordings inside it were skipped.
+          error: Nothing could be converted.
+                 That path could not be read, so whether it holds recordings is unknown.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-unreadable-'));
+    temporaries.push(dir);
+    const study = path.join(dir, 'study');
+    await mkdir(study);
+    // A broken link named like a recording, and one named like anything else.
+    await symlink(path.join(dir, 'gone.edf'), path.join(study, 'night-02.edf'));
+    await symlink(path.join(dir, 'gone'), path.join(study, 'night-03'));
+    await writeFile(path.join(study, 'night-01.edf'), await readFile(fixture('tiny.edf')));
+
+    const { code, stderr } = await cli([study, '--out', path.join(dir, 'out')]);
+    assert.equal(code, 1, stderr);
+    const reported = stderr.split('\n').filter((l) => l.startsWith('error: ') && l.includes('night-0'));
+    assert.equal(reported.length, 2, stderr);
+    for (const line of reported) {
+      assert.match(line, /could not be read, so whether it holds recordings is unknown\./u, line);
+      assert.doesNotMatch(line, /recordings inside it/u, line);
+    }
+    // The recording beside them still converts, and the closing line still counts them.
+    assert.match(stderr, /2 paths could not be read/u, stderr);
+    assert.ok((await readdir(path.join(dir, 'out'))).includes('night-01'));
+  });
+
   it('says a link to nothing is one, rather than that it already exists', async () => {
     /*
       `stat` follows symbolic links, so a dangling one is invisible to the check that tells a

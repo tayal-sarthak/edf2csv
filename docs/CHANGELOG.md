@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.66
+
+### recordings inside it, said of a file
+
+The walk reports two different things as unreadable: a directory whose `readdir` failed, and any
+entry whose `stat` failed — a broken link, whatever it pointed at. It cannot tell them apart,
+which is the reason its own comment gives for reporting all of them: "The walk cannot know what
+was behind a link it cannot follow."
+
+The line it printed asserted otherwise, and cli-reference printed it two lines above the
+sentence that says the opposite, about the same path:
+
+```
+error: /data/locked: could not be read, so any recordings inside it were skipped.
+error: Nothing could be converted.
+       That path could not be read, so whether it holds recordings is unknown.
+```
+
+"Any recordings inside it" is a claim about a container. On a study whose `night-02.edf` is a
+link to a drive that is not mounted, there is nothing inside it — it is the recording.
+
+```
+error: study/night-02.edf: could not be read, so whether it holds recordings is unknown. It was skipped.
+```
+
+Which is the sentence the closing summary has always used about the same list. The prose above
+the example already said it too: "the walk cannot know what was behind it".
+
 ## 0.8.65
 
 ### already exists, said of a link to nothing

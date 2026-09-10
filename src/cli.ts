@@ -323,9 +323,26 @@ export async function main(argv: readonly string[]): Promise<number> {
 
   // Reported before anything is converted, so it cannot be lost among the summaries, and
   // counted against the run so the exit code does not call a partial sweep a success.
+  /*
+    What the walk actually knows, which is the sentence the summary below already uses.
+
+    This list holds two different things: a directory whose `readdir` failed, and any entry
+    whose `stat` failed — a broken link, whatever it pointed at. The walk cannot tell them
+    apart, which is the reason the comment in `walk` gives for reporting all of them: "The
+    walk cannot know what was behind a link it cannot follow."
+
+    So "any recordings inside it" is an assertion about a container, made about a list that
+    may hold none. It reads wrong on a broken `night-02.edf`, and cli-reference printed the
+    two sentences two lines apart, about the same path:
+
+        error: /data/locked: could not be read, so any recordings inside it were skipped.
+        error: Nothing could be converted.
+               That path could not be read, so whether it holds recordings is unknown.
+  */
   for (const entry of unreadable) {
     process.stderr.write(
-      `error: ${printable(entry)}: could not be read, so any recordings inside it were skipped.\n`,
+      `error: ${printable(entry)}: could not be read, so whether it holds recordings is ` +
+        `unknown. It was skipped.\n`,
     );
   }
 
