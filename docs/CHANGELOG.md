@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.68
+
+### 8h 00m 0s on one line, 412.7s on another
+
+`formatDuration` exists to state a length of time in units a person holds: `8h 00m 0s` rather
+than `28800s`. Every length this tool prints goes through it, except the last line of every
+conversion — which is printed under a report whose `Duration` field does.
+
+An overnight recording converted like this:
+
+```
+Duration   8h 00m 0s  (28800 records of 1s)
+...
+Done in 412.7s.
+```
+
+Two lengths of time on one screen, from the same program, one decomposed and one not. 412
+seconds is a number the reader divides by sixty to hold, which is the whole reason the other
+function is there — and the same complaint `grouped` makes about a count.
+
+```
+Done in 6m 52.7s.
+```
+
+Handed over at a minute, because below that the seconds are the readable form and `0.9s` is
+exactly right. Rounded to the tenth this line already printed, since `formatDuration` keeps
+three decimals and `6m 52.734s` claims a precision two `Date.now()` readings do not have.
+
+Nothing shorter than a minute changes, which is every transcript on the documentation pages and
+every fixture in this repository.
+
 ## 0.8.67
 
 ### make sure nothing is removing a directory that was never there

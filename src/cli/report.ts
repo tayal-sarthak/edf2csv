@@ -669,7 +669,27 @@ export function formatSummary(result: ConvertResult): string {
  * A clock that reports no change at all has measured something below what it can resolve,
  * which is a different statement from zero and is what it says.
  */
-function elapsed(milliseconds: number): string {
+export function elapsed(milliseconds: number): string {
+  /*
+    And the other end of it, which could only say seconds.
+
+    This is the one place in the tool that states a length of time without `formatDuration`,
+    and it is the line under a summary whose `Duration` field is printed *with* it. A
+    conversion of an overnight recording read:
+
+        Duration   8h 00m 0s  (28800 records of 1s)
+        ...
+        Done in 412.7s.
+
+    Two lengths of time on one screen, one decomposed and one not, from the same program. 412
+    seconds is a number a reader has to divide by sixty to hold, which is the whole reason
+    `formatDuration` exists and the same complaint `grouped` makes about counts.
+
+    Handed over at a minute, since below that the seconds are the readable form — and rounded
+    to the tenth this already prints first, because `formatDuration` keeps three decimals and
+    "6m 52.734s" claims a precision two `Date.now()` readings do not have.
+  */
+  if (milliseconds >= 60_000) return formatDuration(Math.round(milliseconds / 100) / 10);
   if (milliseconds >= 50) return `${(milliseconds / 1000).toFixed(1)}s`;
   return milliseconds > 0 ? `${milliseconds}ms` : 'under 1ms';
 }

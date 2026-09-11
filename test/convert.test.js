@@ -3260,6 +3260,43 @@ describe('converting', () => {
     assert.equal(rows[0].split(',')[columns.indexOf('sampling_rate_hz')], '1.000e-19', rows[0]);
   });
 
+  it('states a long run the way it states a long recording', async () => {
+    /*
+      The summary's last line was the one place in this tool that states a length of time
+      without `formatDuration`, and it is printed under a report whose `Duration` field uses
+      it. An overnight conversion read:
+
+          Duration   8h 00m 0s  (28800 records of 1s)
+          ...
+          Done in 412.7s.
+
+      Two lengths of time on one screen, one decomposed and one not, from the same program —
+      and 412 seconds is a number the reader has to divide by sixty to hold.
+    */
+    const { elapsed } = await import('../dist/cli/report.js');
+    const { formatDuration } = await import('../dist/format/number.js');
+    for (const [milliseconds, expected] of [
+      [0, 'under 1ms'],
+      [3, '3ms'],
+      [49, '49ms'],
+      [50, '0.1s'],
+      [900, '0.9s'],
+      // Below a minute the seconds are the readable form, so nothing changes there.
+      [59_999, '60.0s'],
+      [60_000, '1m 0s'],
+      [62_500, '1m 2.5s'],
+      [412_734, '6m 52.7s'],
+      [3_725_400, '1h 02m 5.4s'],
+    ]) {
+      assert.equal(elapsed(milliseconds), expected, `${milliseconds}ms`);
+    }
+
+    // The same function the Duration line uses, so the two agree on one screen.
+    assert.equal(elapsed(28_800_000), formatDuration(28_800));
+    // And to the tenth it already printed: two Date.now() readings do not carry three.
+    assert.equal(elapsed(412_734), '6m 52.7s');
+  });
+
   it('does not report a precision the caller chose as a loss of precision', async () => {
     /*
       `--decimals` exists to set a coarser precision, so raising VALUE_RESOLUTION for it is
