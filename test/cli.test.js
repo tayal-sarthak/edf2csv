@@ -5895,6 +5895,27 @@ describe('--stdout', () => {
       }
     }
 
+    /*
+      And the one refusal that names a file, which is nothing but a command to run: the
+      command it named writes `annotations.csv.gz` when `--gzip` is on, and it said
+      `annotations.csv` whatever else was on the line.
+    */
+    const refused = await cli([fixture('annotations-only.edf'), '--stdout', '--gzip']);
+    assert.equal(refused.code, 2, refused.stderr);
+    assert.match(
+      refused.stderr.replace(/\s+/gu, ' '),
+      /Convert to a directory to get its annotations\.csv\.gz, or drop --stdout\./u,
+      refused.stderr,
+    );
+    // The file that command really writes.
+    const asDirectory = path.join(dir, 'as-directory');
+    const ran = await cli([fixture('annotations-only.edf'), '--out', asDirectory, '--gzip']);
+    assert.equal(ran.code, 0, ran.stderr);
+    assert.ok((await readdir(asDirectory)).includes('annotations.csv.gz'));
+    // Without it, the plain name, which is the one the page prints.
+    const plainRefusal = await cli([fixture('annotations-only.edf'), '--stdout']);
+    assert.match(plainRefusal.stderr, /get its annotations\.csv, or drop --stdout/u, plainRefusal.stderr);
+
     // And without --gzip the same warnings name the plain files, which are the ones there.
     const plain = path.join(dir, 'plain');
     const { stderr } = await cli([fixture('contiguous-fractional.edf'), '--out', plain, '--annotations-only']);

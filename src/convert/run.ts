@@ -1821,7 +1821,15 @@ export function stdoutRefusal(file: EdfFile, plan: ConversionPlan): ConversionEr
             `only ${file.header.isBdf ? 'BDF+' : 'EDF+'} annotations.`
           : '--stdout has no signal data to write: nothing was selected that carries samples.',
         file.dataSignals.length === 0
-          ? 'Convert to a directory to get its annotations.csv, or drop --stdout.'
+          ? /*
+           Named the way that conversion would name it, since `--gzip` is already on the
+           command line this is refusing. This hint is nothing but a command to run, and the
+           command it names writes `annotations.csv.gz` — so a reader who follows it finds
+           nothing under the name they were given. Same fault 0.8.48 fixed for the warnings,
+           in the one refusal that names a file.
+        */
+        `Convert to a directory to get its ${outputCsvName('annotations', plan.gzip)}, or ` +
+        `drop --stdout.`
           : 'Check --channels and the requested window, or convert to a directory instead.',
       );
     }

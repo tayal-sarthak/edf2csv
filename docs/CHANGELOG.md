@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.70
+
+### the one refusal that is only a command, naming a file it would not write
+
+One refusal in this tool is nothing but a command to run, and it named the wrong file.
+
+```
+$ edf2csv scoring.edf --stdout --gzip
+error: --stdout has no signal data to write: this recording has no signal channels, only
+       EDF+ annotations.
+       Convert to a directory to get its annotations.csv, or drop --stdout.
+
+$ edf2csv scoring.edf --out csv --gzip
+$ ls csv
+annotations.csv.gz  channels.csv.gz  metadata.json
+```
+
+`--gzip` is already on the line this is refusing, so the conversion it describes is the one the
+reader would run — and there is nothing under the name they were given.
+
+```
+       Convert to a directory to get its annotations.csv.gz, or drop --stdout.
+```
+
+`--info --stdout --gzip`, which reports the refusal as a warning rather than making it, says the
+same. Without `--gzip` the sentence is the one the reference prints.
+
+That is the last of the names this batch has been working through: every message, hint and
+refusal now spells an output file the way the run it describes would write it — plain, `.gz`, or
+not at all.
+
 ## 0.8.69
 
 ### the last file name a --gzip run did not write

@@ -781,6 +781,9 @@ error: --stdout has no signal data to write: this recording has no signal channe
        Convert to a directory to get its annotations.csv, or drop --stdout.
 ```
 
+With `--gzip` the hint names `annotations.csv.gz`, which is what the conversion it describes
+would write; it named the uncompressed file whatever else was on the command line until 0.8.70.
+
 Up to 0.5.14 the wide layout answered that with "--stdout needs exactly one table, but this
 recording produces 0, one for each sampling rate its channels use ()" and pointed at
 `--layout long`, which wrote zero bytes, no header row, and exited 0.
