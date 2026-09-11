@@ -202,15 +202,15 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
         readerHungUp,
         annotationCount: 0,
         // Over both lists, because the timing warnings are pushed onto the plan's.
-        diagnostics: withSignalTableUnwritten(
-          withSidecarsNamed(
+        diagnostics: withSidecarsNamed(
+          withSignalTableUnwritten(
             [
               ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
               ...plan.diagnostics,
             ],
-            { toStdout: true, gzip: plan.gzip },
+            plan.writeSignals,
           ),
-          plan.writeSignals,
+          { toStdout: true, gzip: plan.gzip },
         ),
         plan,
         file,
@@ -333,16 +333,16 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       annotationCount: annotationsWritten,
       // The directory path needs it too: `--gzip` changes the names, and two of these
       // sentences are a file name and nothing else. See withSidecarsNamed.
-      diagnostics: withSignalTableUnwritten(
-        withSidecarsNamed(
+      diagnostics: withSidecarsNamed(
+        withSignalTableUnwritten(
           [
             ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
             ...plan.diagnostics,
             ...stale,
           ],
-          { toStdout: false, gzip: plan.gzip },
+          plan.writeSignals,
         ),
-        plan.writeSignals,
+        { toStdout: false, gzip: plan.gzip },
       ),
       plan,
       file,
@@ -2063,6 +2063,25 @@ export function withSidecarsNamed(
   const annotations = outputCsvName('annotations', gzip);
   return diagnostics.map((diagnostic) => {
     /*
+      The last message of this kind, and the one that names its files mid-sentence.
+
+      `NONPRINTABLE_LABEL` says where an invisible byte lands — the channel's name in
+      signals.csv, a cell of channels.csv — and `--gzip` writes neither of those names. It was
+      left out of 0.8.48 because the file is named inside a sentence assembled from which of
+      the four header fields carry bytes, and out of 0.8.54 for the same reason. Renaming is
+      all it needs, once the sentence is settled: this runs after `withSignalTableUnwritten`
+      has had its say about the layout, so whichever file the sentence ended up naming is the
+      one that gets the suffix.
+    */
+    if (gzip && diagnostic.code === 'NONPRINTABLE_LABEL') {
+      return {
+        ...diagnostic,
+        message: diagnostic.message
+          .replace(/\bsignals\.csv\b/gu, outputCsvName('signals', true))
+          .replace(/\bchannels\.csv\b/gu, channels),
+      };
+    }
+    /*
       The header's own `NO_SAMPLES`, which names the file that describes the channel it is
       about — and under `--stdout` there is no such file, so the reassurance is empty:
 
@@ -2301,16 +2320,16 @@ async function writeMetadata(
         decimals: g.channels.map((c) => c.decimals),
       })),
     },
-    notes: withSignalTableUnwritten(
-      withSidecarsNamed(
+    notes: withSidecarsNamed(
+      withSignalTableUnwritten(
         [
           ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timedFromRecords),
           ...plan.diagnostics,
         ],
-        // metadata.json is only written into a directory, so this is never the stdout case.
-        { toStdout: false, gzip: plan.gzip },
+        plan.writeSignals,
       ),
-      plan.writeSignals,
+      // metadata.json is only written into a directory, so this is never the stdout case.
+      { toStdout: false, gzip: plan.gzip },
     ).map((d) => ({
       code: d.code,
       severity: d.severity,

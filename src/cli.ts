@@ -1175,15 +1175,15 @@ async function showInfo(
     // conversion, so stderr stays empty and the whole result is one parseable thing.
     // `--stdout` writes no sidecars, and `--info --stdout` describes that run; see
     // withSidecarsNamed.
-    const diagnostics = withSignalTableUnwritten(
-      withSidecarsNamed(
+    const diagnostics = withSidecarsNamed(
+      withSignalTableUnwritten(
         [
           ...withTimingPromiseKept(withoutFileRateWarning(file.diagnostics), timing.starts !== null),
           ...plan.diagnostics,
         ],
-        { toStdout, gzip: plan.gzip },
+        plan.writeSignals,
       ),
-      plan.writeSignals,
+      { toStdout, gzip: plan.gzip },
     );
     if (!asJson && diagnostics.length > 0) {
       /*

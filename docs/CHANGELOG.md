@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.69
+
+### the last file name a --gzip run did not write
+
+The last message naming a file `--gzip` does not write.
+
+```
+$ edf2csv control-labels.edf --out csv --gzip
+warning: Signal 0's label and unit contain 2 control characters (\x1b), which will appear as
+         the channel's name in signals.csv and in channels.csv's unit cell in any conversion
+         that writes one, exactly as the header has them.
+
+Wrote csv
+  signals.csv.gz   5  rows
+  channels.csv.gz  5  rows
+```
+
+0.8.48 left this one out, and 0.8.54 left it out again, both for the same reason: the file is
+named in the middle of a sentence assembled from which of the four header fields carry bytes,
+so there was no hint to swap and no clause to rewrite.
+
+Renaming is all it needed, once the sentence is settled. The two amendment passes swap order so
+that the layout pass has its say first — `--annotations-only` turns this sentence into one about
+`channels.csv`'s `column` cell — and whichever file it ends up naming is the one that gets the
+suffix:
+
+```
+         ... as the channel's name in signals.csv.gz and in channels.csv.gz's unit cell ...
+         ... as the channel's name in channels.csv.gz's column cell and in its unit cell ...
+```
+
+The sweep behind this — every fixture, six option sets, every file name in the output held
+against `readdir` of the directory the run wrote — now comes back with nothing.
+
 ## 0.8.68
 
 ### 8h 00m 0s on one line, 412.7s on another

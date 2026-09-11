@@ -5872,6 +5872,13 @@ describe('--stdout', () => {
       */
       ['single-rate-empty-channel.edf', [], /carries no samples at all/u],
       ['far-origin-collapsed.edf', ['--channels', '#0'], /written from zero instead/u],
+      /*
+        And the last of them: the one that names its files in the middle of a sentence
+        assembled from which of the four header fields carry bytes. 0.8.48 and 0.8.54 both
+        left it for that reason; it only ever needed renaming, once the sentence is settled.
+      */
+      ['control-labels.edf', [], /which will appear as the channel's name/u],
+      ['control-labels.edf', ['--annotations-only'], /channels\.csv\.gz's column cell/u],
     ];
     for (const [name, extra, marker] of cases) {
       const out = path.join(dir, `${name}${extra.join('')}`);
