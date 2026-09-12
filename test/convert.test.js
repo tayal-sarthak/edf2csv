@@ -1913,20 +1913,37 @@ describe('option checking', () => {
       sentence about the recording, over a call that passed the wrong object. The diagnostic
       that normally accompanies it comes from the header parser and is not raised here.
     */
-    const { OptionError, makeScaler, EdfFile } = await import('../dist/index.js');
-    for (const [signal, expected] of [
-      [null, /signal must be a channel from a header, got null/u],
-      [42, /signal must be a channel from a header, got 42/u],
-      [{}, /signal\.digitalMin must be a number, got undefined/u],
-      [{ digitalMin: 0, digitalMax: 10, physicalMin: 0 }, /signal\.physicalMax must be a number/u],
-      [{ digitalMin: '0', digitalMax: 10, physicalMin: 0, physicalMax: 1 },
-        /signal\.digitalMin must be a number, got "0"/u],
-    ]) {
-      assert.throws(() => makeScaler(signal), (error) => {
-        assert.ok(error instanceof OptionError, `${JSON.stringify(signal)} threw ${error}`);
-        assert.match(error.message, expected);
-        return true;
-      });
+    const { OptionError, makeScaler, quantizationStep, decimalsForSignal, EdfFile } =
+      await import('../dist/index.js');
+    /*
+      And the two functions beside it, which read the same four fields off the same argument
+      and asked nothing of it — so both answered rather than refused:
+
+          quantizationStep({})    // 0, the step of a channel whose header contradicts itself
+          decimalsForSignal(42)   // 3, the precision an ordinary EEG channel gets
+
+      `undefined - undefined` is NaN, the division that follows is NaN, and a step that is not
+      a positive number reads to `decimalsForSignal` as "no step to derive from", which is the
+      branch that returns three. Both are answers real channels get, so a caller holding the
+      wrong object has nothing to doubt.
+    */
+    for (const under of [makeScaler, quantizationStep, decimalsForSignal]) {
+      for (const [signal, expected] of [
+        [null, /signal must be a channel from a header, got null/u],
+        [42, /signal must be a channel from a header, got 42/u],
+        [undefined, /signal must be a channel from a header, got undefined/u],
+        [{}, /signal\.digitalMin must be a number, got undefined/u],
+        [{ digitalMin: 0, digitalMax: 10, physicalMin: 0 }, /signal\.physicalMax must be a number/u],
+        [{ digitalMin: '0', digitalMax: 10, physicalMin: 0, physicalMax: 1 },
+          /signal\.digitalMin must be a number, got "0"/u],
+      ]) {
+        assert.throws(() => under(signal), (error) => {
+          assert.ok(error instanceof OptionError,
+            `${under.name}(${JSON.stringify(signal)}) threw ${error}`);
+          assert.match(error.message, expected);
+          return true;
+        }, `${under.name} accepted ${JSON.stringify(signal)}`);
+      }
     }
 
     // The degenerate channel still gets its NaN, which is the answer that sentence is about.
@@ -1935,9 +1952,15 @@ describe('option checking', () => {
       const degenerate = flat.dataSignals.find((s) => s.digitalMin === s.digitalMax);
       assert.ok(degenerate, 'the fixture no longer carries a zero digital span');
       assert.ok(Number.isNaN(makeScaler(degenerate)(0)));
-      // And an ordinary one still scales.
+      // And an ordinary one still scales, and still reports the step and precision it has.
       const ordinary = flat.dataSignals.find((s) => s.digitalMin !== s.digitalMax);
       assert.equal(Number.isFinite(makeScaler(ordinary)(0)), true);
+      // (this fixture's other channel is the one whose *physical* bounds are equal, so its
+      // step is legitimately 0 as well; what matters is that both answer rather than throw)
+      assert.ok(Number.isFinite(quantizationStep(ordinary)));
+      assert.ok(Number.isInteger(decimalsForSignal(ordinary)));
+      // The degenerate channel's own step is still 0, which is what that channel's step is.
+      assert.equal(quantizationStep(degenerate), 0);
     } finally {
       await flat.close();
     }

@@ -32,6 +32,35 @@ export type Scaler = (digital: number) => number;
 /** The four header fields this reads, in the order a message should name them. */
 const CALIBRATION = ['digitalMin', 'digitalMax', 'physicalMin', 'physicalMax'] as const;
 
+/**
+ * The four calibration numbers, confirmed to be on the thing that was passed.
+ *
+ * Written for `makeScaler` in 0.8.61 and shared since 0.8.76, when the two functions beside
+ * it turned out to read the same four fields off the same argument and ask nothing of it.
+ * Both answer rather than refuse:
+ *
+ *     quantizationStep({})     // 0     — the step of a channel whose header contradicts itself
+ *     decimalsForSignal(42)    // 3     — the precision an ordinary EEG channel gets
+ *
+ * `undefined - undefined` is `NaN`, `NaN === 0` is false, and the division that follows gives
+ * `NaN`; `quantizationStep` returns it as a step, and `decimalsForSignal` reads a step that is
+ * not a positive number as "this channel has none to derive from" and falls back to three
+ * places. Both of those are real answers for real channels — a zero digital span is what
+ * `DEGENERATE_DIGITAL_RANGE` reports, and three places is what most EEG gets — so a caller
+ * holding the wrong object gets a number they have no way to doubt.
+ */
+function assertCalibration(signal: EdfSignal): void {
+  if (typeof signal !== 'object' || signal === null) {
+    throw new OptionError(`signal must be a channel from a header, got ${describeValue(signal)}.`);
+  }
+  const missing = CALIBRATION.find((name) => typeof signal[name] !== 'number');
+  if (missing !== undefined) {
+    throw new OptionError(
+      `signal.${missing} must be a number, got ${describeValue(signal[missing])}.`,
+    );
+  }
+}
+
 export function makeScaler(signal: EdfSignal): Scaler {
   /*
     The argument, checked like the arguments of the other exported functions.
@@ -48,15 +77,7 @@ export function makeScaler(signal: EdfSignal): Scaler {
     the wrong object. The diagnostic that normally accompanies it, DEGENERATE_DIGITAL_RANGE,
     comes from the header parser and is not raised here at all.
   */
-  if (typeof signal !== 'object' || signal === null) {
-    throw new OptionError(`signal must be a channel from a header, got ${describeValue(signal)}.`);
-  }
-  const missing = CALIBRATION.find((name) => typeof signal[name] !== 'number');
-  if (missing !== undefined) {
-    throw new OptionError(
-      `signal.${missing} must be a number, got ${describeValue(signal[missing])}.`,
-    );
-  }
+  assertCalibration(signal);
   const { digitalMin, digitalMax, physicalMin, physicalMax } = signal;
 
   // A zero digital span leaves the mapping undefined — the header contradicts itself,
@@ -114,6 +135,9 @@ export function makeScaler(signal: EdfSignal): Scaler {
  * Used to choose a decimal precision that preserves every distinct sample value.
  */
 export function quantizationStep(signal: EdfSignal): number {
+  // See `assertCalibration`: without it `quantizationStep({})` answered 0, which is the step
+  // of a channel whose header contradicts itself.
+  assertCalibration(signal);
   const digitalSpan = signal.digitalMax - signal.digitalMin;
   if (digitalSpan === 0) return 0;
   return Math.abs((signal.physicalMax - signal.physicalMin) / digitalSpan);

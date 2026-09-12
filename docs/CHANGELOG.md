@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.76
+
+### two functions answering for something that is not a channel
+
+`makeScaler` has refused an argument that is not a channel since 0.8.61. The two functions beside
+it in the same file read the same four header fields off the same argument, and asked nothing of
+it:
+
+```js
+quantizationStep({})     // 0
+decimalsForSignal(42)    // 3
+```
+
+Both are answers real channels get. A step of `0` is what a channel whose digital bounds are equal
+has — the condition `DEGENERATE_DIGITAL_RANGE` reports — and three places is what most EEG is
+written at. `undefined - undefined` is `NaN`, the division after it is `NaN`, and a step that is
+not a positive number reads to `decimalsForSignal` as "this channel has no step to derive from",
+which is the branch that returns three.
+
+So a caller holding the wrong object gets a number with nothing about it to doubt, and the two
+functions whose whole job is to say how much precision a column needs are the ones saying it.
+
+The check `makeScaler` already carried is shared with both now, rather than copied: one sentence
+for a non-object, and one naming the first of `digitalMin`, `digitalMax`, `physicalMin` and
+`physicalMax` that is not a number.
+
 ## 0.8.75
 
 ### a window over no records, handed back as a fact about a recording
