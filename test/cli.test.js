@@ -5860,6 +5860,19 @@ describe('--stdout', () => {
       [fixture('far-origin-collapsed.edf'), ['--channels', '#0'],
         /--stdout writes no annotations\.csv, so convert to a directory/u,
         /Add the onsets in annotations\.csv to recover absolute times/u],
+      /*
+        And the collision hint, whose whole advice is a file to look the channel up in. A
+        renamed column is the only name the table carries, so the sentence sends the reader to
+        channels.csv for the `signal_index` behind it — and a `--stdout` run leaves that
+        renamed column sitting in the header row on the stream with nothing to map it back.
+        Both layouts, because this hint has a sentence for each.
+      */
+      [fixture('label-suffix-collision.edf'), [],
+        /--stdout writes no channels\.csv to look this channel up in by its signal_index/u,
+        /Column names are unique; look this channel up in channels\.csv by its signal_index/u],
+      [fixture('label-suffix-collision.edf'), ['--layout', 'long'],
+        /Channel names are unique, and --stdout writes no channels\.csv/u,
+        /Channel names are unique; look this channel up in channels\.csv by its signal_index/u],
     ];
     for (const [recording, extra, streamed, written] of cases) {
       // Both modes that stream: the conversion, and the --info that describes it.
@@ -5870,6 +5883,11 @@ describe('--stdout', () => {
         assert.match(flat, streamed, flat);
         assert.doesNotMatch(flat, written, flat);
       }
+      // And under --gzip, where the sentence names a compressed file no --stdout run writes
+      // either: the amendment is about the file not existing, not about its name.
+      const compressed = await cli([recording, '--stdout', '--gzip', ...extra]);
+      assert.match(compressed.stderr.replace(/\s+/gu, ' '), streamed, compressed.stderr);
+
       // And a conversion that does write them keeps every word.
       const out = path.join(dir, `out-${path.basename(recording)}-${extra.length}`);
       const { stderr } = await cli([recording, '--out', out, ...extra]);

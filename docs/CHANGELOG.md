@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.80
+
+### a renamed column, and the file that would have named it
+
+A duplicate label, or a label that collides with another channel's `_ch` suffix, renames the
+column — and the warning saying so ends by sending the reader to channels.csv, because the renamed
+name is the only one the table carries:
+
+```
+$ edf2csv montage.edf --stdout > rows.csv
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another channel's
+         "_ch" suffix produces, so its column is "T8_ch0_ch2".
+         Column names are unique; look this channel up in channels.csv by its signal_index.
+```
+
+There is no channels.csv. `T8_ch0_ch2` is sitting in the header row of `rows.csv` with nothing to
+map it back to signal 2, and the one sentence that would have said which channel it is names a
+file the run did not write. With `--gzip` on the same line it named `channels.csv.gz`, which no
+`--stdout` run writes either.
+
+The two warnings beside it have said this properly since 0.8.51: "`--stdout` writes no
+channels.csv to describe it in — convert to a directory for that", and the discontinuity hint
+sending the reader to a directory for the onsets. This is the third, and it is the one whose
+entire advice was the file. Both layouts get it — the wide one renames a column, the long one a
+value in the channel column, and the half of the sentence about the rename is kept as the plan
+wrote it.
+
 ## 0.8.79
 
 ### a position denied to the channel sitting in it

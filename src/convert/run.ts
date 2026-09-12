@@ -2129,6 +2129,38 @@ export function withSidecarsNamed(
           : `It is described in ${channels} but left out of the converted data.`,
       };
     }
+    /*
+      The collision hint, whose whole advice is a file to look the channel up in.
+
+      A duplicate label, or a label that collides with another channel's `_ch` suffix, renames
+      the column — and the sentence saying so ends by sending the reader to channels.csv for
+      the channel's `signal_index`, since the renamed name is the only one in the table:
+
+          $ edf2csv montage.edf --stdout > rows.csv
+          warning: Signal 2 is labelled "T8_ch0", which is also the column name another
+                   channel's "_ch" suffix produces, so its column is "T8_ch0_ch2".
+                   Column names are unique; look this channel up in channels.csv by its
+                   signal_index.
+
+      There is no channels.csv, and the renamed column is sitting in the header row on stdout
+      with nothing to map it back. Under `--gzip` it was worse: `channels.csv.gz`, a
+      compressed file no `--stdout` run writes either.
+
+      Answered the way the two hints above answer it — the file is named, so that the reader
+      knows what they are missing, and the command that produces it is named too.
+    */
+    if (toStdout && diagnostic.code === 'DUPLICATE_LABEL' && diagnostic.hint?.includes('look this channel up in')) {
+      // "Channel names" under --layout long, where the name lands in the channel column;
+      // "Column names" in the wide layout. Both are true of the stream, so the half of the
+      // sentence that is about the rename is kept as the plan wrote it.
+      const unique = diagnostic.hint.startsWith('Channel names') ? 'Channel names' : 'Column names';
+      return {
+        ...diagnostic,
+        hint:
+          `${unique} are unique, and --stdout writes no channels.csv to look this channel ` +
+          `up in by its signal_index — convert to a directory for that.`,
+      };
+    }
     if (
       toStdout &&
       diagnostic.code === 'START_TIME_UNREADABLE' &&

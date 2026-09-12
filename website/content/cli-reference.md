@@ -741,7 +741,12 @@ edf2csv recording.edf --stdout | duckdb -c "SELECT count(*) FROM read_csv('/dev/
 ```
 
 Only the samples are written — no `channels.csv`, `annotations.csv` or `metadata.json`, since a
-stream holds one table. For the same reason it needs the recording to produce exactly one, and
+stream holds one table. Warnings whose advice is one of those files say so instead of naming it:
+the empty-channel warning ends "`--stdout` writes no channels.csv to describe it in", the
+discontinuity hint sends you to a directory for the onsets, and since 0.8.80 so does the
+duplicate-label hint, whose whole advice is looking a renamed column up in `channels.csv` by its
+`signal_index` — a renamed column that a `--stdout` run leaves in the header row with nothing to
+map it back. For the same reason it needs the recording to produce exactly one, and
 refuses a mixed-rate file rather than merging tables that have different row counts:
 
 ```
