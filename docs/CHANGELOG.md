@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.83
+
+### a flag offered as replacing the directory it writes into
+
+The refusal that offers `--force` described a different flag from the one you get.
+
+```
+$ edf2csv rec.edf --out csv
+error: "csv" already exists.
+       Pass --force to overwrite it, or --out to choose a different directory.
+```
+
+`--force` does not overwrite the directory. It writes into it: files of the same name are
+replaced, and everything else is left exactly where it was. That is what the flag list has said
+since it was written — "write into the output directory if it already exists" — what the reference
+spells out, and the whole reason `STALE_OUTPUT` exists, since something has to report what stayed.
+
+The hint beside it went further and said the opposite outright: *"--force replaces a previous
+output directory and cannot follow a link to nowhere."*
+
+The difference is a directory holding two conversions. Convert a mixed-rate recording, then a
+single-rate one into the same place with `--force`, and `signals_256hz.csv` sits beside a fresh
+`signals.csv` under a channels.csv and a metadata.json describing only the second — which is
+exactly what a reader told the directory would be replaced does not expect and does not check for.
+The run does warn, but the sentence they read first was the one that made the warning a surprise.
+
+```
+       Pass --force to write into it, leaving whatever else it holds, or --out
+       to choose a different directory.
+```
+
+And the link-to-nowhere hint now says what `--force` needs rather than what it replaces: it writes
+into a directory that is already there, and a link to nowhere is not one.
+
 ## 0.8.82
 
 ### the window --info was describing, and never said

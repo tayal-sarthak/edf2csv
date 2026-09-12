@@ -1129,7 +1129,8 @@ The output directory already exists and `--force` wasn't given.
 
 ```
 error: "recording_csv" already exists.
-       Pass --force to overwrite it, or --out to choose a different directory.
+       Pass --force to write into it, leaving whatever else it holds, or --out
+       to choose a different directory.
 ```
 
 This is a guard, not a failure. Refusing by default means a second run can't quietly destroy the first one's results.
@@ -1148,8 +1149,8 @@ error: "notes.txt" is a file, but the converted data needs a directory.
        Choose a directory with --out.
 error: "nightly-out" is a symbolic link to something that does not exist, so nothing
        can be written there.
-       Remove the link, or choose a directory with --out. --force replaces a previous
-       output directory and cannot follow a link to nowhere.
+       Remove the link, or choose a directory with --out. --force writes into a
+       directory that is already there, and a link to nowhere is not one.
 error: Cannot create "/mnt/archive/out": the filesystem is read-only.
        That filesystem is mounted read-only; choose another with --out.
 ```

@@ -155,10 +155,11 @@ If the destination already exists, the conversion stops before writing anything:
 
 ```
 error: "/data/csv/sleep-study" already exists.
-       Pass --force to overwrite it, or --out to choose a different directory.
+       Pass --force to write into it, leaving whatever else it holds, or --out
+       to choose a different directory.
 ```
 
-`-f, --force` allows writing into an existing directory. It overwrites files of the same name; it doesn't empty the directory first. That matters when two runs produce different file names. Converting a mixed-rate recording writes `signals_256hz.csv` and `signals_1hz.csv`; converting a single-rate recording into the same directory afterwards writes `signals.csv` and leaves the two older files beside it, both looking current. Nothing is deleted automatically, but you're told:
+`-f, --force` allows writing into an existing directory. It overwrites files of the same name; it doesn't empty the directory first. The refusal that offers it said otherwise until 0.8.83 — "Pass --force to overwrite it", with the dangling-link hint beside it saying "`--force` replaces a previous output directory" — so the one sentence a reader meets at the moment they decide whether to pass the flag contradicted both this paragraph and the flag list above. That matters when two runs produce different file names. Converting a mixed-rate recording writes `signals_256hz.csv` and `signals_1hz.csv`; converting a single-rate recording into the same directory afterwards writes `signals.csv` and leaves the two older files beside it, both looking current. Nothing is deleted automatically, but you're told:
 
 ```
 warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an

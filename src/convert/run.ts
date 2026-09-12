@@ -596,15 +596,33 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
         'OUTPUT_UNWRITABLE',
         `"${dir}" is a symbolic link to something that does not exist, so nothing can be ` +
           `written there.`,
-        'Remove the link, or choose a directory with --out. --force replaces a previous ' +
-          'output directory and cannot follow a link to nowhere.',
+        'Remove the link, or choose a directory with --out. --force writes into a directory ' +
+          'that is already there, and a link to nowhere is not one.',
       );
     }
     if (!force) {
+      /*
+        What `--force` does, rather than what it sounds like it does.
+
+        "Overwrite it" reads as a claim about the directory, and the neighbouring hint said so
+        outright — "--force replaces a previous output directory". It does neither. It writes
+        into the directory: files of the same name are replaced and everything else is left
+        exactly where it was, which is why `STALE_OUTPUT` exists to report what stayed. The
+        flag list has described it accurately since it was written — "write into the output
+        directory if it already exists" — so the one sentence a reader meets at the moment
+        they decide whether to pass it was the one contradicting the other two.
+
+        The difference is a directory that ends up holding two conversions. Convert a
+        mixed-rate recording and then a single-rate one into the same place with `--force`,
+        and `signals_256hz.csv` sits beside a fresh `signals.csv` under a channels.csv and a
+        metadata.json describing only the second — which is exactly the outcome a reader who
+        was told the directory would be replaced does not expect, and does not check for.
+      */
       throw new ConversionError(
         'OUTPUT_EXISTS',
         `"${dir}" already exists.`,
-        'Pass --force to overwrite it, or --out to choose a different directory.',
+        'Pass --force to write into it, leaving whatever else it holds, or --out to choose ' +
+          'a different directory.',
       );
     }
   }

@@ -4504,6 +4504,43 @@ describe('converting', () => {
     assert.ok(stale, 'the leftover rate-group files must be reported');
     assert.match(stale.message, /signals_256hz\.csv/);
     assert.ok(!stale.message.includes('metadata.json'), 'metadata.json is rewritten every run');
+
+    /*
+      And the refusal that offers `--force` says what it does, which is this.
+
+      "Pass --force to overwrite it" reads as a claim about the directory, and the hint beside
+      it said so outright — "--force replaces a previous output directory". It does neither: it
+      writes into the directory, replacing files of the same name and leaving everything else,
+      which is the whole reason the warning above exists. The flag list has been accurate since
+      it was written — "write into the output directory if it already exists" — and the
+      reference says it in as many words, so the one sentence a reader meets at the moment they
+      decide whether to pass the flag was the one contradicting the other two.
+    */
+    const refused = await assert.rejects(
+      () => convert(fixture('tiny.edf'), { outputDir: dir }),
+      (error) => {
+        assert.equal(error.code, 'OUTPUT_EXISTS');
+        assert.match(error.hint, /^Pass --force to write into it, leaving whatever else it holds/u);
+        assert.doesNotMatch(error.hint, /overwrite it/u);
+        return true;
+      },
+    );
+    void refused;
+
+    // The same claim in the sentence about a link to nowhere, which told the reader --force
+    // "replaces a previous output directory" — of a path where there is no directory at all.
+    const dead = path.join(dir, 'nowhere');
+    const { symlink } = await import('node:fs/promises');
+    await symlink(path.join(dir, 'missing'), dead);
+    await assert.rejects(
+      () => convert(fixture('tiny.edf'), { outputDir: dead }),
+      (error) => {
+        assert.equal(error.code, 'OUTPUT_UNWRITABLE');
+        assert.match(error.hint, /--force writes into a directory that is already there/u);
+        assert.doesNotMatch(error.hint, /replaces a previous output directory/u);
+        return true;
+      },
+    );
   });
 
   it('recognises every rate-group name it can write as its own output', async () => {

@@ -121,7 +121,8 @@ output directory exists, the conversion stops before writing anything:
 
 ```text
 error: "sleep-study_csv" already exists.
-       Pass --force to overwrite it, or --out to choose a different directory.
+       Pass --force to write into it, leaving whatever else it holds, or --out
+       to choose a different directory.
 ```
 
 That's exit code 1, and nothing on disk has changed. Pick one:
