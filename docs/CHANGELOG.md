@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.74
+
+### a string of header text, reported as a truncated recording
+
+`parseHeader` is offered on its own, so it is reached by a caller holding bytes they read
+themselves. It took whatever it was handed.
+
+```js
+parseHeader(headerText, 4_000_000)
+// EdfError FILE_TOO_SMALL: An EDF header alone needs 256 bytes, but only 11 of this
+//   4,000,000-byte file reached the parser.
+```
+
+`headerText` is a string — the header decoded before being passed, which is an easy thing to do
+to a block of mostly-ASCII bytes. A string has a `length`, so it reached the short-header branch
+and came back as a verdict on the recording: `FILE_TOO_SMALL` is the code a script matches to
+quarantine a truncated file, raised here about a file nobody had read. A number or a plain object
+did not get that far and came back as `TypeError: bytes.subarray is not a function`, naming a
+method the caller never called.
+
+The bytes are checked now, as `decodeRecordAnnotations` checks its own and for the reason
+`readRecords` gives: it is the call that is wrong, not the recording. `FILE_TOO_SMALL` is left to
+mean what it says — bytes that really are bytes, and really are short.
+
 ## 0.8.73
 
 ### two methods reading at a position nothing had checked

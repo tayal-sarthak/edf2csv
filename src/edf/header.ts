@@ -346,6 +346,33 @@ function resolveStartDateTime(
  */
 export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
   /*
+    The first argument, checked before anything is read out of it.
+
+    The api page offers this function on its own, so it is reached by a caller holding bytes
+    they read themselves — and it took whatever it was handed. A number or a plain object came
+    back as Node's own `TypeError: bytes.subarray is not a function`, which names a method the
+    caller never called; `undefined` as a property read on a local.
+
+    Worse, a string got an answer *about the recording*:
+
+        parseHeader('0       ...', 4_000_000)
+        EdfError FILE_TOO_SMALL: An EDF header alone needs 256 bytes, but only 11 of this
+        4,000,000-byte file reached the parser.
+
+    A string has a `length`, so it reached the short-header branch below and was reported as a
+    truncated file — the code a script branches on to quarantine a bad recording, raised over a
+    recording nobody had read. That is the distinction `readRecords` draws in as many words:
+    "an `OptionError`, because it is the call that is wrong and not the recording". The same
+    check `decodeRecordAnnotations` makes of its own byte argument, for the reason given there.
+  */
+  if (!ArrayBuffer.isView(buf)) {
+    throw new OptionError(
+      `buf must be the header block as bytes, got ${describeValue(buf)}. parseHeader takes ` +
+        `the bytes read from the file and the size of the file they came out of.`,
+    );
+  }
+
+  /*
     The second argument, checked before anything is derived from it.
 
     Every count this function reports about the data comes out of `fileSize`, and nothing

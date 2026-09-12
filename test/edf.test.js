@@ -552,6 +552,44 @@ describe('errors', () => {
     assert.equal(decodeRecordAnnotations(Buffer.alloc(4), 0).malformed, 0);
   });
 
+  it('refuses header bytes that are not bytes, without blaming the recording', async () => {
+    /*
+      The api page offers `parseHeader` on its own, so it is reached by a caller holding bytes
+      they read themselves — and it took whatever it was handed. A number or a plain object
+      came back as Node's `TypeError: bytes.subarray is not a function`, naming a method the
+      caller never called, which is the failure `decodeRecordAnnotations` was given a check
+      for three tests up.
+
+      A string was worse, because a string has a `length`. It reached the short-header branch
+      and came back as a verdict on the file:
+
+          parseHeader(headerAsText, 4_000_000)
+          EdfError FILE_TOO_SMALL: An EDF header alone needs 256 bytes, but only 11 of this
+          4,000,000-byte file reached the parser.
+
+      `FILE_TOO_SMALL` is the code a script matches to quarantine a truncated recording, and
+      here it was raised about one nobody had read. "It is the call that is wrong, not the
+      recording", as `readRecords` puts it.
+    */
+    const { parseHeader, OptionError } = await import('../dist/index.js');
+    for (const buf of [undefined, null, 42, 'a string of header text', {}, [1, 2, 3]]) {
+      assert.throws(() => parseHeader(buf, 4_000_000), (error) => {
+        assert.ok(error instanceof OptionError, `${String(buf)} threw ${error}`);
+        assert.match(error.message, /^buf must be the header block as bytes, got /u);
+        return true;
+      });
+    }
+    // Bytes that really are short still get the verdict on the file, which is about the file.
+    assert.throws(() => parseHeader(new Uint8Array(100), 4_000_000), (error) => {
+      assert.equal(error.code, 'FILE_TOO_SMALL');
+      return true;
+    });
+    // And a real header block still parses, through both of the views a caller might hold.
+    const bytes = await readFile(fixture('tiny.edf'));
+    assert.equal(parseHeader(bytes, bytes.length).recordCount, 2);
+    assert.equal(parseHeader(new Uint8Array(bytes), bytes.length).recordCount, 2);
+  });
+
   it('refuses a file size that is not one, rather than deriving NaN from it', async () => {
     /*
       Every count `parseHeader` reports about the data comes out of its second argument, and
