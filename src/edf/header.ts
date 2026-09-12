@@ -1372,7 +1372,17 @@ export function formatRate(hz: number): string {
   // `rateSlug` turned it into "NaNhz" — a file name this tool cannot write, handed to a
   // caller the doc comment below describes as "reaching for the exported slug function to
   // predict a filename". A rate that is not a number is not a rate.
-  if (typeof hz !== 'number' || Number.isNaN(hz)) {
+  /*
+    And a negative one, which 0.8.63 left in for the same reason it took NaN out.
+    `rateSlug(-1)` answered `-1hz`, so `signals_-1hz.csv` — another name this tool cannot
+    write, from the same caller asking the same question.
+
+    Nor can a recording produce one to ask about: a rate is a channel's samples per record
+    over the record duration, the parser refuses a record duration that is not positive, and
+    it refuses a negative sample count outright — "Signal 0 declares -1 samples per record".
+    Zero and Infinity are left alone, because both are rates a header really can state.
+  */
+  if (typeof hz !== 'number' || Number.isNaN(hz) || hz < 0) {
     throw new OptionError(`hz must be a sampling rate in hertz, got ${describeValue(hz)}.`);
   }
   if (Number.isInteger(hz)) {

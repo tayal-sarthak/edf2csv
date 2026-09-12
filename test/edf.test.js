@@ -1734,6 +1734,17 @@ describe('the read budget', () => {
         [() => formatRate(NaN), /hz must be a sampling rate in hertz, got NaN/u],
         [() => formatRate('256'), /hz must be a sampling rate in hertz, got "256"/u],
         [() => rateSlug(NaN), /hz must be a sampling rate in hertz, got NaN/u],
+        /*
+          And a negative one, which that fix left in for the reason it took NaN out:
+          `rateSlug(-1)` answered `-1hz`, so `signals_-1hz.csv`, another name this tool
+          cannot write. Nor can a recording ask for it — a rate is samples per record over
+          the record duration, and the parser refuses a record duration that is not positive
+          and a negative sample count outright.
+        */
+        [() => formatRate(-1), /hz must be a sampling rate in hertz, got -1/u],
+        [() => rateSlug(-1), /hz must be a sampling rate in hertz, got -1/u],
+        [() => rateSlug(-0.5), /hz must be a sampling rate in hertz, got -0\.5/u],
+        [() => formatRate(-Infinity), /hz must be a sampling rate in hertz, got -Infinity/u],
         [() => formatRates(3), /rates must be a list of sampling rates, got 3/u],
         [() => formatWallClock('2020-01-01'), /date must be a Date or null, got "2020-01-01"/u],
       ]) {
@@ -1748,6 +1759,11 @@ describe('the read budget', () => {
       assert.equal(formatRate(256), '256');
       assert.equal(formatRate(Infinity), 'Infinity');
       assert.equal(rateSlug(12.5), '12_5hz');
+      // Zero and Infinity stay, because both are rates a header really can state: a record
+      // duration too small to divide into overflows to Infinity, and the writer opens that
+      // file.
+      assert.equal(rateSlug(0), '0hz');
+      assert.equal(rateSlug(Infinity), 'Infinityhz');
       assert.deepEqual(formatRates([100, 1]), ['100', '1']);
       assert.equal(formatWallClock(new Date(0)), '1970-01-01T00:00:00');
       // A Date that cannot be stated is a recording with no start instant, which is null.

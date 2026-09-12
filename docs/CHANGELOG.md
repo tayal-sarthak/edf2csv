@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.78
+
+### a negative sampling rate, rendered as a file name
+
+0.8.63 gave `formatRate` a check because `rateSlug(NaN)` answered `"NaNhz"` — a file name this
+tool cannot write, handed to the caller its own doc comment describes as "reaching for the
+exported slug function to predict a filename". It left the other value with the same problem:
+
+```js
+rateSlug(-1)     // "-1hz"   -> signals_-1hz.csv
+rateSlug(-0.5)   // "-0_5hz"
+```
+
+A rate is a channel's samples per data record over the record duration. The parser refuses a
+record duration that is not positive, and refuses a negative sample count outright — *"Signal 0
+("ch1") declares -1 samples per record"* — so no arrangement of a header produces one, which is
+exactly what made it worth refusing rather than rendering: the only way to reach this is to ask
+the question wrong.
+
+Zero and `Infinity` stay. Both are rates a real header states: a record duration too small to
+divide into overflows the division, `rateSlug` says `Infinityhz`, and the writer opens that file
+with `TIME_RESOLUTION` beside it.
+
 ## 0.8.77
 
 ### the argument this decoder does not read but writes onto every event
