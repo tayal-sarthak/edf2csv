@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.84
+
+### a view of an ArrayBuffer, taken for a view of bytes
+
+0.8.74 gave `parseHeader` a check on the bytes it reads, to stop two failures: Node's own
+`TypeError: bytes.subarray is not a function`, which names a method the caller never called, and
+an `EdfError` coded `FILE_TOO_SMALL` raised over a recording nobody had read. The check it was
+given was `ArrayBuffer.isView`, which is true of every typed array and of `DataView` — and two of
+those reach both failures anyway.
+
+```js
+parseHeader(new DataView(buffer), size)
+// TypeError: bytes.subarray is not a function
+
+parseHeader(new Float64Array(100), 4_000_000)   // 800 bytes of header
+// EdfError FILE_TOO_SMALL: ... only 100 of this 4,000,000-byte file reached the parser.
+```
+
+A `DataView` is what a caller reading the header by hand with `getUint8` holds; it has neither
+`subarray` nor `length`, so `buf.length < 256` is `undefined < 256` — false — and the guard waves
+it through to the line that reads `buf[0]`. A `Float64Array` has a `length` in *elements*, so a
+view of 800 bytes reports itself as 100 and the sentence blames the file for it.
+
+The question being asked is whether this is a view of bytes, and `BYTES_PER_ELEMENT === 1` is how
+to ask it: true of `Uint8Array`, `Int8Array`, `Uint8ClampedArray` and the `Buffer` the reader
+hands this, undefined on a `DataView`. The refusal names the view rather than dumping it, for the
+reason 0.8.72 gives about the sentence next door.
+
 ## 0.8.83
 
 ### a flag offered as replacing the directory it writes into

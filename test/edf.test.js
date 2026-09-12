@@ -594,6 +594,30 @@ describe('errors', () => {
       recording", as `readRecords` puts it.
     */
     const { parseHeader, OptionError } = await import('../dist/index.js');
+    /*
+      And the two views `ArrayBuffer.isView` is true of that are not views of bytes, which
+      0.8.74 read it as meaning. A `DataView` — what a caller reading a header by hand with
+      `getUint8` holds — has neither `subarray` nor `length`, so it reached the same
+      `TypeError: bytes.subarray is not a function` this check exists to remove; and a
+      `Float64Array` has a `length` in *elements*, so a hundred-element view of 800 bytes came
+      back as `FILE_TOO_SMALL: only 100 of this 4,000,000-byte file reached the parser`.
+    */
+    const ab = new ArrayBuffer(800);
+    for (const view of [new DataView(ab), new Float64Array(ab), new Uint16Array(ab), new Int32Array(ab)]) {
+      assert.throws(() => parseHeader(view, 4_000_000), (error) => {
+        assert.ok(error instanceof OptionError, `${view.constructor.name} threw ${error}`);
+        assert.match(error.message, /^buf is a \w+, which is a view of an ArrayBuffer but not of bytes\./u);
+        // Named, not dumped: a hundred doubles handed back is the caller's own data.
+        assert.ok(error.message.length < 260, error.message);
+        return true;
+      }, `${view.constructor.name} was accepted`);
+    }
+    // Every view that really is one byte an element still parses.
+    const real = await readFile(fixture('tiny.edf'));
+    for (const view of [real, new Uint8Array(real), new Int8Array(new Uint8Array(real).buffer)]) {
+      assert.equal(parseHeader(view, real.length).recordCount, 2, view.constructor.name);
+    }
+
     for (const buf of [undefined, null, 42, 'a string of header text', {}, [1, 2, 3]]) {
       assert.throws(() => parseHeader(buf, 4_000_000), (error) => {
         assert.ok(error instanceof OptionError, `${String(buf)} threw ${error}`);

@@ -365,10 +365,47 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     "an `OptionError`, because it is the call that is wrong and not the recording". The same
     check `decodeRecordAnnotations` makes of its own byte argument, for the reason given there.
   */
-  if (!ArrayBuffer.isView(buf)) {
+  /*
+    A view of *bytes*, which `ArrayBuffer.isView` does not mean.
+
+    It is true of every typed array and of `DataView`, and 0.8.74 read it as "these are
+    bytes". Two views it lets through are not:
+
+        parseHeader(new DataView(buffer), size)
+        TypeError: bytes.subarray is not a function
+
+    which is the exact failure that check was written to remove, quoted in its own changelog
+    entry — a `DataView` has neither `subarray` nor `length`, so `buf.length < 256` is
+    `undefined < 256`, false, and the guard below waves it through to the line that reads
+    `buf[0]`. A `DataView` is what a caller reading a header by hand with `getUint8` holds.
+
+        parseHeader(new Float64Array(100), 4_000_000)
+        EdfError FILE_TOO_SMALL: ... only 100 of this 4,000,000-byte file reached the parser
+
+    which is the other failure it was written to remove: `100` is the element count of a view
+    holding 800 bytes, and the sentence blames the recording for it.
+
+    `BYTES_PER_ELEMENT === 1` is the question actually being asked. It is true of `Uint8Array`,
+    `Int8Array`, `Uint8ClampedArray` and the `Buffer` the reader hands this, and undefined on a
+    `DataView`.
+  */
+  if (!ArrayBuffer.isView(buf) || (buf as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT !== 1) {
+    /*
+      A view is named rather than dumped.
+
+      `describeValue` renders an object as its JSON, and a hundred-element `Float64Array` of
+      header bytes comes back as a hundred doubles in the refusal — the caller's own data
+      handed back, which is what 0.8.72 took out of the sentence next door. What locates the
+      mistake is which view it is.
+    */
+    const takes =
+      'parseHeader takes the bytes read from the file — a Uint8Array or a Buffer, one byte ' +
+      'an element — and the size of the file they came out of.';
     throw new OptionError(
-      `buf must be the header block as bytes, got ${describeValue(buf)}. parseHeader takes ` +
-        `the bytes read from the file and the size of the file they came out of.`,
+      ArrayBuffer.isView(buf)
+        ? `buf is a ${(buf as object).constructor?.name ?? 'view'}, which is a view of an ` +
+          `ArrayBuffer but not of bytes. ${takes}`
+        : `buf must be the header block as bytes, got ${describeValue(buf)}. ${takes}`,
     );
   }
 
