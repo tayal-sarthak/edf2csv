@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.72
+
+### a channel from one file, read out of another, answering with numbers
+
+Two files open at once, and a channel from the wrong one.
+
+```js
+const edf = await EdfFile.open('night.edf');
+const bdf = await EdfFile.open('night.bdf');
+
+for await (const batch of edf.readRecords()) {
+  // bdf's channel, edf's bytes
+  [0, 1, 2, 3, 4].map((i) => edf.sampleAt(batch, 0, bdf.header.signals[0], i));
+  // => 0, 74, 147, 219, 290
+}
+```
+
+Those are real numbers out of `night.edf`, belonging to its first channel. Nothing said the
+channel had to come from the file being read: `sampleAt` takes `byteOffsetInRecord` and
+`samplesPerRecord` off whatever it is handed and reads there. A BDF channel — three bytes a
+sample, its own offset into a record of another shape — lands somewhere in the EDF buffer, and
+whatever is there comes back as a sample. So does `{}`, whose undefined offset the arithmetic
+turns into `NaN` and then into a plausible `0`.
+
+It is the same defect 0.8.62 closed for the two numbers on either side of this argument, in the
+argument between them. `offsetOf` and `annotationBytes` take the same channel and did the same
+thing — `annotationBytes` handed back a signal channel's samples as a record's annotation text.
+
+All three check it now: the channel has to be one of this recording's own, which is what every
+caller already holds — `header.signals[i]`, or an element of the `dataSignals`,
+`annotationSignals` and `selectChannels` subsets, which are the same references. Checked by
+identity at its own index rather than by scanning the list, since `sampleAt` is called once per
+sample.
+
 ## 0.8.71
 
 ### six hints for --annotations-only that named the file a --gzip run does not write

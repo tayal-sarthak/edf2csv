@@ -448,8 +448,53 @@ export class EdfFile {
     }
   }
 
+  /**
+   * The channel, confirmed to be one of this recording's.
+   *
+   * The three methods that take an `EdfSignal` turn its `byteOffsetInRecord` and
+   * `samplesPerRecord` into a position in a batch of this file's bytes. Nothing said the
+   * channel had to come from this file, and a channel from another one reads as though it
+   * did: handing `sampleAt` a `.bdf` channel — three bytes a sample, its own offset — while
+   * reading a `.edf` batch returned the first EDF channel's samples, `0 74 147 219 290`,
+   * every one of them a real number from the recording and none of them the caller's.
+   *
+   * Two open files is how it arrives. It is also what a plain object gets: `{}` and `42`
+   * both have an undefined offset, which the arithmetic below turns into `NaN` and then
+   * into a sample of 0.
+   *
+   * By identity at its own index, not by scanning the list: `sampleAt` is called once per
+   * sample, and the caller already holds these objects — `header.signals[i]`, or the subsets
+   * `annotationSignals` and `selectChannels` filter out of it, which are the same references.
+   */
+  #assertSignalHere(signal: EdfSignal, method: string): void {
+    if (this.header.signals[(signal as { index?: number } | null)?.index as number] === signal) {
+      return;
+    }
+    /*
+      A channel-shaped argument is placed rather than dumped.
+
+      `describeValue` renders an object as its JSON, and a channel is fourteen fields — a
+      458-character refusal, most of it the caller's own data handed back. Its index is the
+      part that locates the mistake, and it is the field this check just read. Anything that
+      is not object-shaped is quoted the ordinary way, since there it is the value itself
+      that is wrong.
+    */
+    const elsewhere =
+      `A channel read out of a different file names a position in that file's records, ` +
+      `not this one's.`;
+    throw new OptionError(
+      signal !== null && typeof signal === 'object'
+        ? `${method}: signal is a channel object, but not one of this recording's — ` +
+          `header.signals at index ${describeValue((signal as { index?: unknown }).index)} ` +
+          `is a different channel. ${elsewhere}`
+        : `${method}: signal must be one of this recording's own channels, from ` +
+          `header.signals — got ${describeValue(signal)}. ${elsewhere}`,
+    );
+  }
+
   /** Read one sample as its raw digital value. */
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number {
+    this.#assertSignalHere(signal, 'sampleAt');
     /*
       In range, because out of it this invented a number.
 
@@ -509,11 +554,15 @@ export class EdfFile {
 
   /** Byte offset of a signal's samples within a batch. */
   offsetOf(batch: RecordBatch, recordOffset: number, signal: EdfSignal): number {
+    this.#assertSignalHere(signal, 'offsetOf');
     return recordOffset * this.header.recordBytes + signal.byteOffsetInRecord;
   }
 
   /** The annotation channel's raw bytes for one record in a batch. */
   annotationBytes(batch: RecordBatch, recordOffset: number, signal: EdfSignal): Uint8Array {
+    // Before delegating, so the refusal names the method the caller called rather than the
+    // one underneath it.
+    this.#assertSignalHere(signal, 'annotationBytes');
     const start = this.offsetOf(batch, recordOffset, signal);
     return batch.data.subarray(start, start + signal.samplesPerRecord * this.header.bytesPerSample);
   }

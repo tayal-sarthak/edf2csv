@@ -1753,6 +1753,68 @@ describe('the read budget', () => {
     }
   });
 
+  it('refuses a channel that came out of a different file, in all three methods', async () => {
+    /*
+      The three methods that take an `EdfSignal` turn its `byteOffsetInRecord` and
+      `samplesPerRecord` into a position in a batch of this file's bytes, and nothing said the
+      channel had to come from this file. A `.bdf` channel — three bytes a sample, its own
+      offset — handed to a `.edf` file's `sampleAt` answered with the first EDF channel's
+      samples:
+
+          0 74 147 219 290
+
+      every one a real number from the recording and none of them the caller's. Two open files
+      is how it arrives, and it is the same defect 0.8.62 closed for the two numbers on either
+      side of this argument.
+
+      `offsetOf` and `annotationBytes` take the same channel and did the same thing;
+      `annotationBytes` handed back a signal channel's bytes as a record's annotations.
+    */
+    const { OptionError } = await import('../dist/index.js');
+    const mine = await EdfFile.open(fixture('mixed-rates.edf'));
+    const theirs = await EdfFile.open(fixture('biosemi.bdf'));
+    try {
+      const signal = mine.dataSignals[0];
+      const foreign = theirs.dataSignals[0];
+      let batch;
+      for await (const chunk of mine.readRecords({})) { batch = chunk; break; }
+      // Its own channels answer exactly as before.
+      assert.deepEqual(
+        [0, 1, 2, 3].map((i) => mine.sampleAt(batch, 0, signal, i)),
+        [0, 74, 147, 219],
+      );
+      assert.equal(mine.offsetOf(batch, 0, signal), 0);
+
+      for (const [method, call] of [
+        ['sampleAt', (s) => mine.sampleAt(batch, 0, s, 0)],
+        ['offsetOf', (s) => mine.offsetOf(batch, 0, s)],
+        ['annotationBytes', (s) => mine.annotationBytes(batch, 0, s)],
+      ]) {
+        // A channel from the other file, a copy of one of this file's, and something that is
+        // not a channel at all: all three used to answer with a number or a slice.
+        for (const bad of [foreign, { ...signal }, 42, null]) {
+          assert.throws(
+            () => call(bad),
+            (error) => {
+              assert.ok(error instanceof OptionError, `${method}: ${error}`);
+              // Named for the method the caller called, whichever of the two sentences it
+              // earns: a channel object is placed by its index, anything else is quoted.
+              assert.match(error.message, new RegExp(`^${method}: signal `, 'u'));
+              assert.match(error.message, /not one of this recording's|must be one of this recording's/u);
+              // Described by its shape: dumping a fourteen-field channel back at the caller
+              // made this 458 characters, most of it their own data.
+              assert.ok(error.message.length < 260, error.message);
+              return true;
+            },
+          );
+        }
+      }
+    } finally {
+      await mine.close();
+      await theirs.close();
+    }
+  });
+
   it('reads a window without reserving room for the whole recording', async () => {
     const file = await EdfFile.open(fixture('long-stream.edf'));
     try {
