@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.81
+
+### the file a control byte was said to land in, on a run that writes none
+
+`--stdout` is the mode this warning matters most in. It is the one that really does print the CSV
+to a terminal, which is what the hint under it warns about — and the sentence above the hint named
+a file that mode does not write.
+
+```
+$ edf2csv control-labels.edf --stdout | less
+warning: Signal 1's label contains 1 control character (\x07), which will appear as the
+         channel's name in signals.csv, exactly as the header has it.
+         Address the channel by position with --channels "#1" rather than by name, since
+         the name cannot be typed. Printing the CSV to a terminal may do more than print it.
+```
+
+There is no signals.csv. The byte is in the header row going past on the stream, which is exactly
+where the reader is looking.
+
+The other half of that sentence — the one about a control byte in a *unit*, which lands in a cell
+of channels.csv — has been hedged since 0.8.52: "in the channels.csv of any conversion that writes
+one", which stays true of a run that writes none. The half naming the signal table was written
+before `--stdout` existed to have no name for it, and was never given the same treatment.
+
+It names the stream now, in both layouts and with `--gzip` on the line or not; a conversion to a
+directory keeps every word it had.
+
 ## 0.8.80
 
 ### a renamed column, and the file that would have named it

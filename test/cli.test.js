@@ -5665,8 +5665,15 @@ describe('--stdout', () => {
     assert.equal(streamed.code, 0, streamed.stderr);
     const flat = streamed.stderr.replace(/\s+/gu, ' ');
     assert.match(flat, /channels\.csv's unit cell in any conversion that writes one/u, flat);
-    // A label's bytes do reach the stream, and that half says so with no condition on it.
-    assert.match(flat, /appear as the channel's name in signals\.csv, exactly as the header has it/u, flat);
+    /*
+      A label's bytes do reach the stream, and that half says so with no condition on it —
+      naming the stream. It said `signals.csv`, a file this mode does not write, which is the
+      name 0.8.31 took out of the `OUTPUT` column of `--info --stdout` for the same reason.
+      The substance was right and only the name was wrong: the byte really is in the header
+      row going past, which is where a reader piping into `less` is looking.
+    */
+    assert.match(flat, /appear as the channel's name in the CSV on stdout, exactly as the header has it/u, flat);
+    assert.doesNotMatch(flat, /name in signals\.csv/u, flat);
 
     // And the conversion the sentence is conditional on really does put the byte in that cell.
     const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-ctrlcell-'));
@@ -5873,6 +5880,16 @@ describe('--stdout', () => {
       [fixture('label-suffix-collision.edf'), ['--layout', 'long'],
         /Channel names are unique, and --stdout writes no channels\.csv/u,
         /Channel names are unique; look this channel up in channels\.csv by its signal_index/u],
+      /*
+        And the sentence saying where a control byte lands, whose `channels.csv` half has been
+        hedged since 0.8.52 — "in the channels.csv of any conversion that writes one" — while
+        the half naming signals.csv was not. `--stdout` is the mode this warning matters most
+        in: it is the one that really does print the CSV to a terminal, which is what the hint
+        under it warns about, and the byte is in the header row going past on the stream.
+      */
+      [fixture('control-labels.edf'), [],
+        /as the channel's name in the CSV on stdout/u,
+        /as the channel's name in signals\.csv/u],
     ];
     for (const [recording, extra, streamed, written] of cases) {
       // Both modes that stream: the conversion, and the --info that describes it.

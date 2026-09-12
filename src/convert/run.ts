@@ -2100,13 +2100,32 @@ export function withSidecarsNamed(
       has had its say about the layout, so whichever file the sentence ended up naming is the
       one that gets the suffix.
     */
-    if (gzip && diagnostic.code === 'NONPRINTABLE_LABEL') {
+    /*
+      And the same sentence under `--stdout`, where the signal table has no name at all.
+
+      The `channels.csv` half of it has been hedged since 0.8.52 — "in the channels.csv of any
+      conversion that writes one", which is true of a run that writes none. The half naming
+      `signals.csv` was not, and `--stdout` is the mode this warning matters most in: it is
+      the one that really does print the CSV to a terminal, which is what the hint two lines
+      under it warns about.
+
+          $ edf2csv control-labels.edf --stdout | less
+          warning: Signal 1's label contains 1 control character (\x07), which will appear as
+                   the channel's name in signals.csv, exactly as the header has it.
+
+      There is no signals.csv. The byte is in the header row going past on the stream, which
+      is where the reader is looking.
+    */
+    if ((gzip || toStdout) && diagnostic.code === 'NONPRINTABLE_LABEL') {
       return {
         ...diagnostic,
         message: diagnostic.message
           // Past a name the pass above already suffixed: `channels.csv.gz` contains
           // `channels.csv`, and a second rename made it `channels.csv.gz.gz`.
-          .replace(/\bsignals\.csv\b(?!\.gz)/gu, outputCsvName('signals', true))
+          .replace(
+            /\bsignals\.csv\b(?!\.gz)/gu,
+            toStdout ? 'the CSV on stdout' : outputCsvName('signals', true),
+          )
           .replace(/\bchannels\.csv\b(?!\.gz)/gu, channels),
       };
     }
