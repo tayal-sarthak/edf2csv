@@ -219,6 +219,49 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       const signal = candidates.find((s) => s.index === index);
       if (!signal) {
         /*
+          The annotation channel occupies a position, and this denied the position existed.
+
+          `candidates` is the signals; the annotation channel is filtered out of it and keeps
+          its index in the file — which is what `signal_index` in channels.csv is documented
+          as, "counting the annotation channel if present", and what `#N` addresses. So on an
+          ordinary EDF+ recording of one signal, `--channels "#1"` was refused with
+
+              No channel at position #1. This file has one signal channel, at #0.
+
+          The first sentence is false: #1 is where `EDF Annotations` sits. Asking for the same
+          channel by *name* has had the whole explanation since 0.7.x — "is this recording's
+          annotation channel, not a signal ... pass --annotations-only" — so one tool gave two
+          answers to one question depending on how the channel was named, and the answer that
+          denied the channel existed is the one reached by the reader who looked its position
+          up in channels.csv.
+
+          Said here in the words the by-name refusal uses, since it is the same fact.
+        */
+        /*
+          Only on a file that has signal channels to be one of.
+
+          On an annotations-only recording every position is the annotation channel, and the
+          fact worth having is the one the sentence below already carries: there are no signal
+          channels at all, so no position will select anything. Naming the channel at `#0`
+          there would answer a narrower question than the reader asked.
+        */
+        const annotations =
+          candidates.length === 0
+            ? undefined
+            : signals.find((s) => s.isAnnotations && s.index === index);
+        if (annotations) {
+          throw new ChannelSelectionError(
+            // The label quoted the way the by-name refusal quotes it — this channel's label
+            // is one of the two the specification reserves, so there is nothing else it can
+            // be, and the two sentences stay one sentence.
+            `${term} is this recording's annotation channel ("${annotations.label}"), not a ` +
+              `signal: it holds event text rather than samples, so it has no column to ` +
+              `select.\n` +
+              `Its events are already written to annotations.csv by any conversion of this ` +
+              `file — pass --annotations-only for those and no signal data.`,
+          );
+        }
+        /*
           The list of positions is advice, and advice goes on the continuation line.
 
           It sat on the first line here and on the second in the refusal six lines up, which

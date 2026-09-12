@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.79
+
+### a position denied to the channel sitting in it
+
+The annotation channel is filtered out of the signal list and keeps its index in the file. That
+index is what `signal_index` in channels.csv means — the reference says "counting the annotation
+channel if present" — and it is what `#N` addresses. So on an ordinary EDF+ recording of one
+signal:
+
+```
+$ edf2csv rec.edf --channels "#1"
+error: No channel at position #1.
+       This file has one signal channel, at #0.
+```
+
+`#1` is where `EDF Annotations` sits. The first sentence denies a channel the file has and the
+second is the reason it was written — a list of the positions that *are* signals, offered as
+though the one asked for were empty.
+
+Asking for the same channel by name has had the whole answer since 0.5.122: *"is this recording's
+annotation channel, not a signal ... pass --annotations-only"*. So one tool gave two answers to
+one question depending on how the channel was named, and the answer denying it existed was the one
+reached by the reader who looked the position up in channels.csv rather than typing the label.
+
+The position now gets the sentence the label gets, naming the channel that sits there. A position
+no channel occupies is unchanged: `No channel at position #9`, with the signal positions under it.
+So is a recording with no signal channels at all, where every position is the annotation channel
+and "This file has no signal channels; it contains only annotations" answers all of them at once.
+
 ## 0.8.78
 
 ### a negative sampling rate, rendered as a file name

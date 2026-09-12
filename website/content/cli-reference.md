@@ -335,6 +335,16 @@ error: There is no channel named "annotations"; the nearest thing to it is this 
 
 Only when no signal label is close, so a "Did you mean" about a real column always wins, and by the same distance rule that suggestion uses.
 
+Its **position** gets the same answer since 0.8.79. The annotation channel keeps its index in the file — that is what `signal_index` in `channels.csv` is, "counting the annotation channel if present", and what `#N` addresses — so on a one-signal EDF+ recording the annotation channel is `#1`, and asking for it was refused with `No channel at position #1. This file has one signal channel, at #0.` The first sentence is false, and it is the answer reached by the reader who looked the position up in `channels.csv` rather than typing the label:
+
+```
+error: #1 is this recording's annotation channel ("EDF Annotations"), not a signal: it holds event text rather than samples, so it has no column to select.
+       Its events are already written to annotations.csv by any conversion of
+       this file — pass --annotations-only for those and no signal data.
+```
+
+A position no channel occupies still gets `No channel at position #N`, with the list of the ones that are signals under it — and a recording with no signal channels at all still gets `This file has no signal channels; it contains only annotations`, since there every position is the annotation channel and that sentence answers all of them at once.
+
 Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. The near spellings went on getting it until 0.8.20. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.
 
 ### Labels that literally start with #

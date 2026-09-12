@@ -1330,6 +1330,51 @@ describe('--info', () => {
     assert.match(near.stderr, /annotation channel "BDF Annotations"/u, near.stderr);
 
     /*
+      And by position, which denied the channel existed at all.
+
+      The annotation channel is filtered out of the signal list and keeps its index in the
+      file — which is what `signal_index` in channels.csv is documented as, "counting the
+      annotation channel if present", and what `#N` addresses. So on an ordinary EDF+
+      recording of one signal:
+
+          $ edf2csv rec.edf --channels "#1"
+          error: No channel at position #1.
+                 This file has one signal channel, at #0.
+
+      #1 is where `EDF Annotations` sits. One tool, two answers to one question, and the
+      answer that denied the channel existed is the one reached by a reader who looked its
+      position up in channels.csv.
+    */
+    for (const [recording, position] of [
+      [fixture('annotations.edf'), '#1'],
+      [fixture('biosemi-plus.bdf'), '#1'],
+      // Both of them, on a file carrying two.
+      [fixture('two-annotation-channels.edf'), '#1'],
+      [fixture('two-annotation-channels.edf'), '#2'],
+    ]) {
+      const asked = await cli([recording, '--info', '--channels', position]);
+      assert.equal(asked.code, 2, asked.stderr);
+      const flat = asked.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, new RegExp(`^error: ${position} is this recording's annotation channel`, 'u'), flat);
+      assert.match(flat, /"(EDF|BDF) Annotations"/u, flat);
+      assert.match(flat, /--annotations-only/u, flat);
+      assert.doesNotMatch(flat, /No channel at position/u, flat);
+    }
+
+    // A position that is nobody's still says so, in the words written for that file's shape.
+    const absent = await cli([fixture('annotations.edf'), '--info', '--channels', '#2']);
+    assert.match(absent.stderr, /No channel at position #2\./u, absent.stderr);
+    /*
+      And on a recording with no signal channels at all, every position is the annotation
+      channel — so the fact worth having is the one that answers every position at once, which
+      is the sentence 0.7.x wrote for exactly that file.
+    */
+    for (const position of ['#0', '#1']) {
+      const noSignals = await cli([fixture('annotations-only.edf'), '--info', '--channels', position]);
+      assert.match(noSignals.stderr, /This file has no signal channels/u, noSignals.stderr);
+    }
+
+    /*
       A signal that is close always wins: the annotation channel is the answer only when no
       column is, and by the same distance rule the suggestion itself uses.
     */
