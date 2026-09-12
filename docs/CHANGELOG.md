@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.75
+
+### a window over no records, handed back as a fact about a recording
+
+`buildPlan` has refused a recording shape that is not one since 0.8.64. It gets there by calling
+`resolveRange`, which the api page documents with a signature block of its own — and which was
+covered only from above.
+
+```js
+resolveRange({ start: 1, recordDuration: 1 })   // no recordCount
+// { startSeconds: 0, endSeconds: null, startRecord: 0, endRecord: 0, isWholeRecording: false }
+
+resolveRange(42)
+// the same object
+```
+
+A window over no records, returned as a fact about a recording. `42` reaches it because reading
+`.start` off a number is `undefined` rather than a throw, so every field this function asks for
+is absent and every answer it derives is the answer for an empty file. `null` and `undefined`
+came back as `TypeError: Cannot read properties of null (reading 'start')`, naming a property of
+this function's own parameter.
+
+This function already made this argument for the three fields it *does* check, in its own opening
+comment: "`assertOptions` sits at the top of `buildPlan`, so `convert` was covered and the
+function underneath it was not". The recording's own two numbers are checked now by the same
+rule — `recordDuration` a positive number of seconds, `recordCount` a whole number of records —
+shared with `assertPlanInput` rather than copied out of it.
+
 ## 0.8.74
 
 ### a string of header text, reported as a truncated recording

@@ -8,7 +8,7 @@
  */
 
 import { fixed, formatDuration } from '../format/number.js';
-import { assertOptions, describeValue } from './options.js';
+import { assertOptions, assertRecordShape, describeValue, OptionError } from './options.js';
 
 export class TimeRangeError extends Error {
   constructor(message: string) {
@@ -416,7 +416,34 @@ export function resolveRange(options: {
     accepted; `{ start: '30' }` reached the past-the-end error and printed it with the value
     missing — `--start s is at or past the end of this 3s recording`.
   */
+  /*
+    The argument bag itself, before three properties are read off it.
+
+    `resolveRange(42)` read `.start` off a number, which is `undefined` rather than a throw, and
+    went on to answer with a range; `resolveRange(null)` reached the same line and came back as
+    `TypeError: Cannot read properties of null (reading 'start')`, naming a property of this
+    function's own parameter.
+  */
+  if (options === null || typeof options !== 'object') {
+    throw new OptionError(
+      `resolveRange takes one object — the recording's shape and the window asked of it — ` +
+        `got ${describeValue(options)}.`,
+    );
+  }
   assertOptions({ start: options.start, duration: options.duration, end: options.end });
+  /*
+    And the two numbers the window is measured against, which that call does not cover.
+
+    `assertOptions` checks what was asked for; these are what it is asked of, and nothing
+    looked at them. `resolveRange({ start: 1, recordDuration: 1 })` — no `recordCount` —
+    answered `{ startSeconds: 0, endSeconds: null, startRecord: 0, endRecord: 0 }`: a window
+    over no records, handed back as a fact about a recording. `resolveRange(42)` reached the
+    same answer, since reading `.start` off a number is `undefined` rather than a throw.
+
+    The check `buildPlan` has made since 0.8.64, made here too, because this is exported on
+    its own — the same sentence the line above this one is here for.
+  */
+  assertRecordShape(options);
 
   // For a continuous file the recording spans recordCount * recordDuration. A
   // discontinuous one does not: a 10-second recording with a 95-second gap in the

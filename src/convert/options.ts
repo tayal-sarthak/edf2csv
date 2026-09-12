@@ -294,7 +294,33 @@ export function assertPlanInput(input: {
   recordCount?: unknown;
 }): void {
   assertSignals(input.signals);
-  const { recordDuration, recordCount } = input;
+  assertRecordShape(input);
+}
+
+/**
+ * The two numbers a window is measured against, apart from the channel list.
+ *
+ * `resolveRange` is exported on its own and has its own signature block on the api page, and
+ * `buildPlan` calls it — so it was covered only from above. Called directly it took both
+ * numbers unexamined and answered with a range:
+ *
+ *     resolveRange({ recordDuration: 1 })       // recordCount undefined
+ *     // { startSeconds: 0, endSeconds: null, startRecord: 0, endRecord: 0 }
+ *
+ * A range over no records, returned as a fact about a recording. Its own opening comment
+ * already says why that is the wrong answer — "no error, no warning, and a range read back as
+ * `startSeconds: null, startRecord: null`, which is the 'takes the whole recording without
+ * saying so'" — about the three fields it does check. `resolveRange(42)` went the same way,
+ * since reading `.start` off a number is `undefined` rather than a throw.
+ *
+ * Split out rather than calling `assertPlanInput`, which would demand a channel list this
+ * function never looks at.
+ */
+export function assertRecordShape(input: {
+  recordDuration?: unknown;
+  recordCount?: unknown;
+}): void {
+  const { recordDuration, recordCount } = input ?? {};
   if (typeof recordDuration !== 'number' || !Number.isFinite(recordDuration) || recordDuration <= 0) {
     throw new OptionError(
       `recordDuration must be a positive number of seconds, got ${describeValue(recordDuration)}.`,

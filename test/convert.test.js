@@ -1747,6 +1747,41 @@ describe('option checking', () => {
         },
       );
     }
+    /*
+      And the two numbers the window is measured *against*, which that check does not cover:
+      it covers what was asked for. Neither was looked at, so
+
+          resolveRange({ start: 1, recordDuration: 1 })   // no recordCount
+          // { startSeconds: 0, endSeconds: null, startRecord: 0, endRecord: 0 }
+
+      came back as a window over no records, handed to the caller as a fact about a recording.
+      `buildPlan` has refused both since 0.8.64 and calls this function, so the gap was only
+      ever reachable from the door the API page documents.
+    */
+    for (const [options, expected] of [
+      [{ recordDuration: 1 }, /recordCount must be a whole number of data records, got undefined/u],
+      [{ recordDuration: 1, recordCount: -5 }, /recordCount must be a whole number of data records, got -5/u],
+      [{ recordDuration: 1, recordCount: 2.5 }, /recordCount must be a whole number of data records, got 2\.5/u],
+      [{ recordCount: 3 }, /recordDuration must be a positive number of seconds, got undefined/u],
+      [{ recordDuration: '1', recordCount: 3 }, /recordDuration must be a positive number of seconds, got "1"/u],
+      [{ recordDuration: 0, recordCount: 3 }, /recordDuration must be a positive number of seconds, got 0/u],
+    ]) {
+      assert.throws(() => resolveRange(options), (error) => {
+        assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
+        assert.match(error.message, expected);
+        return true;
+      });
+    }
+    // And the bag itself: `.start` off a number is undefined rather than a throw, so 42
+    // resolved; null and undefined came back naming a property of this function's parameter.
+    for (const bad of [42, 'x', null, undefined, true]) {
+      assert.throws(() => resolveRange(bad), (error) => {
+        assert.ok(error instanceof OptionError, `${String(bad)} threw ${error}`);
+        assert.match(error.message, /^resolveRange takes one object/u);
+        return true;
+      });
+    }
+
     // And the ordinary window still resolves.
     const range = resolveRange({ start: 1, end: 2, recordDuration: 1, recordCount: 3 });
     assert.equal(range.startSeconds, 1);
