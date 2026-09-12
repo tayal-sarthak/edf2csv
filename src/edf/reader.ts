@@ -492,6 +492,41 @@ export class EdfFile {
     );
   }
 
+  /**
+   * The record, confirmed to be one this batch holds.
+   *
+   * 0.8.62 put this on `sampleAt`, where it turns a position into a sample. `offsetOf` does
+   * the same arithmetic and hands the position back, and `annotationBytes` slices at it, and
+   * neither asked anything of it:
+   *
+   *     file.offsetOf(batch, -5, signal)    // -1300
+   *     file.offsetOf(batch, 1.5, signal)   // 390, half a record in
+   *     file.annotationBytes(batch, 99, s)  // Uint8Array(0)
+   *
+   * A negative byte position, a position that decodes the second half of one record against
+   * the first half of the next — the failure `readRecords` refuses a fractional `startRecord`
+   * for — and an empty slice that reads as "this record carries no annotations" for a record
+   * that is not in the batch at all.
+   *
+   * The batch is checked first, because the bound is read off it: `offsetOf` never touched
+   * `batch` before this, so a caller who passed the wrong thing got no complaint from it.
+   */
+  #assertRecordOffset(batch: RecordBatch, recordOffset: number, method: string): void {
+    if (!Number.isInteger((batch as RecordBatch | null)?.recordCount)) {
+      throw new OptionError(
+        `${method}: batch must be one of the batches readRecords yields, got ` +
+          `${describeValue(batch)}.`,
+      );
+    }
+    if (!Number.isInteger(recordOffset) || recordOffset < 0 || recordOffset >= batch.recordCount) {
+      throw new OptionError(
+        `${method}: recordOffset must be a record's position within this batch, 0 to ` +
+          `${batch.recordCount - 1}, got ${describeValue(recordOffset)}. Absolute record ` +
+          `indexes are batch.firstRecordIndex higher.`,
+      );
+    }
+  }
+
   /** Read one sample as its raw digital value. */
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number {
     this.#assertSignalHere(signal, 'sampleAt');
@@ -513,17 +548,7 @@ export class EdfFile {
 
       Two integer comparisons each, on a call that then formats a number.
     */
-    if (
-      !Number.isInteger(recordOffset) ||
-      recordOffset < 0 ||
-      recordOffset >= batch.recordCount
-    ) {
-      throw new OptionError(
-        `recordOffset must be a record's position within this batch, 0 to ` +
-          `${batch.recordCount - 1}, got ${describeValue(recordOffset)}. Absolute record ` +
-          `indexes are batch.firstRecordIndex higher.`,
-      );
-    }
+    this.#assertRecordOffset(batch, recordOffset, 'sampleAt');
     if (
       !Number.isInteger(sampleIndex) ||
       sampleIndex < 0 ||
@@ -555,6 +580,7 @@ export class EdfFile {
   /** Byte offset of a signal's samples within a batch. */
   offsetOf(batch: RecordBatch, recordOffset: number, signal: EdfSignal): number {
     this.#assertSignalHere(signal, 'offsetOf');
+    this.#assertRecordOffset(batch, recordOffset, 'offsetOf');
     return recordOffset * this.header.recordBytes + signal.byteOffsetInRecord;
   }
 
@@ -563,6 +589,7 @@ export class EdfFile {
     // Before delegating, so the refusal names the method the caller called rather than the
     // one underneath it.
     this.#assertSignalHere(signal, 'annotationBytes');
+    this.#assertRecordOffset(batch, recordOffset, 'annotationBytes');
     const start = this.offsetOf(batch, recordOffset, signal);
     return batch.data.subarray(start, start + signal.samplesPerRecord * this.header.bytesPerSample);
   }

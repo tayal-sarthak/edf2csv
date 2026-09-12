@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.73
+
+### two methods reading at a position nothing had checked
+
+`sampleAt` has checked where it is reading since 0.8.62. The two methods beside it, which do the
+same arithmetic on the same three arguments, checked nothing:
+
+```js
+file.offsetOf(batch, -5, signal)        // -1300
+file.offsetOf(batch, 1.5, signal)       // 390
+file.annotationBytes(batch, 99, signal) // Uint8Array(0)
+```
+
+A negative byte position. A position half a record in, which pairs the back half of one record
+with the front half of the next — the decode `readRecords` refuses a fractional `startRecord` for,
+in the one place a caller can still ask for it. And an empty slice for a record the batch does not
+hold, which `decodeRecordAnnotations` then reads as a record carrying no events.
+
+All three share one check now, and it names the method the caller called. The bound comes off the
+batch, which `offsetOf` had never touched — it read only `recordOffset` and the channel — so the
+batch is checked first rather than left to fail as a property read on whatever was passed.
+
 ## 0.8.72
 
 ### a channel from one file, read out of another, answering with numbers

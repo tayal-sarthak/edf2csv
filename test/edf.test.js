@@ -1815,6 +1815,59 @@ describe('the read budget', () => {
     }
   });
 
+  it('refuses a record position the other two methods that take one also cannot use', async () => {
+    /*
+      `sampleAt` has checked this since 0.8.62. `offsetOf` does the same arithmetic and hands
+      the position back rather than reading at it, and `annotationBytes` slices there — and
+      neither asked anything of the number:
+
+          file.offsetOf(batch, -5, signal)     // -1300
+          file.offsetOf(batch, 1.5, signal)    // 390, half a record in
+          file.annotationBytes(batch, 99, s)   // Uint8Array(0)
+
+      A negative byte position; a position that pairs the back half of one record with the
+      front half of the next, which is what `readRecords` refuses a fractional `startRecord`
+      for; and an empty slice, which reads as "this record carries no annotations" about a
+      record the batch does not hold.
+    */
+    const { OptionError } = await import('../dist/index.js');
+    const file = await EdfFile.open(fixture('annotations.edf'));
+    try {
+      const signal = file.dataSignals[0];
+      const annotations = file.annotationSignals[0];
+      let batch;
+      for await (const chunk of file.readRecords({})) { batch = chunk; break; }
+      // The positions they can use are unchanged.
+      assert.equal(file.offsetOf(batch, 0, signal), 0);
+      assert.equal(file.offsetOf(batch, 1, signal), file.header.recordBytes);
+      assert.ok(file.annotationBytes(batch, 1, annotations).length > 0);
+
+      for (const [method, call] of [
+        ['offsetOf', (n) => file.offsetOf(batch, n, signal)],
+        ['annotationBytes', (n) => file.annotationBytes(batch, n, annotations)],
+      ]) {
+        for (const bad of [-5, 1.5, batch.recordCount, '0', undefined]) {
+          assert.throws(
+            () => call(bad),
+            (error) => {
+              assert.ok(error instanceof OptionError, `${method} ${bad}: ${error}`);
+              assert.match(error.message, new RegExp(`^${method}: recordOffset must be`, 'u'));
+              return true;
+            },
+            `${method} accepted ${String(bad)}`,
+          );
+        }
+        // The bound is read off the batch, which these two never touched before.
+        assert.throws(() => (method === 'offsetOf'
+          ? file.offsetOf(42, 0, signal)
+          : file.annotationBytes(42, 0, annotations)),
+          new RegExp(`${method}: batch must be one of the batches readRecords yields`, 'u'));
+      }
+    } finally {
+      await file.close();
+    }
+  });
+
   it('reads a window without reserving room for the whole recording', async () => {
     const file = await EdfFile.open(fixture('long-stream.edf'));
     try {
