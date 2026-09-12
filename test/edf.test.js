@@ -550,6 +550,28 @@ describe('errors', () => {
     // A real slice still decodes, including the Buffer subclass the reader hands it.
     assert.equal(decodeRecordAnnotations(new Uint8Array(4), 0).malformed, 0);
     assert.equal(decodeRecordAnnotations(Buffer.alloc(4), 0).malformed, 0);
+
+    /*
+      And the second argument, which this function does not read — it writes it. `recordIndex`
+      is copied onto every `Annotation` produced, and `Annotation` declares it a number, so
+      whatever was passed came back out in the event list:
+
+          decodeRecordAnnotations(bytes, 'x').annotations[0].recordIndex   // 'x'
+          decodeRecordAnnotations(bytes).annotations[0].recordIndex        // absent
+
+      The second is the ordinary mistake: the page shows this beside `annotationBytes(batch,
+      recordOffset, signal)` and the two take their record different ways. It produced events
+      with the field missing, which is what `record_index` in annotations.csv is written from.
+    */
+    const tal = Buffer.from('+0\u0014\u0014\0+1.5\u0014\u0014Spindle\u0014\0', 'binary');
+    assert.equal(decodeRecordAnnotations(tal, 3).annotations[0].recordIndex, 3);
+    for (const index of ['x', -5, 1.5, null, undefined, NaN]) {
+      assert.throws(() => decodeRecordAnnotations(tal, index), (error) => {
+        assert.ok(error instanceof OptionError, `${String(index)} threw ${error}`);
+        assert.match(error.message, /^recordIndex must be the record's whole-number position/u);
+        return true;
+      }, `accepted ${String(index)}`);
+    }
   });
 
   it('refuses header bytes that are not bytes, without blaming the recording', async () => {

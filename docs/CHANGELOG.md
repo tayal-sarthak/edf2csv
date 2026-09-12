@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.77
+
+### the argument this decoder does not read but writes onto every event
+
+`decodeRecordAnnotations` checks the bytes it reads. Its other argument it does not read — it
+writes it.
+
+```js
+decodeRecordAnnotations(bytes, 'x').annotations[0].recordIndex   // 'x'
+decodeRecordAnnotations(bytes).annotations[0].recordIndex        // absent
+```
+
+`recordIndex` is copied onto every `Annotation` the call produces, and `Annotation` declares it a
+number. Nothing said it had to be one, so whatever was passed came back out in the event list, in
+the field `record_index` in annotations.csv is written from and the one a caller joins events back
+to records on.
+
+The second line is the ordinary way in. The api page offers this function beside
+`annotationBytes(batch, recordOffset, signal)` and suggests pairing them — and the two take their
+record different ways, one as a position in the file and one as a position in the batch. Leaving
+it off produced events with the field missing altogether, which reads back as a record of
+`undefined`.
+
+A whole non-negative number now, the way `readRecords` and `sampleAt` take a record. No upper
+bound: this one is a position in the file, and this function has not been shown the file.
+
 ## 0.8.76
 
 ### two functions answering for something that is not a channel

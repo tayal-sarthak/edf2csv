@@ -140,6 +140,32 @@ export function decodeRecordAnnotations(
       `bytes must be one record's annotation channel, got ${describeValue(bytes)}.`,
     );
   }
+  /*
+    And the second argument, which this function does not read — it writes it.
+
+    `recordIndex` is copied onto every `Annotation` this call produces, and `Annotation`
+    declares it a number. Nothing checked that it was one, so whatever was passed came back
+    out in the event list:
+
+        decodeRecordAnnotations(bytes, 'x').annotations[0].recordIndex   // 'x'
+        decodeRecordAnnotations(bytes).annotations[0].recordIndex        // absent
+
+    The second is the ordinary mistake, since the page shows this called as
+    `decodeRecordAnnotations(bytes, recordIndex)` beside `annotationBytes(batch, recordOffset,
+    signal)` and the two take their record different ways. It produces events with the field
+    missing altogether, which `record_index` in annotations.csv is written from, and which a
+    caller joining events back to records reads as a record of `undefined`.
+
+    A whole non-negative number, like the record bounds `readRecords` and `sampleAt` take:
+    records are counted from zero, and this one is a position in the file rather than in a
+    batch, so there is no upper bound to hold it to here.
+  */
+  if (!Number.isInteger(recordIndex) || recordIndex < 0) {
+    throw new OptionError(
+      `recordIndex must be the record's whole-number position in the file, got ` +
+        `${describeValue(recordIndex)}. It is written onto every annotation this returns.`,
+    );
+  }
   const annotations: Annotation[] = [];
   let recordStart: number | null = null;
   let isFirstTal = true;
