@@ -5879,9 +5879,26 @@ describe('--stdout', () => {
       */
       ['control-labels.edf', [], /which will appear as the channel's name/u],
       ['control-labels.edf', ['--annotations-only'], /channels\.csv\.gz's column cell/u],
+      /*
+        And the six `--annotations-only` sentences, which send the reader to the one file that
+        mode does write and named it uncompressed. `withSignalTableUnwritten` builds them after
+        the header and the plan have had their say, so it is the pass that knows which file the
+        sentence ended up naming — and it was the one pass with no way to know what that file is
+        called. The run above this one printed both spellings four lines apart: the `_ch`
+        collision hint said `channels.csv.gz` and the duplicate-label hint above it said
+        `channels.csv`, of the same file, in the same warning list.
+      */
+      ['label-suffix-collision.edf', ['--annotations-only'], /suffixed names appear only in/u],
+      ['degenerate-range.edf', ['--annotations-only'], /still records the digital range/u],
+      ['degenerate-range.edf', ['--annotations-only'], /still records the calibration/u],
+      ['quirky-labels.edf', ['--annotations-only'], /records the physical minimum and maximum/u],
+      ['discontinuous.edf', ['--annotations-only'], /carries each event's own onset/u],
+      ['records-backwards.edf', ['--annotations-only'], /record_index still names the record/u],
     ];
-    for (const [name, extra, marker] of cases) {
-      const out = path.join(dir, `${name}${extra.join('')}`);
+    // Keyed by position as well as name: two of these ask the same command for a different
+    // sentence, and sharing one output directory made the second refuse as an overwrite.
+    for (const [index, [name, extra, marker]] of cases.entries()) {
+      const out = path.join(dir, `${index}-${name}${extra.join('')}`);
       const { code, stderr } = await cli([fixture(name), '--out', out, '--gzip', ...extra]);
       assert.equal(code, 0, `${name}: ${stderr}`);
       const block = blocks(stderr).find((b) => marker.test(b.replace(/\s+/gu, ' ')));

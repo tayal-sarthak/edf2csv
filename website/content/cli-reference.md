@@ -452,7 +452,10 @@ of the recordings carry fails on the rest.
 The rest of the flags divide the same way, and it is worth saying which side each falls on, since
 nothing in a run reports a flag that did nothing. `--gzip` and `--bom` act on the two files that
 are written, so `annotations.csv.gz` and a byte order mark on `annotations.csv` are both what you
-get. `--checksum` records the input's SHA-256 in `metadata.json` as usual. `--decimals` and
+get — and the warnings this mode rewrites, which send you to whichever of the two the answer is
+in, name it as this run writes it. Until 0.8.71 six of them said `channels.csv` and
+`annotations.csv` to a run writing neither, so a `--gzip --annotations-only` conversion could
+print both spellings of one file in the same warning list. `--checksum` records the input's SHA-256 in `metadata.json` as usual. `--decimals` and
 `--layout` have nothing to act on — both describe the signal table, and there is none — so they
 are accepted and do nothing rather than being refused: a batch converting a folder passes one set
 of flags for every recording in it, and neither can be wrong about a particular one. `--stdout` is

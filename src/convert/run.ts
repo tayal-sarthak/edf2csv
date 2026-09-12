@@ -209,6 +209,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
               ...plan.diagnostics,
             ],
             plan.writeSignals,
+            plan.gzip,
           ),
           { toStdout: true, gzip: plan.gzip },
         ),
@@ -341,6 +342,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             ...stale,
           ],
           plan.writeSignals,
+          plan.gzip,
         ),
         { toStdout: false, gzip: plan.gzip },
       ),
@@ -1925,8 +1927,20 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
 export function withSignalTableUnwritten(
   diagnostics: readonly Diagnostic[],
   writesSignals: boolean,
+  gzip: boolean,
 ): Diagnostic[] {
   if (writesSignals) return [...diagnostics];
+  /*
+    The sidecars named here are named as the run writes them.
+
+    These sentences send the reader to the one file an `--annotations-only` run does write, and
+    said `channels.csv` to a `--gzip` run that writes `channels.csv.gz` — five hints pointing at
+    a name that is not in the directory, one of them beside the `_ch` collision hint that 0.8.48
+    had already taught to say `channels.csv.gz`. So a single run named both spellings, and only
+    the second one existed.
+  */
+  const channelsFile = outputCsvName('channels', gzip);
+  const annotationsFile = outputCsvName('annotations', gzip);
   return diagnostics.map((diagnostic) => {
     /*
       And the three calibration warnings, whose hints are about cells.
@@ -1967,7 +1981,12 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         message: diagnostic.message
-          .replace("as the channel's name in signals.csv", "as the channel's name in channels.csv's column cell")
+          .replace(
+            "as the channel's name in signals.csv",
+            `as the channel's name in ${channelsFile}'s column cell`,
+          )
+          // Matched on the name the header diagnostic used, which the line above has not
+          // touched: it renames the first mention, and this collapses the second.
           .replace("column cell and in channels.csv's", 'column cell and in its')
           .replace(' in any conversion that writes one', ''),
       };
@@ -1981,7 +2000,7 @@ export function withSignalTableUnwritten(
         hint:
           'Their names are suffixed with the signal number so they stay distinguishable. ' +
           '--annotations-only writes no signal table, so the suffixed names appear only in ' +
-          "channels.csv's column cells.",
+          `${channelsFile}'s column cells.`,
       };
     }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
@@ -1989,7 +2008,7 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           'No samples are converted with --annotations-only, so there are no cells to leave ' +
-          'empty. channels.csv still records the digital range the header gives.',
+          `empty. ${channelsFile} still records the digital range the header gives.`,
       };
     }
     if (diagnostic.code === 'DEGENERATE_PHYSICAL_RANGE') {
@@ -2000,15 +2019,15 @@ export function withSignalTableUnwritten(
           'so every sample would convert to the same value.',
         ),
         hint:
-          'No samples are converted with --annotations-only. channels.csv still records the ' +
-          'calibration, one point wide.',
+          `No samples are converted with --annotations-only. ${channelsFile} still records ` +
+          'the calibration, one point wide.',
       };
     }
     if (diagnostic.code === 'INVERTED_PHYSICAL_RANGE') {
       return {
         ...diagnostic,
         hint:
-          'No samples are converted with --annotations-only. channels.csv records the ' +
+          `No samples are converted with --annotations-only. ${channelsFile} records the ` +
           'physical minimum and maximum in the order the header gives them, inversion included.',
       };
     }
@@ -2018,8 +2037,8 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           '--annotations-only writes no signal rows, so nothing here is timed from the ' +
-          "records. annotations.csv carries each event's own onset, and the record it came " +
-          'from in record_index.',
+          `records. ${annotationsFile} carries each event's own onset, and the record it ` +
+          'came from in record_index.',
       };
     }
     if (diagnostic.hint.startsWith('Rows are written in file order')) {
@@ -2027,7 +2046,7 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           '--annotations-only writes no signal rows, so no time column is affected. ' +
-          "annotations.csv's record_index still names the record each event came from.",
+          `${annotationsFile}'s record_index still names the record each event came from.`,
       };
     }
     if (diagnostic.hint.startsWith('Sample times are written from zero')) {
@@ -2085,8 +2104,10 @@ export function withSidecarsNamed(
       return {
         ...diagnostic,
         message: diagnostic.message
-          .replace(/\bsignals\.csv\b/gu, outputCsvName('signals', true))
-          .replace(/\bchannels\.csv\b/gu, channels),
+          // Past a name the pass above already suffixed: `channels.csv.gz` contains
+          // `channels.csv`, and a second rename made it `channels.csv.gz.gz`.
+          .replace(/\bsignals\.csv\b(?!\.gz)/gu, outputCsvName('signals', true))
+          .replace(/\bchannels\.csv\b(?!\.gz)/gu, channels),
       };
     }
     /*
@@ -2335,6 +2356,7 @@ async function writeMetadata(
           ...plan.diagnostics,
         ],
         plan.writeSignals,
+        plan.gzip,
       ),
       // metadata.json is only written into a directory, so this is never the stdout case.
       { toStdout: false, gzip: plan.gzip },

@@ -1182,6 +1182,7 @@ async function showInfo(
           ...plan.diagnostics,
         ],
         plan.writeSignals,
+        plan.gzip,
       ),
       { toStdout, gzip: plan.gzip },
     );

@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.71
+
+### six hints for --annotations-only that named the file a --gzip run does not write
+
+0.8.70 closed with "every message, hint and refusal now spells an output file the way the run it
+describes would write it". Six did not.
+
+```
+$ edf2csv montage.edf --out csv --gzip --annotations-only
+warning: 2 signals share the label "T8" (positions #0, #1).
+         Their names are suffixed with the signal number so they stay
+         distinguishable. --annotations-only writes no signal table, so the
+         suffixed names appear only in channels.csv's column cells.
+warning: Signal 2 is labelled "T8_ch0", which is also the column name another
+         channel's "_ch" suffix produces, so it is named "T8_ch0_ch2" in
+         channels.csv.gz's column cell.
+
+Wrote csv
+  channels.csv.gz  3  rows
+```
+
+Two spellings of one file, four lines apart, in the same warning list — and the run wrote only
+the second.
+
+`--annotations-only` writes no signal table, so six hints are rewritten to send the reader to the
+file that mode *does* write. `withSignalTableUnwritten` does that rewriting, after the header and
+the plan have each had their say, which makes it the one pass that knows which file a sentence
+ended up naming — and the one pass with no way to know what that file is called. It wrote
+`channels.csv` and `annotations.csv` as literals.
+
+It takes the plan's `gzip` now and names them through `outputCsvName`, like everything else that
+names an output file. The five other sentences are the two degenerate-range hints, the inverted-
+range hint, and the two discontinuity hints that point at `annotations.csv`'s onsets and its
+`record_index`.
+
 ## 0.8.70
 
 ### the one refusal that is only a command, naming a file it would not write
