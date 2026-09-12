@@ -5646,6 +5646,61 @@ describe('--stdout', () => {
     assert.equal(forced.code, 0, forced.stderr);
   });
 
+  it('says which window --info is describing, rather than only the whole recording', async () => {
+    /*
+      `--info` is the mode whose purpose is to say what a conversion will do, and every other
+      flag that changes what gets written shows in it: `--channels` puts `(not selected)` in
+      the OUTPUT column, `--gzip` changes the names there, `--layout long` changes the sentence
+      under the table, `--annotations-only` replaces the estimate outright. `--start` and
+      `--end` changed one number:
+
+          $ edf2csv rec.edf --info                  $ edf2csv rec.edf --info --start 1s --end 2s
+          Duration   3s  (3 records of 1s)          Duration   3s  (3 records of 1s)
+          Would write 1,155 rows, roughly 22.2 KB.  Would write 385 rows, roughly 7.4 KB.
+
+      Byte-for-byte identical otherwise — and the Duration line, which is what a reader checks
+      a window against, described the whole file above an estimate describing a third of it.
+      The window is in `plan.range` already, which is what `Timed from` was added for one line
+      above: it governs the estimate and was simply never shown.
+    */
+    const whole = await cli([fixture('mixed-rates.edf'), '--info']);
+    assert.equal(whole.code, 0, whole.stderr);
+    assert.doesNotMatch(whole.stdout, /^Window /mu, whole.stdout);
+
+    const windowed = await cli([fixture('mixed-rates.edf'), '--info', '--start', '1s', '--end', '2s']);
+    assert.equal(windowed.code, 0, windowed.stderr);
+    assert.match(windowed.stdout, /^Window {5}1\.000s to 2\.000s {2}\(1 of 3 data records\)$/mu, windowed.stdout);
+    // Under Duration, which it qualifies, and above Size.
+    const order = windowed.stdout.split('\n').map((line) => line.split(/\s{2,}/u)[0]);
+    assert.ok(order.indexOf('Duration') < order.indexOf('Window'), windowed.stdout);
+    assert.ok(order.indexOf('Window') < order.indexOf('Size'), windowed.stdout);
+    // And the estimate it explains is the windowed one, which is what it is there for.
+    assert.match(windowed.stdout, /Would write 385 rows/u, windowed.stdout);
+
+    /*
+      On the recording's own clock, like `--start` itself — so a file timed from elsewhere
+      quotes the numbers that were typed rather than offsets from zero.
+    */
+    const late = await cli([fixture('late-start.edf'), '--info', '--start', '31s']);
+    assert.match(late.stdout, /^Window {5}31\.000s to 33\.000s {2}\(2 of 3 data records\)$/mu, late.stdout);
+    const negative = await cli([fixture('negative-origin.edf'), '--info', '--start=-99s']);
+    assert.match(negative.stdout, /^Window {5}-99\.000s to -97\.000s/mu, negative.stdout);
+
+    /*
+      And under --json, where the only trace of the window was `estimate.rows` coming back
+      smaller. The names are metadata.json's, which is this document's rule for everything
+      describing the run.
+    */
+    const asJson = JSON.parse((await cli([fixture('mixed-rates.edf'), '--info', '--json', '--start', '1s', '--end', '2s'])).stdout);
+    assert.equal(asJson.start_seconds, 1);
+    assert.equal(asJson.end_seconds, 2);
+    assert.equal(asJson.whole_recording, false);
+    const wholeJson = JSON.parse((await cli([fixture('mixed-rates.edf'), '--info', '--json'])).stdout);
+    assert.equal(wholeJson.whole_recording, true);
+    assert.equal(wholeJson.start_seconds, 0);
+    assert.equal(wholeJson.end_seconds, 3);
+  });
+
   it('does not put a control byte in a file --stdout will not write', async () => {
     /*
       This warning's job is to say where an invisible byte went, and under `--stdout` it named

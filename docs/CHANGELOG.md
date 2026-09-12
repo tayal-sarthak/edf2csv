@@ -8,6 +8,44 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.82
+
+### the window --info was describing, and never said
+
+`--info` is the mode whose whole purpose is to say what a conversion will do. Every flag that
+changes what gets written shows in it — except the two that choose how much of the recording gets
+written at all.
+
+```
+$ edf2csv rec.edf --info                    $ edf2csv rec.edf --info --start 1s --end 2s
+Duration   3s  (3 records of 1s)            Duration   3s  (3 records of 1s)
+...                                         ...
+Would write 1,155 rows, roughly 22.2 KB.    Would write 385 rows, roughly 7.4 KB.
+```
+
+Byte-for-byte identical otherwise. The Duration line — which is the line a reader checks a window
+against — goes on describing the whole file above an estimate describing a third of it, and the
+only way to find out why the number changed is to run the command twice and diff it.
+
+`--channels` puts `(not selected)` in the OUTPUT column; `--gzip` changes the names there;
+`--layout long` changes the sentence under the table; `--annotations-only` replaces the estimate
+outright. The window was in `plan.range` the whole time — the same thing `Timed from` was added
+for, one line above: it governs the estimate printed below and was simply never shown.
+
+```
+Duration   3s  (3 records of 1s)
+Window     1.000s to 2.000s  (1 of 3 data records)
+```
+
+In seconds rather than `1m 0s`, for the reason `Timed from` gives: these are numbers meant to be
+typed back into `--start` and `--end`, and on the recording's own clock, so a file timed from 30s
+or from −100s quotes what you would type rather than an offset from zero.
+
+`--info --json` gets `start_seconds`, `end_seconds` and `whole_recording`, under the names
+`metadata.json` records them by. There the only trace of a window was `estimate.rows` coming back
+smaller, so a survey over a folder archived a description of every recording with the window
+missing from it.
+
 ## 0.8.81
 
 ### the file a control byte was said to land in, on a run that writes none

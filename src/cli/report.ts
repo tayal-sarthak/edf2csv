@@ -293,6 +293,36 @@ export function formatInfo(
       `Timed from ${fixed(startsAt, 3)}s  (first sample; --start and --end use this clock)`,
     );
   }
+  /*
+    And the window, when one was asked for, which this report did not mention at all.
+
+    `--info` is the mode whose purpose is to say what a conversion will do, and every other
+    flag that changes what gets written is visible in it: `--channels` puts `(not selected)`
+    in the OUTPUT column, `--gzip` changes the names there, `--layout long` changes the
+    sentence under the table, `--annotations-only` replaces the estimate outright. `--start`
+    and `--end` changed one number:
+
+        $ edf2csv rec.edf --info                    $ edf2csv rec.edf --info --start 1s --end 2s
+        Duration   3s  (3 records of 1s)            Duration   3s  (3 records of 1s)
+        ...                                         ...
+        Would write 1,155 rows, roughly 22.2 KB.    Would write 385 rows, roughly 7.4 KB.
+
+    Byte-for-byte identical otherwise — and the Duration line, which is what a reader checks a
+    window against, goes on describing the whole file above an estimate that describes a third
+    of it. The window is in `plan.range` already, which is the same thing `Timed from` above
+    was added for: it governs the estimate printed below and was simply never shown.
+
+    In seconds rather than through `formatDuration`, for the reason that line gives: these are
+    numbers meant to be typed back into `--start` and `--end`, and "16m 40s" is not one.
+  */
+  const { range } = plan;
+  if (!range.isWholeRecording && Number.isFinite(range.startSeconds) && Number.isFinite(range.endSeconds)) {
+    const records = range.endRecord - range.startRecord;
+    lines.push(
+      `Window     ${fixed(range.startSeconds, 3)}s to ${fixed(range.endSeconds, 3)}s  ` +
+        `(${grouped(records)} of ${counted(file.recordCount, 'data record')})`,
+    );
+  }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
   if (header.patientId) lines.push(`Patient    ${printable(header.patientId)}`);
   if (header.recordingId) lines.push(`Recording  ${printable(header.recordingId)}`);
@@ -542,6 +572,19 @@ export function infoJson(
       // zero; not when the first record's timekeeping TAL puts the recording elsewhere. Both
       // of the fields above are lengths and neither says where that length sits.
       first_sample_seconds: plan.range.recordingStartSeconds,
+      /*
+        The window, under the names `metadata.json` gives it, which is the rule this document
+        follows for everything describing the run.
+
+        The text form did not show it either until 0.8.82; here the only trace of `--start`
+        and `--end` was `estimate.rows` coming back smaller, with nothing in the document
+        saying why. A survey that runs `--info --json` over a folder with a window on the
+        command line archives a description of each recording in which the window does not
+        appear.
+      */
+      start_seconds: plan.range.startSeconds,
+      end_seconds: plan.range.endSeconds,
+      whole_recording: plan.range.isWholeRecording,
       annotation_channels: file.annotationSignals.length,
       // Named as `summaryJson` names the same count, so a prediction and a conversion read
       // the same field.
