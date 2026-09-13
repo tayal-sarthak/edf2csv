@@ -493,13 +493,15 @@ These come from reading the EDF+ annotation channel and working out where each d
 
 This code covers six related conditions, and a single file can raise more than one of them.
 
-**The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records aren't contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
+**The recording is marked discontinuous.** The header's reserved field says `EDF+D` (or `BDF+D`), meaning the data records need not be contiguous in time. Sleep studies with paused acquisition and long-term monitoring with interrupted telemetry both produce these.
 
 ```
-warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+warning: This recording is marked discontinuous (EDF+D): its data records need not be contiguous in time.
          Each row carries its true recording time, so gaps stay visible instead
          of being closed.
 ```
+
+The sentence is about the marker, not about the records: this warning is raised by the header parser, which has read none of them, and a file marked `EDF+D` whose records happen to sit end to end is unusual and perfectly legal. Until 0.9.6 it said "its data records are not contiguous in time" — and on such a file `--info` omits the `Time span` line, because the span and the duration agree, three lines above a warning saying they do not. Where the records really do contradict their marker it is reported where the evidence is, which is what the `EDF+C` condition below does.
 
 That hint is withdrawn on a file that cannot keep it. A recording marked `EDF+D` whose record times are not recorded anywhere — no annotation channel, or none that can be read — is written as if contiguous, and the warning says so and points at the one below it. Until 0.5.106 both printed as they are, and the second denied the first.
 

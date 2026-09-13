@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.6
+
+### a fact about the records, from a function that has read none
+
+The header's reserved field says `EDF+D`, and this warning turned that into a claim about the data
+records:
+
+```
+warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+```
+
+It is raised by `parseHeader`, which has read none of them. A file marked `EDF+D` whose records
+happen to sit end to end is unusual and perfectly legal — nothing in the format requires a gap to
+exist just because one is allowed — and on such a file the rest of the report already knows:
+`--info` prints the `Time span` line only when the span and the duration differ, so it stays
+silent, three lines above a warning saying the opposite.
+
+```
+Duration   2s  (2 records of 1s)
+Size       688 B
+...
+warning: This recording is marked discontinuous (EDF+D): its data records need not be
+         contiguous in time.
+```
+
+The marker is the thing worth reporting and the thing this function knows, which is how its
+continuous twin is built: "This file is marked continuous (EDF+C), but 1 of its 3 data records
+says it starts somewhere other than where continuity puts it" — the field first, the evidence
+after, raised where the evidence is.
+
+`withTimingPromiseKept` already withdraws this warning's *hint* when the file cannot keep it, for
+exactly this reason and in exactly that place. The sentence above the hint was making a claim of
+its own.
+
 ## 0.9.5
 
 ### an overlap shorter than a sample interval, under a warning that says otherwise

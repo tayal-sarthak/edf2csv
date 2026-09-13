@@ -131,7 +131,7 @@ Format     EDF+ (discontinuous)
 and conversion warns before it starts:
 
 ```
-warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+warning: This recording is marked discontinuous (EDF+D): its data records need not be contiguous in time.
          Each row carries its true recording time, so gaps stay visible instead
          of being closed.
 ```

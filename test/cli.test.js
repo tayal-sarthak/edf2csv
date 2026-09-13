@@ -6002,8 +6002,8 @@ describe('--stdout', () => {
       timing describe the rows of a signal table. A recording whose records run backwards got
       both of these over an annotations.csv holding its header and no rows:
 
-          warning: This is a discontinuous (EDF+D) recording: its data records are not
-                   contiguous in time.
+          warning: This recording is marked discontinuous (EDF+D): its data records need
+                   not be contiguous in time.
                    Each row carries its true recording time, so gaps stay visible instead of
                    being closed.
           warning: 2 data records start earlier than the record before them.

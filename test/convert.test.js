@@ -539,7 +539,7 @@ describe('column naming', () => {
 
     const dir = await outDir();
     const result = await convert(untimed, { outputDir: dir });
-    const marked = result.diagnostics.find((d) => d.code === 'DISCONTINUOUS' && /not contiguous in time/u.test(d.message));
+    const marked = result.diagnostics.find((d) => d.code === 'DISCONTINUOUS' && /need not be contiguous in time/u.test(d.message));
     assert.ok(marked, JSON.stringify(result.diagnostics));
     assert.doesNotMatch(marked.hint, /gaps stay visible/u, marked.hint);
 
@@ -550,6 +550,34 @@ describe('column naming', () => {
     // And the two warnings no longer contradict each other.
     const lost = result.diagnostics.find((d) => /no annotation channel/u.test(d.message));
     assert.ok(lost, JSON.stringify(result.diagnostics));
+
+    /*
+      And the sentence above the hint, which made a claim of its own from the same field.
+
+      "its data records are not contiguous in time" is a fact about the records, asserted by a
+      function that has read none of them — and an EDF+D file whose records sit end to end is
+      unusual and perfectly legal. The rest of the report already knows: `--info` prints the
+      `Time span` line only when the span and the duration differ, so on such a file it stays
+      silent while this warning three lines below it said the opposite.
+    */
+    const contiguous = path.join(scratch, 'contiguous-d.edf');
+    const { buildTal } = await import('./fixtures/edf-writer.mjs');
+    writeEdf({
+      path: contiguous, reserved: 'EDF+D', numRecords: 2, recordDuration: 1,
+      talsForRecord: (r) => buildTal(r),
+      signals: [
+        { label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+          digMax: 1000, samplesPerRecord: 2, gen: (r, s) => r * 2 + s },
+        { label: 'EDF Annotations', annotations: true, samplesPerRecord: 30, dimension: '',
+          physMin: -1, physMax: 1, digMin: -32768, digMax: 32767 },
+      ],
+    });
+    const endToEnd = await convert(contiguous, { outputDir: await outDir(), quiet: true });
+    const said = endToEnd.diagnostics.find((d) => d.code === 'DISCONTINUOUS');
+    assert.ok(said, JSON.stringify(endToEnd.diagnostics));
+    assert.match(said.message, /marked discontinuous \(EDF\+D\): its data records need not be/u, said.message);
+    // The records of this one really are contiguous, which is why the old sentence was wrong.
+    assert.equal(endToEnd.plan.range.recordingEndSeconds - endToEnd.plan.range.recordingStartSeconds, 2);
 
     /*
       A file that can keep the promise keeps it. `discontinuous.edf` has the timekeeping, and

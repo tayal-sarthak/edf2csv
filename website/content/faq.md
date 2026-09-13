@@ -219,7 +219,7 @@ That file has no data between 1.9 s and 10.0 s because none was recorded. You're
 conversion time:
 
 ```text
-warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+warning: This recording is marked discontinuous (EDF+D): its data records need not be contiguous in time.
          Each row carries its true recording time, so gaps stay visible instead
          of being closed.
 ```

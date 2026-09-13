@@ -134,7 +134,7 @@ A file with `EDF+D` gets a warning, because a converter that ignores this field 
 time axis that's quietly wrong.
 
 ```
-warning: This is a discontinuous (EDF+D) recording: its data records are not contiguous in time.
+warning: This recording is marked discontinuous (EDF+D): its data records need not be contiguous in time.
          Each row carries its true recording time, so gaps stay visible instead
          of being closed.
 ```

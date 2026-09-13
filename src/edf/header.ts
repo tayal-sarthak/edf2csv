@@ -1272,9 +1272,26 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     diagnostics.push({
       code: 'DISCONTINUOUS',
       severity: 'warning',
+      /*
+        What the marker says, which is all this function has.
+
+        The sentence asserted a fact about the records — "its data records are not contiguous
+        in time" — from a header field, one record's worth of which this has not read. An
+        EDF+D file whose records happen to sit end to end is unusual and perfectly legal, and
+        the rest of the report already knows: `--info` prints the `Time span` line only when
+        the span and the duration differ, so on such a file it stays silent and this warning
+        three lines below it says the opposite.
+
+        The marker is what is worth reporting, and it is what the continuous twin of this
+        warning reports — "This file is marked continuous (EDF+C), but 1 of its 3 data records
+        says it starts somewhere other than where continuity puts it": the field first, the
+        evidence after, raised where the evidence is. `withTimingPromiseKept` already withdraws
+        this warning's hint for the same reason, in the same place, and left the sentence above
+        it making a claim of its own.
+      */
       message:
-        `This is a discontinuous (${isBdf ? 'BDF+D' : 'EDF+D'}) recording: its data records are ` +
-        `not contiguous in time.`,
+        `This recording is marked discontinuous (${isBdf ? 'BDF+D' : 'EDF+D'}): its data ` +
+        `records need not be contiguous in time.`,
       hint: 'Each row carries its true recording time, so gaps stay visible instead of being closed.',
     });
   }
