@@ -5646,6 +5646,45 @@ describe('--stdout', () => {
     assert.equal(forced.code, 0, forced.stderr);
   });
 
+  it('keeps a record length on the line it sits on, however long the header makes it', async () => {
+    /*
+      A record duration is eight characters of header, so `1e308` fits with three to spare —
+      and `plain` expands a double to its full decimal form, which is what annotations.csv's
+      columns need and what this line took:
+
+          Duration   unknown  (2 records of 1000000000000000 ... 0000s)
+
+      Three hundred and nine digits, on a line whose other half has just said the total cannot
+      be stated, three lines above a RATE column rendering the same magnitude as
+      `4.000e-308 Hz`. The expansion is here because `--start 1e-15s` is refused as an unknown
+      unit `e`, so a record length has to be typable — and past the width of this line nothing
+      is typable either way.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-reclen-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const signals = [{ label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+      digMax: 2047, samplesPerRecord: 4, gen: (r, i) => r * 4 + i }];
+
+    const huge = path.join(dir, 'huge.edf');
+    writeEdf({ path: huge, numRecords: 2, recordDuration: 1e308, signals });
+    const wide = await cli([huge, '--info']);
+    assert.equal(wide.code, 0, wide.stderr);
+    const duration = wide.stdout.split('\n').find((line) => line.startsWith('Duration'));
+    assert.match(duration, /^Duration {3}unknown {2}\(2 records of 1e\+308s\)$/u, duration);
+    assert.ok(duration.length < 80, `${duration.length} columns`);
+
+    /*
+      And the other end, which is the reason the expansion exists: 1e-15 is seventeen
+      characters plain, `--start` takes that and refuses `1e-15s`, so it stays as it is.
+    */
+    const fast = await cli([fixture('repeating-fast.edf'), '--info']);
+    assert.match(fast.stdout, /^Duration {3}0\.000000000000002s {2}\(2 records of 0\.000000000000001s\)$/mu, fast.stdout);
+    // And every ordinary recording is untouched.
+    assert.match((await cli([fixture('mixed-rates.edf'), '--info'])).stdout,
+      /^Duration {3}3s {2}\(3 records of 1s\)$/mu);
+  });
+
   it('says which window --info is describing, rather than only the whole recording', async () => {
     /*
       `--info` is the mode whose purpose is to say what a conversion will do, and every other

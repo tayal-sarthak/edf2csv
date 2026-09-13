@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.95
+
+### three hundred and nine digits, on a line that had just said unknown
+
+An EDF header states its record duration in eight characters, so `1e308` fits with three to
+spare. `plain` expands a double to its full decimal form — which is what annotations.csv's
+columns need, one notation down a column so a `merge` on it matches — and this line took the
+same rendering:
+
+```
+Duration   unknown  (2 records of 100000000000000000000000000 ... 000000s)
+```
+
+Three hundred and nine digits. On a line whose other half has just said the total cannot be
+stated, and three lines above a RATE column rendering the same magnitude as `4.000e-308 Hz`,
+because `formatRate` already falls back to exponent form where plain decimal stops carrying the
+number. It is the failure `listed` exists for, one line over: a message is not the place for
+everything a header is free to ask for.
+
+The expansion is here for a reason, and it keeps it. `--start 1e-15s` is refused as an unknown
+unit `e`, so a record length has to be in a form `--start` and `--duration` accept, and
+`repeating-fast.edf` still reads `0.000000000000001s` — seventeen characters, and typable. Past
+the width of this line nothing is typable either way: a reader cannot count three hundred digits
+any more than they can pass an exponent, so the shortest exact form is the more honest of the two.
+
 ## 0.8.94
 
 ### the window that vanished from the one report that needed it
