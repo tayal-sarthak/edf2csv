@@ -1830,6 +1830,28 @@ describe('option checking', () => {
         /recordStarts must be a list of record start times, or null, got 42/u],
       [{ recordDuration: 1, recordCount: 3, recordStarts: {} },
         /recordStarts must be a list of record start times, or null, got \{\}/u],
+      /*
+        And what is in the list, which is where that failure actually lands. The check asked
+        whether the argument was a list and stopped, so the contradiction its own paragraph
+        describes for a string came straight back from a list of them:
+
+            resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: ['a', 'b', 'c'] })
+            { startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0,
+              isWholeRecording: true }
+
+        `span` compares each start to find the earliest and latest, every comparison against a
+        string is false, and it falls back to the contiguous span — which is why endSeconds
+        looks right. `selectRecords` then matches no record at all. NaN takes the same route,
+        and NaN is what a list built by parsing text arrives as.
+      */
+      [{ recordDuration: 1, recordCount: 3, recordStarts: ['a', 'b', 'c'] },
+        /recordStarts\[0\] must be the second that record starts at, or null where it is not known, got "a"/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [NaN, NaN, NaN] },
+        /recordStarts\[0\] must be .*got NaN/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [0, 1, 'x'] },
+        /recordStarts\[2\] must be .*got "x"/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [0, Infinity, 2] },
+        /recordStarts\[1\] must be .*got Infinity/u],
     ]) {
       assert.throws(() => resolveRange(options), (error) => {
         assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
@@ -1837,6 +1859,17 @@ describe('option checking', () => {
         return true;
       });
     }
+    /*
+      A record whose position is not known is null, which `readAnnotations` really hands back
+      and which the caller already places from its neighbours. That is the one non-number a
+      list may hold, and a Float64Array is what the reader builds.
+    */
+    for (const starts of [null, undefined, [0, 1, 2], [0, null, 2], new Float64Array([0, 1, 2])]) {
+      const range = resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: starts });
+      assert.equal(range.endRecord, 3, `${String(starts)} lost a record`);
+      assert.equal(range.isWholeRecording, true, String(starts));
+    }
+
     // And the bag itself: `.start` off a number is undefined rather than a throw, so 42
     // resolved; null and undefined came back naming a property of this function's parameter.
     for (const bad of [42, 'x', null, undefined, true]) {

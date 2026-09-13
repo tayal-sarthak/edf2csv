@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.1
+
+### a list of strings is a list
+
+0.8.89 gave `recordStarts` a check, because a string is iterable and `recordStarts: 'x'` spread to
+its characters and came back as a range that called itself the whole recording and covered none of
+it. The check asks whether the argument is a list. A list of strings is a list.
+
+```js
+resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: ['a', 'b', 'c'] })
+{ startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0, isWholeRecording: true }
+```
+
+The same contradiction, from the same cause, one level in. `span` compares every start to find the
+earliest and the latest; every comparison against a string is false, so it falls back to the
+contiguous span — which is why `endSeconds` reads correctly. `selectRecords` then compares the
+same values again and matches no record at all.
+
+`NaN` takes the identical route, and `NaN` is what a list built by parsing text arrives as:
+`['0', '1', '2'].map(Number)` is fine, `['0s', '1s'].map(Number)` is not.
+
+`null` is still taken, for a record whose position is not known — that is what `readAnnotations`
+hands back and what the code below already places from its neighbours — and so is the
+`Float64Array` the reader builds, whose elements cannot be anything but numbers.
+
 ## 0.9.0
 
 ### the two fields on a channel that only buildPlan reads

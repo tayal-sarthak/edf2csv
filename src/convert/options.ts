@@ -475,6 +475,37 @@ export function assertRecordShape(input: {
         `makes a discontinuous recording span more time than it holds.`,
     );
   }
+  /*
+    And what is in the list, which is where the failure above actually lands.
+
+    That check asks whether the argument is a list and stops, and the contradiction its own
+    paragraph describes for a string comes straight back from a list of them:
+
+        resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: ['a', 'b', 'c'] })
+        { startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0, isWholeRecording: true }
+
+    A range that calls itself the whole recording and covers none of it. `span` reads each
+    start to find the earliest and the latest, and every comparison against a string is false,
+    so it falls back to the contiguous span — which is why `endSeconds` looks right. Then
+    `selectRecords` compares the same strings again and matches no record at all. `NaN` takes
+    the identical route, and `NaN` is what a list built by parsing text arrives as.
+
+    A record whose position is unknown is `null`, which `readAnnotations` really does hand
+    back and which the code below already places from its neighbours. That is the one
+    non-number this takes.
+  */
+  if (recordStarts !== null && recordStarts !== undefined) {
+    const starts = recordStarts as ArrayLike<unknown>;
+    for (let at = 0; at < starts.length; at++) {
+      const start = starts[at];
+      if (start === null || start === undefined || Number.isFinite(start)) continue;
+      throw new OptionError(
+        `recordStarts[${at}] must be the second that record starts at, or null where it is ` +
+          `not known, got ${describeValue(start)}. A start that is not a number matches no ` +
+          `record, so the window comes back empty and calls itself the whole recording.`,
+      );
+    }
+  }
 }
 
 /**
