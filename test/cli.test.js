@@ -5687,6 +5687,21 @@ describe('--stdout', () => {
     assert.match(negative.stdout, /^Window {5}-99\.000s to -97\.000s/mu, negative.stdout);
 
     /*
+      And what the window selects, which is not data records in every mode.
+      `--annotations-only` reads the annotation channel and converts none of them — the OUTPUT
+      column says `(no signal data)` for every channel and the line under the table says "and
+      no signal data" — while this counted them anyway, three lines above both. The window is
+      not idle there: it decides which events are exported, by onset.
+    */
+    const events = await cli([fixture('annotations.edf'), '--info', '--annotations-only', '--start', '1s']);
+    assert.equal(events.code, 0, events.stderr);
+    assert.match(events.stdout, /^Window {5}1\.000s to 3\.000s {2}\(events outside it are not exported\)$/mu, events.stdout);
+    assert.doesNotMatch(events.stdout, /^Window[^\n]*data record/mu, events.stdout);
+    // And a run that does write signal tables still counts the records it will read.
+    const signals = await cli([fixture('annotations.edf'), '--info', '--start', '1s']);
+    assert.match(signals.stdout, /^Window {5}1\.000s to 3\.000s {2}\(2 of 3 data records\)$/mu, signals.stdout);
+
+    /*
       And under --json, where the only trace of the window was `estimate.rows` coming back
       smaller. The names are metadata.json's, which is this document's rule for everything
       describing the run.

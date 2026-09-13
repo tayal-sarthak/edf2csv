@@ -316,10 +316,25 @@ export function formatInfo(
   */
   const { range } = plan;
   if (!range.isWholeRecording && Number.isFinite(range.startSeconds) && Number.isFinite(range.endSeconds)) {
-    const records = range.endRecord - range.startRecord;
+    /*
+      What the window selects, which is not data records in every mode.
+
+      `--annotations-only` reads the annotation channel and converts no data records at all —
+      the OUTPUT column of the table below says `(no signal data)` for every channel, and the
+      line under it says "and no signal data". This counted them anyway:
+
+          Window     1.000s to 3.000s  (2 of 3 data records)
+          ...
+          Would write annotations.csv and channels.csv, and no signal data.
+
+      The window is not idle in that mode: it decides which events are exported, by onset. So
+      the range stays and the parenthetical says what it is doing.
+    */
+    const selects = plan.writeSignals
+      ? `${grouped(range.endRecord - range.startRecord)} of ${counted(file.recordCount, 'data record')}`
+      : 'events outside it are not exported';
     lines.push(
-      `Window     ${fixed(range.startSeconds, 3)}s to ${fixed(range.endSeconds, 3)}s  ` +
-        `(${grouped(records)} of ${counted(file.recordCount, 'data record')})`,
+      `Window     ${fixed(range.startSeconds, 3)}s to ${fixed(range.endSeconds, 3)}s  (${selects})`,
     );
   }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);

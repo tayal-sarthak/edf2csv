@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.93
+
+### data records counted for a mode that converts none
+
+The `Window` line 0.8.82 added counts the data records a run will read. `--annotations-only` reads
+none.
+
+```
+$ edf2csv scoring.edf --info --annotations-only --start 1s
+Duration   3s  (3 records of 1s)
+Window     1.000s to 3.000s  (2 of 3 data records)
+...
+0  EEG Fpz-Cz  ...  100 Hz  -250 to 250  (no signal data)
+
+Would write annotations.csv and channels.csv, and no signal data.
+```
+
+Two data records, in a report that says three lines below that no signal data is written and
+prints `(no signal data)` in the OUTPUT column of every channel. The line was written without
+being crossed against the one mode that converts nothing — which is the fault this tool has spent
+0.8.56 to 0.8.71 taking out of nine other sentences.
+
+The window is not idle in that mode, which is why the line stays: it decides which events reach
+annotations.csv, by onset. So the range is kept and the parenthetical says what it is actually
+doing.
+
 ## 0.8.92
 
 ### a refusal whose first line ended where the filesystem said
