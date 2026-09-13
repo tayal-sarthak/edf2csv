@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.0
+
+### the two fields on a channel that only buildPlan reads
+
+`assertSignals` asks a channel for `index`, `label` and `isAnnotations`. That is what its other
+two callers read: `selectChannels` matches terms against the label, `buildColumnNames` names
+columns from it. `buildPlan` reads two more — it groups the channels by `samplingRate` and counts
+every row in the estimate from `samplesPerRecord` — and asked nothing of either.
+
+```js
+buildPlan({ signals: [{ index: 0, label: 'ECG', isAnnotations: false }], recordDuration: 1,
+            recordCount: 3, hasAnnotationChannel: false }, {})
+OptionError: hz must be a sampling rate in hertz, got undefined.
+```
+
+`hz` is a parameter of `formatRate`, three calls down, named at a caller who passed `signals`.
+That is the failure `assertSignals` exists to remove, quoted in its own docstring for `label`.
+
+A sample count that is a number but not a count went further, into the arithmetic:
+
+```js
+samplesPerRecord: 2.5    // estimate.rows: 394.5 — half a row
+samplesPerRecord: -4     // the estimate falls, with nothing said
+samplesPerRecord: '256'  // coerced and accepted
+```
+
+Checked in `assertPlanInput` rather than in `assertSignals`, for the reason `assertRecordShape`
+gives one function down: `selectChannels` and `buildColumnNames` never look at either field, and
+a checker should not demand what its caller does not read.
+
+What a header can really state is still taken. `samplesPerRecord: 0` is a channel with no samples
+at all, which is what `NO_SAMPLES` reports; a rate of `0` or `Infinity` comes from a record
+duration of 1e308 or 1e-308, five characters in an eight-character field.
+
 ## 0.8.99
 
 ### the digital sample that was pasted onto the offset, not added to it

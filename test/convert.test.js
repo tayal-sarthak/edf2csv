@@ -1976,6 +1976,14 @@ describe('option checking', () => {
       // The plan it does make is unchanged.
       assert.equal(buildPlan(input, {}).estimate.rows, 1155);
 
+      // And the values a header can really state are still taken: a channel with no samples
+      // at all is what NO_SAMPLES reports, and a rate overflows to Infinity when the record
+      // duration is small enough — five characters in an eight-character field.
+      for (const odd of [{ samplesPerRecord: 0, samplingRate: 0 }, { samplingRate: Infinity }]) {
+        const signals = file.header.signals.map((s) => ({ ...s, ...odd }));
+        assert.ok(buildPlan({ ...input, signals }, {}).groups.length >= 0);
+      }
+
       for (const [changed, expected] of [
         [{ recordCount: undefined }, /recordCount must be a whole number of data records, got undefined/u],
         [{ recordCount: -5 }, /recordCount must be a whole number of data records, got -5/u],
@@ -1984,6 +1992,31 @@ describe('option checking', () => {
         [{ recordDuration: 0 }, /got 0\./u],
         [{ recordDuration: '1' }, /got "1"/u],
         [{ signals: file.header }, /signals must be the channel list from a header/u],
+        /*
+          And the two fields on a channel that this function reads and `assertSignals` does
+          not ask about. That checker asks for `index`, `label` and `isAnnotations`, which is
+          what its other two callers read; `buildPlan` groups by `samplingRate` and counts
+          rows from `samplesPerRecord`:
+
+              buildPlan({ signals: [{ index: 0, label: 'ECG', isAnnotations: false }], … }, {})
+              OptionError: hz must be a sampling rate in hertz, got undefined.
+
+          naming a parameter of a function three calls down at a caller who passed `signals`.
+          A fractional or negative sample count went through as arithmetic instead — 2.5
+          samples a record came back as `rows: 394.5`, half a row.
+        */
+        [{ signals: file.header.signals.map((s) => ({ index: s.index, label: s.label, isAnnotations: s.isAnnotations })) },
+          /signals\[0\]\.samplingRate must be a sampling rate in hertz, got undefined/u],
+        [{ signals: file.header.signals.map((s) => ({ ...s, samplingRate: 'x' })) },
+          /signals\[0\]\.samplingRate must be a sampling rate in hertz, got "x"/u],
+        [{ signals: file.header.signals.map((s) => ({ ...s, samplingRate: -1 })) },
+          /signals\[0\]\.samplingRate must be .*got -1/u],
+        [{ signals: file.header.signals.map((s) => ({ ...s, samplesPerRecord: 2.5 })) },
+          /signals\[0\]\.samplesPerRecord must be a whole number of samples, got 2\.5/u],
+        [{ signals: file.header.signals.map((s) => ({ ...s, samplesPerRecord: -4 })) },
+          /signals\[0\]\.samplesPerRecord must be .*got -4/u],
+        [{ signals: file.header.signals.map((s) => ({ ...s, samplesPerRecord: String(s.samplesPerRecord) })) },
+          /signals\[0\]\.samplesPerRecord must be .*got "256"/u],
       ]) {
         assert.throws(() => buildPlan({ ...input, ...changed }, {}), (error) => {
           assert.ok(error instanceof OptionError, `${JSON.stringify(changed)} threw ${error}`);

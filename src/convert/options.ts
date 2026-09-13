@@ -356,6 +356,56 @@ export function assertPlanInput(input: {
 }): void {
   assertSignals(input.signals);
   assertRecordShape(input);
+  assertPlannableSignals(input.signals as readonly Record<string, unknown>[]);
+}
+
+/**
+ * The two numbers on a channel that `buildPlan` reads and `assertSignals` does not ask about.
+ *
+ * `assertSignals` asks for `index`, `label` and `isAnnotations`, which is what its other two
+ * callers read — they name columns and match terms. `buildPlan` goes further: it groups the
+ * channels by `samplingRate` and counts rows from `samplesPerRecord`, and asked nothing of
+ * either. So a list of channel-shaped objects carrying the three fields it does check reached
+ * the rate formatter and came back
+ *
+ *     buildPlan({ signals: [{ index: 0, label: 'ECG', isAnnotations: false }], … }, {})
+ *     OptionError: hz must be a sampling rate in hertz, got undefined.
+ *
+ * naming `hz`, a parameter of a function three calls down, at a caller who passed `signals`.
+ * That is the failure `assertSignals` exists to remove, and it is the same one its own
+ * docstring quotes for `label`.
+ *
+ * The values it takes are the ones a header can really state, which is wider than it looks:
+ * `samplesPerRecord` may be zero — that is what `NO_SAMPLES` reports — and a rate may be zero
+ * or `Infinity`, because a record duration small enough to overflow the division is five
+ * characters in an eight-character field. What a header cannot state is a fractional or
+ * negative sample count, and those went through as arithmetic:
+ *
+ *     samplesPerRecord: 2.5   // estimate.rows: 394.5, half a row
+ *     samplesPerRecord: -4    // estimate.rows falls, with nothing said
+ *
+ * Split out rather than folded into `assertSignals`, for the reason `assertRecordShape` gives
+ * one function down: `selectChannels` and `buildColumnNames` never look at either field, and a
+ * checker should not demand what its caller does not read.
+ */
+function assertPlannableSignals(signals: readonly Record<string, unknown>[]): void {
+  for (const [at, signal] of signals.entries()) {
+    const rate = signal['samplingRate'];
+    if (typeof rate !== 'number' || Number.isNaN(rate) || rate < 0) {
+      throw new OptionError(
+        `signals[${at}].samplingRate must be a sampling rate in hertz, got ` +
+          `${describeValue(rate)}. It is samplesPerRecord over the record duration, and it is ` +
+          `what the channels are grouped into output files by.`,
+      );
+    }
+    const samples = signal['samplesPerRecord'];
+    if (!Number.isInteger(samples) || (samples as number) < 0) {
+      throw new OptionError(
+        `signals[${at}].samplesPerRecord must be a whole number of samples, got ` +
+          `${describeValue(samples)}. Every row this plan counts comes from it.`,
+      );
+    }
+  }
 }
 
 /**
