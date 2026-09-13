@@ -271,8 +271,12 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
       const window = requestedAnnotationWindow(options, plan.range.recordingStartSeconds);
       // Reported against the rows that will be written, not against the file; see
       // durationDiagnostics.
-      plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, window));
-      plan.diagnostics.push(...descriptionDiagnostics(annotationData.annotations, window));
+      plan.diagnostics.push(
+        ...durationDiagnostics(annotationData.annotations, window, plan.gzip),
+      );
+      plan.diagnostics.push(
+        ...descriptionDiagnostics(annotationData.annotations, window, plan.gzip),
+      );
       const result = await writeAnnotationsCsv(
         outputDir,
         annotationData.annotations,
@@ -1450,8 +1454,19 @@ async function writeChannelsCsv(
 export function durationDiagnostics(
   annotations: readonly Annotation[],
   window: { from: number; to: number },
+  /*
+    And the name the run writes that file under, which these sentences did not have.
+
+    Both hints send the reader to `annotations.csv` to look at the rows they are about, and a
+    `--gzip` run writes `annotations.csv.gz`. `emptyAnnotations` two functions down takes this
+    for the same reason and has since 0.8.48 — "`--info` named `annotations.csv` for a run that
+    wrote `annotations.csv.gz`" — and the four beside it were left naming a file that is not in
+    the directory.
+  */
+  gzip = false,
 ): Diagnostic[] {
   const written = annotations.filter((a) => a.onset >= window.from && a.onset < window.to);
+  const eventsFile = outputCsvName('annotations', gzip);
   const diagnostics: Diagnostic[] = [];
 
   const negative = written.filter((a) => a.duration !== null && a.duration < 0).length;
@@ -1464,7 +1479,7 @@ export function durationDiagnostics(
         `${counted(negative, 'annotation')} state${one ? 's' : ''} a duration below zero, ` +
         `which is not a length of time.`,
       hint:
-        'The value is written to annotations.csv as the file gave it. Adding it to onset_s ' +
+        `The value is written to ${eventsFile} as the file gave it. Adding it to onset_s ` +
         'ends the event before it starts, so check these rows before using the durations.',
     });
   }
@@ -1517,8 +1532,11 @@ export function durationDiagnostics(
 export function descriptionDiagnostics(
   annotations: readonly Annotation[],
   window: { from: number; to: number },
+  /** The name the run writes the event list under; see `durationDiagnostics`. */
+  gzip = false,
 ): Diagnostic[] {
   const written = annotations.filter((a) => a.onset >= window.from && a.onset < window.to);
+  const eventsFile = outputCsvName('annotations', gzip);
   const diagnostics: Diagnostic[] = [];
 
   const formulaic = written.filter((a) => startsFormula(a.text));
@@ -1533,7 +1551,7 @@ export function descriptionDiagnostics(
         `starting with ${shown}, which Excel, LibreOffice and Google Sheets read as the start ` +
         `of a formula rather than as text.`,
       hint:
-        'The text is written to annotations.csv exactly as the file has it, so the cell is ' +
+        `The text is written to ${eventsFile} exactly as the file has it, so the cell is ` +
         'what the recording says. Open the CSV with pandas or R, or import it into the ' +
         'spreadsheet as text, if you do not want it evaluated.',
     });
@@ -1551,7 +1569,7 @@ export function descriptionDiagnostics(
       message:
         `${counted(marked.length, 'annotation')} ${one ? 'has a description' : 'have descriptions'} ` +
         `carrying text a terminal does not print as itself (${shown}), written to ` +
-        `annotations.csv exactly as the file has ${one ? 'it' : 'them'}.`,
+        `${eventsFile} exactly as the file has ${one ? 'it' : 'them'}.`,
       hint:
         'A control byte can drive the terminal and a bidirectional override reverses what ' +
         'follows it, so read the file with pandas or R rather than with cat. The cell is ' +

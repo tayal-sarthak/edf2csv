@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.10
+
+### two spellings of one file, in one warning list
+
+`--gzip` gives every CSV a `.gz` name, and 0.8.48 taught the warnings about those files to say so —
+"`--info` named `annotations.csv` for a run that wrote `annotations.csv.gz`". `emptyAnnotations`
+takes the flag and renders the name through `outputCsvName`.
+
+The four warnings about the events *in* that file do not, and all four send the reader to it:
+
+```
+$ edf2csv scoring.edf --out scoring_csv --gzip
+warning: 3 annotations state a duration below zero, which is not a length of time.
+         The value is written to annotations.csv as the file gave it. ...
+
+warning: 1 annotation has a description starting with =, which Excel, LibreOffice and Google
+         Sheets read as the start of a formula rather than as text.
+         The text is written to annotations.csv exactly as the file has it, ...
+
+Wrote scoring_csv
+  annotations.csv.gz  4  rows
+```
+
+Two spellings of one file, one of them in the list of what was written and the other in the advice
+about it. The same run can print the corrected sentence and the stale one side by side, since
+"annotations.csv.gz holds its header and no rows" comes from the function next door.
+
+Both take the flag now, the way their neighbour does, and render the name through the one helper
+that knows what a run writes.
+
 ## 0.9.9
 
 ### two warnings from the plan, naming a file the stream is not

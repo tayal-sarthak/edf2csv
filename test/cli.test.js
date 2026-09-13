@@ -6289,6 +6289,51 @@ describe('--stdout', () => {
     }
 
     /*
+      And the four about the events themselves, which no committed fixture carries: a duration
+      below zero, a duration that is not a number, a description a spreadsheet runs, and one a
+      terminal acts on. All four send the reader to the event list to look at the rows they are
+      about, and all four named it `annotations.csv`.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const D = String.fromCharCode(0x15);
+    const Z = String.fromCharCode(0x00);
+    const events = path.join(dir, 'odd-events.edf');
+    writeEdf({
+      path: events, reserved: 'EDF+C', numRecords: 1, recordDuration: 1,
+      talsForRecord: () =>
+        `+0${T}${T}${Z}` +
+        `+0.1${D}-5${T}negative${T}${Z}` +
+        `+0.2${D}abc${T}unreadable${T}${Z}` +
+        `+0.3${T}=HYPERLINK("x")${T}${Z}` +
+        `+0.4${T}red${String.fromCharCode(0x1b)}[31m${T}${Z}`,
+      signals: [
+        { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+          samplesPerRecord: 2, gen: () => 0 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 120, annotations: true },
+      ],
+    });
+    const eventsOut = path.join(dir, 'odd-events-out');
+    const odd = await cli([events, '--out', eventsOut, '--gzip']);
+    assert.equal(odd.code, 0, odd.stderr);
+    for (const marker of [
+      /duration below zero/u,
+      /duration that is not a number/u,
+      /read as the start of a formula/u,
+      /a terminal does not print as itself/u,
+    ]) {
+      const block = blocks(odd.stderr).find((b) => marker.test(b.replace(/\s+/gu, ' ')));
+      assert.ok(block, `${marker}: ${odd.stderr}`);
+      const flat = block.replace(/\s+/gu, ' ');
+      assert.doesNotMatch(flat, /\b(signals|channels|annotations)\.csv(?!\.gz)/u, flat);
+    }
+    // And a plain conversion of the same recording names the plain file.
+    const uncompressed = await cli([events, '--out', path.join(dir, 'odd-events-plain')]);
+    assert.match(uncompressed.stderr.replace(/\s+/gu, ' '),
+      /The value is written to annotations\.csv as the file gave it/u, uncompressed.stderr);
+
+    /*
       And the one refusal that names a file, which is nothing but a command to run: the
       command it named writes `annotations.csv.gz` when `--gzip` is on, and it said
       `annotations.csv` whatever else was on the line.

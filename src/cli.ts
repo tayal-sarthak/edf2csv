@@ -1087,10 +1087,14 @@ async function showInfo(
       rows. `knownEvents` three lines up already counts through `eventWindow`, for the reason
       its comment gives; this was the second copy that comment says not to make.
     */
-    plan.diagnostics.push(...durationDiagnostics(annotationData.annotations, eventWindow));
+    plan.diagnostics.push(
+      ...durationDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
+    );
     // And what those descriptions carry; see descriptionDiagnostics. Only reached where the
     // events have been read, which is the same set of files the duration warnings cover.
-    plan.diagnostics.push(...descriptionDiagnostics(annotationData.annotations, eventWindow));
+    plan.diagnostics.push(
+      ...descriptionDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
+    );
     /*
       And the empty-table warning, where the count is in hand to raise it from.
 
