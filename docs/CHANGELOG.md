@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.91
+
+### [object Object], in the one sentence that shows the reader what they typed
+
+Three options exist for one purpose: to be quoted back. `startText`, `durationText` and `endText`
+carry the value exactly as the caller's own user typed it, so a window error names that rather
+than its parsed form — `--start "4h"` rather than `--start 14400s`. Nothing asked whether they
+were text.
+
+```js
+convert(file, { start: 99, startText: {} })
+// TimeRangeError: --start "[object Object]" is at or past the end of this 3s recording.
+
+convert(file, { start: 1, end: 0.5, endText: [] })
+// TimeRangeError: The requested window ends at "", which is not after its start at 1s.
+```
+
+`[object Object]` is the string `assertInputPath`'s own docstring names as the reason that
+function exists. The empty quotation is the hole in a sentence that `describeValue` was written
+to stop. Both land in the one place whose entire job is to show the reader what they typed, and
+the second is worse for being quiet: `""` reads as a value the user really gave.
+
+Checked with the rest of the options now, and the text they are for still reaches the sentence it
+is for.
+
 ## 0.8.90
 
 ### minus five decimal places, and a ceiling that was not one

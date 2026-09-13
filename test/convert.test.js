@@ -1721,6 +1721,51 @@ describe('option checking', () => {
     }
   });
 
+  it('checks the three options whose only job is to be quoted back', async () => {
+    /*
+      `startText`, `durationText` and `endText` carry the value exactly as the caller's user
+      typed it, so a window error names that rather than its parsed form — `--start "4h"`
+      rather than `--start 14400s`. Nothing asked whether they were text, and they reached the
+      sentence as they were:
+
+          convert(file, { start: 99, startText: {} })
+          TimeRangeError: --start "[object Object]" is at or past the end of this 3s recording.
+
+          convert(file, { start: 1, end: 0.5, endText: [] })
+          TimeRangeError: The requested window ends at "", which is not after its start at 1s.
+
+      `[object Object]` is the string `assertInputPath`'s own docstring names as the reason
+      that function exists, and the empty quotation is the hole `describeValue` was written to
+      stop — both in the one place whose entire purpose is to show the reader what they typed.
+    */
+    const { convert, OptionError } = await import('../dist/index.js');
+    const dir = await outDir();
+    for (const [name, value] of [
+      ['startText', {}], ['startText', 42], ['endText', []], ['durationText', null],
+      ['durationText', true],
+    ]) {
+      await assert.rejects(
+        () => convert(fixture('mixed-rates.edf'), { outputDir: path.join(dir, 'x'), start: 99, end: 0.5, duration: undefined, [name]: value }),
+        (error) => {
+          assert.ok(error instanceof OptionError, `${name}=${String(value)} threw ${error}`);
+          assert.match(error.message, new RegExp(`^${name} must be the value as it was typed, got `, 'u'));
+          return true;
+        },
+        `${name}=${String(value)} was accepted`,
+      );
+    }
+    // The text they are for still reaches the sentence it is for.
+    await assert.rejects(
+      () => convert(fixture('mixed-rates.edf'), { outputDir: path.join(dir, 'y'), start: 14400, startText: '4h' }),
+      /--start "4h" is at or past the end of this 3s recording/u,
+    );
+    // And leaving them out still quotes the parsed seconds, as it always has.
+    await assert.rejects(
+      () => convert(fixture('mixed-rates.edf'), { outputDir: path.join(dir, 'z'), start: 99 }),
+      /--start 99s is at or past the end of this 3s recording/u,
+    );
+  });
+
   it('makes the same check in the functions underneath, which are exported too', async () => {
     /*
       `assertOptions` runs at the top of `buildPlan`, so `convert` was covered and

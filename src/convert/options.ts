@@ -52,7 +52,37 @@ export function assertOptions(options: {
   checksum?: boolean | undefined;
   toStdout?: boolean | undefined;
   onProgress?: unknown;
+  startText?: unknown;
+  durationText?: unknown;
+  endText?: unknown;
 }): void {
+  /*
+    The three options that exist only to be quoted back, quoted back unexamined.
+
+    `startText`, `durationText` and `endText` carry the value exactly as the caller's user
+    typed it, so a refusal names that rather than its parsed form — "--start \"4h\"" rather
+    than "--start 14400s". Nothing asked whether they were text, and they reach the sentence
+    as they are:
+
+        convert(file, { start: 99, startText: {} })
+        TimeRangeError: --start "[object Object]" is at or past the end of this 3s recording.
+
+        convert(file, { start: 1, end: 0.5, endText: [] })
+        TimeRangeError: The requested window ends at "", which is not after its start at 1s.
+
+    `[object Object]` is the string `assertInputPath`'s own docstring names as the reason that
+    function exists, and the empty quotation is the hole `describeValue` was written to stop —
+    both in the one place whose entire purpose is to show the reader what they typed.
+  */
+  for (const name of ['startText', 'durationText', 'endText'] as const) {
+    const value = options[name];
+    if (value !== undefined && typeof value !== 'string') {
+      throw new OptionError(
+        `${name} must be the value as it was typed, got ${describeValue(value)}. It is quoted ` +
+          `back in the window errors so they name what was given rather than its parsed form.`,
+      );
+    }
+  }
   const { decimals } = options;
   if (decimals !== undefined) {
     if (!Number.isInteger(decimals) || decimals < 0 || decimals > MAX_DECIMALS) {

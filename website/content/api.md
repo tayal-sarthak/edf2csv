@@ -473,7 +473,8 @@ interface ConvertOptions {
   onProgress?: (progress: ConversionProgress) => void;
 
   // Quoted back in time-range errors so they name the value the caller gave, not its
-  // parsed form. Optional; the parsed seconds are used when absent.
+  // parsed form. Optional; the parsed seconds are used when absent. Text, and checked to
+  // be since 0.8.91: an object reached the sentence as "[object Object]".
   startText?: string;
   durationText?: string;
   endText?: string;
