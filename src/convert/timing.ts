@@ -417,7 +417,29 @@ export function deriveRecordStarts(
         `${overlapping === 1 ? 'starts' : 'start'} before the record before ` +
         `${overlapping === 1 ? 'it' : 'them'} ends, so ${overlapping === 1 ? 'its' : 'their'} ` +
         `samples overlap in time.`,
-      hint: 'Rows are written in file order, so the time column will not increase monotonically.',
+      /*
+        An overlap does not always put the column out of order, and this said it did.
+
+        The two counts above share a sentence and only one of them earns it. A record starting
+        *earlier* than the one before it steps the column back by construction. A record
+        starting before the one before it *ends* need not: what decides is whether it begins
+        after the previous record's last sample, and the last sample is one interval short of
+        the record's end. Three-tenths of a second of overlap on a one-second record sampled
+        twice a second writes
+
+            time_s,A
+            0.000
+            0.500
+            0.700
+            1.200
+
+        which increases at every step, under a warning saying it would not. Both records do
+        describe 0.700 to 1.000, which is the thing that is true either way and is what the
+        sentence says now.
+      */
+      hint:
+        'Rows are written in file order, and two records describe the same stretch of time. ' +
+        'Where they overlap by more than one sample interval the time column steps backwards.',
     });
   }
 

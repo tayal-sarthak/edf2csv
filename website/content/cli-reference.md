@@ -610,9 +610,12 @@ Or they may overlap: each starting after the one before it, but before that one 
 
 ```
 warning: 1 data record starts before the record before it ends, so its samples overlap in time.
-         Rows are written in file order, so the time column will not increase
-         monotonically.
+         Rows are written in file order, and two records describe the same
+         stretch of time. Where they overlap by more than one sample interval
+         the time column steps backwards.
 ```
+
+Not every overlap does step it back, which is why that hint says "where" and the one above it does not. What decides is whether a record begins after the previous record's *last sample*, and the last sample is one interval short of the record's end — so the same two records at 0 s and 0.7 s write 0.000, 0.500, 0.700, 1.200, every step forwards, while still describing 0.700 to 1.000 twice. Until 0.9.5 both counts shared the reversed one's sentence.
 
 Every sample is still written, once, in file order. Sort on `time_s` yourself if you need it and either warning appeared.
 

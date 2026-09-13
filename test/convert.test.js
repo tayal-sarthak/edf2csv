@@ -4312,7 +4312,7 @@ describe('converting', () => {
     const overlap = result.diagnostics.find((d) => /overlap in time/u.test(d.message));
     assert.ok(overlap, `expected the warning: ${JSON.stringify(result.diagnostics)}`);
     assert.match(overlap.message, /2 data records start before the record before them ends/u);
-    assert.match(overlap.hint, /will not increase monotonically/u);
+    assert.match(overlap.hint, /two records describe the same stretch of time/u);
 
     // The times really do step backwards, which is why it is said.
     const times = (await readCsv(dir, 'signals.csv')).slice(1).map((row) => Number(row.split(',')[0]));
@@ -4320,6 +4320,44 @@ describe('converting', () => {
       times.some((time, index) => index > 0 && time < times[index - 1]),
       'this fixture exists because the column steps backwards; if it does not it tests nothing',
     );
+
+    /*
+      And an overlap shorter than a sample interval, where it does not. The hint said "the
+      time column will not increase monotonically" of both counts, and only the reversed one
+      earns it: what decides is whether a record begins after the previous record's last
+      sample, and the last sample is one interval short of the record's end.
+
+      Three tenths of a second of overlap on a one-second record sampled twice a second writes
+      0.000, 0.500, 0.700, 1.200 — every step forwards, under a warning saying otherwise.
+      Both records do describe 0.700 to 1.000, which is true either way.
+    */
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const overlapDir = await mkdtemp(path.join(tmpdir(), 'edf2csv-overlap-'));
+    temporaries.push(overlapDir);
+    const gentle = path.join(overlapDir, 'gentle.edf');
+    const starts = [0, 0.7];
+    writeEdf({
+      path: gentle, numRecords: 2, recordDuration: 1, reserved: 'EDF+D',
+      talsForRecord: (r) => buildTal(starts[r]),
+      signals: [
+        { label: 'A', dimension: 'uV', physMin: -100, physMax: 100, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 2, gen: (r, i) => r * 100 + i },
+        { label: 'EDF Annotations', annotations: true, samplesPerRecord: 30, dimension: '',
+          physMin: -1, physMax: 1, digMin: -32768, digMax: 32767 },
+      ],
+    });
+    const out = await outDir();
+    const gentleResult = await convert(gentle, { outputDir: out, quiet: true });
+    const warned = gentleResult.diagnostics.find((d) => /overlap in time/u.test(d.message));
+    assert.ok(warned, 'the overlap is still reported');
+    const gentleTimes = (await readCsv(out, 'signals.csv')).slice(1)
+      .map((row) => Number(row.split(',')[0]));
+    assert.deepEqual(gentleTimes, [0, 0.5, 0.7, 1.2]);
+    assert.ok(
+      gentleTimes.every((time, index) => index === 0 || time > gentleTimes[index - 1]),
+      `the column increases here: ${gentleTimes.join(' ')}`,
+    );
+    assert.doesNotMatch(warned.hint, /will not increase/u, warned.hint);
 
     // A contiguous recording is not an overlapping one, however its record duration divides.
     for (const name of ['tiny.edf', 'contiguous-fractional.edf', 'discontinuous.edf']) {

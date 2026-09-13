@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.5
+
+### an overlap shorter than a sample interval, under a warning that says otherwise
+
+Two counts share a sentence, and only one of them earns it.
+
+A data record starting *earlier* than the one before it puts the time column out of order by
+construction. A record starting before the one before it *ends* need not: what decides is whether
+it begins after the previous record's last sample, and the last sample is one sample interval
+short of the record's end.
+
+Three tenths of a second of overlap on a one-second record sampled twice a second:
+
+```
+$ edf2csv gentle.edf --out gentle_csv
+warning: 1 data record starts before the record before it ends, so its samples overlap in time.
+         Rows are written in file order, so the time column will not increase
+         monotonically.
+
+$ cat gentle_csv/signals.csv
+time_s,A
+0.000,…
+0.500,…
+0.700,…
+1.200,…
+```
+
+Every step forwards, under a warning saying otherwise. The thing that is true either way is that
+two records describe the same stretch of time — 0.700 to 1.000 here — and that is what the hint
+says now, with the condition on the rest:
+
+```
+         Rows are written in file order, and two records describe the same
+         stretch of time. Where they overlap by more than one sample interval
+         the time column steps backwards.
+```
+
+The reversed-record hint beside it is unchanged, because for that one the claim holds.
+
 ## 0.9.4
 
 ### three quarters of a byte, after the last complete data record
