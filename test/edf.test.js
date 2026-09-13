@@ -1035,10 +1035,40 @@ describe('reading samples', () => {
       );
     }
 
+    /*
+      And the bag the three arrive in, which nothing looked at. The default `= {}` covers
+      `undefined` and nothing else, and every read is `options.startRecord` — so a value that
+      is not an object had its properties read off it and came back undefined, which is how a
+      caller says they are not passing one:
+
+          file.readRecords(42)     // every record, as though no options were given
+          file.readRecords(null)   // TypeError: Cannot read properties of null
+
+      Reading the whole file is a plausible answer, and the first two got it in silence.
+      `resolveRange` was given this same check on its own bag in 0.8.75.
+    */
+    for (const bag of [42, 'x', null, true]) {
+      await assert.rejects(
+        async () => {
+          for await (const unused of file.readRecords(bag)) break;
+        },
+        (error) => {
+          assert.equal(error.constructor.name, 'OptionError', `${String(bag)} threw ${error}`);
+          assert.match(error.message, /^readRecords: options must be an object, got /u);
+          return true;
+        },
+        `options: ${String(bag)}`,
+      );
+    }
+
     // A budget below one record still reads one record, which is what the docs promise.
     let records = 0;
     for await (const batch of file.readRecords({ chunkBytes: 1 })) records += batch.recordCount;
     assert.equal(records, 2);
+    // And no bag at all still reads them all.
+    let every = 0;
+    for await (const batch of file.readRecords()) every += batch.recordCount;
+    assert.equal(every, 2);
     await file.close();
   });
 

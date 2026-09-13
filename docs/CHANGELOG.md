@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.2
+
+### a default covers undefined and nothing else
+
+`readRecords` takes an option bag with a default of `{}`. A default covers `undefined` and nothing
+else, and every read inside is `options.startRecord` — so a value that is not an object had its
+properties read off it, came back `undefined`, and meant what `undefined` means here: no options
+were given.
+
+```js
+for await (const batch of file.readRecords(42))    // every record, in silence
+for await (const batch of file.readRecords('x'))   //     "
+for await (const batch of file.readRecords(null))  // TypeError: Cannot read properties of null
+```
+
+Reading the whole file is a plausible answer, which is what makes the first two the worse pair:
+nothing says the argument was ignored. `null` is what `JSON.parse` of a config gives for a field
+left unset — the door `assertOptions` names for the flags — and it came back as a `TypeError`
+naming a property of this package's own parameter.
+
+`resolveRange` was given this same check on its own bag at 0.8.75, for the reason quoted there:
+reading `.start` off a number is `undefined` rather than a throw. This is the other exported
+function that takes one.
+
 ## 0.9.1
 
 ### a list of strings is a list

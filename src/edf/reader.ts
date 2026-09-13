@@ -346,6 +346,31 @@ export class EdfFile {
     this.#assertOpen();
 
     /*
+      The bag the three options arrive in, which nothing looked at.
+
+      The default `= {}` covers `undefined` and nothing else, and every read below is
+      `options.startRecord` — so a value that is not an object had its properties read off it
+      and came back `undefined`, which is how a caller says they are not passing one:
+
+          file.readRecords(42)      // every record, as though no options were given
+          file.readRecords('x')     //     "
+          file.readRecords(null)    // TypeError: Cannot read properties of null
+
+      `null` is what `JSON.parse` of a config gives for a field left unset, which is the door
+      `assertOptions` names for the flags; the other two are a caller who thought this took a
+      record index. The first two are the worse pair, because reading the whole file is a
+      plausible answer and they got it in silence. `resolveRange` was given this same check on
+      its own bag in 0.8.75, for the same reason: reading `.start` off a number is `undefined`
+      rather than a throw.
+    */
+    if (typeof options !== 'object' || options === null) {
+      throw new OptionError(
+        `readRecords: options must be an object, got ${describeValue(options)}. It carries ` +
+          'startRecord, endRecord and chunkBytes; omit it to read every record.',
+      );
+    }
+
+    /*
       Record bounds have to be whole records.
 
       A fractional `startRecord` was carried straight into `position = headerBytes +
