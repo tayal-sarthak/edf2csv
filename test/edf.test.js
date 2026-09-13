@@ -2012,6 +2012,37 @@ describe('the read budget', () => {
           : file.annotationBytes(42, 0, annotations)),
           new RegExp(`${method}: batch must be one of the batches readRecords yields`, 'u'));
       }
+
+      /*
+        And the bytes, which the count above was standing in for. All three read `batch.data`,
+        and a batch-shaped object without any of it answered rather than failing:
+
+            file.sampleAt({ recordCount: 2, data: [1, 2, 3, 4] }, 0, signal, 0)      // 513
+            file.sampleAt({ recordCount: 2, data: new Float64Array(64) }, ...)       // 0
+            file.annotationBytes({ recordCount: 2, data: new Float64Array(8) }, ...) // 20 values
+
+        A digital code this recording could have held, the commonest sample in any recording,
+        and a run of numbers that are not the bytes of anything handed back as the annotation
+        channel's own. `ArrayBuffer.isView` is true of every one of them.
+      */
+      for (const wrong of [undefined, 'xxxxxxxx', [1, 2, 3, 4], new Float64Array(64), new DataView(batch.data.buffer)]) {
+        const shaped = { firstRecordIndex: 0, recordCount: batch.recordCount, data: wrong };
+        for (const [method, call] of [
+          ['sampleAt', () => file.sampleAt(shaped, 0, signal, 0)],
+          ['offsetOf', () => file.offsetOf(shaped, 0, signal)],
+          ['annotationBytes', () => file.annotationBytes(shaped, 0, annotations)],
+        ]) {
+          assert.throws(
+            call,
+            (error) => {
+              assert.ok(error instanceof OptionError, `${method}: ${error}`);
+              assert.match(error.message, new RegExp(`^${method}: batch.data `, 'u'));
+              return true;
+            },
+            `${method} accepted data of ${wrong?.constructor?.name ?? String(wrong)}`,
+          );
+        }
+      }
     } finally {
       await file.close();
     }

@@ -511,13 +511,51 @@ export class EdfFile {
    * that is not in the batch at all.
    *
    * The batch is checked first, because the bound is read off it: `offsetOf` never touched
-   * `batch` before this, so a caller who passed the wrong thing got no complaint from it.
+   * `batch` before this, so a caller who passed the wrong thing got no complaint from it. Its
+   * bytes are checked with it, for the reason given where that check sits.
    */
   #assertRecordOffset(batch: RecordBatch, recordOffset: number, method: string): void {
     if (!Number.isInteger((batch as RecordBatch | null)?.recordCount)) {
       throw new OptionError(
         `${method}: batch must be one of the batches readRecords yields, got ` +
           `${describeValue(batch)}.`,
+      );
+    }
+    /*
+      And the bytes, which are what the position is a position into.
+
+      The count above was the whole of what this asked, and all three methods go on to read
+      `batch.data`: `sampleAt` indexes it, `annotationBytes` slices it, and `offsetOf` hands
+      back a position for it. A batch-shaped object without any failed differently depending
+      on which one was called, and two of those failures were answers:
+
+          file.sampleAt({ recordCount: 2, data: [1, 2, 3, 4] }, 0, signal, 0)   // 513
+          file.sampleAt({ recordCount: 2, data: new Float64Array(64) }, ...)    // 0
+          file.annotationBytes({ recordCount: 2, data: new Float64Array(8) }, …) // 20 values
+
+      513 is a digital code this recording could have held; 0 is the commonest sample in any
+      recording; and the third is a run of numbers that are not the bytes of anything,
+      returned as the annotation channel's own. `ArrayBuffer.isView` is true of all of them
+      and of a `DataView`, which is why the check is the one 0.8.84 and 0.8.85 settled on for
+      the two other places this parser is handed bytes: a view whose elements are one byte.
+    */
+    const bytes = (batch as { data?: unknown }).data;
+    if (!ArrayBuffer.isView(bytes) || (bytes as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT !== 1) {
+      const carries = 'A batch carries firstRecordIndex, recordCount, and the record bytes themselves.';
+      // Named rather than quoted back: a batch is megabytes, and the kind of thing it is is
+      // the part that locates the mistake — the same reasoning `#assertSignalHere` gives for
+      // placing a channel by its index instead of printing its fourteen fields. The article
+      // is worked out because `Array` and `Int16Array` both arrive here and "a Array" is not
+      // a sentence.
+      const kind =
+        typeof bytes === 'object' && bytes !== null
+          ? ((bytes as object).constructor?.name ?? 'object')
+          : null;
+      throw new OptionError(
+        kind !== null
+          ? `${method}: batch.data is ${/^[AEIOU]/u.test(kind) ? 'an' : 'a'} ${kind}, which is ` +
+            `not a view of bytes. ${carries}`
+          : `${method}: batch.data must be the record bytes, got ${describeValue(bytes)}. ${carries}`,
       );
     }
     if (!Number.isInteger(recordOffset) || recordOffset < 0 || recordOffset >= batch.recordCount) {

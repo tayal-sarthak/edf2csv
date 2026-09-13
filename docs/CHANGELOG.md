@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.97
+
+### a batch whose record count was the whole of what was asked of it
+
+`#assertRecordOffset` was written in 0.8.73 to confirm the batch a record position is measured
+against. It asked one question of it — is `recordCount` a whole number — and all three methods
+that take a batch go on to read its `data`.
+
+So a batch-shaped object carrying anything else got past it, and what happened next depended on
+which method was called:
+
+```js
+file.sampleAt({ recordCount: 2, data: [1, 2, 3, 4] }, 0, signal, 0)        // 513
+file.sampleAt({ recordCount: 2, data: new Float64Array(64) }, 0, signal, 0) // 0
+file.annotationBytes({ recordCount: 2, data: new Float64Array(8) }, 0, ch)  // 20 values
+file.sampleAt({ recordCount: 2 }, 0, signal, 0)                            // TypeError
+```
+
+513 is a digital code this recording could have held. 0 is the commonest sample in any recording.
+The third is a run of numbers that are not the bytes of anything, handed back as the annotation
+channel's own. Only the fourth failed, and it failed as a `TypeError` naming a local of this
+package over a value the caller did write.
+
+`ArrayBuffer.isView` is true of every one of the three that answered, and of a `DataView` — so the
+check is the one 0.8.84 and 0.8.85 settled on for the other two places this parser is handed
+bytes: a view whose elements are one byte. `offsetOf` is held to it too. It reads no bytes itself,
+but the position it hands back is a position into them, and 0 for a batch that is not one is the
+same wrong answer a record further on.
+
 ## 0.8.96
 
 ### the label quoted back beside a term that was already escaped
