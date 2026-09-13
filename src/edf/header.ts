@@ -1348,7 +1348,21 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
  * the file genuinely does not say which zone it meant.
  */
 export function formatWallClock(date: Date | null): string | null {
-  if (!date) return null;
+  /*
+    `null` is the answer for a recording with no start instant. It was also the answer for
+    every other falsy value, because this line used to read `if (!date) return null` and ran
+    before the check below.
+
+        formatWallClock(0)          // null
+        formatWallClock(new Date(0))  // "1970-01-01T00:00:00"
+
+    A millisecond timestamp is the obvious thing to hold beside a `Date` and the obvious thing
+    to pass by mistake, and `0` is the epoch — a real instant, answered with the sentence this
+    tool uses for a recording whose header has no readable date. `''`, `false` and `NaN` went
+    the same way, while a truthy non-Date was refused properly. 0.8.63 gave this function its
+    check; the short-circuit above it meant half the values never reached it.
+  */
+  if (date === null) return null;
   if (!(date instanceof Date)) {
     throw new OptionError(`date must be a Date or null, got ${describeValue(date)}.`);
   }

@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.86
+
+### the epoch, reported as a recording with no start instant
+
+`null` is what this returns for a recording with no start instant — a header whose date field
+cannot be read. It was also what it returned for every other falsy value:
+
+```js
+formatWallClock(new Date(0))   // "1970-01-01T00:00:00"
+formatWallClock(0)             // null
+```
+
+`0` is a millisecond timestamp: the obvious thing to be holding beside a `Date`, the obvious
+thing to pass by mistake, and the epoch — a real instant. It came back as the sentence this tool
+uses for a recording whose start time is missing. `''`, `false`, `NaN` and `undefined` went the
+same way, while a truthy non-Date — `'2020-01-01'`, `{}` — was refused properly.
+
+0.8.63 gave this function its check. The line above it read `if (!date) return null`, so half the
+values it was meant to catch never reached it.
+
 ## 0.8.85
 
 ### a record's annotations, decoded from somewhere else, reported as empty

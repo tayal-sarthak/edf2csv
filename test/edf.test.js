@@ -1791,6 +1791,17 @@ describe('the read budget', () => {
         [() => formatRate(-Infinity), /hz must be a sampling rate in hertz, got -Infinity/u],
         [() => formatRates(3), /rates must be a list of sampling rates, got 3/u],
         [() => formatWallClock('2020-01-01'), /date must be a Date or null, got "2020-01-01"/u],
+        /*
+          And the falsy ones, which never reached that check: the line above it read
+          `if (!date) return null`, so `0` — a millisecond timestamp, the obvious thing to
+          hold beside a Date and to pass by mistake, and the epoch, a real instant — came back
+          as `null`, this tool's word for a recording whose header has no readable date.
+        */
+        [() => formatWallClock(0), /date must be a Date or null, got 0/u],
+        [() => formatWallClock(''), /date must be a Date or null, got ""/u],
+        [() => formatWallClock(false), /date must be a Date or null, got false/u],
+        [() => formatWallClock(NaN), /date must be a Date or null, got NaN/u],
+        [() => formatWallClock(undefined), /date must be a Date or null, got undefined/u],
       ]) {
         assert.throws(call, (error) => {
           assert.ok(error instanceof OptionError, `threw ${error}`);
