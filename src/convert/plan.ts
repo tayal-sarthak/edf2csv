@@ -15,7 +15,7 @@ import { formatRate, formatRates } from '../edf/header.js';
 import { decimalsAreClamped, decimalsForSignal, makeScaler } from '../edf/scale.js';
 import { UTF8_BOM, csvRow, escapeCsvField } from '../format/csv.js';
 import { counted, grouped, listed } from '../format/list.js';
-import { fixed, plain, timeDecimals } from '../format/number.js';
+import { fixed, plainSeconds, timeDecimals } from '../format/number.js';
 import { TIME_COLUMN, buildColumnNames, renamedByCollision, selectChannels } from './channels.js';
 import { assertOptions, assertPlanInput } from './options.js';
 import { countSamplesInRange, resolveRange } from './time-range.js';
@@ -761,7 +761,7 @@ function emptyWindow(
           'which --info prints as "Timed from".'
         : narrow
           ? `It is ${fixed(width, 3)}s wide and the fastest channel here samples every ` +
-            `${plain(interval)}s, so no sample time falls inside it. Widen it to at least ` +
+            `${plainSeconds(interval)}s, so no sample time falls inside it. Widen it to at least ` +
             'one sample interval, or convert more of the recording and take the row nearest ' +
             'the moment you want.'
           : /*

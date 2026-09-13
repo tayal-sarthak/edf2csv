@@ -297,7 +297,7 @@ export function formatDuration(seconds: number): string {
     `${1e-15}` is exponent notation, and the sentence this feeds is one whose whole job is to
     say what `--start` may be given — and `--start 1e-15s` is refused as an unknown unit "e".
   */
-  if (total === 0 && seconds > 0) return `${plain(seconds)}s`;
+  if (total === 0 && seconds > 0) return `${plainSeconds(seconds)}s`;
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = Math.round((total - h * 3600 - m * 60) * 1000) / 1000;
@@ -305,6 +305,41 @@ export function formatDuration(seconds: number): string {
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${sText}s`;
   if (m > 0) return `${m}m ${sText}s`;
   return `${sText}s`;
+}
+
+/**
+ * A length of time in a form the sentence it sits in can hold.
+ *
+ * `plain` expands a double to its full decimal form, which is what the columns of
+ * annotations.csv need — one notation down a column, so a `merge` on it matches. Every message
+ * that states a length of seconds took the same rendering, and a record duration is eight
+ * characters of header, so `1e308` and `1e-320` both fit in one:
+ *
+ *     Duration   unknown  (2 records of 1000000000000000000000 ... 000s)
+ *
+ * Three hundred and nine digits, on a line whose other half has just said the total cannot be
+ * stated — and three lines under a RATE column rendering the same magnitude as `4.000e-308 Hz`,
+ * because `formatRate` already falls back to exponent form when plain decimal stops carrying
+ * the number. This is the failure `listed` was written for, one line over: a message is not
+ * the place for everything a header is free to ask for.
+ *
+ * Plain while plain is *typable*, which is the reason the expansion is here at all —
+ * `--start 1e-15s` is refused as an unknown unit `e`, so `repeating-fast.edf` reads
+ * `0.000000000000001s` and can be acted on. Past the width of a line nothing is typable
+ * either way: a reader cannot count three hundred digits any more than they can pass an
+ * exponent, so the shortest exact form is the more honest of the two.
+ *
+ * Here rather than in cli/report.ts, where 0.8.95 wrote it for one half of one line. The
+ * other half of that same line expanded a duration of 3e-308 to three hundred and ten
+ * characters; so did the refusal naming a record duration that is not positive, and the hint
+ * that says how wide a window has to be to hold a sample. All four state a length of seconds
+ * out of a header, and the rule is one rule.
+ */
+const LONGEST_PLAIN_SECONDS = 30;
+
+export function plainSeconds(seconds: number): string {
+  const expanded = plain(seconds);
+  return expanded.length <= LONGEST_PLAIN_SECONDS ? expanded : String(seconds);
 }
 
 /** A record can declare a great many samples; two arrays this size is the cost of caching. */

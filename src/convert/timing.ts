@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { counted, grouped, listed } from '../format/list.js';
-import { plain } from '../format/number.js';
+import { plainSeconds } from '../format/number.js';
 
 export interface AnnotationTimingData {
   recordStarts: (number | null)[];
@@ -175,9 +175,9 @@ export function deriveRecordStarts(
           // that it "is read as plain EDF", which it is not.
           message:
             `This file has an annotation channel stating that its records begin at ` +
-            `${plain(stated)}s, but its reserved field carries no ${plus}C or ${plus}D ` +
+            `${plainSeconds(stated)}s, but its reserved field carries no ${plus}C or ${plus}D ` +
             `marker — so it is read as plain ${base}, time_s counts from zero, and the two ` +
-            `disagree by ${plain(stated)}s.`,
+            `disagree by ${plainSeconds(stated)}s.`,
           hint:
             `annotations.csv keeps the onsets the file gives, so its events and signals.csv ` +
             `are on different clocks. Mark the file ${plus}C, or subtract the offset from ` +
@@ -509,14 +509,14 @@ function unusableOrigin(origin: number, file: EdfFile): Diagnostic {
     a record duration near the top of a double, multiplied out over three records, leaves it.
   */
   const away = Number.isFinite(origin)
-    ? `${plain(origin)}s from its own start date`
+    ? `${plainSeconds(origin)}s from its own start date`
     : 'further from its own start date than a number can hold';
   return {
     code: 'DISCONTINUOUS',
     severity: 'warning',
     message:
       `This recording's timekeeping annotations place it ${away}, which is too far out for ` +
-      `its ${plain(file.header.recordDuration)}s records to be told apart: at that magnitude ` +
+      `its ${plainSeconds(file.header.recordDuration)}s records to be told apart: at that magnitude ` +
       `adding a sample interval leaves the number unchanged.`,
     hint:
       'Sample times are written from zero instead, so every row is present and the column ' +

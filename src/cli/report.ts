@@ -8,7 +8,7 @@
 import type { Diagnostic } from '../edf/errors.js';
 import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
-import { fixed, formatBytes, formatDuration, plain } from '../format/number.js';
+import { fixed, formatBytes, formatDuration, plainSeconds } from '../format/number.js';
 import { counted, grouped } from '../format/list.js';
 import { escapeJsonText, printable } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
@@ -166,35 +166,6 @@ export function printableLines(text: string, indent = ''): string {
     .join('\n');
 }
 
-/**
- * A record's length, in a form the line it sits on can hold.
- *
- * `plain` expands a double to its full decimal form, which is what the columns of
- * annotations.csv need — one notation down a column, so a `merge` on it matches. This line
- * took the same rendering, and a record duration is eight characters of header, so `1e308`
- * and `1e-320` both fit in one:
- *
- *     Duration   unknown  (2 records of 1000000000000000000000 ... 000s)
- *
- * Three hundred and nine digits, on a line whose other half has just said the total cannot be
- * stated — and three lines under a RATE column rendering the same magnitude as `4.000e-308 Hz`,
- * because `formatRate` already falls back to exponent form when plain decimal stops carrying
- * the number. This is the failure `listed` was written for, one line over: a message is not
- * the place for everything a header is free to ask for.
- *
- * Plain while plain is *typable*, which is the reason the expansion is here at all —
- * `--start 1e-15s` is refused as an unknown unit `e`, so `repeating-fast.edf` reads
- * `0.000000000000001s` and can be acted on. Past the width of this line nothing is typable
- * either way: a reader cannot count three hundred digits any more than they can pass an
- * exponent, so the shortest exact form is the more honest of the two.
- */
-const LONGEST_PLAIN_RECORD_LENGTH = 30;
-
-function recordLength(seconds: number): string {
-  const expanded = plain(seconds);
-  return expanded.length <= LONGEST_PLAIN_RECORD_LENGTH ? expanded : String(seconds);
-}
-
 /** The `--info` view: what is in this recording, and what would converting it produce. */
 export function formatInfo(
   file: EdfFile,
@@ -264,7 +235,7 @@ export function formatInfo(
     }`,
   );
   lines.push(
-    `Duration   ${formatDuration(file.durationSeconds)}  (${counted(file.recordCount, 'record')} of ${recordLength(header.recordDuration)}s)`,
+    `Duration   ${formatDuration(file.durationSeconds)}  (${counted(file.recordCount, 'record')} of ${plainSeconds(header.recordDuration)}s)`,
   );
   const elapsedSpan = plan.range.recordingEndSeconds - plan.range.recordingStartSeconds;
   if (Math.abs(elapsedSpan - file.durationSeconds) > 1e-9) {

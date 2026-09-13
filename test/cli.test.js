@@ -5683,6 +5683,37 @@ describe('--stdout', () => {
     // And every ordinary recording is untouched.
     assert.match((await cli([fixture('mixed-rates.edf'), '--info'])).stdout,
       /^Duration {3}3s {2}\(3 records of 1s\)$/mu);
+
+    /*
+      The other half of the same line, and the two other messages that state a length of
+      seconds out of a header. 0.8.95 capped the parenthetical and left them:
+
+          Duration   0.000000 ... 00029999999999999997s  (3 records of 1e-308s)
+          error: Header declares a data record duration of -1000 ... 000s; expected a positive
+          ... samples every 25000000000000000000 ... 0000s, so no sample time falls inside it
+
+      Three hundred and ten characters, three hundred and sixteen, three hundred and eight.
+    */
+    const tiny = path.join(dir, 'tiny-records.edf');
+    writeEdf({ path: tiny, numRecords: 3, recordDuration: 1e-308, signals });
+    const short = await cli([tiny, '--info']);
+    const shortLine = short.stdout.split('\n').find((line) => line.startsWith('Duration'));
+    assert.match(shortLine, /^Duration {3}2\.9999999999999997e-308s {2}\(3 records of 1e-308s\)$/u, shortLine);
+
+    const negative = path.join(dir, 'negative-records.edf');
+    writeEdf({ path: negative, numRecords: 2, recordDuration: -1e308, signals });
+    const refused = await cli([negative, '--info']);
+    assert.equal(refused.code, 1, refused.stderr);
+    const [first] = refused.stderr.split('\n');
+    assert.match(first, /duration of -1e\+308s; expected a positive number\.$/u, first);
+    assert.ok(first.length < 100, `${first.length} columns`);
+
+    const window = await cli([huge, '--info', '--start', '1s', '--end', '1.5s']);
+    assert.match(window.stderr, /samples every 2\.5e\+307s,/u, window.stderr);
+    // None of the three states a length as a run of digits no reader can count.
+    for (const text of [short.stdout, refused.stderr, window.stderr]) {
+      assert.doesNotMatch(text, /\d{40}/u, text.slice(0, 200));
+    }
   });
 
   it('says which window --info is describing, rather than only the whole recording', async () => {

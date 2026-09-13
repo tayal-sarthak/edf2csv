@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.98
+
+### the ceiling that went on one half of one line
+
+0.8.95 put a ceiling on the record length in the `Duration` line, because `plain` expands a double
+to its full decimal form and a record duration is eight characters of header — so `1e308` fits in
+one, and its expansion is 309 digits.
+
+It capped the parenthetical. The value in front of it, and two other messages, state a length of
+seconds out of the same header and went on expanding it:
+
+```
+Duration   0.00000000000 ... 0029999999999999997s  (3 records of 1e-308s)
+
+error: Header declares a data record duration of -10000000 ... 000000s; expected a positive number.
+
+         It is 0.500s wide and the fastest channel here samples every 250000000 ... 00000s,
+```
+
+Three hundred and ten characters, three hundred and sixteen, three hundred and eight. Each is a
+first line or a hint, and each reports a header field no wider than `-1e+308`.
+
+The rule is one rule, so it is in one place now — `plainSeconds` in format/number.ts, moved out of
+cli/report.ts where it was written for one half of one line, and used by all four. Plain while
+plain is typable is still why the expansion exists: `--start 1e-15s` is refused as an unknown unit
+`e`, and `repeating-fast.edf` still reads `0.000000000000001s`.
+
 ## 0.8.97
 
 ### a batch whose record count was the whole of what was asked of it
