@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.4
+
+### three quarters of a byte, after the last complete data record
+
+`parseHeader`'s second argument is the size of the file the header came out of, and 0.8.74 gave it
+a check because every count reported about the data is derived from it — omit it and the header
+claimed `NaN` records in a warning that said `NaN` out loud.
+
+The check asks for a finite number that is not negative. A file has a whole number of bytes;
+`fs.stat` reports one, and every count here divides by a record length in bytes. A fraction
+survived the division and came out in the warnings as a fact about the recording:
+
+```js
+parseHeader(bytes, 848.5)
+// warning: 0.5 bytes after the last complete data record were ignored.
+
+parseHeader(bytes, 900.25)
+// warning: The header declares 2 data records but the file contains 3.
+// warning: 12.25 bytes after the last complete data record were ignored.
+```
+
+Three quarters of a byte, reported under `TRAILING_BYTES` — the code a script matches to decide a
+recording was truncated — and a record count the file does not have beside it.
+
+One word: `Number.isFinite` becomes `Number.isInteger`. `EdfFile.open` has always passed the size
+`stat` gave it, so nothing that reads a file reaches this.
+
 ## 0.9.3
 
 ### the second argument that looked like a destination

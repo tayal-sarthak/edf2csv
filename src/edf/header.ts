@@ -430,7 +430,23 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     The same `OptionError` `assertInputPath` raises for the first argument of `EdfFile.open`,
     for the same reason given there: it is the call that is wrong, not the recording.
   */
-  if (typeof fileSize !== 'number' || !Number.isFinite(fileSize) || fileSize < 0) {
+  /*
+    And a whole number of them, which that check did not ask for.
+
+    A file has an integer number of bytes; `fs.stat` reports one, and every count derived here
+    divides by a record length in bytes. A fraction survived the division and came out in the
+    warnings as though the recording had it:
+
+        parseHeader(bytes, 848.5)   // "0.5 bytes after the last complete data record were
+                                    //  ignored."
+        parseHeader(bytes, 900.25)  // "The header declares 2 data records but the file
+                                    //  contains 3." — and "12.25 bytes ... were ignored."
+
+    Three quarters of a byte, reported as a fact about the file, under `TRAILING_BYTES` — the
+    code a script matches to decide a recording was truncated. The paragraph above is about
+    exactly this: "Every count this function reports about the data comes out of `fileSize`."
+  */
+  if (typeof fileSize !== 'number' || !Number.isInteger(fileSize) || fileSize < 0) {
     throw new OptionError(
       `fileSize must be the number of bytes in the file, got ${describeValue(fileSize)}.`,
     );

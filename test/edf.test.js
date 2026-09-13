@@ -672,7 +672,20 @@ describe('errors', () => {
     */
     const { parseHeader, OptionError } = await import('../dist/index.js');
     const bytes = await readFile(fixture('tiny.edf'));
-    for (const size of [undefined, null, NaN, Infinity, -5, '848', {}]) {
+    /*
+      A whole number of them, too, which that check did not ask for. A file has an integer
+      number of bytes and every count here divides by a record length in bytes, so a fraction
+      survived the division and came out in the warnings as a fact about the recording:
+
+          parseHeader(bytes, 848.5)   "0.5 bytes after the last complete data record were
+                                       ignored."
+          parseHeader(bytes, 900.25)  "The header declares 2 data records but the file
+                                       contains 3." and "12.25 bytes ... were ignored."
+
+      Three quarters of a byte, under TRAILING_BYTES — the code a script matches to decide a
+      recording was truncated.
+    */
+    for (const size of [undefined, null, NaN, Infinity, -5, '848', {}, 848.5, 900.25, 1.5]) {
       assert.throws(() => parseHeader(bytes, size), (error) => {
         assert.ok(error instanceof OptionError, `${String(size)} threw ${error}`);
         assert.match(error.message, /^fileSize must be the number of bytes in the file, got /u);
