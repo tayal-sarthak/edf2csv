@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.8
+
+### four more sentences about a time column that is not written
+
+`withSignalTableUnwritten` takes the sentences that describe a signal table out of an
+`--annotations-only` run's warnings, because that run writes none. It was shown eight of them.
+Four more say the same kind of thing in different words and were not.
+
+```
+$ edf2csv scoring.edf --annotations-only --out scoring_csv
+warning: This file is marked continuous (EDF+C), but 1 of its 3 data records says it starts
+         somewhere other than where continuity puts it.
+         Times are written as if the records were contiguous, which is what EDF+C means. ...
+
+warning: 1 of 3 data records carries no readable timekeeping annotation (record 0), so its
+         true position in time is unknown.
+         That record is timed as if it were contiguous; treat its timestamp as unreliable.
+
+Wrote scoring_csv
+  annotations.csv  3  rows
+```
+
+No times are written at all. "Timed as if contiguous" and "treat its timestamp as unreliable"
+are about a `time_s` column this run does not produce, and the timestamp they warn about does
+not exist.
+
+What the header says about itself is still worth saying, so the messages stay — that is the rule
+the eight before them follow. What replaces the clause is the thing that is true instead: an
+event's onset is read off the event, not off the record it sits in, so `annotations.csv` is
+unaffected by any of it and `record_index` still names the record each event came from.
+
+The marker warning keeps its pointer at the warning under it, which is still right, and loses
+only the half about the column.
+
 ## 0.9.7
 
 ### the long end of the line the short end was fixed on

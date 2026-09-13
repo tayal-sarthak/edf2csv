@@ -2072,6 +2072,25 @@ export function withSignalTableUnwritten(
           'physical minimum and maximum in the order the header gives them, inversion included.',
       };
     }
+    /*
+      And the record this one could not place, which is timed from its neighbours in a signal
+      table and nowhere else. Its events are exported whatever its position is: an onset is
+      read off the event, not off the record it sits in, and `record_index` still names that
+      record.
+    */
+    if (
+      diagnostic.hint?.startsWith('That record is timed as if') === true ||
+      diagnostic.hint?.startsWith('Those records are timed as if') === true
+    ) {
+      const one = diagnostic.hint.startsWith('That record');
+      return {
+        ...diagnostic,
+        hint:
+          `--annotations-only writes no signal rows, so nothing is timed from ${one ? 'that record' : 'those records'}. ` +
+          `The events in ${one ? 'it' : 'them'} carry their own onsets, and ` +
+          `${annotationsFile}'s record_index still names ${one ? 'it' : 'them'}.`,
+      };
+    }
     if (diagnostic.code !== 'DISCONTINUOUS' || diagnostic.hint === undefined) return diagnostic;
     if (diagnostic.hint.startsWith('Each row carries its true recording time')) {
       return {
@@ -2094,6 +2113,52 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint: '--annotations-only writes no signal rows, so no sample times are written at all.',
+      };
+    }
+    /*
+      And the three that say the times are written as if the records were contiguous, which
+      this pass had not been shown.
+
+      Those are the answers for a file whose record positions are not recorded, or are
+      contradicted by its own `EDF+C` marker — and they describe a time column. An
+      `--annotations-only` run writes none, so all three promise something about rows it does
+      not write:
+
+          warning: This file is marked continuous (EDF+C), but 1 of its 3 data records says
+                   it starts somewhere other than where continuity puts it.
+                   Times are written as if the records were contiguous, which is what EDF+C
+                   means. ...
+          warning: This file is marked discontinuous but has no annotation channel, so where
+                   its records sit in time is not recorded anywhere.
+                   Times are written as if the records were contiguous. Any gaps are lost.
+
+      over an annotations.csv holding its header and no rows. The three sentences above this
+      one were amended for exactly this at 0.8.x; these were the DISCONTINUOUS hints that do
+      not begin with any of their phrases.
+
+      What the header says about itself is still worth saying, so the messages stay. Only the
+      clause about what a conversion makes of it was false, and what is true instead is that
+      the events carry their own onsets whatever the records do.
+    */
+    if (diagnostic.hint.startsWith('Times are written as if the records were contiguous')) {
+      return {
+        ...diagnostic,
+        hint:
+          '--annotations-only writes no signal rows, so no times are written from the ' +
+          `records at all. ${annotationsFile} carries each event's own onset, which the ` +
+          'records do not decide.',
+      };
+    }
+    // The marker warning's hint, which `withTimingPromiseKept` has already rewritten once and
+    // which points at the warning under it. That pointer is still right and is what separates
+    // the two, so it is the clause about the time column that goes and not the sentence.
+    if (diagnostic.hint.startsWith('Where its records sit in time is not recorded in this file')) {
+      return {
+        ...diagnostic,
+        hint:
+          'Where its records sit in time is not recorded in this file, and ' +
+          '--annotations-only writes no signal rows to time from them anyway — see the ' +
+          'warning below.',
       };
     }
     return diagnostic;

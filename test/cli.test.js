@@ -6029,6 +6029,12 @@ describe('--stdout', () => {
     */
     const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-norows-'));
     temporaries.push(dir);
+    /*
+      Three more of them, which this pass had not been shown. A file whose record positions
+      are not recorded, or are contradicted by its own EDF+C marker, is answered "Times are
+      written as if the records were contiguous" — a sentence about a time column, over a run
+      that writes none.
+    */
     const cases = [
       ['records-backwards.edf', /no time column is affected/u, /Rows are written in file order/u],
       ['records-overlapping.edf', /no time column is affected/u, /Rows are written in file order/u],
@@ -6036,6 +6042,12 @@ describe('--stdout', () => {
         /Each row carries its true recording time/u],
       ['far-origin-collapsed.edf', /no sample times are written at all/u,
         /every row is present and the column increases/u],
+      ['continuous-liar.edf', /no times are written from the records at all/u,
+        /Times are written as if the records were contiguous/u],
+      ['continuous-liar-from-zero.edf', /no times are written from the records at all/u,
+        /Times are written as if the records were contiguous/u],
+      ['lost-timekeeping-d.edf', /nothing is timed from that record/u,
+        /treat its timestamp as unreliable/u],
     ];
     for (const [name, expected, forbidden] of cases) {
       const events = await cli([
@@ -6053,6 +6065,23 @@ describe('--stdout', () => {
       const signals = await cli([fixture(name), '--out', path.join(dir, `sig-${name}`)]);
       assert.match(signals.stderr.replace(/\s+/gu, ' '), forbidden, signals.stderr);
     }
+    /*
+      And the one whose record positions are recorded nowhere at all: marked EDF+D with no
+      annotation channel to hold them. Its marker warning keeps the pointer at the warning
+      under it, which is still right, and loses only the clause about a time column.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const nowhere = path.join(dir, 'no-annotations.edf');
+    writeEdf({
+      path: nowhere, reserved: 'EDF+D', numRecords: 2, recordDuration: 1,
+      signals: [{ label: 'EEG', dimension: 'uV', physMin: -100, physMax: 100, digMin: -1000,
+        digMax: 1000, samplesPerRecord: 2, gen: (r, i) => r * 2 + i }],
+    });
+    const lost = await cli([nowhere, '--out', path.join(dir, 'ao-nowhere'), '--annotations-only']);
+    const flatLost = lost.stderr.replace(/\s+/gu, ' ');
+    assert.match(flatLost, /writes no signal rows to time from them anyway — see the warning below/u, flatLost);
+    assert.match(flatLost, /no times are written from the records at all/u, flatLost);
+    assert.doesNotMatch(flatLost, /Times are written as if the records were contiguous/u, flatLost);
   });
 
   it('does not point a --stdout run at a sidecar file it will not write', async () => {
