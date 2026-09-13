@@ -13,6 +13,9 @@ import type { Writable } from 'node:stream';
 import { createGzip, gzipSync } from 'node:zlib';
 import path from 'node:path';
 
+// A destination is whatever the caller's shell handed over; see printable's own comment.
+import { printable } from '../format/unprintable.js';
+
 import type { RecordBatch } from '../edf/reader.js';
 import { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRate, formatRates, formatWallClock, startsFormula } from '../edf/header.js';
@@ -510,6 +513,22 @@ async function assertInputDoesNotOverlapOutputs(
 
 async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
   /*
+    The destination, quoted into every refusal below, and shown rather than pasted.
+
+    `--out` is whatever the caller's shell handed over, and `printableLines` escapes every
+    control byte in a message except the one that makes a line break — it splits on those
+    first, to keep the author's own lines. So a newline in a destination cut the refusal's
+    first line in half:
+
+        error: "out/ex
+               ists" already exists.
+
+    which is the line this tool's comments keep insisting stays whole, because it is the one a
+    log gets grepped for. Same in `EdfFile.open`'s path and in a `--channels` term; all three
+    go through `printable` now, where the summary and the report have always put them.
+  */
+  const shownDir = printable(dir);
+  /*
     Claim the directory with a single atomic mkdir rather than asking whether it exists
     and then creating it.
 
@@ -534,13 +553,13 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
       if (info && !info.isDirectory()) {
         throw new ConversionError(
           'OUTPUT_UNWRITABLE',
-          `Cannot create "${dir}": "${parent}" is a file, not a directory.`,
+          `Cannot create "${shownDir}": "${printable(parent)}" is a file, not a directory.`,
           'Choose a destination whose parent directories are directories, with --out.',
         );
       }
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
-        `Cannot create "${dir}": ${describeFsError(cause)}.`,
+        `Cannot create "${shownDir}": ${describeFsError(cause)}.`,
         createHint(cause),
       );
     }
@@ -553,7 +572,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
     if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
-        `Cannot create "${dir}": ${describeFsError(cause)}.`,
+        `Cannot create "${shownDir}": ${describeFsError(cause)}.`,
         createHint(cause),
       );
     }
@@ -568,7 +587,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
     if (existing && !existing.isDirectory()) {
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
-        `"${dir}" is a file, but the converted data needs a directory.`,
+        `"${shownDir}" is a file, but the converted data needs a directory.`,
         'Choose a directory with --out.',
       );
     }
@@ -594,7 +613,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
     if (!existing && (await lstat(dir).catch(() => null))) {
       throw new ConversionError(
         'OUTPUT_UNWRITABLE',
-        `"${dir}" is a symbolic link to something that does not exist, so nothing can be ` +
+        `"${shownDir}" is a symbolic link to something that does not exist, so nothing can be ` +
           `written there.`,
         'Remove the link, or choose a directory with --out. --force writes into a directory ' +
           'that is already there, and a link to nowhere is not one.',
@@ -620,7 +639,7 @@ async function prepareOutputDir(dir: string, force: boolean): Promise<void> {
       */
       throw new ConversionError(
         'OUTPUT_EXISTS',
-        `"${dir}" already exists.`,
+        `"${shownDir}" already exists.`,
         'Pass --force to write into it, leaving whatever else it holds, or --out to choose ' +
           'a different directory.',
       );

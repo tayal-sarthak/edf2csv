@@ -11,6 +11,7 @@
 import type { EdfSignal } from '../edf/header.js';
 import { editDistance } from '../format/distance.js';
 import { listed } from '../format/list.js';
+import { printable } from '../format/unprintable.js';
 import { assertOptions, assertSignals } from './options.js';
 
 /**
@@ -193,6 +194,9 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
   for (const rawTerm of terms) {
     const term = rawTerm.trim();
     if (term === '') continue;
+    // Quoted back into every refusal below, and a `--channels` term is whatever the caller's
+    // shell handed over — a newline in one cut the refusal's first line in half. See 0.8.92.
+    const shownTerm = printable(term);
 
     // '#N' addresses a channel by position, but a label may literally be "#5".
     // A real label always wins, so no channel becomes unreachable.
@@ -211,7 +215,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
       const position = term.slice(1);
       if (!/^\d+$/u.test(position)) {
         throw new ChannelSelectionError(
-          `"${term}" is not a channel position: a position is #0, #1, #2 and so on.\n` +
+          `"${shownTerm}" is not a channel position: a position is #0, #1, #2 and so on.\n` +
             positions,
         );
       }
@@ -254,7 +258,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
             // The label quoted the way the by-name refusal quotes it — this channel's label
             // is one of the two the specification reserves, so there is nothing else it can
             // be, and the two sentences stay one sentence.
-            `${term} is this recording's annotation channel ("${annotations.label}"), not a ` +
+            `${shownTerm} is this recording's annotation channel ("${annotations.label}"), not a ` +
               `signal: it holds event text rather than samples, so it has no column to ` +
               `select.\n` +
               `Its events are already written to annotations.csv by any conversion of this ` +
@@ -270,7 +274,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
           40-channel recording this refusal ran to 111 columns where its neighbour ran to 74.
         */
         throw new ChannelSelectionError(
-          `No channel at position ${term}.\n${positions}`,
+          `No channel at position ${shownTerm}.\n${positions}`,
         );
       }
       chosen.set(signal.index, signal);
@@ -303,10 +307,10 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
         // way to reach it, and saying so is more use than quoting an empty string twice.
         throw new ChannelSelectionError(
           owner.label === ''
-            ? `"${term}" is a column name, not a channel name: --channels matches the label, ` +
+            ? `"${shownTerm}" is a column name, not a channel name: --channels matches the label, ` +
               `and this channel has none.\n` +
               `Use "#${owner.index}" — a channel with no label can only be addressed by position.`
-            : `"${term}" is a column name, not a channel name: --channels matches the label, ` +
+            : `"${shownTerm}" is a column name, not a channel name: --channels matches the label, ` +
               `which for this channel is "${owner.label}".\n` +
               (typeable(owner.label) === null
                 ? `Use "#${owner.index}" — ${untypeableBecause(owner.label)}, so position is ` +
@@ -358,8 +362,8 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
         const exact = annotationChannel.label.toLowerCase() === term.toLowerCase();
         throw new ChannelSelectionError(
           (exact
-            ? `"${term}" is this recording's annotation channel, not a signal: it holds event `
-            : `There is no channel named "${term}"; the nearest thing to it is this ` +
+            ? `"${shownTerm}" is this recording's annotation channel, not a signal: it holds event `
+            : `There is no channel named "${shownTerm}"; the nearest thing to it is this ` +
               `recording's annotation channel "${annotationChannel.label}", which holds event `) +
             `text rather than samples, so it has no column to select.\n` +
             `Its events are already written to annotations.csv by any conversion of this ` +
@@ -382,7 +386,7 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
         rather than list anything.
       */
       throw new ChannelSelectionError(
-        `No channel named "${term}".${hint}\n` +
+        `No channel named "${shownTerm}".${hint}\n` +
           `Run with --info and no --channels to list the channels in this file.`,
       );
     }

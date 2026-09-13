@@ -3,7 +3,7 @@
 import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -5699,6 +5699,50 @@ describe('--stdout', () => {
     assert.equal(wholeJson.whole_recording, true);
     assert.equal(wholeJson.start_seconds, 0);
     assert.equal(wholeJson.end_seconds, 3);
+  });
+
+  it('keeps a refusal on one line when the value quoted into it carries a newline', async () => {
+    /*
+      `printableLines` splits a message on its own line breaks before escaping each line, so
+      the author's two-line messages survive — and every control byte in a value was escaped
+      except the one that makes a line break:
+
+          $ edf2csv "re\ncording.edf"
+          error: Cannot read "re
+                 cording.edf": no such file.
+
+      The first line is the one this tool's comments keep insisting stays whole, because it is
+      the line a log gets grepped for; here the filesystem decides where it ends. The same
+      byte in a `--channels` term and in `--out` did it too, while the summary and the `--info`
+      report have escaped all three since 0.5.67.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-nlquote-'));
+    temporaries.push(dir);
+    const newlined = path.join(dir, 're\ncording.edf');
+    await copyFile(fixture('tiny.edf'), newlined);
+    await mkdir(path.join(dir, 'ex\nists'));
+    await writeFile(path.join(dir, 'fi\nle'), 'x');
+
+    for (const [what, args] of [
+      ['a path that is not there', [path.join(dir, 'no\nsuch.edf')]],
+      ['a --channels term', [fixture('mixed-rates.edf'), '--channels', 'A\nB']],
+      ['a destination that exists', [fixture('tiny.edf'), '--out', path.join(dir, 'ex\nists')]],
+      ['a destination that is a file', [fixture('tiny.edf'), '--out', path.join(dir, 'fi\nle')]],
+    ]) {
+      const { code, stderr } = await cli(args);
+      assert.ok(code !== 0, `${what}: ${stderr}`);
+      const [first, ...rest] = stderr.trimEnd().split('\n');
+      assert.match(first, /^error: /u, `${what}: ${stderr}`);
+      // The sentence ends on the line it starts on, and the byte is shown as its escape.
+      assert.match(first, /\\x0a/u, `${what}: ${first}`);
+      for (const line of rest) assert.match(line, /^ {7}/u, `${what}: ${JSON.stringify(line)}`);
+    }
+
+    // And the recording itself still converts, with its name escaped in the summary.
+    const out = path.join(dir, 'out');
+    const ran = await cli([newlined, '--out', out]);
+    assert.equal(ran.code, 0, ran.stderr);
+    assert.doesNotMatch(ran.stderr.split('\n')[0], /\n/u);
   });
 
   it('does not put a control byte in a file --stdout will not write', async () => {

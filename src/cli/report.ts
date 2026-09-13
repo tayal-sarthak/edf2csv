@@ -10,7 +10,7 @@ import type { EdfFile } from '../edf/reader.js';
 import { describeFormat, formatRates, formatWallClock } from '../edf/header.js';
 import { fixed, formatBytes, formatDuration, plain } from '../format/number.js';
 import { counted, grouped } from '../format/list.js';
-import { escapeCharacter, escapeJsonText, unprintablePattern } from '../format/unprintable.js';
+import { escapeJsonText, printable } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
 import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
@@ -113,11 +113,10 @@ function table(rows: readonly (readonly string[])[], alignRight: ReadonlySet<num
  * rather than being silently swallowed. This affects display only: `channels.csv` and
  * `metadata.json` still copy the field verbatim, and CSV quoting already makes that safe.
  */
-export function printable(text: string): string {
-  // The character class and the escape are shared with the conversion, which asks the same
-  // question of an annotation description; see src/format/unprintable.ts.
-  return text.replace(unprintablePattern('gu'), escapeCharacter);
-}
+// Defined in src/format/unprintable.ts, beside the character class it uses, since the library's
+// own message builders need it too — see 0.8.92. Re-exported here, which is where every caller
+// in this package already imports it from.
+export { printable };
 
 /**
  * The same protection for text that is meant to span lines.

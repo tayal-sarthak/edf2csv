@@ -22,6 +22,8 @@ import { counted, grouped } from '../format/list.js';
 // Crossing into convert/ as header.ts already does for `typeable`: the check belongs to the
 // call rather than to the file, and there is one of it.
 import { OptionError, assertInputPath, describeValue } from '../convert/options.js';
+// A path comes out of the filesystem and nobody vets it; see printable's own comment.
+import { printable } from '../format/unprintable.js';
 
 /**
  * How far `readOrigin` looks for a record that states its own start time.
@@ -213,7 +215,7 @@ export class EdfFile {
     const info = await stat(path).catch((cause: unknown) => {
       throw new EdfError(
         'UNREADABLE',
-        `Cannot read "${path}": ${describe(cause)}.`,
+        `Cannot read "${printable(path)}": ${describe(cause)}.`,
         EdfFile.#UNREADABLE_HINT,
       );
     });
@@ -228,7 +230,7 @@ export class EdfFile {
     if (info.isDirectory()) {
       throw new EdfError(
         'UNREADABLE',
-        `"${path}" is a directory, not an EDF file.`,
+        `"${printable(path)}" is a directory, not an EDF file.`,
         'Name a recording inside it. The command line expands a folder to the recordings it ' +
           'holds; this takes one file.',
       );
@@ -236,7 +238,7 @@ export class EdfFile {
     if (!info.isFile()) {
       throw new EdfError(
         'UNREADABLE',
-        `"${path}" is not a regular file.`,
+        `"${printable(path)}" is not a regular file.`,
         'A pipe, socket or device cannot be read as a recording: the parser seeks to a byte ' +
           'offset inside the file, which only a real file supports.',
       );
@@ -259,7 +261,7 @@ export class EdfFile {
     const handle = await open(path, 'r').catch((cause: unknown) => {
       throw new EdfError(
         'UNREADABLE',
-        `Cannot read "${path}": ${describe(cause)}.`,
+        `Cannot read "${printable(path)}": ${describe(cause)}.`,
         EdfFile.#UNREADABLE_HINT,
       );
     });

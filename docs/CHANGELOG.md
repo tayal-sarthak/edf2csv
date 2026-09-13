@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.92
+
+### a refusal whose first line ended where the filesystem said
+
+Every control byte in a quoted value is escaped before it reaches the terminal — except the one
+that makes a line break.
+
+```
+$ edf2csv "re
+cording.edf"
+error: Cannot read "re
+       cording.edf": no such file.
+```
+
+`printableLines` splits a message on its line breaks first, so the two-line messages this tool
+writes keep their shape, and then escapes each line. A newline that came out of the filesystem is
+indistinguishable from one the author wrote, so it becomes a line break — and the line it breaks
+is the first one, which this tool's own comments keep insisting stays whole because it is the
+line a log gets grepped for.
+
+A `--channels` term and an `--out` destination did the same thing, from the same byte. The
+summary and the `--info` report have escaped all three since 0.5.67; it is the refusals that did
+not, because they are the only messages assembled from lines.
+
+Escaped where the value is quoted in, rather than where the message is printed: the printer
+cannot tell the author's line break from the filesystem's, and the value never had any business
+carrying one. `printable` moves to `src/format/unprintable.ts`, beside the character class it
+uses, since the library's own message builders need it now too.
+
 ## 0.8.91
 
 ### [object Object], in the one sentence that shows the reader what they typed

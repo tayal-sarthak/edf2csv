@@ -32,6 +32,26 @@ export function unprintablePattern(flags = 'u'): RegExp {
 }
 
 /**
+ * Text with every byte a terminal would act on shown as its escape instead.
+ *
+ * Lived in `cli/report.ts` until 0.8.92, where only the command line could reach it — and the
+ * messages the *library* builds interpolate the same untrusted text: a path out of the
+ * filesystem, a `--channels` term, an output directory. Those reach the terminal through
+ * `printableLines`, which splits a message on its own line breaks before escaping each line,
+ * so every control byte was escaped except the one that makes a line break. A newline in a
+ * path cut the refusal's first line in half:
+ *
+ *     error: Cannot read "nl/no
+ *            such.edf": no such file.
+ *
+ * and that first line is the one this tool's own comments insist stays whole, because it is
+ * the line a log gets grepped for.
+ */
+export function printable(text: string): string {
+  return text.replace(unprintablePattern('gu'), escapeCharacter);
+}
+
+/**
  * One character as its escape.
  *
  * `\x` is two digits and `\u` is four, so the wide ones take `\u`: a reader who counts the
