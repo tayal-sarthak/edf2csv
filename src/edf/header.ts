@@ -1414,6 +1414,24 @@ export function describeFormat(header: EdfHeader): string {
   }
   const base = header.isBdf ? 'BDF' : 'EDF';
   if (!header.isEdfPlus) return base;
+  /*
+    The third field this reads, which the check above does not ask about.
+
+    It decides the word in the parentheses, and the line below treats anything that is not
+    `'EDF+D'` as continuous — missing included. So an object carrying the two booleans and
+    nothing else came back `"EDF+ (continuous)"`: a confident wrong answer about a file,
+    which is what that check was added to stop, for the one field it left out.
+
+    A parsed header cannot be in this state: `isEdfPlus` *is* `continuity !== null`, so when
+    the first is true the second is one of the two markers. Anything else reaching here is
+    the argument being the wrong object again.
+  */
+  if (header.continuity !== 'EDF+C' && header.continuity !== 'EDF+D') {
+    throw new OptionError(
+      `header.continuity must be "EDF+C" or "EDF+D" on an EDF+ header, got ` +
+        `${describeValue(header.continuity)}. It is what the word in the parentheses reports.`,
+    );
+  }
   return `${base}+ (${header.continuity === 'EDF+D' ? 'discontinuous' : 'continuous'})`;
 }
 

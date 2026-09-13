@@ -1771,10 +1771,28 @@ describe('the read budget', () => {
     const file = await EdfFile.open(fixture('biosemi-plus.bdf'));
     try {
       assert.equal(describeFormat(file.header), 'BDF+ (discontinuous)');
+      // Plain EDF and BDF never reach the parenthetical, so they need no continuity.
+      assert.equal(describeFormat({ isBdf: false, isEdfPlus: false }), 'EDF');
+      assert.equal(describeFormat({ isBdf: true, isEdfPlus: false }), 'BDF');
+      assert.equal(describeFormat({ isBdf: false, isEdfPlus: true, continuity: 'EDF+C' }), 'EDF+ (continuous)');
       for (const [call, expected] of [
         [() => describeFormat(file), /header must be a parsed EDF header/u],
         [() => describeFormat({}), /header must be a parsed EDF header, got \{\}/u],
         [() => describeFormat(null), /header must be a parsed EDF header, got null/u],
+        /*
+          And the third field it reads, which that check did not ask about. The line that
+          builds the parenthetical treats anything but `'EDF+D'` as continuous — missing
+          included — so an object carrying the two booleans and nothing else came back
+          `"EDF+ (continuous)"`: the confident wrong answer this check exists to stop, for the
+          one field it left out. A parsed header cannot be in that state, since `isEdfPlus`
+          *is* `continuity !== null`.
+        */
+        [() => describeFormat({ isBdf: false, isEdfPlus: true }),
+          /header\.continuity must be "EDF\+C" or "EDF\+D" on an EDF\+ header, got undefined/u],
+        [() => describeFormat({ isBdf: true, isEdfPlus: true, continuity: 42 }),
+          /header\.continuity must be "EDF\+C" or "EDF\+D" on an EDF\+ header, got 42/u],
+        [() => describeFormat({ isBdf: false, isEdfPlus: true, continuity: null }),
+          /header\.continuity must be "EDF\+C" or "EDF\+D" on an EDF\+ header, got null/u],
         [() => formatRate(NaN), /hz must be a sampling rate in hertz, got NaN/u],
         [() => formatRate('256'), /hz must be a sampling rate in hertz, got "256"/u],
         [() => rateSlug(NaN), /hz must be a sampling rate in hertz, got NaN/u],

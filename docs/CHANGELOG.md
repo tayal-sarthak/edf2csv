@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.87
+
+### the field that decides the answer, and the check that skipped it
+
+0.8.63 gave `describeFormat` a check, because it read two booleans off its argument as truthiness
+tests and so answered `"EDF"` for anything that lacked them — including the `EdfFile` whose
+`.header` it wants. The check asks about those two fields. It reads three.
+
+```js
+describeFormat({ isBdf: false, isEdfPlus: true })
+// "EDF+ (continuous)"
+```
+
+`continuity` is what the word in the parentheses reports, and the line that builds it treats
+anything that is not `'EDF+D'` as continuous — missing included. So the one field that decides
+the only part of the answer that varies was the one field nothing asked about, and the result is
+the same confident wrong answer about a file that the check was added to stop.
+
+A parsed header cannot be in that state: `isEdfPlus` *is* `continuity !== null`, so when the
+first is true the second is one of the two markers. Anything else arriving here is the argument
+being the wrong object again, which is what this function now says.
+
 ## 0.8.86
 
 ### the epoch, reported as a recording with no start instant
