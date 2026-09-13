@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.7
+
+### the long end of the line the short end was fixed on
+
+0.8.98 put every message that states a length of seconds through `plainSeconds` — plain while
+plain is typable, the shortest exact form past that — and said so: "Every message that states a
+length of seconds out of a header takes the same rule now."
+
+Two of them reach it through a different renderer and were missed.
+
+`formatDuration` decomposes into hours and minutes, and stops doing that past 2^53, where the
+subtraction is no longer exact. Past that it prints the seconds through `fixed`. One data record
+of 1e308 seconds is a *finite* duration past 2^53, so it takes that branch:
+
+```
+Duration   10000000000000000109790636294404554174 ... 336s  (1 record of 1e+308s)
+```
+
+Three hundred and nine digits, beside a parenthetical that had already been capped, and the two
+are the same number to within a factor of one. The short end of this function was the half 0.8.98
+fixed.
+
+`formatSeconds` in time-range.ts rounds to three places and trims, and renders the bounds in the
+window refusals. The same recording, timed from a far origin, made one sentence 1,302 characters:
+
+```
+--start 1e+308s is at or past the end of this 1.0000002e+307s recording,
+which runs from 1e+300s to 1.0000003e+307s.
+```
+
+The ceiling moved from thirty characters to forty to make room for them. It is the length past
+which a figure stops being typable *and* countable, and the value these two render is the one
+`--start` takes back — a test has held `formatDuration(1e30)` to a form the time parser accepts
+since 0.5.x, and 1e30 is thirty-one digits: under the old ceiling and over it at once. Forty
+clears every figure those tests name and still cuts the three hundred that started this.
+
+One line of code now, `withinLine`, which `plainSeconds` calls too, so a rendering that is not
+`plain`'s can take the rule without repeating the number.
+
 ## 0.9.6
 
 ### a fact about the records, from a function that has read none

@@ -269,7 +269,20 @@ export function formatDuration(seconds: number): string {
     quotes this half as part of what was wrong. `fixed` expands these with BigInt, which is
     exact past 2^53 where a double carries no fraction anyway.
   */
-  if (seconds < 0 || seconds >= Number.MAX_SAFE_INTEGER) return `${fixed(seconds, 0)}s`;
+  /*
+    Through the same ceiling as the branch below it, which 0.9.7 found this one missing.
+
+    0.8.98 put every message that states a length of seconds through `plainSeconds` — plain
+    while plain is typable, the shortest exact form past that — and routed four sites to it.
+    This is a fifth, reached by a different helper: one data record of 1e308 seconds is a
+    finite duration past 2^53, so it takes this branch and `fixed(…, 0)` expanded it.
+
+        Duration   100000000000000001097906362944045541740 … 336s  (1 record of 1e+308s)
+
+    Three hundred and ten characters, on the line whose parenthetical had just been capped at
+    thirty — and the two halves are the same number to within a factor of one.
+  */
+  if (seconds < 0 || seconds >= Number.MAX_SAFE_INTEGER) return `${plainSeconds(seconds)}s`;
 
   // Round to the precision that will actually be printed BEFORE splitting into units.
   // Splitting first left the remainder to be rounded on its own, so 3599.9996 s decomposed
@@ -329,17 +342,37 @@ export function formatDuration(seconds: number): string {
  * either way: a reader cannot count three hundred digits any more than they can pass an
  * exponent, so the shortest exact form is the more honest of the two.
  *
+ * Forty and not the thirty this was written with. 0.9.7 brought `formatDuration` under the same
+ * rule, and the value it renders is the one the window refusals hand back — "is at or past the
+ * end of this 3e+21s recording" is a sentence whose whole job is to say what window there is to
+ * ask for, and a test has held it to a length `--start` accepts since 0.5.x. That test asks for
+ * 1e30, which is thirty-one digits: a figure below the old ceiling and above it at once. Forty
+ * clears every value those tests name and still cuts the three hundred that started this.
+ *
  * Here rather than in cli/report.ts, where 0.8.95 wrote it for one half of one line. The
  * other half of that same line expanded a duration of 3e-308 to three hundred and ten
  * characters; so did the refusal naming a record duration that is not positive, and the hint
  * that says how wide a window has to be to hold a sample. All four state a length of seconds
  * out of a header, and the rule is one rule.
  */
-const LONGEST_PLAIN_SECONDS = 30;
+const LONGEST_PLAIN_SECONDS = 40;
 
 export function plainSeconds(seconds: number): string {
-  const expanded = plain(seconds);
-  return expanded.length <= LONGEST_PLAIN_SECONDS ? expanded : String(seconds);
+  return withinLine(plain(seconds), seconds);
+}
+
+/**
+ * The same ceiling, for a rendering that is not `plain`'s.
+ *
+ * `formatDuration` decomposes into hours and minutes, and past 2^53 prints the seconds through
+ * `fixed`; `formatSeconds` in time-range.ts rounds to three places and trims. Both state a
+ * length of seconds out of a header and neither goes through `plain`, so neither took the
+ * ceiling 0.8.98 applied to the four that do — and one data record of 1e308 seconds is a finite
+ * duration past 2^53, which `fixed` expanded to three hundred and ten characters on the line
+ * whose parenthetical had already been capped.
+ */
+export function withinLine(text: string, seconds: number): string {
+  return text.length <= LONGEST_PLAIN_SECONDS ? text : String(seconds);
 }
 
 /** A record can declare a great many samples; two arrays this size is the cost of caching. */

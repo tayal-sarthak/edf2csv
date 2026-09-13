@@ -5710,6 +5710,19 @@ describe('--stdout', () => {
 
     const window = await cli([huge, '--info', '--start', '1s', '--end', '1.5s']);
     assert.match(window.stderr, /samples every 2\.5e\+307s,/u, window.stderr);
+
+    /*
+      And the `Duration` value itself where the recording is long rather than short, which is
+      the other branch of the same function and took `fixed` rather than `plain`. One data
+      record of 1e308 seconds is a finite duration past 2^53, so it decomposes no further and
+      printed as 309 digits — beside a parenthetical 0.8.95 had already capped.
+    */
+    const one = path.join(dir, 'one-record.edf');
+    writeEdf({ path: one, numRecords: 1, recordDuration: 1e308, signals });
+    const single = await cli([one, '--info']);
+    const longest = single.stdout.split('\n').find((line) => line.startsWith('Duration'));
+    assert.match(longest, /^Duration {3}1e\+308s {2}\(1 record of 1e\+308s\)$/u, longest);
+    assert.doesNotMatch(single.stdout, /\d{40}/u, longest);
     // None of the three states a length as a run of digits no reader can count.
     for (const text of [short.stdout, refused.stderr, window.stderr]) {
       assert.doesNotMatch(text, /\d{40}/u, text.slice(0, 200));

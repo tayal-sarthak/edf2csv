@@ -7,7 +7,7 @@
  * a message that shows the forms that work.
  */
 
-import { fixed, formatDuration } from '../format/number.js';
+import { fixed, formatDuration, withinLine } from '../format/number.js';
 import { assertOptions, assertRecordShape, describeValue, OptionError } from './options.js';
 
 export class TimeRangeError extends Error {
@@ -682,5 +682,8 @@ function formatSeconds(seconds: number): string {
     re-introduced the exponent form that `toFixed` had produced.
   */
   const text = fixed(seconds, 3);
-  return `${text.includes('.') ? text.replace(/\.?0+$/u, '') : text}s`;
+  const trimmed = text.includes('.') ? text.replace(/\.?0+$/u, '') : text;
+  // And the same ceiling, for the same reason: this renders a bound out of the recording's own
+  // header, and a record duration of 1e308 puts 309 digits in the sentence. See `withinLine`.
+  return `${withinLine(trimmed, seconds)}s`;
 }
