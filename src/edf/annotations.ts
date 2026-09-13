@@ -135,9 +135,33 @@ export function decodeRecordAnnotations(
     same `OptionError` the two path-taking exports raise, for the reason given there: the call
     is what is wrong, not the recording.
   */
-  if (!ArrayBuffer.isView(bytes)) {
+  /*
+    A view of *bytes*, which `ArrayBuffer.isView` does not mean.
+
+    It is true of every typed array and of `DataView`, and both of those reach past this check
+    into the loop below — which reads `bytes[i]` and calls `bytes.subarray`. A typed array of
+    wider elements has both, so it does not fail; it decodes the wrong thing and says nothing:
+
+        decodeRecordAnnotations(new Float64Array(2), 0)
+        { recordStart: null, annotations: [], malformed: 0, ... }
+
+    Sixteen bytes of annotation channel, read as two doubles, reported as a record with
+    nothing malformed in it — which is what this function says about a record that really is
+    empty. A `DataView` has no index accessor at all, so every byte reads `undefined`.
+
+    `BYTES_PER_ELEMENT === 1` is the question being asked: true of `Uint8Array`, `Int8Array`,
+    `Uint8ClampedArray` and the `Buffer` `annotationBytes` hands this, undefined on a
+    `DataView`. The same check `parseHeader` makes of its own bytes.
+  */
+  if (!ArrayBuffer.isView(bytes) || (bytes as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT !== 1) {
+    // A view is named rather than dumped, for the reason 0.8.84 gives: a hundred doubles
+    // handed back is the caller's own data, not a description of what is wrong with it.
     throw new OptionError(
-      `bytes must be one record's annotation channel, got ${describeValue(bytes)}.`,
+      ArrayBuffer.isView(bytes)
+        ? `bytes is a ${(bytes as object).constructor?.name ?? 'view'}, which is a view of an ` +
+          `ArrayBuffer but not of bytes. One record's annotation channel is a Uint8Array or a ` +
+          `Buffer, one byte an element — annotationBytes returns one.`
+        : `bytes must be one record's annotation channel, got ${describeValue(bytes)}.`,
     );
   }
   /*

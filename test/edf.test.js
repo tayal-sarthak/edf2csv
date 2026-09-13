@@ -550,6 +550,26 @@ describe('errors', () => {
     // A real slice still decodes, including the Buffer subclass the reader hands it.
     assert.equal(decodeRecordAnnotations(new Uint8Array(4), 0).malformed, 0);
     assert.equal(decodeRecordAnnotations(Buffer.alloc(4), 0).malformed, 0);
+    assert.equal(decodeRecordAnnotations(new Int8Array(4), 0).malformed, 0);
+
+    /*
+      And the views `ArrayBuffer.isView` is true of that are not views of bytes. A typed array
+      of wider elements has both the index accessor and the `subarray` the loop uses, so it
+      does not fail — it decodes the wrong thing and says nothing is wrong with it:
+
+          decodeRecordAnnotations(new Float64Array(2), 0)
+          { recordStart: null, annotations: [], malformed: 0, ... }
+
+      Sixteen bytes of annotation channel read as two doubles, reported as a record that
+      carries nothing — which is what this says about a record that really is empty.
+    */
+    for (const view of [new DataView(new ArrayBuffer(8)), new Float64Array(2), new Uint16Array(4)]) {
+      assert.throws(() => decodeRecordAnnotations(view, 0), (error) => {
+        assert.ok(error instanceof OptionError, `${view.constructor.name} threw ${error}`);
+        assert.match(error.message, /^bytes is a \w+, which is a view of an ArrayBuffer but not of bytes\./u);
+        return true;
+      }, `${view.constructor.name} was accepted`);
+    }
 
     /*
       And the second argument, which this function does not read — it writes it. `recordIndex`

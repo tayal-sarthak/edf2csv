@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.85
+
+### a record's annotations, decoded from somewhere else, reported as empty
+
+The decoder beside `parseHeader` asked the same question the same way, and gets the same answer
+wrong — but quietly.
+
+```js
+decodeRecordAnnotations(new Float64Array(2), 0)
+// { recordStart: null, annotations: [], malformed: 0, malformedTimekeeping: 0, ... }
+```
+
+Sixteen bytes of an annotation channel, read as two doubles, and reported as a record carrying
+nothing — which is exactly what this function says about a record that really is empty. A typed
+array of wider elements has both the index accessor and the `subarray` the decode loop uses, so
+nothing throws; the bytes are simply not where it looked. A `DataView` has no index accessor at
+all, so every byte reads `undefined` and the answer is the same empty one.
+
+`ArrayBuffer.isView` is true of both. The question is whether this is a view of bytes, and
+`BYTES_PER_ELEMENT === 1` is how to ask it — true of `Uint8Array`, `Int8Array`,
+`Uint8ClampedArray` and the `Buffer` that `annotationBytes` returns.
+
+Worse here than next door, because the wrong answer is a plausible one. `parseHeader` at least
+came back with an error.
+
 ## 0.8.84
 
 ### a view of an ArrayBuffer, taken for a view of bytes
