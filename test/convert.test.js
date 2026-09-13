@@ -1765,6 +1765,26 @@ describe('option checking', () => {
       [{ recordCount: 3 }, /recordDuration must be a positive number of seconds, got undefined/u],
       [{ recordDuration: '1', recordCount: 3 }, /recordDuration must be a positive number of seconds, got "1"/u],
       [{ recordDuration: 0, recordCount: 3 }, /recordDuration must be a positive number of seconds, got 0/u],
+      /*
+        And where the records really sit, which is what makes a discontinuous recording span
+        more time than it holds. Nothing asked what it was, and the two ways of getting it
+        wrong failed differently:
+
+            resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: 'x' })
+            { startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0,
+              isWholeRecording: true }
+
+        A string is iterable, so it spread to its characters and the span came out over no
+        records at all — a range that says it is the whole recording and covers none of it.
+        A number came back as `TypeError: recordStarts is not iterable`, which names this
+        function's own parameter at a caller holding the wrong thing.
+      */
+      [{ recordDuration: 1, recordCount: 3, recordStarts: 'x' },
+        /recordStarts must be a list of record start times, or null, got "x"/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: 42 },
+        /recordStarts must be a list of record start times, or null, got 42/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: {} },
+        /recordStarts must be a list of record start times, or null, got \{\}/u],
     ]) {
       assert.throws(() => resolveRange(options), (error) => {
         assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
@@ -1781,6 +1801,17 @@ describe('option checking', () => {
         return true;
       });
     }
+
+    /*
+      Every list it really takes still resolves: the `Float64Array` the reader builds, an
+      ordinary array, and the `(number | null)[]` `readAnnotations` hands back, where a null
+      start is a record whose position is not known.
+    */
+    for (const starts of [null, undefined, new Float64Array([0, 5, 10]), [0, 5, 10], [0, null, 10]]) {
+      const spanned = resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: starts });
+      assert.equal(spanned.endRecord, 3, String(starts));
+    }
+    assert.equal(resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: [0, 5, 10] }).endSeconds, 11);
 
     // And the ordinary window still resolves.
     const range = resolveRange({ start: 1, end: 2, recordDuration: 1, recordCount: 3 });

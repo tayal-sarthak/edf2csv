@@ -350,8 +350,9 @@ export function assertPlanInput(input: {
 export function assertRecordShape(input: {
   recordDuration?: unknown;
   recordCount?: unknown;
+  recordStarts?: unknown;
 }): void {
-  const { recordDuration, recordCount } = input ?? {};
+  const { recordDuration, recordCount, recordStarts } = input ?? {};
   if (typeof recordDuration !== 'number' || !Number.isFinite(recordDuration) || recordDuration <= 0) {
     throw new OptionError(
       `recordDuration must be a positive number of seconds, got ${describeValue(recordDuration)}.`,
@@ -360,6 +361,38 @@ export function assertRecordShape(input: {
   if (!Number.isInteger(recordCount) || (recordCount as number) < 0) {
     throw new OptionError(
       `recordCount must be a whole number of data records, got ${describeValue(recordCount)}.`,
+    );
+  }
+  /*
+    And where the records really sit, which is what makes a discontinuous file's span longer
+    than its duration. Nothing asked what it was, and the two ways of getting it wrong fail
+    differently:
+
+        resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: 'x' })
+        { startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0, isWholeRecording: true }
+
+    A string is iterable, so it spreads to its characters and the span comes out over no
+    records at all — a range that says it is the whole recording and covers none of it, which
+    is a contradiction rather than an answer.
+
+        resolveRange({ ..., recordStarts: 42 })
+        TypeError: recordStarts is not iterable
+
+    which names this function's own parameter at a caller holding the wrong thing. A list is
+    what it takes: the `Float64Array` the reader builds, or an ordinary array — `readAnnotations`
+    hands back `(number | null)[]`, and a null start is a record whose position is not known,
+    which this already allows for.
+  */
+  if (
+    recordStarts !== null &&
+    recordStarts !== undefined &&
+    !Array.isArray(recordStarts) &&
+    !ArrayBuffer.isView(recordStarts)
+  ) {
+    throw new OptionError(
+      `recordStarts must be a list of record start times, or null, got ` +
+        `${describeValue(recordStarts)}. It is where the records really sit, which is what ` +
+        `makes a discontinuous recording span more time than it holds.`,
     );
   }
 }

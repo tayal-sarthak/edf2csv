@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.89
+
+### a range that was the whole recording and covered none of it
+
+A discontinuous recording spans more time than it holds, and `recordStarts` is what says so —
+where the records really sit. `buildPlan` and `resolveRange` both take it, and neither asked what
+it was.
+
+```js
+resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: 'x' })
+// { startSeconds: 0, endSeconds: 3, startRecord: 0, endRecord: 0, isWholeRecording: true }
+```
+
+A string is iterable, so it spreads to its characters and the span comes out over no records at
+all. The result is not a wrong range; it is a contradictory one — `isWholeRecording: true` beside
+`startRecord === endRecord`, a window that claims to be the whole recording and covers none of it.
+`buildPlan` hands back a plan built on it, with `estimate.rows: 0`.
+
+```js
+resolveRange({ ..., recordStarts: 42 })
+// TypeError: recordStarts is not iterable
+```
+
+which names this function's own parameter at a caller holding the wrong thing.
+
+A list is what it takes, and every list it really takes still resolves: the `Float64Array` the
+reader builds, an ordinary array, and the `(number | null)[]` `readAnnotations` hands back, where
+a null start is a record whose position is not known.
+
 ## 0.8.88
 
 ### a column name of null, from a check that asked for one field of three
