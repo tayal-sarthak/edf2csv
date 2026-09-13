@@ -2010,6 +2010,32 @@ describe('option checking', () => {
       // step is legitimately 0 as well; what matters is that both answer rather than throw)
       assert.ok(Number.isFinite(quantizationStep(ordinary)));
       assert.ok(Number.isInteger(decimalsForSignal(ordinary)));
+
+      /*
+        And `decimalsForSignal`'s second argument, the ceiling, which 0.8.76 left as whatever
+        was passed — `Math.min` carries it straight out:
+
+            decimalsForSignal(signal, -5)    // -5
+            decimalsForSignal(signal, 2.5)   // 2.5
+            decimalsForSignal(signal, 'x')   // NaN
+
+        A negative number of decimal places, a fractional one, and not a number, from the
+        function whose whole answer is how many places a column needs. Each is a RangeError
+        out of `toFixed` one call later and somewhere else. 100 is the ceiling because
+        `toFixed(101)` is where that RangeError comes from.
+      */
+      for (const max of [-5, 2.5, 'x', NaN, Infinity, null]) {
+        assert.throws(() => decimalsForSignal(ordinary, max), (error) => {
+          assert.ok(error instanceof OptionError, `${String(max)} threw ${error}`);
+          assert.match(error.message, /^max must be a whole number of decimal places, zero or more/u);
+          return true;
+        }, `max ${String(max)} was accepted`);
+      }
+      // The ceilings it does take still cap the answer — including one nothing can reach,
+      // which is how a caller asks what a channel would need without a ceiling at all.
+      assert.equal(decimalsForSignal(ordinary, 0), 0);
+      assert.equal(decimalsForSignal(ordinary, 100), decimalsForSignal(ordinary));
+      assert.ok(decimalsForSignal(ordinary, Number.MAX_SAFE_INTEGER) >= decimalsForSignal(ordinary));
       // The degenerate channel's own step is still 0, which is what that channel's step is.
       assert.equal(quantizationStep(degenerate), 0);
     } finally {

@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.90
+
+### minus five decimal places, and a ceiling that was not one
+
+0.8.76 checked the channel this is asked about. The other argument — the ceiling — went on being
+whatever was passed, and `Math.min` carries it straight out:
+
+```js
+decimalsForSignal(signal, -5)    // -5
+decimalsForSignal(signal, 2.5)   // 2.5
+decimalsForSignal(signal, 'x')   // NaN
+```
+
+A negative number of decimal places, a fractional one, and not a number — from the function whose
+entire answer is how many places a column needs. None of them fails here. Each fails as a
+`RangeError` out of `toFixed` at the point the caller uses the answer, one call later and
+somewhere else.
+
+A whole number of places, zero or more. Not bounded above: handing this a ceiling nothing can
+reach is how a caller asks what a channel would need *without* one, which is how the suite checks
+`decimalsAreClamped` against this function rather than against its own copy of the formula.
+
+And the ceiling now applies to the fallback. A channel with no step to derive a precision from
+takes the ordinary three places, and that branch ignored `max` altogether — so
+`decimalsForSignal(signal, 0)` answered `3`, which is a ceiling that is not one.
+
 ## 0.8.89
 
 ### a range that was the whole recording and covered none of it

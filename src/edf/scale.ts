@@ -184,8 +184,37 @@ function decimalsNeeded(signal: EdfSignal): number | null {
  * characters. Those get VALUE_RESOLUTION rather than silence.
  */
 export function decimalsForSignal(signal: EdfSignal, max = MAX_DERIVED_DECIMALS): number {
+  /*
+    The ceiling, which is the caller's to choose and was the caller's to get wrong.
+
+    0.8.76 checked the channel. The second argument went on being whatever was passed, and
+    `Math.min` carries it straight out:
+
+        decimalsForSignal(signal, -5)    // -5
+        decimalsForSignal(signal, 2.5)   // 2.5
+        decimalsForSignal(signal, 'x')   // NaN
+
+    A negative number of decimal places, a fractional one, and not a number — from the
+    function whose whole answer is how many places a column needs. Each is a `RangeError` out
+    of `toFixed` at the point the caller uses it, one call later and somewhere else.
+
+    A whole number of places, and not bounded above: handing this a ceiling nothing can reach
+    is how a caller asks what a channel would need without one, which is how
+    `decimalsAreClamped` is checked against this function rather than against its own copy of
+    the formula.
+  */
+  if (!Number.isInteger(max) || max < 0) {
+    throw new OptionError(
+      `max must be a whole number of decimal places, zero or more, got ${describeValue(max)}. ` +
+        `It is a ceiling on the precision this derives; the default is ` +
+        `${MAX_DERIVED_DECIMALS}, which is what toFixed accepts.`,
+    );
+  }
   const needed = decimalsNeeded(signal);
-  if (needed === null) return 3;
+  // The ceiling applies to the fallback too. A channel with no step to derive from takes the
+  // ordinary three places, and `decimalsForSignal(signal, 0)` returned them — a ceiling of
+  // zero answered with three, on the one branch that does not measure anything.
+  if (needed === null) return Math.min(max, 3);
   return Math.min(max, Math.max(0, needed));
 }
 
