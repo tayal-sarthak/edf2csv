@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.94
+
+### the window that vanished from the one report that needed it
+
+An EDF header states its record duration in eight characters, so `1e308` fits with three to
+spare. Two such records overflow a double, and the recording's end comes back `Infinity`.
+
+The `Window` line 0.8.82 added required a finite end, so on that file it did not appear at all:
+
+```
+$ edf2csv odd.edf --info                 $ edf2csv odd.edf --info --start 1s
+Duration   unknown  (2 records of ...)   Duration   unknown  (2 records of ...)
+Would write 8 rows, roughly 2.5 KB.      Would write 7 rows, roughly 2.2 KB.
+```
+
+Which is the very thing the line exists to prevent, on the one recording where the estimate is
+hardest to account for by eye. The window is perfectly ordinary from this side — it begins where
+it was told to and runs to the end of the file — so that is what it says:
+
+```
+Window     1.000s to the end  (2 of 2 data records)
+```
+
+Under `--json`, `end_seconds` is `null` there, which is what `JSON.stringify` does with
+`Infinity` and what `duration_seconds` and `time_span_seconds` have done since 0.7.139. The field
+table said the two window fields were always the window; it says when they are not now.
+
 ## 0.8.93
 
 ### data records counted for a mode that converts none

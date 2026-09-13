@@ -315,7 +315,21 @@ export function formatInfo(
     numbers meant to be typed back into `--start` and `--end`, and "16m 40s" is not one.
   */
   const { range } = plan;
-  if (!range.isWholeRecording && Number.isFinite(range.startSeconds) && Number.isFinite(range.endSeconds)) {
+  /*
+    An end that a double cannot hold is still an end.
+
+    `endSeconds` is `recordCount * recordDuration` when no `--end` was given, and a header may
+    state a record duration of 1e308 in five characters — two of those records overflow, so
+    the figure comes back `Infinity`. This line required it to be finite and so vanished
+    altogether on exactly the recording whose estimate is hardest to account for: the whole
+    point of the line is to say why the row count changed, and `--start 1s` on such a file
+    changed it from 8 rows to 7 with nothing on screen to say a window had been asked for.
+
+    The window is still perfectly ordinary from this side — it begins where it was told to and
+    runs to the end of the recording, which is what the line says now.
+  */
+  const endsAtInfinity = !Number.isFinite(range.endSeconds);
+  if (!range.isWholeRecording && Number.isFinite(range.startSeconds)) {
     /*
       What the window selects, which is not data records in every mode.
 
@@ -333,9 +347,8 @@ export function formatInfo(
     const selects = plan.writeSignals
       ? `${grouped(range.endRecord - range.startRecord)} of ${counted(file.recordCount, 'data record')}`
       : 'events outside it are not exported';
-    lines.push(
-      `Window     ${fixed(range.startSeconds, 3)}s to ${fixed(range.endSeconds, 3)}s  (${selects})`,
-    );
+    const to = endsAtInfinity ? 'the end' : `${fixed(range.endSeconds, 3)}s`;
+    lines.push(`Window     ${fixed(range.startSeconds, 3)}s to ${to}  (${selects})`);
   }
   lines.push(`Size       ${formatBytes(file.fileSize)}`);
   if (header.patientId) lines.push(`Patient    ${printable(header.patientId)}`);

@@ -5714,6 +5714,33 @@ describe('--stdout', () => {
     assert.equal(wholeJson.whole_recording, true);
     assert.equal(wholeJson.start_seconds, 0);
     assert.equal(wholeJson.end_seconds, 3);
+
+    /*
+      And a recording whose end a double cannot hold. `endSeconds` is `recordCount *
+      recordDuration`, and a header may state a record duration of 1e308 in five characters —
+      two such records overflow. The line required a finite end and so vanished on exactly the
+      file whose estimate is hardest to account for: `--start 1s` took the row count from 8 to
+      7 with nothing on screen saying a window had been asked for.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-hugedur-'));
+    temporaries.push(dir);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const huge = path.join(dir, 'huge-recdur.edf');
+    writeEdf({
+      path: huge, numRecords: 2, recordDuration: 1e308,
+      signals: [{ label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+        digMax: 2047, samplesPerRecord: 4, gen: (r, i) => r * 4 + i }],
+    });
+    const overflowed = await cli([huge, '--info', '--start', '1s']);
+    assert.equal(overflowed.code, 0, overflowed.stderr);
+    assert.match(overflowed.stdout, /^Window {5}1\.000s to the end {2}\(2 of 2 data records\)$/mu, overflowed.stdout);
+    // Whole-recording runs on the same file still print no Window line at all.
+    assert.doesNotMatch((await cli([huge, '--info'])).stdout, /^Window /mu);
+    // And the JSON says null there, as `duration_seconds` and `time_span_seconds` already do.
+    const overflowedJson = JSON.parse((await cli([huge, '--info', '--json', '--start', '1s'])).stdout);
+    assert.equal(overflowedJson.end_seconds, null);
+    assert.equal(overflowedJson.start_seconds, 1);
+    assert.equal(overflowedJson.whole_recording, false);
   });
 
   it('keeps a refusal on one line when the value quoted into it carries a newline', async () => {
