@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.9
+
+### two warnings from the plan, naming a file the stream is not
+
+`--stdout` puts one table on the stream and writes nothing else. Six warnings raised before the
+destination is known have been amended for that; two more come from the plan, where the
+destination is already known, and named a file anyway.
+
+```
+$ edf2csv rec.edf --stdout --start 4s --end 4.2s > out.csv
+warning: No samples fall inside the requested window (4.000s to 4.200s), so the signal file
+         holds its header and no data.
+
+$ edf2csv long.edf --stdout > out.csv
+warning: At least one output file will have more than 1,048,576 rows, which is more than
+         Excel or Numbers can open.
+         Use --start and --duration to convert a section, or read the file with pandas or R.
+
+Wrote 1,075,200 rows to stdout.
+```
+
+There is no file in either. `destination` three functions above both of them has said `the CSV on
+stdout` since the rate warnings were taught the difference, and the `--info` OUTPUT column for the
+same run reads `(stdout)`.
+
+The header is still written — it goes to the stream — so the empty-window sentence changes its
+noun and keeps its claim. The row count changes more: what a spreadsheet can open is not the
+question a pipe raises, and the advice that follows it is now about reading the stream rather than
+about a file that only exists if you redirect it.
+
+A conversion to a directory keeps every word of both.
+
 ## 0.9.8
 
 ### four more sentences about a time column that is not written

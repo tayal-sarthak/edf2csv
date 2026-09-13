@@ -6163,6 +6163,49 @@ describe('--stdout', () => {
       const { stderr } = await cli([recording, '--out', out, ...extra]);
       assert.match(stderr.replace(/\s+/gu, ' '), written, stderr);
     }
+
+    /*
+      And the two raised by the plan rather than by the parser, which name a file the same way.
+      `destination` three functions above them has said `the CSV on stdout` since the rate
+      warnings were taught the difference; these two had "the signal file" and "at least one
+      output file" either way — over a run whose own summary line reads "Wrote 0 rows to
+      stdout" and whose --info OUTPUT column reads `(stdout)`.
+    */
+    const emptyWindow = ['--start', '4s', '--end', '4.2s'];
+    for (const mode of [['--stdout'], ['--info', '--stdout']]) {
+      const { stderr } = await cli([fixture('discontinuous.edf'), ...mode, ...emptyWindow]);
+      const flat = stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /so the CSV on stdout carries its header and no data/u, flat);
+      assert.doesNotMatch(flat, /the signal files? holds? /u, flat);
+    }
+    const intoDir = await cli([
+      fixture('discontinuous.edf'), '--out', path.join(dir, 'empty-window'), ...emptyWindow,
+    ]);
+    assert.match(intoDir.stderr.replace(/\s+/gu, ' '),
+      /so the signal file holds its header and no data/u, intoDir.stderr);
+
+    /*
+      And the row-count warning, whose whole subject is what a spreadsheet can open. "At least
+      one output file will have more than 1,048,576 rows" was said to a run that writes none,
+      advising the reader to "read the file with pandas or R".
+    */
+    const wide = path.join(dir, 'over-the-limit.edf');
+    writeEdf({
+      path: wide, numRecords: 2048, recordDuration: 1,
+      signals: [0, 1].map((n) => ({
+        label: `ch${n}`, dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+        digMax: 2047, samplesPerRecord: 256, gen: (r, i) => ((r * 256 + i) % 4096) - 2048,
+      })),
+    });
+    const streamed = await cli([wide, '--info', '--stdout', '--layout', 'long']);
+    const flatWide = streamed.stderr.replace(/\s+/gu, ' ');
+    assert.match(flatWide, /The CSV on stdout will have more than 1,048,576 rows/u, flatWide);
+    assert.match(flatWide, /read the stream with pandas or R rather than redirecting it/u, flatWide);
+    assert.doesNotMatch(flatWide, /output file|read the file/u, flatWide);
+    // And the same recording into a directory keeps the sentence, which is true of it.
+    const toDir = await cli([wide, '--info', '--layout', 'long']);
+    assert.match(toDir.stderr.replace(/\s+/gu, ' '),
+      /At least one output file will have more than 1,048,576 rows/u, toDir.stderr);
   });
 
   it('names the compressed file --gzip actually writes, in the warnings about it', async () => {

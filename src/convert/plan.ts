@@ -445,17 +445,35 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   */
   const untimeable = groups.some((group) => !Number.isFinite(group.rate));
   if (writeSignals && groups.length > 0 && estimate.rows === 0 && !untimeable) {
-    diagnostics.push(emptyWindow(range, input.recordCount, groups, options.gzip === true));
+    diagnostics.push(
+      emptyWindow(range, input.recordCount, groups, options.gzip === true, options.toStdout === true),
+    );
   }
 
   if (estimate.exceedsSpreadsheetLimit) {
+    /*
+      And the file it is about, which `--stdout` does not write either.
+
+      "At least one output file will have more than 1,048,576 rows" was said to a run whose
+      summary reads "Wrote 1,075,200 rows to stdout", advising the reader to "read the file
+      with pandas or R" — there is no file, and what a spreadsheet can open is not the question
+      a pipe raises. The count is the useful half and it does not change; the noun and the
+      advice do. Redirecting the stream is how it becomes a file a spreadsheet would refuse,
+      which is what the sentence says now.
+    */
+    const toStdout = options.toStdout === true;
     diagnostics.push({
       code: 'LARGE_OUTPUT',
       severity: 'warning',
-      message:
-        `At least one output file will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} ` +
-        `rows, which is more than Excel or Numbers can open.`,
-      hint: 'Use --start and --duration to convert a section, or read the file with pandas or R.',
+      message: toStdout
+        ? `The CSV on stdout will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} rows, ` +
+          `which is more than Excel or Numbers can open.`
+        : `At least one output file will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} ` +
+          `rows, which is more than Excel or Numbers can open.`,
+      hint: toStdout
+        ? 'Use --start and --duration to stream a section, or read the stream with pandas ' +
+          'or R rather than redirecting it into a spreadsheet.'
+        : 'Use --start and --duration to convert a section, or read the file with pandas or R.',
     });
   }
 
@@ -703,6 +721,7 @@ function emptyWindow(
   recordCount: number,
   groups: readonly RateGroup[],
   gzip: boolean,
+  toStdout: boolean,
 ): Diagnostic {
   const fileCount = groups.length;
   const asked = !range.isWholeRecording;
@@ -731,8 +750,18 @@ function emptyWindow(
     is `plan.groups.length` and the caller has had it all along — it is the same number the
     mixed-rate warning three functions up counts to decide whether to fire at all.
   */
-  const tables =
-    fileCount === 1
+  /*
+    And where that header lands, which under `--stdout` is not a file.
+
+    `destination` three functions up has said `the CSV on stdout` since the rate warnings were
+    taught the difference; this sentence had "the signal file" either way, over a run whose own
+    summary line reads "Wrote 0 rows to stdout" and whose `--info` OUTPUT column reads
+    `(stdout)`. The header is still written — it goes to the stream — so what changes is the
+    noun, not the claim.
+  */
+  const tables = toStdout
+    ? 'the CSV on stdout carries its header and no data'
+    : fileCount === 1
       ? 'the signal file holds its header and no data'
       : 'the signal files hold their headers and no data';
   return {
