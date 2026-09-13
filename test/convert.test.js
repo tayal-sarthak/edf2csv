@@ -2322,6 +2322,33 @@ describe('channel selection', () => {
     await file.close();
   });
 
+  it('escapes the label it quotes back, as it already escaped the term beside it', async () => {
+    /*
+      0.8.92 took the `--channels` term through `printable` because a newline in one cut the
+      refusal's first line in half. The label in the same sentence stayed raw, and a header
+      field carries a control byte as easily as a shell argument does — NONPRINTABLE_LABEL
+      exists to say so — so this one message printed the escaped form and the raw one side by
+      side, and the first line ended mid-word.
+    */
+    const file = await EdfFile.open(fixture('quirky-labels.edf'));
+    // T8-P8 is this file's duplicated label, so both channels take a `_ch<index>` column and
+    // asking for one of those columns reaches the branch that quotes the label back.
+    const split = file.header.signals.map((s) =>
+      s.label === 'T8-P8' ? { ...s, label: 'ECG\nX' } : s,
+    );
+    assert.throws(
+      () => selectChannels(split, ['ECG\nX_ch1']),
+      (error) => {
+        const first = error.message.split('\n')[0];
+        assert.match(first, /is a column name, not a channel name/u, first);
+        assert.ok(first.endsWith('.'), `the first line stops mid-sentence: ${JSON.stringify(first)}`);
+        assert.ok(first.includes('ECG\\x0aX"'), first);
+        return true;
+      },
+    );
+    await file.close();
+  });
+
   it('suggests each candidate label only once', async () => {
     const file = await EdfFile.open(fixture('quirky-labels.edf'));
     try {

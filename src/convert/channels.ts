@@ -305,13 +305,30 @@ export function selectChannels(signals: readonly EdfSignal[], terms: readonly st
         // A channel with no label at all gets the column `signal_<index>`, and offering its
         // label back would be offering `""` — there is nothing to type. Position is the only
         // way to reach it, and saying so is more use than quoting an empty string twice.
+        /*
+          And escaped, like the term it is quoted beside.
+
+          0.8.92 took `term` through `printable` because a newline in one cut the refusal's
+          first line in half; the label in the same sentence went on being handed over raw,
+          and a header field carries these bytes as easily as a shell argument does —
+          NONPRINTABLE_LABEL exists to say so. A recording labelled `ECG`, newline, `X`
+          answered a request for its second column with
+
+              error: "ECG\x0aX_ch1" is a column name, not a channel name: --channels
+                     matches the label, which for this channel is "ECG
+                     X".
+
+          the escaped form and the raw one in one sentence, and the first line — the one this
+          file's own comments keep whole for grepping — ending mid-word. `typeable` below
+          already refuses a label carrying these, so this half was the one left.
+        */
         throw new ChannelSelectionError(
           owner.label === ''
             ? `"${shownTerm}" is a column name, not a channel name: --channels matches the label, ` +
               `and this channel has none.\n` +
               `Use "#${owner.index}" — a channel with no label can only be addressed by position.`
             : `"${shownTerm}" is a column name, not a channel name: --channels matches the label, ` +
-              `which for this channel is "${owner.label}".\n` +
+              `which for this channel is "${printable(owner.label)}".\n` +
               (typeable(owner.label) === null
                 ? `Use "#${owner.index}" — ${untypeableBecause(owner.label)}, so position is ` +
                   `the only way to reach it.`

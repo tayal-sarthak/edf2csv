@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.96
+
+### the label quoted back beside a term that was already escaped
+
+0.8.92 took the `--channels` term through `printable`, because a newline in one cut the refusal's
+first line in half and that line is the one a log gets grepped for. The label quoted back in the
+same sentence went on being handed over raw.
+
+A header field carries a control byte as easily as a shell argument does — NONPRINTABLE_LABEL
+exists to say so, and prints `\x0a` for it. So one message had both forms in it at once:
+
+```
+$ edf2csv rec.edf --channels "$(printf 'ECG\nX_ch1')"
+error: "ECG\x0aX_ch1" is a column name, not a channel name: --channels matches the label,
+       which for this channel is "ECG
+       X".
+```
+
+The term escaped, the label not, and the first line ending mid-word on a value the file supplied.
+Reachable from any recording with two channels sharing a label that holds one of these bytes: the
+duplicate gives them `_ch<index>` columns, and asking for a column is what this message answers.
+
+`typeable`, two lines below it, already refuses a label carrying a control character and offers a
+position instead — so the advice was right and only the sentence above it was not.
+
 ## 0.8.95
 
 ### three hundred and nine digits, on a line that had just said unknown
