@@ -5094,6 +5094,52 @@ describe('documentation and source agree on their lists', () => {
     );
   });
 
+  it('never says the same sentence twice in a row', async () => {
+    /*
+      `edf-plus-annotations.md` carried this paragraph:
+
+          The gap is the difference between them, and is reported again by the EDF+D warning.
+          A span *shorter* than the duration is the other way the two can disagree — records
+          that overlap, which is what a device does when it re-sends a buffer — and the line
+          says `(records overlap in time)` instead, since a recording covering less time than
+          its own records account for has no gaps in it at all. A span *shorter* than the
+          duration is the other way the two can disagree — records that overlap, which is what
+          a device does when it re-sends a buffer — and the line says `(records overlap in
+          time)` instead, since a recording covering less time than its own records account
+          for has no gaps in it at all.
+
+      Forty-one words, twice, in one paragraph of a published page. Nothing here reads these
+      pages as prose, so an edit that pastes a sentence beside itself is invisible to every
+      other check: the quotations still matched the tool, the enumerations still matched the
+      source, and the counts were still right.
+
+      Within four sentences of each other, which is what a paste looks like. The same sentence
+      on two different pages is ordinary — recurring claims are stated where they are needed —
+      and the changelog repeats a message deliberately, once before a fix and once after.
+    */
+    const pages = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((f) => f.endsWith('.md'))
+      .map((f) => `website/content/${f}`);
+    const repeated = [];
+    for (const where of [...pages, 'README.md', 'CONTRIBUTING.md', 'SECURITY.md']) {
+      // Fenced blocks are output, and output really does repeat a line.
+      const prose = (await read(where)).split(/```[\s\S]*?```/gu).join('\n');
+      const sentences = prose
+        .split(/(?<=[.!?])\s+/u)
+        .map((sentence) => sentence.replace(/\s+/gu, ' ').trim())
+        .filter((sentence) => sentence.length >= 45);
+      const seen = new Map();
+      for (const [at, sentence] of sentences.entries()) {
+        const previous = seen.get(sentence);
+        if (previous !== undefined && at - previous <= 4) {
+          repeated.push(`${where}: ${sentence.slice(0, 120)}`);
+        }
+        seen.set(sentence, at);
+      }
+    }
+    assert.deepEqual(repeated, [], `a sentence is repeated beside itself:\n${repeated.join('\n')}`);
+  });
+
   it('describes every rejected value through the one function that formats them', async () => {
     /*
       `describeValue` is "how a rejected value reads in the refusal: numbers bare, everything

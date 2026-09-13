@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.11
+
+### forty-one words, twice, with nothing between them
+
+`edf-plus-annotations.md` carried this, in one paragraph of a published page:
+
+> The gap is the difference between them, and is reported again by the EDF+D warning. **A span
+> *shorter* than the duration is the other way the two can disagree — records that overlap, which
+> is what a device does when it re-sends a buffer — and the line says `(records overlap in time)`
+> instead, since a recording covering less time than its own records account for has no gaps in it
+> at all. A span *shorter* than the duration is the other way the two can disagree — records that
+> overlap, which is what a device does when it re-sends a buffer — and the line says `(records
+> overlap in time)` instead, since a recording covering less time than its own records account for
+> has no gaps in it at all.**
+
+Forty-one words, twice, with nothing between them.
+
+Nothing in this repository reads these pages as prose, which is why it survived: the quoted
+messages still matched the tool, the enumerations still matched the source, the code fences still
+ran, and the counts were still right. A paste beside itself is invisible to every check that asks
+whether a page agrees with something.
+
+So the check that would have seen it is here now, and it is the whole rule: no sentence of
+forty-five characters or more appears again within four sentences of itself, on any page,
+in `README.md`, `CONTRIBUTING.md` or `SECURITY.md`. The same sentence on two different pages is
+ordinary — a recurring claim is stated where it is needed — and a fenced block really does repeat
+a line, so both are left alone. The changelog is left alone for the same reason: an entry quotes a
+message once before a fix and once after, which is the point of it.
+
+One sweep of every page found one.
+
 ## 0.9.10
 
 ### two spellings of one file, in one warning list

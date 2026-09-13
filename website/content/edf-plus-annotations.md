@@ -196,9 +196,6 @@ long the recording covers. The gap is the difference between them, and is report
 again by the EDF+D warning. A span *shorter* than the duration is the other way the two
 can disagree — records that overlap, which is what a device does when it re-sends a
 buffer — and the line says `(records overlap in time)` instead, since a recording
-covering less time than its own records account for has no gaps in it at all. A span *shorter* than the duration is the other way the two
-can disagree — records that overlap, which is what a device does when it re-sends a
-buffer — and the line says `(records overlap in time)` instead, since a recording
 covering less time than its own records account for has no gaps in it at all.
 
 **Rows are written in file order.** If a file's timekeeping TALs are themselves out
