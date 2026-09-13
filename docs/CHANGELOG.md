@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.3
+
+### the second argument that looked like a destination
+
+The same gap as 0.9.2, in the two functions that matter most. `convert` and `buildPlan` both
+declare their option bag with a default of `{}`, every check inside reads `options.decimals` and
+its neighbours, and nothing asked whether there was a bag at all.
+
+```js
+convert('rec.edf', 'out')   // converts to rec_csv, and reports success
+buildPlan(input, 42)        // the whole recording, wide, three decimals
+convert('rec.edf', null)    // TypeError: Cannot read properties of null
+```
+
+The string is the one that costs something. The second parameter is an option bag and `'out'`
+looks like a destination — it is the shape `--out` takes on the command line — so the rows went to
+`<recording>_csv` beside the input, a directory the caller had not named, and the call resolved
+reporting success with `result.outputDir` naming where they really went to nobody who was reading
+it. That is the sentence `outputDir: null` already has at the top of options.ts, reached through
+the argument in front of it.
+
+An array is refused with them: it is an object carrying none of these properties, so it went the
+same way as the string with none of the same visibility. `convert(file, ['a.edf', 'b.edf'])` is
+the second-argument twin of the mistake `assertInputPath` was written for.
+
+`convert` asks before it opens the file, because `options.checksum` is read before the plan is
+built — so the bag had already been read by the time `buildPlan` would have looked at it.
+
+`resolveRange` took this check in 0.8.75 and `readRecords` in 0.9.2. These are the last two.
+
 ## 0.9.2
 
 ### a default covers undefined and nothing else

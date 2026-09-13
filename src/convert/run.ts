@@ -40,7 +40,7 @@ import {
 } from '../format/number.js';
 import type { SampleFormatter } from '../format/number.js';
 import { TIME_COLUMN } from './channels.js';
-import { assertInputPath } from './options.js';
+import { assertInputPath, assertOptions } from './options.js';
 import { buildPlan, outputCsvName, withoutFileRateWarning } from './plan.js';
 import type { ConversionPlan, PlanOptions, RateGroup } from './plan.js';
 import { deriveRecordStarts, withTimingPromiseKept } from './timing.js';
@@ -147,6 +147,10 @@ interface OpenGroup {
 
 export async function convert(inputPath: string, options: ConvertOptions = {}): Promise<ConvertResult> {
   assertInputPath(inputPath);
+  // And the bag behind it, here rather than at `buildPlan` below: `options.checksum` is read
+  // before the plan is built, so a bag that is not one reached that line first. See
+  // assertOptions for what a string in this position did.
+  assertOptions(options);
   const startedAt = Date.now();
   const file = await EdfFile.open(inputPath);
 

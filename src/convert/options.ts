@@ -57,6 +57,37 @@ export function assertOptions(options: {
   endText?: unknown;
 }): void {
   /*
+    The bag itself, before anything is read out of it.
+
+    Every check below reads `options.decimals` and its neighbours, and both functions that run
+    this declare the parameter with a default of `{}` — which covers `undefined` and nothing
+    else. So a value that is not an object had its properties read off it, came back
+    `undefined`, and meant what `undefined` means here: that option was not given.
+
+        convert('rec.edf', 'out')      // converts to rec_csv, and reports success
+        buildPlan(input, 42)           // the whole recording, wide, three decimals
+        convert('rec.edf', null)       // TypeError: Cannot read properties of null
+
+    `convert(file, 'out')` is the one that costs something. The second parameter is an option
+    bag and the string looks like a destination, which is a mistake worth making — and the
+    rows went to `<recording>_csv` beside the input, a directory the caller had not named,
+    with `result.outputDir` reporting where they really went to nobody who was reading it.
+    That is the sentence `outputDir: null` has at the top of this file, arrived at through the
+    argument in front of it.
+
+    `resolveRange` was given this check on its own bag in 0.8.75 and `readRecords` on its in
+    0.9.2. These are the last two exported functions that take one.
+  */
+  // An array is an object and carries none of these properties, so it went the same way as a
+  // string with none of the same visibility — `convert(file, ['a.edf', 'b.edf'])` is the
+  // second-argument twin of the mistake `assertInputPath` was written for.
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+    throw new OptionError(
+      `options must be an object of options, got ${describeValue(options)}. The destination ` +
+        `goes in it as outputDir; omit it for the defaults.`,
+    );
+  }
+  /*
     The three options that exist only to be quoted back, quoted back unexamined.
 
     `startText`, `durationText` and `endText` carry the value exactly as the caller's user

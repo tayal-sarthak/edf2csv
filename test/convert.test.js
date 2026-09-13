@@ -1675,6 +1675,51 @@ describe('option checking', () => {
       // Checked before a directory is created, so a rejected option leaves nothing behind.
       assert.equal(existsSync(dir), false, `${JSON.stringify(options)} left ${dir} behind`);
     }
+
+    /*
+      And the bag they arrive in. Both functions declare it with a default of `{}`, which
+      covers `undefined` and nothing else, so a value that is not an object had its properties
+      read off it, came back undefined, and meant what undefined means here:
+
+          convert('rec.edf', 'out')   // converts to rec_csv, and reports success
+          buildPlan(input, 42)        // the whole recording, wide, three decimals
+          convert('rec.edf', null)    // TypeError: Cannot read properties of null
+
+      The string is the one that costs something: the second parameter is an option bag and
+      `'out'` looks like a destination, so the rows went to `<recording>_csv` beside the input
+      — a directory the caller had not named — with the call reporting success.
+    */
+    const { buildPlan } = await import('../dist/index.js');
+    const planned = await EdfFile.open(fixture('tiny.edf'));
+    try {
+      const input = {
+        signals: planned.header.signals,
+        recordDuration: planned.header.recordDuration,
+        recordCount: planned.recordCount,
+        hasAnnotationChannel: false,
+      };
+      for (const bag of ['out', 42, null, true, [], () => {}]) {
+        await assert.rejects(
+          convert(fixture('tiny.edf'), bag),
+          (error) => {
+            assert.ok(error instanceof OptionError, `${String(bag)} threw ${error}`);
+            assert.match(error.message, /^options must be an object of options, got /u);
+            return true;
+          },
+          `convert with ${String(bag)}`,
+        );
+        assert.throws(() => buildPlan(input, bag), (error) => {
+          assert.ok(error instanceof OptionError, `${String(bag)} threw ${error}`);
+          assert.match(error.message, /^options must be an object of options, got /u);
+          return true;
+        }, `buildPlan with ${String(bag)}`);
+      }
+      // Nothing was written for any of them, and no bag at all still plans.
+      assert.equal(existsSync(fixture('tiny_csv')), false, 'a refused bag left a directory behind');
+      assert.equal(buildPlan(input).estimate.rows, 20);
+    } finally {
+      await planned.close();
+    }
   });
 
   it('rejects an input that is not a path, before it reaches the filesystem', async () => {
