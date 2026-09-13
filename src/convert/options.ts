@@ -252,15 +252,46 @@ export function assertSignals(signals: unknown): void {
       `signals must be the channel list from a header, got ${describeValue(signals)}.`,
     );
   }
-  const wrong = signals.findIndex(
-    (signal) =>
-      typeof signal !== 'object' ||
-      signal === null ||
-      typeof (signal as { index?: unknown }).index !== 'number',
-  );
-  if (wrong !== -1) {
+  /*
+    The fields the callers read, not just the one that identifies a channel.
+
+    This asked for `index` and stopped, and its callers go on to read `label` and
+    `isAnnotations` off the same objects. So a list of channel-shaped objects without them
+    passed the check that exists to say "these are not channels from a header" and failed one
+    line further in, or did not fail at all:
+
+        selectChannels([{ index: 0 }], ['ECG'])
+        TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+
+        selectChannels([{ index: 0, label: 42 }], ['42'])
+        TypeError: signal.label.toLowerCase is not a function
+
+        buildColumnNames([{ index: 0 }])
+        Map { 0 => null }
+
+    The first two are the failure this function was written to remove, one level down — a
+    local of this package named at a caller who wrote neither. The third is worse: a column
+    name of `null`, where a channel with no label at all is named `signal_0`, so `null` is not
+    a name this tool ever writes.
+  */
+  const FIELDS = [
+    ['index', 'number'],
+    ['label', 'string'],
+    ['isAnnotations', 'boolean'],
+  ] as const;
+  for (const [at, signal] of signals.entries()) {
+    if (typeof signal !== 'object' || signal === null) {
+      throw new OptionError(
+        `signals[${at}] is not a channel from a header, got ${describeValue(signal)}.`,
+      );
+    }
+    const fields = signal as Record<string, unknown>;
+    const wrong = FIELDS.find(([name, kind]) => typeof fields[name] !== kind);
+    if (wrong === undefined) continue;
+    const [name, kind] = wrong;
     throw new OptionError(
-      `signals[${wrong}] is not a channel from a header, got ${describeValue(signals[wrong])}.`,
+      `signals[${at}].${name} must be a ${kind}, got ${describeValue(fields[name])}. A channel ` +
+        `from a header carries ${FIELDS.map(([f]) => f).join(', ')}.`,
     );
   }
 }

@@ -1825,8 +1825,28 @@ describe('option checking', () => {
         ['ECG', /signals must be the channel list from a header, got "ECG"/u],
         [null, /signals must be the channel list from a header, got null/u],
         [file.header, /signals must be the channel list from a header, got \{/u],
-        [[{}], /signals\[0\] is not a channel from a header, got \{\}/u],
         [[file.header.signals[0], 1], /signals\[1\] is not a channel from a header, got 1/u],
+        /*
+          And the fields the callers go on to read, which that check did not ask about: it
+          asked for `index` and stopped, while `selectChannels` reads `label` and
+          `isAnnotations` off the same objects one line further in.
+
+              selectChannels([{ index: 0 }], ['ECG'])
+              TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+
+              buildColumnNames([{ index: 0 }])
+              Map { 0 => null }
+
+          The first is the failure this check exists to remove, one level down. The second is
+          worse: a channel with no label at all is named `signal_0`, so `null` is not a column
+          name this tool ever writes.
+        */
+        [[{}], /signals\[0\]\.index must be a number, got undefined/u],
+        [[{ index: 0 }], /signals\[0\]\.label must be a string, got undefined/u],
+        [[{ index: 0, label: 42 }], /signals\[0\]\.label must be a string, got 42/u],
+        [[{ index: 0, label: 'ECG' }], /signals\[0\]\.isAnnotations must be a boolean, got undefined/u],
+        [[file.header.signals[0], { index: 1, label: 'x' }],
+          /signals\[1\]\.isAnnotations must be a boolean/u],
       ]) {
         for (const call of [
           () => selectChannels(signals, ['ECG']),

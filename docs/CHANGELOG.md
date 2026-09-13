@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.88
+
+### a column name of null, from a check that asked for one field of three
+
+`assertSignals` exists to say "these are not channels from a header" before a caller's list
+reaches code that reads fields off it. It asked for `index`. Its callers read three.
+
+```js
+selectChannels([{ index: 0 }], ['ECG'])
+// TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+
+selectChannels([{ index: 0, label: 42 }], ['42'])
+// TypeError: signal.label.toLowerCase is not a function
+
+buildColumnNames([{ index: 0 }])
+// Map { 0 => null }
+```
+
+The first two are the failure this check was written to remove, one line further in — a local of
+this package named at a caller who wrote neither `signal` nor `label`.
+
+The third is worse, because nothing fails. `null` is not a column name this tool ever writes: a
+channel with no label at all is named `signal_0` by the empty-label rule, and that name is what
+`channels.csv`, the `--info` table and the signals header row all carry. A caller predicting
+column names from a list of their own gets a `Map` whose value is `null` and no reason to doubt
+it.
+
+The check asks for `index`, `label` and `isAnnotations` now — the three the callers read — and
+names the field and its value rather than printing the whole list, which a header may have
+hundreds of entries in.
+
 ## 0.8.87
 
 ### the field that decides the answer, and the check that skipped it
