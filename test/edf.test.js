@@ -845,6 +845,49 @@ describe('digital to physical conversion', () => {
     assert.equal(scale(1), 0.1);
   });
 
+  it('refuses a sample that is not a number, rather than adding it to the offset', async () => {
+    /*
+      The arithmetic is `gain * (offset + digital)`, and `+` on a string concatenates. A sample
+      arriving as text — from `JSON.parse` of a stored record, a CSV read back, a form field —
+      was pasted onto the offset instead of added to it:
+
+          scale(42)     // 5.1892551892551895
+          scale('42')   // 0.06617826617826618   offset 0.5, so 0.5 + '42' is '0.542'
+          scale(null)   // the value for digital 0
+          scale(true)   // the value for digital 1
+
+      Each is a physical value this channel could really have recorded: in range, in the right
+      unit, to the right precision, and wrong by a factor of seventy-eight.
+
+      The two arrangements disagreed about it as well. `(digital - digitalMin) * gain +
+      physicalMin` — the fallback for a header whose offset overflows — coerces where this
+      concatenates, so the same string came back correct there.
+    */
+    const file = await load('annotations.edf');
+    const signal = file.dataSignals[0];
+    const wrong = ['42', '0', '1e3', true, null, undefined, [42], {}];
+    // The second shape is a calibration whose offset overflows, which is what sends the other
+    // arrangement down the fallback: both take the same argument and both now ask the same of it.
+    const overflowing = {
+      ...signal, digitalMin: 0, digitalMax: 1e300, physicalMin: 1e308 - 1.6e292, physicalMax: 1e308,
+    };
+    for (const shape of [signal, overflowing]) {
+      const scale = makeScaler(shape);
+      assert.ok(Number.isFinite(scale(42)), 'an ordinary sample still scales');
+      for (const value of wrong) {
+        assert.throws(
+          () => scale(value),
+          (error) => {
+            assert.equal(error.name, 'OptionError', `${String(value)}: ${error}`);
+            assert.match(error.message, /^A scaler takes one digital sample, got /u);
+            return true;
+          },
+          `accepted ${JSON.stringify(value) ?? String(value)}`,
+        );
+      }
+    }
+  });
+
   it('is correctly rounded where the naive formula loses bits', async () => {
     // A +/-800 uV channel over a 12-bit range: the exact value for digital 0 is
     // 800/4095. Computing it as (d - digMin) * gain + physMin cancels away the low

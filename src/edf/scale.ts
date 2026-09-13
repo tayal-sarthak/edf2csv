@@ -61,6 +61,43 @@ function assertCalibration(signal: EdfSignal): void {
   }
 }
 
+/**
+ * The one argument a scaler takes, confirmed to be a number before it is added to one.
+ *
+ * The arithmetic below is `gain * (offset + digital)`, and `+` on a string concatenates. A
+ * sample that arrived as text — from `JSON.parse` of a stored record, a CSV read back, a form
+ * field, every door `assertOptions` names for the options — was pasted onto the offset instead
+ * of added to it:
+ *
+ *     const scale = makeScaler(signal);   // ±250 uV over a 12-bit range
+ *     scale(42)      // 5.1892551892551895
+ *     scale('42')    // 0.06617826617826618   offset 0.5, so 0.5 + '42' is '0.542'
+ *     scale(null)    // the value for digital 0
+ *     scale(true)    // the value for digital 1
+ *
+ * Every one of them is a physical value this channel could really have recorded: in range, in
+ * the right unit, printed to the right precision, and wrong by a factor of seventy-eight. This
+ * is the function the api page recommends for reading physical units out of a file, and "never
+ * invent a number" is the promise the whole tool is built on.
+ *
+ * The two branches did not even agree about it. The fallback arrangement below is
+ * `(digital - digitalMin) * gain + physicalMin`, and `-` coerces where `+` concatenates, so
+ * `'42'` came back correct there and wrong here — one function, two answers, decided by
+ * whether the header's offset overflowed.
+ *
+ * Only the two closures that read the argument ask this. The three that return a constant —
+ * a degenerate digital range, a flat physical one — give the same answer for every sample of
+ * such a channel, which is the right answer whatever they are handed.
+ */
+function assertDigital(digital: number): void {
+  if (typeof digital !== 'number') {
+    throw new OptionError(
+      `A scaler takes one digital sample, got ${describeValue(digital)}. It is the raw integer ` +
+        `out of the record — what EdfFile.sampleAt returns — not its text.`,
+    );
+  }
+}
+
 export function makeScaler(signal: EdfSignal): Scaler {
   /*
     The argument, checked like the arguments of the other exported functions.
@@ -124,10 +161,16 @@ export function makeScaler(signal: EdfSignal): Scaler {
   // arrangement rather than emitting Infinity.
   const offset = physicalMax / gain - digitalMax;
   if (!Number.isFinite(offset)) {
-    return (digital: number): number => (digital - digitalMin) * gain + physicalMin;
+    return (digital: number): number => {
+      assertDigital(digital);
+      return (digital - digitalMin) * gain + physicalMin;
+    };
   }
 
-  return (digital: number): number => gain * (offset + digital);
+  return (digital: number): number => {
+    assertDigital(digital);
+    return gain * (offset + digital);
+  };
 }
 
 /**

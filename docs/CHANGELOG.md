@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.8.99
+
+### the digital sample that was pasted onto the offset, not added to it
+
+`makeScaler` returns a function of one argument, and the arithmetic it does with that argument is
+`gain * (offset + digital)`. `+` on a string concatenates.
+
+```js
+const scale = makeScaler(signal);   // ±250 uV over a 12-bit range
+
+scale(42)      // 5.1892551892551895
+scale('42')    // 0.06617826617826618   offset is 0.5, so 0.5 + '42' is '0.542'
+scale(null)    // the value for digital 0
+scale(true)    // the value for digital 1
+```
+
+Every one of those is a physical value this channel could really have recorded: in range, in the
+right unit, printed to the right precision, and wrong by a factor of seventy-eight. This is the
+function the api page recommends for reading physical units out of a file, and a sample arrives as
+text from every door `assertOptions` already names — `JSON.parse` of a stored record, a CSV read
+back, a form field.
+
+The signal has been checked since 0.8.61, when `makeScaler({})` came back as a working function
+returning `NaN` for every sample. The argument to the function it returns was never looked at, and
+the two arrangements of the formula did not agree about it either: the fallback for a calibration
+whose offset overflows is `(digital - digitalMin) * gain + physicalMin`, and `-` coerces where `+`
+concatenates, so the same string was correct there and wrong here.
+
+Only the two closures that read the argument ask this. The three that return a constant — a
+degenerate digital range, a flat physical one — give the same answer for every sample of such a
+channel, which is the right answer whatever they are handed.
+
 ## 0.8.98
 
 ### the ceiling that went on one half of one line
