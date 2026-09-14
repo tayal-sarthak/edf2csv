@@ -3628,7 +3628,19 @@ describe('converting', () => {
       [50, '0.1s'],
       [900, '0.9s'],
       // Below a minute the seconds are the readable form, so nothing changes there.
-      [59_999, '60.0s'],
+      [59_949, '59.9s'],
+      /*
+        And the rounding happens before the form is chosen, which it did not.
+
+        The branch was taken at sixty thousand milliseconds and the seconds were rounded to
+        one decimal after it, so the last fifty below the handover rounded up through it:
+        59,999 printed `60.0s`, a minute stated in seconds, one millisecond under the line
+        that exists so a minute is stated as a minute. It is the carry `formatBytes` fixed —
+        "the unit was chosen before it: 1,048,575 bytes is 1023.999 KB, which printed as
+        1024 KB" — and this function's own comment cites that as the rule it follows.
+      */
+      [59_950, '1m 0s'],
+      [59_999, '1m 0s'],
       [60_000, '1m 0s'],
       [62_500, '1m 2.5s'],
       [412_734, '6m 52.7s'],

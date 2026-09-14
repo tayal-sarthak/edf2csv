@@ -759,8 +759,26 @@ export function elapsed(milliseconds: number): string {
     to the tenth this already prints first, because `formatDuration` keeps three decimals and
     "6m 52.734s" claims a precision two `Date.now()` readings do not have.
   */
-  if (milliseconds >= 60_000) return formatDuration(Math.round(milliseconds / 100) / 10);
-  if (milliseconds >= 50) return `${(milliseconds / 1000).toFixed(1)}s`;
+  /*
+    Rounded to the precision that will be printed, and only then given a form.
+
+    The branch was chosen at sixty thousand milliseconds and the seconds were rounded to one
+    decimal afterwards, so the last fifty milliseconds below the handover rounded up through
+    it: 59,950 to 59,999 printed `60.0s`, a minute stated in seconds, one millisecond under
+    the line that exists so a minute is stated as a minute.
+
+        Done in 60.0s.        59,999 ms
+        Done in 1m 0s.        60,000 ms
+
+    Which is the slip `formatBytes` fixed in the same words — "Rounding can carry into the
+    next unit, and the unit was chosen before it: 1,048,575 bytes is 1023.999 KB, which
+    printed as 1024 KB" — and the one the paragraph above cites as the rule this function
+    follows. Rounding first is what `formatDuration` does before it splits into hours and
+    minutes, for the same reason.
+  */
+  const tenths = Math.round(milliseconds / 100) / 10;
+  if (tenths >= 60) return formatDuration(tenths);
+  if (milliseconds >= 50) return `${tenths.toFixed(1)}s`;
   return milliseconds > 0 ? `${milliseconds}ms` : 'under 1ms';
 }
 

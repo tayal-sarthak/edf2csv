@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.12
+
+### a minute stated in seconds, one millisecond under the line
+
+The last line of a conversion states how long it took, and hands over from seconds to
+`formatDuration` at a minute — because "412 seconds is a number a reader has to divide by sixty
+to hold, which is the whole reason `formatDuration` exists".
+
+The handover was taken at sixty thousand milliseconds, and the seconds were rounded to one decimal
+after it. So the last fifty milliseconds below the line rounded up through it:
+
+```
+Done in 60.0s.      59,999 ms
+Done in 1m 0s.      60,000 ms
+```
+
+A minute stated in seconds, one millisecond under the line that exists so a minute is stated as a
+minute.
+
+It is the carry `formatBytes` fixed one file over, in the same words: "Rounding can carry into the
+next unit, and the unit was chosen before it: 1,048,575 bytes is 1023.999 KB, which printed as
+`1024 KB`." `formatDuration` rounds before it splits into hours and minutes for the same reason,
+and this function's own comment names both as the rule it follows.
+
+Round first, then choose the form. 59,949 ms still reads `59.9s`.
+
 ## 0.9.11
 
 ### forty-one words, twice, with nothing between them
