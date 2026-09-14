@@ -4123,6 +4123,65 @@ describe('converting', () => {
     // The readable events from both channels are still exported, in onset order.
     const events = (await readCsv(dir, 'annotations.csv')).slice(1).map((row) => row.split(',')[2]);
     assert.deepEqual(events, ['A0', 'B0', 'A1', 'B1', 'A2', 'B2']);
+    // Six of them, and the hint's assurance holds whether or not any survived.
+    assert.match(notice.hint, /Every entry that could be read was exported/u, notice.hint);
+  });
+
+  it('does not promise a rest that was exported when there is none', async () => {
+    /*
+      The hint under the unreadable-entry count said "The rest were exported normally"
+      whether or not there was a rest. A writer that cannot state an onset tends not to
+      manage it anywhere, so a file whose every event entry is unreadable is the ordinary
+      way to get here — and it was answered with the count of what was lost and a sentence
+      saying the remainder came through, over an annotations.csv holding its header and no
+      rows:
+
+          warning: 2 annotation entries were unreadable and could not be exported.
+                   The rest were exported normally. ...
+
+          Wrote scoring_csv
+            annotations.csv  0  rows
+
+      Same shape as the "No event was lost" sentence beside it, which was corrected for the
+      same reason: a hint true of most files is not true of the one it is printed over.
+
+      Said without counting. What was wrong is the assertion that a remainder exists; what
+      the sentence is for is the assurance that nothing readable was dropped, and that holds
+      however many were readable — where counting would have split `--info` from a
+      conversion, since the scan behind `--info` never counts the events at all.
+    */
+    const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-norest-'));
+    temporaries.push(scratch);
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const T = String.fromCharCode(0x14);
+    const Z = String.fromCharCode(0x00);
+    const channel = { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1,
+      digMin: -32768, digMax: 32767, samplesPerRecord: 60, annotations: true };
+    const signal = { label: 'ch', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+      digMax: 2047, samplesPerRecord: 4, gen: () => 0 };
+
+    // Every event entry unreadable; the timekeeping in first position is fine.
+    const none = path.join(scratch, 'no-events.edf');
+    writeEdf({ path: none, reserved: 'EDF+C', numRecords: 2, recordDuration: 1,
+      talsForRecord: (r) => `+${r}${T}${T}${Z}??${T}lost${r}${T}${Z}`,
+      signals: [signal, channel] });
+    const lost = await convert(none, { outputDir: await outDir(), quiet: true });
+    const emptied = lost.diagnostics.find((d) => /unreadable and could not be exported/u.test(d.message));
+    assert.ok(emptied, JSON.stringify(lost.diagnostics));
+    assert.equal(lost.annotationCount, 0, 'this file exists because nothing survives');
+    assert.doesNotMatch(emptied.hint, /The rest were exported/u, emptied.hint);
+    assert.match(emptied.hint, /Every entry that could be read was exported/u, emptied.hint);
+
+    // And a file where something does survive says the same thing, which is true of it too.
+    const some = path.join(scratch, 'some-events.edf');
+    writeEdf({ path: some, reserved: 'EDF+C', numRecords: 2, recordDuration: 1,
+      talsForRecord: (r) => `+${r}${T}${T}${Z}??${T}lost${r}${T}${Z}+${r}.5${T}kept${r}${T}${Z}`,
+      signals: [signal, channel] });
+    const partial = await convert(some, { outputDir: await outDir(), quiet: true });
+    const rest = partial.diagnostics.find((d) => /unreadable and could not be exported/u.test(d.message));
+    assert.ok(rest, JSON.stringify(partial.diagnostics));
+    assert.equal(partial.annotationCount, 2);
+    assert.match(rest.hint, /Every entry that could be read was exported/u, rest.hint);
   });
 
   it('says when a duration_s is empty because it could not be read', async () => {

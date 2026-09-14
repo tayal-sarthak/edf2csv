@@ -63,7 +63,34 @@ export function deriveRecordStarts(
       message:
         `${counted(annotationData.malformed, 'annotation entry', 'annotation entries')} ` +
         `${annotationData.malformed === 1 ? 'was' : 'were'} unreadable and could not be exported.`,
-      hint: 'The rest were exported normally. The file may have been written by a non-conforming tool.',
+      /*
+        "The rest were exported normally" was said whether or not there was a rest.
+
+        A writer that cannot state an onset tends not to manage it anywhere, so a file whose
+        every event entry is unreadable is the ordinary way here — and it was answered with
+        the count of what was lost and a sentence saying the remainder came through, over an
+        annotations.csv holding its header and no rows:
+
+            warning: 2 annotation entries were unreadable and could not be exported.
+                     The rest were exported normally. ...
+
+            Wrote scoring_csv
+              annotations.csv  0  rows
+
+        Four lines apart, the summary settling it. Same shape as the "No event was lost"
+        sentence forty lines down, which was corrected for the same reason: a hint true of
+        most files is not true of the one it is printed over.
+
+        Said without counting, rather than by counting. What makes the old sentence wrong is
+        that it asserts a remainder exists; what it was for is the assurance that nothing
+        readable was dropped, and that holds however many were readable. Counting instead
+        would have split `--info` from a conversion — the scan behind `--info` stops at the
+        first record that states a time and never counts the events, which is the bound that
+        keeps it a header read.
+      */
+      hint:
+        'Every entry that could be read was exported. The file may have been written by a ' +
+        'non-conforming tool.',
     });
   }
 

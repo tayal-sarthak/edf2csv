@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.16
+
+### the rest that was exported, over a file with none
+
+An annotation entry that cannot be decoded is skipped and counted, and the hint under the count
+said what happened to the others:
+
+```
+warning: 2 annotation entries were unreadable and could not be exported.
+         The rest were exported normally. The file may have been written by a
+         non-conforming tool.
+
+Wrote scoring_csv
+  annotations.csv  0  rows
+```
+
+There is no rest. A writer that cannot state an onset tends not to manage it anywhere, so a file
+whose every event entry is unreadable is the ordinary way to arrive here — and the reassurance and
+the summary that contradicts it are four lines apart.
+
+Same shape as the "No event was lost" sentence forty lines down in the same file, which was
+corrected for the same reason: a hint that is true of most files is not true of the one it is
+printed over.
+
+Said without counting, which is the part worth recording. The obvious fix is to ask how many
+events survived and pick a sentence — and that splits `--info` from a conversion, because the scan
+behind `--info` stops at the first record that states a time and never counts the events at all.
+A test has held those two to the same words since 0.8.x, and it catches exactly that. What was
+wrong here is not a missing count: it is that the sentence asserts a remainder exists, when what
+it is *for* is the assurance that nothing readable was dropped — and that holds however many were
+readable.
+
+```
+         Every entry that could be read was exported. The file may have been
+         written by a non-conforming tool.
+```
+
 ## 0.9.15
 
 ### one record of the three, called the whole recording

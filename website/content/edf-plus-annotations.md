@@ -307,8 +307,8 @@ conversion, and the count is reported:
 
 ```
 warning: 2 annotation entries were unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a
-         non-conforming tool.
+         Every entry that could be read was exported. The file may have been
+         written by a non-conforming tool.
 ```
 
 One malformed annotation shouldn't cost you an entire conversion, but dropping it

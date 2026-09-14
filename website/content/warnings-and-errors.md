@@ -568,11 +568,13 @@ This code covers five conditions, which are counted separately because they lose
 
 ```
 warning: 1 annotation entry was unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a
-         non-conforming tool.
+         Every entry that could be read was exported. The file may have been
+         written by a non-conforming tool.
 ```
 
 edf2csv skips the bad entry and keeps going. A single malformed annotation shouldn't cost you a whole conversion, but losing it in silence would mean you never learn that an event is missing from `annotations.csv`.
+
+Until 0.9.16 the hint read "The rest were exported normally", which asserts there was one. A writer that cannot state an onset tends not to manage it anywhere, so a file whose every entry is unreadable is the ordinary way to reach this — and the reassurance sat four lines above a summary reading `annotations.csv  0  rows`. The sentence says what it was for instead, which holds however many entries were readable: nothing that could be read was dropped. Saying it by counting would have split `--info` from a conversion, since the bounded scan behind `--info` never counts the events at all.
 
 **A record's timekeeping entry couldn't be decoded, in a continuous file.** The first entry of every record states where that record sits in time rather than describing an event, so it is never exported. Until 0.4.41 these were counted with the events above, which described the wrong loss twice: a file with one unreadable timekeeping entry and three good events announced that one entry "could not be exported" while exporting all three, and said nothing about the timing that had actually gone missing.
 
@@ -590,8 +592,8 @@ A first entry may also carry events after the start time — the format allows b
 
 ```
 warning: 2 annotation entries were unreadable and could not be exported.
-         The rest were exported normally. The file may have been written by a
-         non-conforming tool.
+         Every entry that could be read was exported. The file may have been
+         written by a non-conforming tool.
 warning: 2 data records carry a timekeeping annotation that could not be read, so they do
          not say where in time they sit.
          2 of them also carried event text, which went with them and is counted
