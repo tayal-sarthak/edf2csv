@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.13
+
+### the string "false", taken for true
+
+`assertOptions` states the rule for the six flags it checks: "every one of which is read as
+`=== true` where it is read. Which means a value that is not a boolean is not merely tolerated: it
+is taken as the opposite of what it says."
+
+`parseTimeSpec`'s third argument is read with a truthiness test.
+
+```js
+parseTimeSpec('-5s', '--duration', 'false')   // -5
+parseTimeSpec('-5s', '--duration', 'no')      // -5
+parseTimeSpec('-5s', '--duration', {})        // -5
+parseTimeSpec('-5s', '--duration', [])        // -5
+```
+
+What each of them lets through is a negative length of time, which is the one thing that argument
+exists to decide — `--start` and `--end` name a position on a clock that can begin before zero, so
+they take a sign on purpose; `--duration` is a length and no length is negative.
+
+This is the exported function the api page points other people's users at — "Use `parseTimeSpec`
+if you want to accept those forms from your own users" — so the value arrives from a config file,
+a query string or a wrapper that did not coerce, which is the door `assertOptions` names for the
+flags. The command line is unaffected: it passes a real boolean.
+
 ## 0.9.12
 
 ### a minute stated in seconds, one millisecond under the line

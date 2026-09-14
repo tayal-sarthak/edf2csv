@@ -186,6 +186,27 @@ describe('time specifications', () => {
     // The default is still the old rule, so nothing that does not ask for it changes.
     assert.throws(() => parseTimeSpec('-100', '--duration'), TimeRangeError);
     assert.throws(() => parseTimeSpec('-100', '--duration', false), TimeRangeError);
+    /*
+      And asked for as `=== true`, which is how every flag in this package is read. A
+      truthiness test takes a value that is not a boolean as the opposite of what it says,
+      and this function is the one the api page tells other people to point their own users
+      at — so its third argument arrives from a config file, a query string, or a wrapper
+      that did not coerce, exactly as `assertOptions` describes for the six flags:
+
+          parseTimeSpec('-5s', '--duration', 'false')   // -5
+          parseTimeSpec('-5s', '--duration', 'no')      // -5
+          parseTimeSpec('-5s', '--duration', {})        // -5
+
+      What each of them let through is a negative length of time, which is the one thing this
+      argument exists to decide.
+    */
+    for (const asked of ['false', 'no', 'yes', 1, {}, [], 'true']) {
+      assert.throws(
+        () => parseTimeSpec('-100', '--duration', asked),
+        TimeRangeError,
+        `allowNegative: ${JSON.stringify(asked)} was taken for true`,
+      );
+    }
 
     // A sign on its own, a space after it, and the `+` no other numeric option here takes.
     for (const bad of ['-', '- 5', '+5', '-abc']) {

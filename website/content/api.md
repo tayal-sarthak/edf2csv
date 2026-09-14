@@ -782,7 +782,7 @@ function resolveRange(options: {
 }): ResolvedRange;
 ```
 
-`optionName` is only used in the error message, so pass whatever your own interface calls the option. `allowNegative` defaults to false; pass true for a value that names a position rather than a length, since a recording timed from its first record's timekeeping annotation can begin before zero. The CLI passes it for `--start` and `--end` and withholds it for `--duration`.
+`optionName` is only used in the error message, so pass whatever your own interface calls the option. `allowNegative` defaults to false; pass true for a value that names a position rather than a length, since a recording timed from its first record's timekeeping annotation can begin before zero. The CLI passes it for `--start` and `--end` and withholds it for `--duration`. It is read as `=== true` since 0.9.13, the way every flag in this package is read: a truthiness test takes a value that is not a boolean as the opposite of what it says, so `parseTimeSpec('-5s', '--duration', 'false')` returned `-5` — a negative length of time, which is the one thing the argument exists to decide. `'no'`, `{}` and `[]` went the same way; that is the shape the value arrives in from a config file or a query string, which is the door this function is documented to be reached through.
 
 ```js
 import { parseTimeSpec } from 'edf2csv';

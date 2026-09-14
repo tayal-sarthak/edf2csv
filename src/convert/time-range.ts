@@ -259,7 +259,23 @@ function assertFinite(
       `${optionName} "${input}" is further from zero than a number of seconds can hold.`,
     );
   }
-  if (!allowNegative && value < 0) {
+  /*
+    Read as `=== true`, which is how every other flag in this package is read.
+
+    A truthiness test takes a value that is not a boolean as the opposite of what it says, and
+    this is exported: `parseTimeSpec` is the function the api page tells other people to point
+    their own users at, so its third argument arrives from a config file, a query string or a
+    wrapper that did not coerce, exactly as `assertOptions` describes for the six flags —
+
+        parseTimeSpec('-5s', '--duration', 'false')   // -5
+        parseTimeSpec('-5s', '--duration', 'no')      // -5
+        parseTimeSpec('-5s', '--duration', {})        // -5
+
+    — and the value it lets through is a negative length of time, which is the one thing this
+    line exists to stop. `--duration -5s` from the command line is refused, because the CLI
+    passes a real boolean.
+  */
+  if (allowNegative !== true && value < 0) {
     throw new TimeRangeError(`${optionName} "${input}" is not a valid non-negative time.`);
   }
   return value;
