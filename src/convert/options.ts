@@ -15,6 +15,8 @@
  * created or a stream is opened, so a rejected option leaves nothing behind.
  */
 
+import { counted, grouped } from '../format/list.js';
+
 /** A problem with the options a caller passed, as opposed to a problem with the file. */
 export class OptionError extends Error {
   constructor(message: string) {
@@ -527,6 +529,34 @@ export function assertRecordShape(input: {
   */
   if (recordStarts !== null && recordStarts !== undefined) {
     const starts = recordStarts as ArrayLike<unknown>;
+    /*
+      And one for every record, which is what the field is documented to be: "True start time
+      of each data record". A shorter list is not a partial answer, it is a shorter recording:
+
+          resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: [0] })
+          { startSeconds: 0, endSeconds: 1, startRecord: 0, endRecord: 1,
+            isWholeRecording: true }
+
+      One record of the three, called the whole recording — the same contradiction the check
+      below removes for a list of strings, reached by leaving entries out instead of filling
+      them wrongly. `span` reads the earliest and latest off whatever it is given and
+      `selectRecords` matches only the indexes it holds, so a list of one describes a file of
+      one however many records the caller said there were.
+
+      Empty is the exception, and it is not a short list: `[]` is how "no record times are
+      known" arrives, which the two functions below already answer by falling back to
+      contiguous positions. `null` says the same thing and is the form the reader hands over.
+    */
+    if (starts.length !== 0 && starts.length !== recordCount) {
+      // Both counts through the helpers, like every other sentence that puts one number
+      // against another: the phrase exists to compare them.
+      throw new OptionError(
+        `recordStarts has ${grouped(starts.length)} of the ` +
+          `${counted(recordCount as number, 'record start time')} this recording needs. It is ` +
+          `where each data record really sits, so a shorter list describes a shorter ` +
+          `recording; pass null, or an empty list, where none are known.`,
+      );
+    }
     for (let at = 0; at < starts.length; at++) {
       const start = starts[at];
       if (start === null || start === undefined || Number.isFinite(start)) continue;

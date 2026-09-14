@@ -1946,6 +1946,26 @@ describe('option checking', () => {
         /recordStarts\[2\] must be .*got "x"/u],
       [{ recordDuration: 1, recordCount: 3, recordStarts: [0, Infinity, 2] },
         /recordStarts\[1\] must be .*got Infinity/u],
+      /*
+        And one for every record, which is what the field is documented to be: "True start
+        time of each data record". A shorter list is not a partial answer, it is a shorter
+        recording:
+
+            resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: [0] })
+            { startSeconds: 0, endSeconds: 1, startRecord: 0, endRecord: 1,
+              isWholeRecording: true }
+
+        One record of the three, called the whole recording — the same contradiction the
+        entries check removes, reached by leaving entries out rather than filling them wrongly.
+      */
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [0] },
+        /recordStarts has 1 of the 3 record start times this recording needs/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [0, 1] },
+        /recordStarts has 2 of the 3 record start times/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: [0, 1, 2, 3] },
+        /recordStarts has 4 of the 3 record start times/u],
+      [{ recordDuration: 1, recordCount: 3, recordStarts: new Float64Array([0]) },
+        /recordStarts has 1 of the 3 record start times/u],
     ]) {
       assert.throws(() => resolveRange(options), (error) => {
         assert.ok(error instanceof OptionError, `${JSON.stringify(options)} threw ${error}`);
@@ -1958,7 +1978,9 @@ describe('option checking', () => {
       and which the caller already places from its neighbours. That is the one non-number a
       list may hold, and a Float64Array is what the reader builds.
     */
-    for (const starts of [null, undefined, [0, 1, 2], [0, null, 2], new Float64Array([0, 1, 2])]) {
+    // `[]` is the exception, and it is not a short list: it is how "no record times are known"
+    // arrives, which both functions already answer with contiguous positions.
+    for (const starts of [null, undefined, [], [0, 1, 2], [0, null, 2], new Float64Array([0, 1, 2])]) {
       const range = resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: starts });
       assert.equal(range.endRecord, 3, `${String(starts)} lost a record`);
       assert.equal(range.isWholeRecording, true, String(starts));

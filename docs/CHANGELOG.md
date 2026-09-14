@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.15
+
+### one record of the three, called the whole recording
+
+`PlanInput.recordStarts` is documented as "True start time of each data record", and 0.9.1 taught
+the checker what may be in the list. It still did not ask how long the list was.
+
+```js
+resolveRange({ recordDuration: 1, recordCount: 3, recordStarts: [0] })
+{ startSeconds: 0, endSeconds: 1, startRecord: 0, endRecord: 1, isWholeRecording: true }
+```
+
+One record of the three, called the whole recording. `span` reads the earliest and the latest off
+whatever list it is given, and `selectRecords` matches only the indexes that list holds — so a
+list of one describes a file of one, however many records the caller said there were, and the
+range that comes back says it covers all of them.
+
+It is the same contradiction 0.9.1 removed, reached by leaving entries out rather than by filling
+them wrongly. A longer list than the recording is refused with it: the extra entries move
+`endSeconds` past the end of a file that has no records there.
+
+An empty list is the exception and is not a short list — `[]` is how "no record times are known"
+arrives, and both functions already answer it by falling back to contiguous positions, as they do
+for `null`. The reader hands over `null` or a `Float64Array` of exactly `recordCount` entries, so
+nothing that reads a file reaches this.
+
 ## 0.9.14
 
 ### a record index no file has, written into the column a join reads
