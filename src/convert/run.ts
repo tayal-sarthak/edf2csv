@@ -217,6 +217,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             ],
             plan.writeSignals,
             plan.gzip,
+            convertedChannels(plan),
           ),
           { toStdout: true, gzip: plan.gzip },
         ),
@@ -354,6 +355,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           ],
           plan.writeSignals,
           plan.gzip,
+          convertedChannels(plan),
         ),
         { toStdout: false, gzip: plan.gzip },
       ),
@@ -1962,6 +1964,18 @@ export function noSignalFile(file: EdfFile, plan: ConversionPlan): Diagnostic | 
 }
 
 /**
+ * The channels whose samples this run actually writes.
+ *
+ * `plan.columnNames` names every channel of the recording, because the names are derived from
+ * the whole file rather than from the selection — so it is not the answer. The groups are:
+ * `--channels` builds them out of what was selected, and a channel with no samples per record
+ * has none to put in one either.
+ */
+export function convertedChannels(plan: ConversionPlan): Set<number> {
+  return new Set(plan.groups.flatMap((group) => group.channels.map((c) => c.signal.index)));
+}
+
+/**
  * The signal table an `--annotations-only` run does not write, taken out of the hints about it.
  *
  * That mode writes the event list and nothing else — no signal files at all — and four hints
@@ -1987,8 +2001,33 @@ export function withSignalTableUnwritten(
   diagnostics: readonly Diagnostic[],
   writesSignals: boolean,
   gzip: boolean,
+  /*
+    And the channels this run leaves out, which is the same question one channel at a time.
+
+    `--annotations-only` writes no cells for any channel; `--channels` writes none for the
+    ones it excludes, and the five sentences below are as untrue of those as they are of the
+    whole run. `--info` prints `(not selected)` in the OUTPUT column for them and channels.csv
+    records them with `converted: no`, and the warning three lines under the table said:
+
+        0  flat      flat  uV  4 Hz  0 to 0     (not selected)
+        ...
+        warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its
+                 values cannot be scaled.
+                 Its cells are left empty rather than filled with a value the header cannot
+                 justify.
+
+    There are no cells. Under `--strict` that is a failed run over a channel this one does not
+    touch. The rewrites are the same rewrites, so the set of them is the argument rather than
+    a second copy: empty means no signal table at all, which is what `writesSignals` said.
+  */
+  converted: ReadonlySet<number> = new Set(),
 ): Diagnostic[] {
-  if (writesSignals) return [...diagnostics];
+  const skipped = (diagnostic: Diagnostic): boolean => {
+    if (!writesSignals) return true;
+    const named = /^Signal (\d+)\b/u.exec(diagnostic.message);
+    return named !== null && !converted.has(Number(named[1]));
+  };
+  if (writesSignals && diagnostics.every((d) => !skipped(d))) return [...diagnostics];
   /*
     The sidecars named here are named as the run writes them.
 
@@ -2001,6 +2040,13 @@ export function withSignalTableUnwritten(
   const channelsFile = outputCsvName('channels', gzip);
   const annotationsFile = outputCsvName('annotations', gzip);
   return diagnostics.map((diagnostic) => {
+    if (!skipped(diagnostic)) return diagnostic;
+    // The reason the cells are missing, which is the only part that differs between the two.
+    const because = writesSignals ? 'for a channel --channels left out' : 'with --annotations-only';
+    // The run-level sentences below are only reached when no signal table is written at all:
+    // a selection leaves the rows alone, so nothing it excludes changes what the column says.
+    const writes = '--annotations-only writes no signal rows';
+
     /*
       And the three calibration warnings, whose hints are about cells.
 
@@ -2050,6 +2096,24 @@ export function withSignalTableUnwritten(
           .replace(' in any conversion that writes one', ''),
       };
     }
+    /*
+      And the channel that lost its own name, whose sentence ends in a column.
+
+      plan.ts writes "so its column is `X`" for a run that writes a signal table and "so it is
+      named `X` in channels.csv's column cell" for one that does not — decided by the run,
+      because that is all it knows there. A selection decides it per channel: the rename still
+      happens, since the names are derived from the whole file so that they agree with
+      channels.csv and across runs, and the column it is named for is one this run has not got.
+    */
+    if (diagnostic.code === 'DUPLICATE_LABEL' && / so its column is "/u.test(diagnostic.message)) {
+      return {
+        ...diagnostic,
+        message: diagnostic.message.replace(
+          / so its column is ("[^"]*")\.$/u,
+          ` so it is named $1 in ${channelsFile}'s column cell.`,
+        ),
+      };
+    }
     if (
       diagnostic.code === 'DUPLICATE_LABEL' &&
       diagnostic.hint?.startsWith('Their names are suffixed')
@@ -2058,15 +2122,18 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           'Their names are suffixed with the signal number so they stay distinguishable. ' +
-          '--annotations-only writes no signal table, so the suffixed names appear only in ' +
-          `${channelsFile}'s column cells.`,
+          (writesSignals
+            ? `--channels left this channel out, so its suffixed name appears in ` +
+              `${channelsFile}'s column cell and nowhere else.`
+            : '--annotations-only writes no signal table, so the suffixed names appear only ' +
+              `in ${channelsFile}'s column cells.`),
       };
     }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,
         hint:
-          'No samples are converted with --annotations-only, so there are no cells to leave ' +
+          `No samples are converted ${because}, so there are no cells to leave ` +
           `empty. ${channelsFile} still records the digital range the header gives.`,
       };
     }
@@ -2078,7 +2145,7 @@ export function withSignalTableUnwritten(
           'so every sample would convert to the same value.',
         ),
         hint:
-          `No samples are converted with --annotations-only. ${channelsFile} still records ` +
+          `No samples are converted ${because}. ${channelsFile} still records ` +
           'the calibration, one point wide.',
       };
     }
@@ -2086,7 +2153,7 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          `No samples are converted with --annotations-only. ${channelsFile} records the ` +
+          `No samples are converted ${because}. ${channelsFile} records the ` +
           'physical minimum and maximum in the order the header gives them, inversion included.',
       };
     }
@@ -2104,7 +2171,7 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          `--annotations-only writes no signal rows, so nothing is timed from ${one ? 'that record' : 'those records'}. ` +
+          `${writes}, so nothing is timed from ${one ? 'that record' : 'those records'}. ` +
           `The events in ${one ? 'it' : 'them'} carry their own onsets, and ` +
           `${annotationsFile}'s record_index still names ${one ? 'it' : 'them'}.`,
       };
@@ -2114,7 +2181,7 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          '--annotations-only writes no signal rows, so nothing here is timed from the ' +
+          `${writes}, so nothing here is timed from the ` +
           `records. ${annotationsFile} carries each event's own onset, and the record it ` +
           'came from in record_index.',
       };
@@ -2123,14 +2190,14 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          '--annotations-only writes no signal rows, so no time column is affected. ' +
+          `${writes}, so no time column is affected. ` +
           `${annotationsFile}'s record_index still names the record each event came from.`,
       };
     }
     if (diagnostic.hint.startsWith('Sample times are written from zero')) {
       return {
         ...diagnostic,
-        hint: '--annotations-only writes no signal rows, so no sample times are written at all.',
+        hint: `${writes}, so no sample times are written at all.`,
       };
     }
     /*
@@ -2162,7 +2229,7 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          '--annotations-only writes no signal rows, so no times are written from the ' +
+          `${writes}, so no times are written from the ` +
           `records at all. ${annotationsFile} carries each event's own onset, which the ` +
           'records do not decide.',
       };
@@ -2175,7 +2242,7 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           'Where its records sit in time is not recorded in this file, and ' +
-          '--annotations-only writes no signal rows to time from them anyway — see the ' +
+          `${writes} to time from them anyway — see the ` +
           'warning below.',
       };
     }
@@ -2532,6 +2599,7 @@ async function writeMetadata(
         ],
         plan.writeSignals,
         plan.gzip,
+        convertedChannels(plan),
       ),
       // metadata.json is only written into a directory, so this is never the stdout case.
       { toStdout: false, gzip: plan.gzip },

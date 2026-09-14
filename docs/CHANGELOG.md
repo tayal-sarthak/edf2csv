@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.19
+
+### cells left empty on a channel with no cells
+
+`withSignalTableUnwritten` takes the sentences about a signal table out of a run that writes none.
+`--channels` writes none *for the channels it leaves out*, and the same sentences are as untrue of
+those as they are of the whole run.
+
+```
+$ edf2csv rec.edf --info --channels ok
+#  COLUMN    LABEL     UNIT  RATE  RANGE      OUTPUT
+0  flat      flat      uV    4 Hz  0 to 0     (not selected)
+1  flatphys  flatphys  uV    4 Hz  5 to 5     (not selected)
+2  ok        ok        uV    4 Hz  -10 to 10  signals.csv
+
+warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values
+         cannot be scaled.
+         Its cells are left empty rather than filled with a value the header cannot justify.
+```
+
+There are no cells. The OUTPUT column three lines up says so, `channels.csv` records the channel
+with `converted: no`, and under `--strict` this is a failed run over a channel it does not touch.
+
+The rewrites are the same rewrites, so the set of converted channels is an argument to the pass
+rather than a second copy of it — empty means no signal table at all, which is what the boolean
+said. A channel the run does convert keeps every word.
+
+The sentence about a channel that lost its own name moves with them: plan.ts decides between "so
+its column is `X`" and "so it is named `X` in channels.csv's column cell" from the run, because
+that is all it knows there, and a selection decides it per channel.
+
+What the header says about the channel stays in every case — that is the rule the
+`--annotations-only` rewrites already follow. Only the clause about what a conversion makes of it
+was false.
+
+One warning is deliberately unchanged: "2 signals share the label `T8-P8` (positions #0, #1)" names
+positions rather than a signal, and when a selection keeps one of the pair the collision it
+describes is still a fact about the header. The rewrites here are per named channel.
+
 ## 0.9.18
 
 ### the second annotation channel the scan never opened

@@ -6078,6 +6078,68 @@ describe('--stdout', () => {
     assert.equal(channels.trim().split('\n').length, 4, channels);
   });
 
+  it('does not describe cells of a channel --channels left out', async () => {
+    /*
+      The same question one channel at a time. `--annotations-only` writes no cells for any
+      channel; `--channels` writes none for the ones it excludes, and the sentences about what
+      a conversion makes of a header are as untrue of those as they are of the whole run.
+      `--info` prints `(not selected)` in the OUTPUT column and channels.csv records them with
+      `converted: no`, and the warning three lines under the table said:
+
+          0  flat      flat  uV  4 Hz  0 to 0     (not selected)
+          ...
+          warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its
+                   values cannot be scaled.
+                   Its cells are left empty rather than filled with a value the header cannot
+                   justify.
+
+      There are no cells. Under --strict that is a failed run over a channel this one does not
+      touch. What the header says about the channel is still worth saying, which is the rule
+      the `--annotations-only` rewrites follow, so only the clause about the conversion moves.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-unselected-'));
+    temporaries.push(dir);
+    const cases = [
+      ['degenerate-range.edf', 'ok', /No samples are converted for a channel --channels left out, so there are no cells to leave empty/u,
+        /Its cells are left empty rather than filled/u],
+      ['degenerate-range.edf', 'ok', /No samples are converted for a channel --channels left out\. channels\.csv still records the calibration/u,
+        /Its cells carry that value rather than being left empty/u],
+      ['quirky-labels.edf', '#0', /No samples are converted for a channel --channels left out\. channels\.csv records the physical minimum/u,
+        /The values are converted exactly as the header specifies/u],
+    ];
+    for (const [name, keep, amended, replaced] of cases) {
+      for (const mode of [['--info'], ['--out', path.join(dir, `${name}-${keep}-${cases.indexOf(cases.find((c) => c[2] === amended))}`)]]) {
+        const { code, stderr } = await cli([fixture(name), '--channels', keep, ...mode]);
+        assert.equal(code, 0, stderr);
+        const flat = stderr.replace(/\s+/gu, ' ');
+        assert.match(flat, amended, flat);
+        assert.doesNotMatch(flat, replaced, flat);
+      }
+      // And a run that converts every channel keeps every word, because it is true of it.
+      const whole = await cli([fixture(name), '--info']);
+      assert.match(whole.stderr.replace(/\s+/gu, ' '), replaced, whole.stderr);
+      assert.doesNotMatch(whole.stderr, /--channels left out/u, whole.stderr);
+    }
+
+    /*
+      And the channel that lost its own name, whose sentence ends in a column it has not got.
+      The rename still happens — the names are derived from the whole file so that they agree
+      with channels.csv and across runs — so only the noun moves, to the one place the name
+      really appears.
+    */
+    const renamed = path.join(dir, 'time-column.edf');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+      samplesPerRecord: 4, gen: (r, i) => r * 4 + i };
+    writeEdf({ path: renamed, numRecords: 2, recordDuration: 1,
+      signals: [{ ...base, label: 'time_s' }, { ...base, label: 'B' }] });
+    const left = await cli([renamed, '--info', '--channels', 'B']);
+    assert.match(left.stderr.replace(/\s+/gu, ' '),
+      /so it is named "time_s_ch0" in channels\.csv's column cell/u, left.stderr);
+    const both = await cli([renamed, '--info']);
+    assert.match(both.stderr.replace(/\s+/gu, ' '), /so its column is "time_s_ch0"/u, both.stderr);
+  });
+
   it('does not describe rows of a signal table --annotations-only will not write', async () => {
     /*
       `--annotations-only` writes the event list and nothing else, and four hints about record
