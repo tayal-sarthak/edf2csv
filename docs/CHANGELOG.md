@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.14
+
+### a record index no file has, written into the column a join reads
+
+0.8.77 gave `decodeRecordAnnotations` a check on its second argument, because that argument is not
+read but *written* — it is copied onto every `Annotation` the call produces, and out again into
+`record_index` in annotations.csv, which is the column a join reads.
+
+The check asks for a whole number that is not negative. `Number.isInteger` is true of `1e300`.
+
+```js
+decodeRecordAnnotations(bytes, 1e300).annotations[0].recordIndex   // 1e+300
+decodeRecordAnnotations(bytes, 2 ** 53 + 2).annotations[0]         // 9007199254740994
+```
+
+Neither names a record even in principle: past 2^53 a double cannot tell one whole number from the
+next, so the value is not a position, it is the nearest double to one. And `1e+300` is not the
+shape that column holds — every other row of it is plain digits, so a reader joining on it gets a
+key that matches nothing and does not look like the others either.
+
+`Number.isSafeInteger` is the bound, and it is a bound rather than a guess: 2^53 records at the
+smallest record duration the format can state is longer than the age of the universe, so a value
+past it came from arithmetic rather than from a file. 2^53 − 1 is still accepted.
+
 ## 0.9.13
 
 ### the string "false", taken for true

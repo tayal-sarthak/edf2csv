@@ -585,7 +585,15 @@ describe('errors', () => {
     */
     const tal = Buffer.from('+0\u0014\u0014\0+1.5\u0014\u0014Spindle\u0014\0', 'binary');
     assert.equal(decodeRecordAnnotations(tal, 3).annotations[0].recordIndex, 3);
-    for (const index of ['x', -5, 1.5, null, undefined, NaN]) {
+    // The largest position a double can tell from its neighbour is still a position.
+    assert.equal(decodeRecordAnnotations(tal, 2 ** 53 - 1).annotations[0].recordIndex, 2 ** 53 - 1);
+    /*
+      And past that it is not one. `Number.isInteger` is true of 1e300 and of 2^53 + 2, and
+      neither names a record even in principle: past 2^53 a double cannot tell one whole
+      number from the next. The value was written onto every event and into `record_index`,
+      where a join reads it, as `1e+300` — not even the shape the rest of that column holds.
+    */
+    for (const index of ['x', -5, 1.5, null, undefined, NaN, 2 ** 53, 2 ** 53 + 2, 1e300, Infinity]) {
       assert.throws(() => decodeRecordAnnotations(tal, index), (error) => {
         assert.ok(error instanceof OptionError, `${String(index)} threw ${error}`);
         assert.match(error.message, /^recordIndex must be the record's whole-number position/u);

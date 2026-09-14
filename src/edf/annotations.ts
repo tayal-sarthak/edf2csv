@@ -183,8 +183,19 @@ export function decodeRecordAnnotations(
     A whole non-negative number, like the record bounds `readRecords` and `sampleAt` take:
     records are counted from zero, and this one is a position in the file rather than in a
     batch, so there is no upper bound to hold it to here.
+
+    Safe, though, which is a bound and not a guess. `Number.isInteger` is true of 1e300 and of
+    2^53 + 2, and neither is a position any file has: past 2^53 a double stops being able to
+    tell one whole number from the next, so the value cannot name a record even in principle.
+    It was written onto every event and into `record_index`, where a join reads it —
+
+        decodeRecordAnnotations(bytes, 1e300).annotations[0].recordIndex   // 1e+300
+
+    — and `1e+300` is not even a number of the form that column holds, since every other row
+    of it is plain digits. A file of 2^53 records at the format's smallest record duration is
+    longer than the age of the universe; a value past it came from arithmetic, not from a file.
   */
-  if (!Number.isInteger(recordIndex) || recordIndex < 0) {
+  if (!Number.isSafeInteger(recordIndex) || recordIndex < 0) {
     throw new OptionError(
       `recordIndex must be the record's whole-number position in the file, got ` +
         `${describeValue(recordIndex)}. It is written onto every annotation this returns.`,
