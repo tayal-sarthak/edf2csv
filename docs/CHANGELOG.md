@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.17
+
+### fifteen records inside its own budget, never read
+
+`--info` on a continuous EDF+ reads "the annotation slot of at most the first sixteen records",
+which is what keeps it a header summary on a file of any size. `scanOrigin` returned the moment
+one of them stated a time — all an origin needs — and the remaining fifteen records of its own
+bound went unread.
+
+What those records say is whether the file keeps the promise its reserved field makes.
+
+```
+$ edf2csv liar.edf --info --strict
+   exit 0, and nothing on stderr
+
+$ edf2csv liar.edf --out liar_csv --strict
+warning: This file is marked continuous (EDF+C), but 1 of its 3 data records says it starts
+         somewhere other than where continuity puts it.
+   exit 1
+```
+
+cli-reference.md recommends the first for screening a folder before converting it, so the mode
+whose purpose is to say what a conversion will do passed a file the conversion fails. That is the
+sentence `noAnnotations` gives for the same defect one diagnostic over, and the one `noSignalFile`
+gives for it one before that.
+
+The bound has not moved. "At most the first sixteen records" is what every page says this mode
+costs, and the early exit was reading *less* than that — so the cost is now the documented one
+rather than under it. The scan hands back what each record it read said, and the count in the
+warning is a lower bound on the file exactly as its three counters already are: a conversion reads
+every record and may find more. On both of this repository's `continuous-liar` fixtures the two
+modes now print the same sentence with the same number.
+
 ## 0.9.16
 
 ### the rest that was exported, over a file with none

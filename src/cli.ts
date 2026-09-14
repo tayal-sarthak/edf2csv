@@ -1015,7 +1015,17 @@ async function showInfo(
       ? await file.readAnnotations()
       : {
           annotations: [],
-          recordStarts: scan ? [scan.origin] : [],
+          /*
+            What the scan actually read, rather than the one number it distilled.
+
+            This passed `[scan.origin]` — a list of one, holding a figure derived from
+            whichever record answered first — so the contradiction check below had one record
+            to look at and the file's own `EDF+C` marker went unchecked against the rest. The
+            scan reads up to sixteen records' timekeeping and now hands back what each of them
+            said, which is a lower bound on the file exactly as its three counters are: a
+            conversion reads every record and may find more.
+          */
+          recordStarts: scan?.recordStarts ?? [],
           malformed: scan?.malformed ?? 0,
           // Counted rather than assumed: see EdfFile.scanOrigin.
           malformedTimekeeping: scan?.malformedTimekeeping ?? 0,

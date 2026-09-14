@@ -4444,6 +4444,46 @@ describe('--info and the origin scan', () => {
     assert.match(described.stderr.replace(/\s+/gu, ' '), /also carried event text/u);
     assert.doesNotMatch(described.stderr, /No event was lost/u);
   });
+
+  it('reports a file contradicting its own EDF+C marker, which the scan stopped short of', async () => {
+    /*
+      `scanOrigin` returned the moment one record stated a time, which is all an origin needs
+      — and the remaining fifteen records of its own bound went unread. What they say is
+      whether the file keeps the promise its reserved field makes, so an `EDF+C` recording
+      whose records contradict continuity was reported by a conversion and by nothing here:
+
+          edf2csv liar.edf --info --strict      exit 0, no warning
+          edf2csv liar.edf --out out --strict   exit 1, "This file is marked continuous
+                                                (EDF+C), but 1 of its 3 data records says it
+                                                starts somewhere other than where continuity
+                                                puts it."
+
+      cli-reference.md recommends the first for screening a folder before converting it, which
+      is the sentence `noAnnotations` gives for the same defect one diagnostic over.
+
+      The bound has not moved — "at most the first sixteen records" is what every page says
+      this mode costs, and the early exit was reading less than that, not more.
+    */
+    for (const name of ['continuous-liar.edf', 'continuous-liar-from-zero.edf']) {
+      const described = await cli([fixture(name), '--info']);
+      const converted = await cli([fixture(name), '--out', await outDir()]);
+      assert.equal(described.code, 0, described.stderr);
+      const marked = /marked continuous \(EDF\+C\), but \d+ of its \d+ data records?/u;
+      assert.match(described.stderr.replace(/\s+/gu, ' '), marked, `${name}: ${described.stderr}`);
+      // The same sentence, the same count: one file, one answer.
+      const warnings = (stderr) =>
+        stderr.replace(/\s+/gu, ' ').match(/warning: .*?(?=warning: |Wrote |$)/gu) ?? [];
+      assert.deepEqual(warnings(described.stderr), warnings(converted.stderr), name);
+      // And --strict, which is what screening a folder actually runs.
+      assert.equal((await cli([fixture(name), '--info', '--strict'])).code, 1, name);
+    }
+
+    // A recording that really is contiguous stays quiet in both modes.
+    for (const name of ['annotations.edf', 'contiguous-fractional.edf']) {
+      const quiet = await cli([fixture(name), '--info']);
+      assert.doesNotMatch(quiet.stderr, /marked continuous/u, `${name} was called a liar`);
+    }
+  });
 });
 
 describe('--info over a folder', () => {

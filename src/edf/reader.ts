@@ -729,32 +729,66 @@ export class EdfFile {
     malformed: number;
     malformedTimekeeping: number;
     malformedTimekeepingWithText: number;
+    /**
+     * What each record it read said its own start time was, or null where it said nothing.
+     *
+     * One entry per record searched, so shorter than the file — a lower bound like the three
+     * counters above, and for the same reason. `--info` compares these against where
+     * continuity puts them, which is how an `EDF+C` file that contradicts itself is reported
+     * without reading every record of it.
+     */
+    recordStarts: (number | null)[];
   }> {
     this.#assertOpen();
 
     const counts = { malformed: 0, malformedTimekeeping: 0, malformedTimekeepingWithText: 0 };
+    const recordStarts: (number | null)[] = [];
     const channel = this.timekeepingSignal;
-    if (!channel || this.recordCount === 0) return { origin: null, ...counts };
+    if (!channel || this.recordCount === 0) return { origin: null, ...counts, recordStarts };
 
     const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
     const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
-    if (buffer.length === 0) return { origin: null, ...counts };
+    if (buffer.length === 0) return { origin: null, ...counts, recordStarts };
 
+    /*
+      The budget is read, rather than abandoned at the first record that answers.
+
+      This returned the moment one record stated a time, which is all the origin needs — and
+      everything the remaining fifteen records of its own bound would have said went unread.
+      What they say is whether the file keeps the promise its reserved field makes: an `EDF+C`
+      recording whose records contradict continuity is reported by a conversion and was
+      reported by nothing here, so
+
+          edf2csv liar.edf --info --strict     exit 0, no warning
+          edf2csv liar.edf --out out --strict  exit 1, "This file is marked continuous
+                                               (EDF+C), but 1 of its 3 data records says it
+                                               starts somewhere other than where continuity
+                                               puts it."
+
+      and cli-reference.md recommends the first for screening a folder before converting it.
+      That is the sentence `noAnnotations` gives for the same defect one diagnostic over.
+
+      The bound does not move: it was always "at most the first sixteen records", which is
+      what every page says this mode costs. Only the early exit goes, so the cost is now what
+      was documented rather than under it.
+    */
     const searched = Math.min(this.recordCount, RECORDS_SEARCHED_FOR_ORIGIN);
+    let origin: number | null = null;
     for (let record = 0; record < searched; record++) {
       const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
       const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
-      if (bytesRead < buffer.length) return { origin: null, ...counts };
+      if (bytesRead < buffer.length) return { origin, ...counts, recordStarts };
 
       const decoded = decodeRecordAnnotations(buffer, record);
       counts.malformed += decoded.malformed;
       counts.malformedTimekeeping += decoded.malformedTimekeeping;
       counts.malformedTimekeepingWithText += decoded.malformedTimekeepingWithText;
-      if (decoded.recordStart !== null) {
-        return { origin: decoded.recordStart - record * recordDuration, ...counts };
+      recordStarts.push(decoded.recordStart);
+      if (origin === null && decoded.recordStart !== null) {
+        origin = decoded.recordStart - record * recordDuration;
       }
     }
-    return { origin: null, ...counts };
+    return { origin, ...counts, recordStarts };
   }
 
   /**

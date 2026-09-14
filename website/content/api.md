@@ -54,6 +54,7 @@ class EdfFile {
     malformed: number;                     // unreadable TALs that cost events
     malformedTimekeeping: number;          // unreadable TALs in first position, costing a record's time
     malformedTimekeepingWithText: number;  // counted in both of the above, never only one
+    recordStarts: (number | null)[];       // what each record it read said, null where it said nothing
   }>;
   get durationSeconds(): number;       // recordCount * header.recordDuration
 
