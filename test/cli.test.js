@@ -4484,6 +4484,35 @@ describe('--info and the origin scan', () => {
       assert.doesNotMatch(quiet.stderr, /marked continuous/u, `${name} was called a liar`);
     }
   });
+
+  it('counts the entries in every annotation channel, not only the timekeeping one', async () => {
+    /*
+      EDF+ permits more than one annotation channel and only the first carries a record's
+      start time — which is the whole of what the origin scan was written for, so it read
+      that one and stopped. The entries in the others are still entries, and an unreadable
+      one there is an event lost out of annotations.csv exactly as it is in the first:
+
+          edf2csv two-channels.edf --info      nothing
+          edf2csv two-channels.edf --out out   "3 annotation entries were unreadable and
+                                                could not be exported."
+
+      `two-annotation-channels.edf` is that file: its three unreadable entries are all in the
+      second channel, so `--info --strict` passed a recording whose conversion exits 1.
+    */
+    const described = await cli([fixture('two-annotation-channels.edf'), '--info']);
+    const converted = await cli([fixture('two-annotation-channels.edf'), '--out', await outDir()]);
+    assert.equal(described.code, 0, described.stderr);
+    const warnings = (stderr) =>
+      stderr.replace(/\s+/gu, ' ').match(/warning: .*?(?=warning: |Wrote |$)/gu) ?? [];
+    assert.match(described.stderr.replace(/\s+/gu, ' '),
+      /3 annotation entries were unreadable and could not be exported/u, described.stderr);
+    assert.deepEqual(warnings(described.stderr), warnings(converted.stderr));
+    assert.equal((await cli([fixture('two-annotation-channels.edf'), '--info', '--strict'])).code, 1);
+
+    // And the origin still comes from the first channel, which is where EDF+ puts it: this
+    // file's records state 0, 1 and 2, so the recording is timed from zero and says nothing.
+    assert.doesNotMatch(described.stdout, /^Timed from/mu, described.stdout);
+  });
 });
 
 describe('--info over a folder', () => {

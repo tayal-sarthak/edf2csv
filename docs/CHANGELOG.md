@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.18
+
+### the second annotation channel the scan never opened
+
+EDF+ permits more than one annotation channel, and only the first carries a record's start time.
+Finding that time is the whole of what the origin scan was written for, so it read that channel
+and stopped.
+
+The entries in the others are still entries. An unreadable one there is an event lost out of
+annotations.csv exactly as it is in the first channel:
+
+```
+$ edf2csv two-channels.edf --info --strict
+   exit 0, and nothing on stderr
+
+$ edf2csv two-channels.edf --out out --strict
+warning: 3 annotation entries were unreadable and could not be exported.
+   exit 1
+```
+
+`two-annotation-channels.edf` in this repository is that file — its three unreadable entries are
+all in the second channel — so the screening pass this tool documents for a folder passed a
+recording whose conversion fails. Same sentence as 0.9.17 gives for the record positions in the
+same sixteen records, one channel over.
+
+The bound is per record, not per channel: the same sixteen records, one slot each. A file with two
+annotation channels reads two slots of a few hundred bytes for each of them, which is the same
+order as the one slot it read before, and a file with one reads exactly what it always did.
+
+The origin still comes from the first channel, which is where the format puts it.
+
 ## 0.9.17
 
 ### fifteen records inside its own budget, never read

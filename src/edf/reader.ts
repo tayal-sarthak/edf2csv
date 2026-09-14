@@ -747,7 +747,30 @@ export class EdfFile {
     if (!channel || this.recordCount === 0) return { origin: null, ...counts, recordStarts };
 
     const { headerBytes, bytesPerSample, recordBytes, recordDuration } = this.header;
-    const buffer = Buffer.alloc(channel.samplesPerRecord * bytesPerSample);
+    /*
+      Every annotation channel with room in it, not only the one the timekeeping is in.
+
+      EDF+ permits more than one, and only the first carries a record's start time — which is
+      the whole of what this function was written for, so it read that one and stopped. The
+      entries it did not read are still entries, and an unreadable one there is an event lost
+      out of annotations.csv exactly as it is in the first channel:
+
+          edf2csv two-channels.edf --info     nothing
+          edf2csv two-channels.edf --out out  "3 annotation entries were unreadable and
+                                               could not be exported."
+
+      `two-annotation-channels.edf` in this repository is that file. Its three unreadable
+      entries are all in the second channel, so `--info --strict` passed it and converting it
+      exits 1 — the screening pass this tool documents for a folder, saying nothing about the
+      recording that will fail.
+
+      The bound is per record, not per channel: the same sixteen records, one slot each. A
+      file with two annotation channels reads two slots of a few hundred bytes for each of
+      them, which is the same order as the one slot it read before.
+    */
+    const channels = this.annotationSignals.filter((signal) => signal.samplesPerRecord > 0);
+    const buffers = channels.map((signal) => Buffer.alloc(signal.samplesPerRecord * bytesPerSample));
+    const buffer = buffers[channels.indexOf(channel)] as Buffer;
     if (buffer.length === 0) return { origin: null, ...counts, recordStarts };
 
     /*
@@ -775,17 +798,23 @@ export class EdfFile {
     const searched = Math.min(this.recordCount, RECORDS_SEARCHED_FOR_ORIGIN);
     let origin: number | null = null;
     for (let record = 0; record < searched; record++) {
-      const offset = headerBytes + record * recordBytes + channel.byteOffsetInRecord;
-      const bytesRead = await readFully(this.#handle, buffer, 0, buffer.length, offset);
-      if (bytesRead < buffer.length) return { origin, ...counts, recordStarts };
+      for (const [position, reading] of channels.entries()) {
+        const slot = buffers[position] as Buffer;
+        if (slot.length === 0) continue;
+        const offset = headerBytes + record * recordBytes + reading.byteOffsetInRecord;
+        const bytesRead = await readFully(this.#handle, slot, 0, slot.length, offset);
+        if (bytesRead < slot.length) return { origin, ...counts, recordStarts };
 
-      const decoded = decodeRecordAnnotations(buffer, record);
-      counts.malformed += decoded.malformed;
-      counts.malformedTimekeeping += decoded.malformedTimekeeping;
-      counts.malformedTimekeepingWithText += decoded.malformedTimekeepingWithText;
-      recordStarts.push(decoded.recordStart);
-      if (origin === null && decoded.recordStart !== null) {
-        origin = decoded.recordStart - record * recordDuration;
+        // Only the timekeeping channel carries the record's start; see timekeepingSignal.
+        const decoded = decodeRecordAnnotations(slot, record, reading === channel);
+        counts.malformed += decoded.malformed;
+        counts.malformedTimekeeping += decoded.malformedTimekeeping;
+        counts.malformedTimekeepingWithText += decoded.malformedTimekeepingWithText;
+        if (reading !== channel) continue;
+        recordStarts.push(decoded.recordStart);
+        if (origin === null && decoded.recordStart !== null) {
+          origin = decoded.recordStart - record * recordDuration;
+        }
       }
     }
     return { origin, ...counts, recordStarts };
