@@ -2052,6 +2052,32 @@ describe('the read budget', () => {
           );
         }
       }
+
+      /*
+        And a channel of this file that is the wrong kind for the method it was handed to. An
+        annotation channel keeps EDF+ text in the same 16-bit slots a signal channel keeps
+        samples in, so `sampleAt` read the two bytes of `+0` as the digital code 12331 and
+        handed it back as a measurement — from the one channel every other part of this tool
+        refuses by name.
+      */
+      const plus = await EdfFile.open(fixture('annotations.edf'));
+      try {
+        let record;
+        for await (const chunk of plus.readRecords({})) { record = chunk; break; }
+        assert.throws(
+          () => plus.sampleAt(record, 0, plus.annotationSignals[0], 0),
+          (error) => {
+            assert.ok(error instanceof OptionError, String(error));
+            assert.match(error.message, /^sampleAt: signal is this recording's annotation channel/u);
+            return true;
+          },
+          'an annotation channel is not a column of samples',
+        );
+        // And its own channels still answer, which is what the guard has to leave alone.
+        assert.equal(typeof plus.sampleAt(record, 0, plus.dataSignals[0], 0), 'number');
+      } finally {
+        await plus.close();
+      }
     } finally {
       await mine.close();
       await theirs.close();

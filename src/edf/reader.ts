@@ -621,6 +621,30 @@ export class EdfFile {
   sampleAt(batch: RecordBatch, recordOffset: number, signal: EdfSignal, sampleIndex: number): number {
     this.#assertSignalHere(signal, 'sampleAt');
     /*
+      And that it is a channel with samples in it.
+
+      An annotation channel keeps EDF+ text in the same 16-bit slots an ordinary channel keeps
+      samples in, so the arithmetic below reads it happily: the two bytes of `+0` are the
+      digital code 12331, which this then hands back as a measurement. The rest of the tool
+      refuses in as many words — `--channels "#1"` on that channel answers "it holds event
+      text rather than samples", `selectChannels` filters it out, and `dataSignals` exists to
+      iterate what is left.
+
+      Not in `#assertSignalHere`, which the two methods either side of this also call:
+      `annotationBytes` is *about* that channel, and a byte offset is a byte offset.
+    */
+    if (signal.isAnnotations) {
+      // The label quoted as it is, for the reason the by-name refusal in channels.ts gives:
+      // a channel is `isAnnotations` only by carrying one of the two labels the
+      // specification reserves, so there is nothing else it can be.
+      throw new OptionError(
+        `sampleAt: signal is this recording's annotation channel ("${signal.label}"), not a ` +
+          `signal: it holds event text rather than samples, so there is no sample here to ` +
+          `read. annotationBytes gives its bytes, and decodeRecordAnnotations reads the ` +
+          `events out of them.`,
+      );
+    }
+    /*
       In range, because out of it this invented a number.
 
       The arithmetic below turns four values into a byte position and reads there. Nothing

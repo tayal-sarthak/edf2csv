@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.22
+
+### the annotation channel read as a column of samples
+
+An annotation channel holds EDF+ text — `+0\x14\x14\x00`, and the events after it — in the same
+16-bit slots an ordinary channel keeps samples in. `sampleAt` read it as one.
+
+```js
+const annotations = file.annotationSignals[0];   // "EDF Annotations"
+file.sampleAt(batch, 0, annotations, 0)          // 12331
+```
+
+12331 is the digital code the two bytes `+0` make, scaled by a calibration the specification
+requires that channel to leave at its defaults. It is not a measurement. Everywhere else this is
+already refused, in as many words: `--channels "#1"` on the annotation channel answers "is this
+recording's annotation channel, not a signal: it holds event text rather than samples, so it has no
+column to select", `selectChannels` filters it out, `buildColumnNames` skips it, and `dataSignals`
+exists so a caller can iterate the rest.
+
+The refusal here says the same thing and names the two methods that do read that channel —
+`annotationBytes` for its bytes, `decodeRecordAnnotations` for the events in them. `offsetOf` is
+left alone: a byte offset is a byte offset, and `annotationBytes` is built on it.
+
 ## 0.9.21
 
 ### a batch of three records holding no bytes, answering zero
