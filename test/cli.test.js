@@ -1598,6 +1598,17 @@ describe('--info', () => {
     assert.doesNotMatch(ordinary.stdout, /Timed from/u, ordinary.stdout);
     const ordinaryJson = JSON.parse((await cli([fixture('annotations.edf'), '--info', '--json'])).stdout);
     assert.equal(ordinaryJson.first_sample_seconds, 0);
+
+    /*
+      And the hint that sends a reader to that line says what its absence means. "--start and
+      --end are read on the recording's own clock, which --info prints as `Timed from`" is the
+      advice on the one warning about a window that selected no events — printed, on a
+      recording timed from zero, over a report with no such line in it.
+    */
+    const missed = await cli([fixture('annotations.edf'), '--annotations-only', '--start', '2.9s',
+      '--out', path.join(await outDir(), 'clock')]);
+    const hint = missed.stderr.replace(/\s+/gu, ' ');
+    assert.match(hint, /starts at 0s unless --info shows a "Timed from" line/u, missed.stderr);
     t.diagnostic(`origin reported as ${asJson.first_sample_seconds}s`);
   });
 

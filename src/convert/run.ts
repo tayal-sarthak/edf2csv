@@ -2543,8 +2543,8 @@ export function noAnnotations(file: EdfFile, options: ConvertOptions): Diagnosti
  * The two causes are told apart because the answers are different. A channel holding nothing
  * but timekeeping entries has nothing to export and never will; a window that excluded every
  * event is a thing the caller can change, and the commonest reason is reading the window off
- * a clock the recording does not use — `--start` and `--end` are on the recording's own,
- * which `--info` prints as "Timed from".
+ * a clock the recording does not use — `--start` and `--end` are on the recording's own, which
+ * starts at zero unless `--info` shows a "Timed from" line.
  *
  * `NO_ANNOTATIONS` rather than a new code, since it is the same statement its other raising
  * makes — there are no events to export — about the same flag, and a code is matched on by
@@ -2565,8 +2565,18 @@ export function emptyAnnotations(
       : `This recording's annotation channel carries no events, so ` +
         `${outputCsvName('annotations', gzip)} holds its header and no rows.`,
     hint: windowed
-      ? '--start and --end are read on the recording\'s own clock, which --info prints as ' +
-        '"Timed from", and an event is kept when its onset falls inside the window.'
+      ? /*
+          Which is a line --info prints only when there is something to say.
+
+          `Timed from` appears when the first sample is somewhere other than 0s — that is what
+          the line is for — so on a recording timed from zero, which is most of them, this sent
+          the reader to a line that is not in the report. The one hint whose whole job is "you
+          may be using the wrong clock", pointing at nothing, on exactly the files where the
+          window and the clock are hardest to tell apart.
+        */
+        '--start and --end are read on the recording\'s own clock, which starts at 0s unless ' +
+        '--info shows a "Timed from" line, and an event is kept when its onset falls inside ' +
+        'the window.'
       : 'The channel holds only the timekeeping entries that say where each data record ' +
         'sits, and those are never exported.',
   };

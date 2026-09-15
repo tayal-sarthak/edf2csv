@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.30
+
+### a hint pointing at a line the report does not print
+
+`--start` and `--end` are read on the recording's own clock, and two hints say where to find it:
+"which `--info` prints as `Timed from`". That line is printed only when the clock does not start at
+zero.
+
+```
+$ edf2csv rec.edf --out out --annotations-only --start 1s --end 2s
+warning: None of this recording's 3 events fall inside the requested window, so
+         annotations.csv holds its header and no rows.
+         --start and --end are read on the recording's own clock, which --info prints as
+         "Timed from", and an event is kept when its onset falls inside the window.
+
+$ edf2csv rec.edf --info | grep 'Timed from'
+$
+```
+
+Nothing. `Timed from` appears when the first sample is somewhere other than 0s — the case the
+line exists for — and this recording, like most, begins at zero. So the reader of the one hint
+whose whole job is "you are using the wrong clock" was sent to a line the report does not print,
+on the files where it is hardest to tell what happened.
+
+The sentence now says what the absence means, which is the thing worth knowing: the clock starts at
+zero unless `--info` shows a `Timed from` line. `EMPTY_WINDOW`'s use of the same phrase is left
+alone — it is raised only when the window falls before the recording begins, which cannot happen on
+a recording that begins at zero, so that line is always there to be read.
+
 ## 0.9.29
 
 ### channels.csv still records it, said by a run that writes no channels.csv

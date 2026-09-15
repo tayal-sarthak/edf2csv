@@ -752,9 +752,9 @@ The other two are raised where the run has no signal table either, so the empty 
 
 ```
 warning: None of this recording's 3 events fall inside the requested window, so annotations.csv holds its header and no rows.
-         --start and --end are read on the recording's own clock, which --info
-         prints as "Timed from", and an event is kept when its onset falls
-         inside the window.
+         --start and --end are read on the recording's own clock, which starts
+         at 0s unless --info shows a "Timed from" line, and an event is kept
+         when its onset falls inside the window.
 warning: This recording's annotation channel carries no events, so annotations.csv holds its header and no rows.
          The channel holds only the timekeeping entries that say where each data
          record sits, and those are never exported.
