@@ -1051,6 +1051,20 @@ describe('column naming', () => {
 
       // And the collision case explains the other channel too, which nothing did before.
       if (name === 'collides') assert.match(empty[0].message, /signal 1 already carries/u);
+
+      /*
+        And a run with no column to put it in. `--annotations-only` writes no signal table at
+        all, and `--channels` writes none for a channel it leaves out — "It will appear as
+        `signal_0`" names a column neither run has, which is the rewrite its two neighbouring
+        label warnings have had since 0.9.19.
+      */
+      for (const options of [{ annotationsOnly: true }, { channels: ['#1'] }]) {
+        const unwritten = await convert(recording, { outputDir: await outDir(), ...options });
+        const said = unwritten.diagnostics.find((d) => d.code === 'EMPTY_LABEL');
+        assert.ok(said, `${name}: ${JSON.stringify(unwritten.diagnostics)}`);
+        assert.doesNotMatch(said.message, /It will appear as|both columns are suffixed/u, said.message);
+        assert.match(said.message, /channels\.csv's column cells?/u, said.message);
+      }
     }
   });
 

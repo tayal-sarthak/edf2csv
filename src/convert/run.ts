@@ -2129,6 +2129,26 @@ export function withSignalTableUnwritten(
               `in ${channelsFile}'s column cells.`),
       };
     }
+    /*
+      And the channel with no label at all, whose sentence ends in a column too.
+
+      `EMPTY_LABEL` says where the name this tool invents for it lands, and both of its forms
+      land it in a signal table: "It will appear as `signal_1`", and, where some other channel
+      really carries that label, "so both columns are suffixed with their position instead".
+      A run writing no signal table puts the name in one place, which is the cell the two
+      rewrites above already name.
+    */
+    if (diagnostic.code === 'EMPTY_LABEL') {
+      return {
+        ...diagnostic,
+        message: diagnostic.message
+          .replace(/ It will appear as ("[^"]*")\.$/u, ` It is named $1 in ${channelsFile}'s column cell.`)
+          .replace(
+            'so both columns are suffixed with their position instead.',
+            `so both are suffixed with their position in ${channelsFile}'s column cells instead.`,
+          ),
+      };
+    }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,

@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.24
+
+### a name that will appear, in a run with nowhere to put it
+
+`withSignalTableUnwritten` takes the sentences about a signal table out of a run that writes none —
+`--annotations-only`, and `--channels` for the channels it leaves out. It knows the label warnings
+by code, and there is a third it was never shown.
+
+```
+$ edf2csv rec.edf --out out --channels "#0"
+warning: Signal 1 has no label. It will appear as "signal_1".
+```
+
+It will not appear. Signal 1 has no column in `signals.csv`, because `--channels` kept only signal
+0; the one place its made-up name is written is `channels.csv`'s `column` cell. The same sentence
+under `--annotations-only` names a file that run does not write at all.
+
+`EMPTY_LABEL` has two forms and both end in a column: the plain one above, and the one for a name
+that collides with a label some other channel really carries, which ends "so both columns are
+suffixed with their position instead". Both are amended here, in the words the neighbouring
+`NONPRINTABLE_LABEL` and `DUPLICATE_LABEL` rewrites already use — `--gzip` and `--stdout` follow,
+since the file they name comes from the same helper.
+
+The fact about the header does not move: the channel still has no label, and the name is still
+built from its position. What changes is where the name is said to land.
+
 ## 0.9.23
 
 ### a signal channel's samples handed back as a record's annotations
