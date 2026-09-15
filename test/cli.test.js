@@ -217,6 +217,26 @@ describe('argument errors exit 2', () => {
     // A conversion to a directory still names the file, which is what the column is for.
     const written = await cli([fixture('tiny.edf'), '--info']);
     assert.match(written.stdout, /^0 {2}ch1 .*signals\.csv$/mu, written.stdout);
+
+    /*
+      And the warnings in that same document, which named the file the column had stopped
+      naming. `infoJson` assembled its own list out of the raw diagnostics, so none of the
+      four passes that rewrite them for the run reached it: under `--stdout` a label warning
+      said it "will appear as the channel's name in signals.csv", the file this mode exists
+      not to write, while the text form beside it said "in the CSV on stdout". The same held
+      for `--gzip`, `--annotations-only` and `--channels`.
+    */
+    const printed = (text) =>
+      text.split('\n').filter((line) => line.startsWith('warning: ')).map((line) => line.slice(9));
+    for (const mode of [[], ['--stdout'], ['--gzip'], ['--annotations-only'], ['--channels', '#0']]) {
+      const shown = await cli([fixture('control-labels.edf'), '--info', ...mode]);
+      const document = await cli([fixture('control-labels.edf'), '--info', '--json', ...mode]);
+      assert.deepEqual(
+        JSON.parse(document.stdout).warnings.map((w) => w.message),
+        printed(shown.stderr),
+        `--info ${mode.join(' ')} says two different things`,
+      );
+    }
   });
 
   it('refuses a short option written with an equals sign, which POSIX reads as the value', async () => {

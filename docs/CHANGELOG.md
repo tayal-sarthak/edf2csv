@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.20
+
+### the document that kept the sentences the report had corrected
+
+`--info` prints its warnings through four passes that rewrite them for the run being described:
+`--gzip` renames the files they mention, `--stdout` replaces them with the stream, and
+`--annotations-only` and `--channels` take out the sentences about a signal table that run does not
+write. `--info --json` went round all four. It built its own list — the file's diagnostics and the
+plan's, concatenated — and published the text they start as.
+
+```
+$ edf2csv rec.edf --info --stdout
+warning: Signal 1's label contains 1 control character (\x07), which will appear as the
+         channel's name in the CSV on stdout, exactly as the header has it.
+
+$ edf2csv rec.edf --info --stdout --json | jq -r '.warnings[1].message'
+Signal 1's label contains 1 control character (\x07), which will appear as the channel's
+name in signals.csv, exactly as the header has it.
+```
+
+One run, two answers, and the wrong one is on the surface a script reads. `signals.csv` is a file
+`--stdout` does not write; with `--gzip` the same sentence named it where `signals.csv.gz` is
+written; under `--annotations-only` it promised a signal table for a run whose whole output is
+`annotations.csv` and `channels.csv`; under `--channels` it promised one for a channel left out.
+Thirteen sentences across this repository's fixtures, every one of them corrected in the text form
+printed beside it.
+
+The document now takes the list the report prints rather than assembling a second one, which is the
+same fix `--info --json` got in 0.7.61 for the event count and in 0.3.2 for the rate warning it
+carried twice. A caller reading `warnings[].code` sees no change: the codes were always right, and
+it is the sentence under them that named the wrong file.
+
 ## 0.9.19
 
 ### cells left empty on a channel with no cells

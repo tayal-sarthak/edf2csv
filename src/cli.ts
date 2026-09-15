@@ -1169,26 +1169,14 @@ async function showInfo(
         });
       }
     }
-    /*
-      Checked, like a conversion's stdout is.
-
-      This wrote and looked at nothing, so `--info > desc.txt` into a filesystem with no room
-      produced a zero-byte file and exited 0. The same audit the `--stdout` path uses: it
-      declines anything that is not a regular file, so a pipe or a terminal is unaffected, and
-      `--info | head` keeps exiting 0.
-    */
-    const audit = auditStdout();
-    const description = asJson
-      ? `${infoJson(file, plan, knownEvents, jsonIndent, toStdout)}\n`
-      : `${formatInfo(file, plan, knownEvents, toStdout)}\n`;
-    process.stdout.write(description);
-    audit?.count(Buffer.byteLength(description));
-    audit?.verify();
-
     // Under --json the warnings travel inside the document, exactly as they do for a
     // conversion, so stderr stays empty and the whole result is one parseable thing.
     // `--stdout` writes no sidecars, and `--info --stdout` describes that run; see
     // withSidecarsNamed.
+    //
+    // Worked out before the document rather than after it, because the document carries them
+    // too: `infoJson` built its own list from the raw diagnostics and so published the
+    // sentences these passes exist to correct. See the parameter's docstring.
     const diagnostics = withSidecarsNamed(
       withSignalTableUnwritten(
         [
@@ -1201,6 +1189,22 @@ async function showInfo(
       ),
       { toStdout, gzip: plan.gzip },
     );
+    /*
+      Checked, like a conversion's stdout is.
+
+      This wrote and looked at nothing, so `--info > desc.txt` into a filesystem with no room
+      produced a zero-byte file and exited 0. The same audit the `--stdout` path uses: it
+      declines anything that is not a regular file, so a pipe or a terminal is unaffected, and
+      `--info | head` keeps exiting 0.
+    */
+    const audit = auditStdout();
+    const description = asJson
+      ? `${infoJson(file, plan, diagnostics, knownEvents, jsonIndent, toStdout)}\n`
+      : `${formatInfo(file, plan, knownEvents, toStdout)}\n`;
+    process.stdout.write(description);
+    audit?.count(Buffer.byteLength(description));
+    audit?.verify();
+
     if (!asJson && diagnostics.length > 0) {
       /*
         Named when there is more than one recording to confuse it with.

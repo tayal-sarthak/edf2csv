@@ -12,7 +12,6 @@ import { fixed, formatBytes, formatDuration, plainSeconds } from '../format/numb
 import { counted, grouped } from '../format/list.js';
 import { escapeJsonText, printable } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
-import { withoutFileRateWarning } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
 import { VERSION } from '../version.js';
 
@@ -558,6 +557,18 @@ export function infoJson(
   file: EdfFile,
   plan: ConversionPlan,
   /**
+   * The warnings as `--info` prints them, which is not the list they start as.
+   *
+   * This built its own — `withoutFileRateWarning(file.diagnostics).concat(plan.diagnostics)` —
+   * and so missed every amendment the text form makes on the way out. `--info --json --gzip`
+   * said a label "will appear as the channel's name in signals.csv" for a run that writes
+   * `signals.csv.gz`; `--stdout` named the same file for a run that writes no file at all;
+   * `--annotations-only` promised a signal table it does not write, and `--channels` promised
+   * one for a channel it leaves out. Thirteen sentences across the fixtures, all of them in
+   * the surface a script reads, and the text beside them already correct.
+   */
+  warnings: readonly Diagnostic[],
+  /**
    * The event count, on the files where `--info` has already read and counted them.
    *
    * `formatInfo` has taken this since 0.7.x and prints it — "Would write annotations.csv with
@@ -666,9 +677,7 @@ export function infoJson(
       // The file's own first, then the plan's, which is the order the text form prints them
       // in. Concatenating the other way round listed the same warnings about the same
       // recording in two different sequences depending on which form you asked for.
-      warnings: withoutFileRateWarning(file.diagnostics)
-        .concat(plan.diagnostics)
-        .map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
+      warnings: warnings.map((d) => ({ code: d.code, severity: d.severity, message: d.message })),
     },
     null,
     indent ?? undefined,
