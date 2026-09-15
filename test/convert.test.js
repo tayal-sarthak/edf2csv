@@ -986,6 +986,22 @@ describe('column naming', () => {
       !ordinary.diagnostics.some((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE'),
       JSON.stringify(ordinary.diagnostics),
     );
+
+    /*
+      And a run with no cells to leave empty, which is what its three neighbours say there.
+      `--annotations-only` converts no samples at all, and `--channels` converts none for the
+      channels it leaves out — the same branch, reached with a different reason in the
+      sentence. "Its cells are left empty" describes a signal table neither run writes for
+      this channel.
+    */
+    const unwritten = await convert(build('nocells', '-1e-320', '1e-320'), {
+      outputDir: await outDir(),
+      annotationsOnly: true,
+    });
+    const said = unwritten.diagnostics.find((d) => d.code === 'UNUSABLE_PHYSICAL_RANGE');
+    assert.ok(said, JSON.stringify(unwritten.diagnostics));
+    assert.match(said.hint, /no cells to leave empty/u, said.hint);
+    assert.match(said.hint, /channels\.csv still records the physical range/u, said.hint);
   });
 
   it('names the column an unlabelled channel really gets', async () => {

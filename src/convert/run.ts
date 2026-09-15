@@ -2149,6 +2149,22 @@ export function withSignalTableUnwritten(
           ),
       };
     }
+    /*
+      And the fourth calibration warning, which the three above were rewritten without.
+
+      `UNUSABLE_PHYSICAL_RANGE` ends in the same sentence they do — "Its cells are left empty
+      rather than filled with a value the header cannot justify" — and needs a header no
+      fixture has, a span that underflows to zero or one too large to represent, which is how
+      it stayed out of the sweep that found the others.
+    */
+    if (diagnostic.code === 'UNUSABLE_PHYSICAL_RANGE') {
+      return {
+        ...diagnostic,
+        hint:
+          `No samples are converted ${because}, so there are no cells to leave ` +
+          `empty. ${channelsFile} still records the physical range the header gives.`,
+      };
+    }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,

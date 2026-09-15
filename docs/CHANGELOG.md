@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.25
+
+### the fourth calibration warning, still talking about cells
+
+Four warnings describe what a conversion does with a channel whose header cannot be turned into a
+clean mapping, and three of them stop saying it when the run writes no cells. The fourth was left
+where it was:
+
+```
+$ edf2csv rec.edf --out out --annotations-only
+warning: Signal 0 ("tiny") declares a physical range from -1e-320 to 1e-320, whose span is
+         too small to represent, so its values cannot be scaled.
+         Its cells are left empty rather than filled with a value the header cannot justify.
+```
+
+There are no cells. `--annotations-only` writes `annotations.csv` and `channels.csv` and no signal
+table at all, and `--channels` writes none for a channel it leaves out — which is the sentence its
+three neighbours, `DEGENERATE_DIGITAL_RANGE`, `DEGENERATE_PHYSICAL_RANGE` and
+`INVERTED_PHYSICAL_RANGE`, have carried since 0.9.19.
+
+`UNUSABLE_PHYSICAL_RANGE` is the one of the four that needs a header no fixture has — a span that
+underflows to zero, or one too large to represent — which is how it stayed out of the sweep that
+found the others. What the header says about the channel is unchanged, and `channels.csv` still
+records the physical range it gives.
+
 ## 0.9.24
 
 ### a name that will appear, in a run with nowhere to put it
