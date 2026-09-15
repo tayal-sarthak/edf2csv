@@ -583,6 +583,31 @@ export class EdfFile {
           : `${method}: batch.data must be the record bytes, got ${describeValue(bytes)}. ${carries}`,
       );
     }
+    /*
+      And how many of them, which is the other half of the same claim.
+
+      `recordCount` says how many records are in here and `data` is supposed to be those
+      records — `readRecords` yields `buffer.subarray(0, count * recordBytes)` and can yield
+      nothing else. A batch carrying fewer bytes than that passed every check above, because
+      each of them asks about one field on its own, and then read past the end of its own
+      array:
+
+          file.sampleAt({ firstRecordIndex: 0, recordCount: 3, data: new Uint8Array(0) }, 0, s, 0)  // 0
+
+      An absent byte reads as `undefined`, the arithmetic turns that into 0, and 0 is the
+      commonest sample in any recording — the same answer, from the same hole, that the
+      paragraph above this one was written about. A sliced batch and one built by hand from
+      another recording's record size both arrive this way.
+    */
+    const needed = batch.recordCount * this.header.recordBytes;
+    if (bytes.byteLength !== needed) {
+      throw new OptionError(
+        `${method}: batch.data holds ${grouped(bytes.byteLength)} bytes, and ` +
+          `${counted(batch.recordCount, 'record')} of this recording ` +
+          `${batch.recordCount === 1 ? 'is' : 'are'} ${grouped(needed)}. A batch carries the ` +
+          `bytes of the records it says it holds.`,
+      );
+    }
     if (!Number.isInteger(recordOffset) || recordOffset < 0 || recordOffset >= batch.recordCount) {
       throw new OptionError(
         `${method}: recordOffset must be a record's position within this batch, 0 to ` +

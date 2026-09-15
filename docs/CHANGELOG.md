@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.21
+
+### a batch of three records holding no bytes, answering zero
+
+A batch says two things about itself: how many records it holds, and the bytes of those records.
+0.8.96 gave `sampleAt`, `offsetOf` and `annotationBytes` a check that `batch.data` is a view of
+bytes, because a `Float64Array` in that field answered `0` where a sample belongs. The count beside
+it was checked too. That the two agree was not.
+
+```js
+file.sampleAt({ firstRecordIndex: 0, recordCount: 3, data: new Uint8Array(0) }, 0, signal, 0)
+// 0
+```
+
+`recordCount` is 3, so record 0 is in range; `data` is a `Uint8Array`, so it is bytes; `sampleIndex`
+0 is inside the channel. Every check passes and the read runs off the end of an empty array, where
+an absent byte is `undefined` and `(hi << 8) | lo` makes 0 of it — the commonest sample in any
+recording, returned as this one's. A batch sliced by a caller, or built by hand around a different
+recording's record size, arrives the same way.
+
+`readRecords` yields `buffer.subarray(0, count * recordBytes)` and can yield nothing else, so the
+length is exact rather than a minimum, and the check is the equality. It costs one multiply on a
+path that already runs three checks per sample, and it is the last field of a batch that was taken
+on trust.
+
 ## 0.9.20
 
 ### the document that kept the sentences the report had corrected

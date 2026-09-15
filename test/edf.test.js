@@ -2137,6 +2137,33 @@ describe('the read budget', () => {
           );
         }
       }
+
+      /*
+        And how many bytes, which is the same claim from the other side. A batch of the right
+        kind and the wrong length passed all of the above — every check asks about one field
+        on its own — and then read past the end of its own array, where an absent byte becomes
+        `undefined` and the arithmetic makes 0 of it:
+
+            file.sampleAt({ firstRecordIndex: 0, recordCount: 3, data: new Uint8Array(0) }, 0, signal, 0)  // 0
+      */
+      for (const short of [new Uint8Array(0), batch.data.slice(0, 10), batch.data.slice(0, -1)]) {
+        const sliced = { firstRecordIndex: 0, recordCount: batch.recordCount, data: short };
+        for (const [method, call] of [
+          ['sampleAt', () => file.sampleAt(sliced, 0, signal, 0)],
+          ['offsetOf', () => file.offsetOf(sliced, 0, signal)],
+          ['annotationBytes', () => file.annotationBytes(sliced, 0, annotations)],
+        ]) {
+          assert.throws(
+            call,
+            (error) => {
+              assert.ok(error instanceof OptionError, `${method}: ${error}`);
+              assert.match(error.message, new RegExp(`^${method}: batch.data holds `, 'u'));
+              return true;
+            },
+            `${method} accepted ${short.length} bytes for ${batch.recordCount} records`,
+          );
+        }
+      }
     } finally {
       await file.close();
     }
