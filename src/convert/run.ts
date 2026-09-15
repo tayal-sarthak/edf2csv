@@ -218,6 +218,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             plan.writeSignals,
             plan.gzip,
             convertedChannels(plan),
+            true,
           ),
           { toStdout: true, gzip: plan.gzip },
         ),
@@ -2021,6 +2022,26 @@ export function withSignalTableUnwritten(
     a second copy: empty means no signal table at all, which is what `writesSignals` said.
   */
   converted: ReadonlySet<number> = new Set(),
+  /*
+    And whether this run writes the file those rewrites send the reader to.
+
+    Every sentence below that takes a cell away offers channels.csv in its place — "channels.csv
+    still records the digital range the header gives", "it is named `signal_1` in channels.csv's
+    column cell". `--stdout` writes no sidecar at all, and it can be given `--channels`:
+
+        $ edf2csv rec.edf --stdout --channels ECG > rows.csv
+        warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its
+                 values cannot be scaled.
+                 No samples are converted for a channel --channels left out, so there are no
+                 cells to leave empty. channels.csv still records the digital range the
+                 header gives.
+
+    It does not. The run writes one CSV to the stream and nothing else, so the file offered
+    as the place the channel is still described is not written either — which is the same
+    thing `withSidecarsNamed` says one pass later about the sentences it knows. These are the
+    ones it has never been shown: they do not exist until this pass writes them.
+  */
+  toStdout = false,
 ): Diagnostic[] {
   const skipped = (diagnostic: Diagnostic): boolean => {
     if (!writesSignals) return true;
@@ -2037,8 +2058,25 @@ export function withSignalTableUnwritten(
     had already taught to say `channels.csv.gz`. So a single run named both spellings, and only
     the second one existed.
   */
-  const channelsFile = outputCsvName('channels', gzip);
+  /*
+    Named plainly under `--stdout`, where no compressed sidecar is written either.
+
+    `--stdout --gzip` compresses the stream and nothing else, so `channels.csv.gz` is as
+    absent as `channels.csv` — and it is the spelling `withSidecarsNamed` already uses one
+    pass later when it says none is written.
+  */
+  const channelsFile = outputCsvName('channels', gzip && !toStdout);
   const annotationsFile = outputCsvName('annotations', gzip);
+  /*
+    What channels.csv still holds about the channel, or that there is no channels.csv.
+
+    Worded the way the sidecar pass words the hints it rewrites — the file is named, so the
+    reader knows what they are missing, and the command that produces it is named too.
+  */
+  const records = (what: string): string =>
+    toStdout
+      ? `--stdout writes no ${channelsFile}; a conversion to a directory records ${what}.`
+      : `${channelsFile} still records ${what}.`;
   return diagnostics.map((diagnostic) => {
     if (!skipped(diagnostic)) return diagnostic;
     // The reason the cells are missing, which is the only part that differs between the two.
@@ -2086,14 +2124,21 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         message: diagnostic.message
+          /*
+            The hedge goes where the file goes, so it is taken off wherever the header put it
+            and folded into the clause below. A run writing into a directory does write
+            channels.csv, and the qualification is noise there; a `--stdout` run writes none,
+            which is the case the header's own sentence has been qualified for since 0.8.52.
+          */
+          .replace(' in any conversion that writes one', '')
           .replace(
             "as the channel's name in signals.csv",
-            `as the channel's name in ${channelsFile}'s column cell`,
+            `as the channel's name in ${channelsFile}'s column cell` +
+              `${toStdout ? ' in any conversion that writes one' : ''}`,
           )
           // Matched on the name the header diagnostic used, which the line above has not
           // touched: it renames the first mention, and this collapses the second.
-          .replace("column cell and in channels.csv's", 'column cell and in its')
-          .replace(' in any conversion that writes one', ''),
+          .replace("and in channels.csv's", 'and in its'),
       };
     }
     /*
@@ -2110,7 +2155,8 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         message: diagnostic.message.replace(
           / so its column is ("[^"]*")\.$/u,
-          ` so it is named $1 in ${channelsFile}'s column cell.`,
+          ` so it is named $1 in ${channelsFile}'s column cell` +
+            `${toStdout ? ' in any conversion that writes one' : ''}.`,
         ),
       };
     }
@@ -2123,8 +2169,11 @@ export function withSignalTableUnwritten(
         hint:
           'Their names are suffixed with the signal number so they stay distinguishable. ' +
           (writesSignals
-            ? `--channels left this channel out, so its suffixed name appears in ` +
-              `${channelsFile}'s column cell and nowhere else.`
+            ? toStdout
+              ? `--channels left this channel out, and --stdout writes no ${channelsFile} for ` +
+                `its suffixed name to appear in — convert to a directory for that.`
+              : `--channels left this channel out, so its suffixed name appears in ` +
+                `${channelsFile}'s column cell and nowhere else.`
             : '--annotations-only writes no signal table, so the suffixed names appear only ' +
               `in ${channelsFile}'s column cells.`),
       };
@@ -2139,13 +2188,21 @@ export function withSignalTableUnwritten(
       rewrites above already name.
     */
     if (diagnostic.code === 'EMPTY_LABEL') {
+      // Hedged under `--stdout`, where the cell is in a file that run does not write — the
+      // wording 0.8.52 gave the same clause in NONPRINTABLE_LABEL, for the same reason.
+      // Spelled out as its own string rather than by appending an s to the singular, which
+      // reads as a number of seconds to the check that keeps those going through
+      // `plainSeconds` — and does so whether it is in code or in a comment about it.
+      const hedge = toStdout ? ' in any conversion that writes one' : '';
+      const cell = `${channelsFile}'s column cell${hedge}`;
+      const cells = `${channelsFile}'s column cells${hedge}`;
       return {
         ...diagnostic,
         message: diagnostic.message
-          .replace(/ It will appear as ("[^"]*")\.$/u, ` It is named $1 in ${channelsFile}'s column cell.`)
+          .replace(/ It will appear as ("[^"]*")\.$/u, ` It is named $1 in ${cell}.`)
           .replace(
             'so both columns are suffixed with their position instead.',
-            `so both are suffixed with their position in ${channelsFile}'s column cells instead.`,
+            `so both are suffixed with their position in ${cells} instead.`,
           ),
       };
     }
@@ -2161,16 +2218,16 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          `No samples are converted ${because}, so there are no cells to leave ` +
-          `empty. ${channelsFile} still records the physical range the header gives.`,
+          `No samples are converted ${because}, so there are no cells to leave empty. ` +
+          `${records('the physical range the header gives')}`,
       };
     }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,
         hint:
-          `No samples are converted ${because}, so there are no cells to leave ` +
-          `empty. ${channelsFile} still records the digital range the header gives.`,
+          `No samples are converted ${because}, so there are no cells to leave empty. ` +
+          `${records('the digital range the header gives')}`,
       };
     }
     if (diagnostic.code === 'DEGENERATE_PHYSICAL_RANGE') {
@@ -2181,16 +2238,15 @@ export function withSignalTableUnwritten(
           'so every sample would convert to the same value.',
         ),
         hint:
-          `No samples are converted ${because}. ${channelsFile} still records ` +
-          'the calibration, one point wide.',
+          `No samples are converted ${because}. ${records('the calibration, one point wide')}`,
       };
     }
     if (diagnostic.code === 'INVERTED_PHYSICAL_RANGE') {
       return {
         ...diagnostic,
         hint:
-          `No samples are converted ${because}. ${channelsFile} records the ` +
-          'physical minimum and maximum in the order the header gives them, inversion included.',
+          `No samples are converted ${because}. ` +
+          `${records('the physical minimum and maximum in the order the header gives them, inversion included')}`,
       };
     }
     /*

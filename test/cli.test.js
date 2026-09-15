@@ -6124,7 +6124,7 @@ describe('--stdout', () => {
         /Its cells are left empty rather than filled/u],
       ['degenerate-range.edf', 'ok', /No samples are converted for a channel --channels left out\. channels\.csv still records the calibration/u,
         /Its cells carry that value rather than being left empty/u],
-      ['quirky-labels.edf', '#0', /No samples are converted for a channel --channels left out\. channels\.csv records the physical minimum/u,
+      ['quirky-labels.edf', '#0', /No samples are converted for a channel --channels left out\. channels\.csv still records the physical minimum/u,
         /The values are converted exactly as the header specifies/u],
     ];
     for (const [name, keep, amended, replaced] of cases) {
@@ -6294,6 +6294,23 @@ describe('--stdout', () => {
       [fixture('control-labels.edf'), [],
         /as the channel's name in the CSV on stdout/u,
         /as the channel's name in signals\.csv/u],
+      /*
+        And the sentences the `--channels` rewrite writes, which did not exist until that pass
+        ran and so were never shown to this one. Every one of them takes a cell away and
+        offers channels.csv in its place — "channels.csv still records the digital range the
+        header gives", "it is named `signal_1` in channels.csv's column cell" — and `--stdout`
+        takes `--channels`, writes one CSV to the stream, and writes no channels.csv at all.
+      */
+      [fixture('degenerate-range.edf'), ['--channels', '#2'],
+        /--stdout writes no channels\.csv; a conversion to a directory records the digital range/u,
+        /channels\.csv still records the digital range the header gives/u],
+      [fixture('quirky-labels.edf'), ['--channels', '#0'],
+        /--stdout writes no channels\.csv; a conversion to a directory records the physical minimum/u,
+        /channels\.csv still records the physical minimum and maximum/u],
+      [fixture('control-labels.edf'), ['--channels', '#0'],
+        // `.gz` under the compressed run, where a conversion really does write that name.
+        /name in channels\.csv(\.gz)?'s column cell in any conversion that writes one/u,
+        /name in channels\.csv's column cell, exactly as the header has it/u],
     ];
     for (const [recording, extra, streamed, written] of cases) {
       // Both modes that stream: the conversion, and the --info that describes it.

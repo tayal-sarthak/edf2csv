@@ -1186,6 +1186,7 @@ async function showInfo(
         plan.writeSignals,
         plan.gzip,
         convertedChannels(plan),
+        toStdout,
       ),
       { toStdout, gzip: plan.gzip },
     );

@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.29
+
+### channels.csv still records it, said by a run that writes no channels.csv
+
+`withSignalTableUnwritten` takes the sentences about a signal table out of a run that writes none,
+and since 0.9.19 out of the channels a `--channels` selection leaves out. Every one of those
+rewrites offers `channels.csv` in the cell's place — it is the file that still describes the
+channel. `--stdout` takes `--channels`, and writes no `channels.csv`.
+
+```
+$ edf2csv rec.edf --stdout --channels ok > rows.csv
+warning: Signal 0 ("flat") has digital minimum equal to digital maximum (0), so its values
+         cannot be scaled.
+         No samples are converted for a channel --channels left out, so there are no cells
+         to leave empty. channels.csv still records the digital range the header gives.
+```
+
+It does not: this run writes one CSV to the stream and nothing beside it. Eight sentences went that
+way — the four calibration hints, the suffix hint, and the three that say where a channel's name
+lands — and `withSidecarsNamed`, the pass that exists to catch exactly this and does catch it for
+the hints it knows, runs one step later and had never been shown these. They do not exist until
+this pass writes them.
+
+So the pass is told which run it is amending for, the way the one after it already is. Where there
+is no `channels.csv` the sentence says so and names the command that produces one; where the name
+of a cell is the whole clause, it keeps the qualification the header's own wording has carried
+since 0.8.52 — "in any conversion that writes one". A conversion into a directory reads exactly as
+it did.
+
 ## 0.9.28
 
 ### every entry was exported, out of a run that exported none
