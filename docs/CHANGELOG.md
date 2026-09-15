@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.31
+
+### the fourth file a conversion writes, named by nothing
+
+`--info` says what a conversion will do: which files, how many rows, how large. On a recording that
+carries both signals and events it named three of the four it leaves behind.
+
+```
+$ edf2csv rec.edf --info
+#  COLUMN      LABEL       UNIT  RATE    RANGE        OUTPUT
+0  EEG Fpz-Cz  EEG Fpz-Cz  uV    100 Hz  -250 to 250  signals.csv
+
+Would write 300 rows, roughly 4.4 KB.
+```
+
+`annotations.csv` is written too, and nothing says so. The sentence that does exist —
+"Would write annotations.csv and channels.csv, and no signal data" — is in the branch for runs that
+write *only* events: `--annotations-only`, or a recording with no signal channels. A recording with
+both falls past it to the row estimate, which is about the signal tables alone, and the file
+carrying the scoring — the reason most people convert an EDF+ recording at all — went unmentioned.
+
+Named as it will be written, like the OUTPUT column and the branch above: `--gzip` changes the
+name, and under `--stdout`, which writes no sidecar, nothing is added. The event count comes along
+where `--info` already has it — a discontinuous file has its whole annotation channel read — and is
+left out where it does not, rather than guessed at.
+
 ## 0.9.30
 
 ### a hint pointing at a line the report does not print

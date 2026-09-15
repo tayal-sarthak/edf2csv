@@ -140,7 +140,7 @@ Channels   5 signals + 1 annotation channel
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No
 channel is resampled.
-Would write 3,196,800 rows, roughly 108 MB.
+Would write 3,196,800 rows, roughly 108 MB, and annotations.csv.
 ```
 
 Anything the tool noticed is printed after the table, on stderr — for this recording, two things:

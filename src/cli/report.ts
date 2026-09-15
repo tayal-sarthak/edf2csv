@@ -12,6 +12,7 @@ import { fixed, formatBytes, formatDuration, plainSeconds } from '../format/numb
 import { counted, grouped } from '../format/list.js';
 import { escapeJsonText, printable } from '../format/unprintable.js';
 import type { ConversionPlan } from '../convert/plan.js';
+import { outputCsvName } from '../convert/plan.js';
 import type { ConvertResult } from '../convert/run.js';
 import { VERSION } from '../version.js';
 
@@ -521,13 +522,33 @@ export function formatInfo(
   // The estimate counts the characters of the CSV, which is what --gzip then compresses.
   // Reporting it as the size on disk would overstate a compressed conversion several-fold.
   const compressing = plan.gzip;
+  /*
+    And the events file, which this line named for every run except the ones that write it.
+
+    The branch above names `annotations.csv` because those runs write nothing else; a recording
+    with signals *and* events falls through to here, and here the sentence is about the signal
+    tables alone. So `--info` on an ordinary EDF+ recording described three of the four files a
+    conversion leaves behind and never mentioned the fourth — the one carrying the scoring,
+    which is the reason most people convert an EDF+ file at all.
+
+    "Named as they will be written", like the OUTPUT column and the branch above: `--gzip`
+    changes the name, and `--stdout` writes no sidecar at all, so it says nothing there. The
+    count is the one `--info` already has — read on a discontinuous file, and honestly absent
+    on a continuous one, where finding it means the scan this mode exists to avoid.
+  */
+  const alsoEvents =
+    !toStdout && file.annotationSignals.length > 0
+      ? `, and ${outputCsvName('annotations', plan.gzip)}` +
+        `${events === null ? '' : ` with ${counted(events, 'event')}`}`
+      : '';
   lines.push(
     wrap(
       // A window narrow enough to select one sample is an ordinary thing to ask for, and this
       // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
       // and missed here, because the recording that test builds never estimates exactly one.
       `Would write ${counted(plan.estimate.rows, 'row')}, roughly ` +
-        `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}.`,
+        `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}` +
+        `${alsoEvents}.`,
     ),
   );
 

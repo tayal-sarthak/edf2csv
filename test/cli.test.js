@@ -3205,6 +3205,27 @@ describe('converting several recordings at once', () => {
     // And an ordinary --info still reports rows and bytes.
     const ordinary = await cli([fixture('annotations.edf'), '--info']);
     assert.match(ordinary.stdout, /Would write 300 rows, roughly/u);
+
+    /*
+      And names the events file, which this line described every run except the ones that
+      write it. A recording carrying signals *and* events falls past the branch above — the
+      one for runs whose whole output is the events — to this estimate, which is about the
+      signal tables, so `--info` on an ordinary EDF+ recording listed three of the four files
+      a conversion leaves behind and never mentioned the one holding the scoring.
+    */
+    assert.match(ordinary.stdout, /Would write 300 rows, roughly [^\n]*, and annotations\.csv\./u,
+      ordinary.stdout);
+    // Named as it will be written, and left out of the run that writes no sidecar at all.
+    const compressed = await cli([fixture('annotations.edf'), '--info', '--gzip']);
+    assert.match(compressed.stdout, /, and annotations\.csv\.gz\./u, compressed.stdout);
+    const streamed = await cli([fixture('annotations.edf'), '--info', '--stdout']);
+    assert.doesNotMatch(streamed.stdout, /and annotations\.csv/u, streamed.stdout);
+    // And the count comes along on a file whose events --info has already read.
+    const counted = await cli([fixture('lost-timekeeping-d.edf'), '--info']);
+    assert.match(counted.stdout, /, and annotations\.csv with 3 events\./u, counted.stdout);
+    // A recording with no annotation channel gains nothing.
+    const plain = await cli([fixture('tiny.edf'), '--info']);
+    assert.doesNotMatch(plain.stdout, /annotations\.csv/u, plain.stdout);
   });
 
   it('names the recording in a batch warning when --quiet removes the header', async () => {

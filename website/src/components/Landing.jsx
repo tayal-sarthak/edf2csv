@@ -44,7 +44,7 @@ Channels   5 signals + 1 annotation channel
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No
 channel is resampled.
-Would write 3,196,800 rows, roughly 108 MB.
+Would write 3,196,800 rows, roughly 108 MB, and annotations.csv.
 
 warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.

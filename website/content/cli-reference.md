@@ -207,7 +207,7 @@ Channels   5 signals + 1 annotation channel
 
 Sampling rates differ, so channels are written to 3 files, one per rate. No
 channel is resampled.
-Would write 3,196,800 rows, roughly 108 MB.
+Would write 3,196,800 rows, roughly 108 MB, and annotations.csv.
 ```
 
 A recording with no signal channels at all — one holding only EDF+ events — has no table, and none is printed: the `Channels` line above says `0 signals` and the body below says what would be written. Only the column heads would have been left, which is not a table.
