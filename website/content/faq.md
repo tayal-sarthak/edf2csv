@@ -440,7 +440,7 @@ rather than trusting the header, converts every complete record that's present, 
 the discrepancy:
 
 ```text
-warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
+warning: The header declares 10 data records but the file contains 4. Only the 4 records that are present can be converted.
          The recording looks truncated. It may have been cut short or copied
          incompletely.
 ```

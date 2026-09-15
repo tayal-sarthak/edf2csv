@@ -150,7 +150,7 @@ The header declares a specific number of data records and the file contains a di
 **What edf2csv does.** Trusts the file over the header and converts every complete record that's actually there. The hint changes depending on the direction: a short file gets a note that the recording may have been cut short, and a long file gets a note that the file exceeds its own claim.
 
 ```
-warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
+warning: The header declares 10 data records but the file contains 4. Only the 4 records that are present can be converted.
 ```
 
 **What to do.** If the file is short, decide whether the missing tail matters for your analysis, and check whether a complete copy exists elsewhere. The duration reported by `--info` reflects the records actually present, not the declared ones, so it's safe to reason from. `metadata.json` records both numbers as `data_records` and `data_records_declared`.

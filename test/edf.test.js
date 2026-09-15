@@ -671,8 +671,8 @@ describe('errors', () => {
       whose neighbours take one argument — the arithmetic ran on `undefined`:
 
           parseHeader(bytes).recordCount   // NaN
-          "The header declares 2 data records but the file contains NaN. Converting the NaN
-           records that are present."
+          "The header declares 2 data records but the file contains NaN. Only the NaN
+           records that are present can be converted."
 
       A header object claiming NaN records and a warning saying NaN out loud, with no error;
       and `recordCount * recordDuration` is NaN from there on. `null` became a TypeError from

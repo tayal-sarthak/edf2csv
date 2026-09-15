@@ -1496,7 +1496,7 @@ describe('--info', () => {
     const many = await cli([fixture('tiny.edf'), '--info']);
     assert.match(many.stdout, /\(2 records of 1s\)/u, many.stdout);
     const truncated = await cli([fixture('truncated.edf'), '--info']);
-    assert.match(truncated.stderr, /Converting the 4 records that are present/u, truncated.stderr);
+    assert.match(truncated.stderr, /Only the 4 records that are present can be converted/u, truncated.stderr);
   });
 
   it('previews what --stdout would do, instead of describing files it never writes', async () => {

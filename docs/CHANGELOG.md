@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.26
+
+### converting, in the mode that converts nothing
+
+`--info` converts nothing. It says so itself under `--strict` — "Nothing was written either way,
+since `--info` converts nothing" — and the warnings it prints are written to suit the run: a label
+lands "in `channels.csv`'s column cell" rather than in `signals.csv` when the run writes no signal
+table, and "in any conversion that writes one" when there is no conversion. One sentence was still
+in the present progressive:
+
+```
+$ edf2csv truncated.edf --info
+warning: The header declares 10 data records but the file contains 4. Converting the 4 records that are present.
+```
+
+Nothing is being converted. The line is the same one the conversion prints, and there it is true;
+here it reports work that a mode existing to avoid the work is not doing.
+
+Said once, in a form that holds in both: the four records that are present are the ones a
+conversion takes, whether or not this run is one. The count and the direction are unchanged, and
+so is the hint underneath it.
+
 ## 0.9.25
 
 ### the fourth calibration warning, still talking about cells

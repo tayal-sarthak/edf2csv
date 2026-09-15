@@ -418,8 +418,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
 
         parseHeader(bytes).recordCount            // NaN
         parseHeader(bytes).diagnostics[0].message
-        // "The header declares 2 data records but the file contains NaN. Converting the NaN
-        //  records that are present."
+        // "The header declares 2 data records but the file contains NaN. Only the NaN
+        //  records that are present can be converted."
 
     A header object claiming NaN records, a warning that says NaN out loud, and no error —
     and `recordCount * recordDuration`, which is how the duration is worked out everywhere
@@ -1247,7 +1247,8 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       // beside it has been holding to since it was written.
       message:
         `The header declares ${counted(declaredRecordCount, 'data record')} but the file ` +
-        `contains ${grouped(recordCount)}. Converting the ${counted(recordCount, 'record')} that ${recordCount === 1 ? 'is' : 'are'} present.`,
+        `contains ${grouped(recordCount)}. Only the ${counted(recordCount, 'record')} that ` +
+        `${recordCount === 1 ? 'is' : 'are'} present can be converted.`,
       hint:
         declaredRecordCount > recordCount
           ? 'The recording looks truncated. It may have been cut short or copied incompletely.'
