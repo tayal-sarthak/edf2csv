@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.23
+
+### a signal channel's samples handed back as a record's annotations
+
+The other half of the same question. `annotationBytes` slices a channel's bytes out of a batch and
+hands them back as annotation bytes, and nothing asked whether the channel was one:
+
+```js
+const eeg = file.dataSignals[0];
+decodeRecordAnnotations(file.annotationBytes(batch, 0, eeg), 0)
+// { recordStart: null, annotations: [], malformed: 9, malformedTimekeeping: 1, ... }
+```
+
+Those are samples. Reading them as TALs produces nine malformed entries and a malformed
+timekeeping annotation — a report about a channel that carries no annotations at all, in the
+counters `ANNOTATION_DECODE_FAILED` is raised from. The method is documented as "the annotation
+channel's raw bytes for one record in a batch"; the channel it was given is the part that was
+never checked.
+
+Refused with the label printed through `printable`, since a signal label is free text out of the
+header and can carry anything; the annotation channel's cannot, which is why the refusal one method
+over quotes it as it is.
+
 ## 0.9.22
 
 ### the annotation channel read as a column of samples

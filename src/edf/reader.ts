@@ -703,6 +703,23 @@ export class EdfFile {
     // Before delegating, so the refusal names the method the caller called rather than the
     // one underneath it.
     this.#assertSignalHere(signal, 'annotationBytes');
+    /*
+      And the same question from the other side; see `sampleAt`.
+
+      A signal channel's bytes are samples, and handed to `decodeRecordAnnotations` they read
+      as nine malformed entries and a malformed timekeeping annotation — a report about a
+      channel that carries no annotations at all, in the counters ANNOTATION_DECODE_FAILED is
+      raised from.
+    */
+    if (!signal.isAnnotations) {
+      // Through `printable`, unlike the refusal above: a signal label is free text out of the
+      // header and can carry anything, while an annotation channel's label cannot.
+      throw new OptionError(
+        `annotationBytes: signal is "${printable(signal.label)}", a signal channel rather ` +
+          `than an annotation channel: its bytes are samples, not event text. sampleAt reads ` +
+          `those, one sample at a time.`,
+      );
+    }
     this.#assertRecordOffset(batch, recordOffset, 'annotationBytes');
     const start = this.offsetOf(batch, recordOffset, signal);
     return batch.data.subarray(start, start + signal.samplesPerRecord * this.header.bytesPerSample);

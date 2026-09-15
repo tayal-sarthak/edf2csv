@@ -2075,6 +2075,23 @@ describe('the read budget', () => {
         );
         // And its own channels still answer, which is what the guard has to leave alone.
         assert.equal(typeof plus.sampleAt(record, 0, plus.dataSignals[0], 0), 'number');
+
+        /*
+          The same question from the other side. A signal channel's bytes are samples, and
+          `decodeRecordAnnotations` read them as nine malformed entries and a malformed
+          timekeeping annotation — a report about a channel carrying no annotations at all,
+          in the counters ANNOTATION_DECODE_FAILED is raised from.
+        */
+        assert.throws(
+          () => plus.annotationBytes(record, 0, plus.dataSignals[0]),
+          (error) => {
+            assert.ok(error instanceof OptionError, String(error));
+            assert.match(error.message, /^annotationBytes: signal is "EEG Fpz-Cz", a signal channel/u);
+            return true;
+          },
+          'a signal channel carries samples, not event text',
+        );
+        assert.ok(plus.annotationBytes(record, 0, plus.annotationSignals[0]).length > 0);
       } finally {
         await plus.close();
       }
