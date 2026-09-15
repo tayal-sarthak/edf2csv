@@ -568,7 +568,7 @@ This code covers five conditions, which are counted separately because they lose
 
 ```
 warning: 1 annotation entry was unreadable and could not be exported.
-         Every entry that could be read was exported. The file may have been
+         Every entry that could be read is exported. The file may have been
          written by a non-conforming tool.
 ```
 
@@ -592,7 +592,7 @@ A first entry may also carry events after the start time — the format allows b
 
 ```
 warning: 2 annotation entries were unreadable and could not be exported.
-         Every entry that could be read was exported. The file may have been
+         Every entry that could be read is exported. The file may have been
          written by a non-conforming tool.
 warning: 2 data records carry a timekeeping annotation that could not be read, so they do
          not say where in time they sit.

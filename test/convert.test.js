@@ -4154,7 +4154,7 @@ describe('converting', () => {
     const events = (await readCsv(dir, 'annotations.csv')).slice(1).map((row) => row.split(',')[2]);
     assert.deepEqual(events, ['A0', 'B0', 'A1', 'B1', 'A2', 'B2']);
     // Six of them, and the hint's assurance holds whether or not any survived.
-    assert.match(notice.hint, /Every entry that could be read was exported/u, notice.hint);
+    assert.match(notice.hint, /Every entry that could be read is exported/u, notice.hint);
   });
 
   it('does not promise a rest that was exported when there is none', async () => {
@@ -4200,7 +4200,7 @@ describe('converting', () => {
     assert.ok(emptied, JSON.stringify(lost.diagnostics));
     assert.equal(lost.annotationCount, 0, 'this file exists because nothing survives');
     assert.doesNotMatch(emptied.hint, /The rest were exported/u, emptied.hint);
-    assert.match(emptied.hint, /Every entry that could be read was exported/u, emptied.hint);
+    assert.match(emptied.hint, /Every entry that could be read is exported/u, emptied.hint);
 
     // And a file where something does survive says the same thing, which is true of it too.
     const some = path.join(scratch, 'some-events.edf');
@@ -4211,7 +4211,7 @@ describe('converting', () => {
     const rest = partial.diagnostics.find((d) => /unreadable and could not be exported/u.test(d.message));
     assert.ok(rest, JSON.stringify(partial.diagnostics));
     assert.equal(partial.annotationCount, 2);
-    assert.match(rest.hint, /Every entry that could be read was exported/u, rest.hint);
+    assert.match(rest.hint, /Every entry that could be read is exported/u, rest.hint);
   });
 
   it('says when a duration_s is empty because it could not be read', async () => {

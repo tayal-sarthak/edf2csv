@@ -89,7 +89,7 @@ export function deriveRecordStarts(
         keeps it a header read.
       */
       hint:
-        'Every entry that could be read was exported. The file may have been written by a ' +
+        'Every entry that could be read is exported. The file may have been written by a ' +
         'non-conforming tool.',
     });
   }

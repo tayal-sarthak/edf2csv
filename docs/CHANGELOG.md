@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.28
+
+### every entry was exported, out of a run that exported none
+
+The third, and the one this project wrote last week. 0.9.16 gave `ANNOTATION_DECODE_FAILED` a
+count-free hint precisely so that `--info` and a conversion would say the same thing about the
+same file. They do — and what they both say is in the past tense:
+
+```
+$ edf2csv two-annotation-channels.edf --info
+warning: 3 annotation entries were unreadable and could not be exported.
+         Every entry that could be read was exported. The file may have been written by a
+         non-conforming tool.
+```
+
+`--info` writes no `annotations.csv`, so nothing was exported out of this run. The reassurance
+is about what a conversion does with the entries it could read, and it is true of every one of
+them; the tense was borrowed from the run.
+
+Three sentences in three diagnostics, all of them reached by `--info` and all of them reporting
+finished work — the same question asked of the whole corpus at once, which is how the first two
+were found.
+
 ## 0.9.27
 
 ### every complete record was converted, by a run that converted none
