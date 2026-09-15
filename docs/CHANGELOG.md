@@ -8,6 +8,25 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.27
+
+### every complete record was converted, by a run that converted none
+
+The second sentence of the same paragraph 0.9.26 was about, one diagnostic over.
+
+```
+$ edf2csv rec.edf --info
+warning: 5 bytes after the last complete data record were ignored.
+         A record is the unit this format is addressed in, and a partial one
+         says nothing about which samples it holds or when they were taken.
+         Every complete record was converted.
+```
+
+Nothing was converted. The sentence is there to say that the ignored tail is the whole of what
+was dropped — a real reassurance in a conversion, and a claim about work that did not happen in
+the mode that does none. Put in the present, it says what the tool does with a file like this,
+which is what `--info` is for and what a conversion does as it speaks.
+
 ## 0.9.26
 
 ### converting, in the mode that converts nothing

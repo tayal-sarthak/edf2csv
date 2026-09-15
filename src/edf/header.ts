@@ -1263,7 +1263,7 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
       message: `${counted(trailingBytes, 'byte')} after the last complete data record ${trailingBytes === 1 ? 'was' : 'were'} ignored.`,
       hint:
         'A record is the unit this format is addressed in, and a partial one says nothing ' +
-        'about which samples it holds or when they were taken. Every complete record was ' +
+        'about which samples it holds or when they were taken. Every complete record is ' +
         'converted.',
     });
   }

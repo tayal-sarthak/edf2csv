@@ -167,7 +167,7 @@ Some bytes sit after the last complete data record, too few to form another reco
 warning: 7 bytes after the last complete data record were ignored.
          A record is the unit this format is addressed in, and a partial one
          says nothing about which samples it holds or when they were taken.
-         Every complete record was converted.
+         Every complete record is converted.
 ```
 
 **What to do.** Usually nothing. A handful of ignored bytes at the end of a long recording is a fraction of a second. If the count is large relative to one record's size, that's a sign of a more serious problem and is worth investigating alongside `RECORD_COUNT_MISMATCH`.
