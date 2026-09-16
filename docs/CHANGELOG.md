@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.38
+
+### a file offered one line above the warning that says to convert for it
+
+A recording holding nothing but EDF+ annotations has no signal data to put in a signal file,
+and the warning saying so reassures the reader by listing what is written instead. Under
+`--stdout` neither of those files is written, and the warning printed directly under it says
+the run does not happen at all:
+
+    $ edf2csv scoring.edf --info --stdout
+    warning: No signal file is written: there is no signal data in this recording to
+             put in one.
+             annotations.csv holds whatever events it carries. channels.csv lists
+             signal channels, so it has none to list.
+    warning: --stdout would refuse this run: has no signal data to write: this
+             recording has no signal channels, only EDF+ annotations.
+             Convert to a directory to get its annotations.csv, or drop --stdout.
+
+Two consecutive warnings, and the first offers the file the second tells you to convert to a
+directory to get. It now names that conversion, which is the same advice:
+
+    --stdout writes neither: a conversion to a directory gets annotations.csv with
+    whatever events this recording carries, and a channels.csv with no signal channels
+    to list.
+
+`--gzip` names both compressed, since that is what the conversion being described writes.
+
 ## 0.9.37
 
 ### one warning, two spellings of a file it does not write

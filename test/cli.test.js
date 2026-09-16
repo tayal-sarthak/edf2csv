@@ -6446,6 +6446,30 @@ describe('--stdout', () => {
     }
 
     /*
+      And the hint whose whole content is the two files written instead of a signal one. A
+      recording holding nothing but EDF+ annotations raises it, `--stdout` writes neither of
+      the files it names, and the warning printed directly under it says the run would be
+      refused and to convert to a directory for the annotations.csv the line above had just
+      offered.
+    */
+    for (const compressed of [[], ['--gzip']]) {
+      const only = await cli([
+        fixture('annotations-only.edf'), '--info', '--stdout', ...compressed,
+      ]);
+      assert.equal(only.code, 0, only.stderr);
+      const flat = only.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /--stdout writes neither: a conversion to a directory gets/u, flat);
+      assert.doesNotMatch(flat, /holds whatever events it carries/u, flat);
+    }
+    // And into a directory, where both are written, the reassurance is the plain one.
+    const listed = await cli([fixture('annotations-only.edf'), '--info']);
+    assert.match(
+      listed.stderr.replace(/\s+/gu, ' '),
+      /annotations\.csv holds whatever events it carries/u,
+      listed.stderr,
+    );
+
+    /*
       And the third way to arrive with no signal table, which only `--info` can describe:
       `--stdout --annotations-only` is refused, so `--info --stdout --annotations-only` is the
       run that prints the sentence. The `--channels` half of this rewrite was hedged at 0.9.29

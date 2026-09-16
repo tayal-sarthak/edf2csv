@@ -2468,6 +2468,39 @@ export function withSidecarsNamed(
       };
     }
     /*
+      And the other `NO_SAMPLES`, whose whole hint is the two files written instead.
+
+      `noSignalFile` says where the signal data went for a recording that has none, and for
+      the one shape of that — a file holding nothing but EDF+ annotations — the reassurance
+      is a list of what the run does write. `--stdout` writes neither, and refuses the run
+      outright, which the warning under it then says:
+
+          $ edf2csv scoring.edf --info --stdout
+          warning: No signal file is written: there is no signal data in this recording
+                   to put in one.
+                   annotations.csv holds whatever events it carries. channels.csv lists
+                   signal channels, so it has none to list.
+          warning: --stdout would refuse this run: has no signal data to write: this
+                   recording has no signal channels, only EDF+ annotations.
+                   Convert to a directory to get its annotations.csv, or drop --stdout.
+
+      Two consecutive warnings, the first offering the file the second says to convert to a
+      directory to get. Named as the conversion that does write them, which is that advice.
+    */
+    if (
+      toStdout &&
+      diagnostic.code === 'NO_SAMPLES' &&
+      diagnostic.hint?.includes('holds whatever events it carries') === true
+    ) {
+      return {
+        ...diagnostic,
+        hint:
+          `--stdout writes neither: a conversion to a directory gets ${annotations} with ` +
+          `whatever events this recording carries, and a ${channels} with no signal ` +
+          'channels to list.',
+      };
+    }
+    /*
       The collision hint, whose whole advice is a file to look the channel up in.
 
       A duplicate label, or a label that collides with another channel's `_ch` suffix, renames
