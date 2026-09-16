@@ -2160,6 +2160,34 @@ export function withSignalTableUnwritten(
         ),
       };
     }
+    /*
+      And the same sentence when the plan wrote it in this form to begin with.
+
+      plan.ts decides between three nouns from the options it has — a column, the channel
+      column of a long table, or a cell of channels.csv when no signal table is written at
+      all — so under `--annotations-only` the sentence arrives already naming the cell, and
+      the rewrite above, which matches the wide-layout form, never sees it. Which left the
+      one form this pass could not touch as the one form carrying neither of the two things
+      it knows: the hedge, and what `--stdout` calls that file.
+
+          $ edf2csv montage.edf --info --stdout --gzip --annotations-only
+          warning: Signal 2 is labelled "T8_ch0", ... so it is named "T8_ch0_ch2" in
+                   channels.csv.gz's column cell.
+                   Channel names are unique, and --stdout writes no channels.csv to look
+                   this channel up in by its signal_index — convert to a directory for that.
+
+      One warning, one file, two spellings of it, and neither written by that run.
+    */
+    if (diagnostic.code === 'DUPLICATE_LABEL' && /'s column cell\.$/u.test(diagnostic.message)) {
+      return {
+        ...diagnostic,
+        message: diagnostic.message.replace(
+          / in [\w.]+'s column cell\.$/u,
+          ` in ${channelsFile}'s column cell` +
+            `${toStdout ? ' in any conversion that writes one' : ''}.`,
+        ),
+      };
+    }
     if (
       diagnostic.code === 'DUPLICATE_LABEL' &&
       diagnostic.hint?.startsWith('Their names are suffixed')

@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.37
+
+### one warning, two spellings of a file it does not write
+
+`plan.ts` picks one of three nouns for where a renamed channel lands — a column, the channel
+column of a long table, or a cell of `channels.csv` when no signal table is written at all —
+and the pass that amends this sentence matches the first of the three. So the one form that
+arrives already naming the file was the one form carrying neither of the two things that pass
+knows: whether the run writes that file, and what it calls it.
+
+    $ edf2csv montage.edf --info --stdout --gzip --annotations-only
+    warning: Signal 2 is labelled "T8_ch0", ... so it is named "T8_ch0_ch2" in
+             channels.csv.gz's column cell.
+             Channel names are unique, and --stdout writes no channels.csv to look
+             this channel up in by its signal_index — convert to a directory for that.
+
+One warning, one file, two spellings of it, and neither written by that run: `--stdout --gzip`
+compresses the stream and writes no sidecar under either name. The pass now matches both forms,
+so the cell form takes the same `channels.csv` and the same "in any conversion that writes one"
+the wide-layout form has taken since 0.9.29. A conversion into a directory is unchanged, `.gz`
+and all.
+
 ## 0.9.36
 
 ### names that appear only in a file the same report says is not written

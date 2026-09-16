@@ -6464,11 +6464,32 @@ describe('--stdout', () => {
       suffixed,
     );
     assert.doesNotMatch(suffixed, /suffixed names appear only in/u, suffixed);
-    // And into a directory, where that file is written, the sentence is unchanged.
+    /*
+      And the message of the warning below it, which plan.ts writes in the cell form directly
+      when no signal table is written — so the rewrite matching the wide-layout form never
+      saw it, and it carried neither the hedge nor the name `--stdout` gives that file. Under
+      --gzip one warning then named channels.csv.gz and channels.csv in consecutive lines.
+    */
+    for (const compressed of [[], ['--gzip']]) {
+      const both = await cli([
+        fixture('label-suffix-collision.edf'), '--info', '--stdout', '--annotations-only',
+        ...compressed,
+      ]);
+      const flat = both.stderr.replace(/\s+/gu, ' ');
+      assert.match(
+        flat,
+        /named "T8_ch0_ch2" in channels\.csv's column cell in any conversion that writes one/u,
+        flat,
+      );
+      assert.doesNotMatch(flat, /channels\.csv\.gz/u, flat);
+    }
+    // And into a directory, where that file is written, both sentences are unchanged.
     const kept = await cli([
-      fixture('label-suffix-collision.edf'), '--info', '--annotations-only',
+      fixture('label-suffix-collision.edf'), '--info', '--annotations-only', '--gzip',
     ]);
-    assert.match(kept.stderr.replace(/\s+/gu, ' '), /suffixed names appear only in/u, kept.stderr);
+    const keptFlat = kept.stderr.replace(/\s+/gu, ' ');
+    assert.match(keptFlat, /suffixed names appear only in/u, kept.stderr);
+    assert.match(keptFlat, /named "T8_ch0_ch2" in channels\.csv\.gz's column cell\./u, kept.stderr);
 
     /*
       And the two raised by the plan rather than by the parser, which name a file the same way.
