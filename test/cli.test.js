@@ -6271,6 +6271,54 @@ describe('--stdout', () => {
       /so it is named "time_s_ch0" in channels\.csv's column cell/u, left.stderr);
     const both = await cli([renamed, '--info']);
     assert.match(both.stderr.replace(/\s+/gu, ' '), /so its column is "time_s_ch0"/u, both.stderr);
+
+    /*
+      And the third way to arrive with no cells and no rows, which is a window holding none.
+      A window that lands in a gap in a discontinuous file writes the signal table and nothing
+      in it — "so the signal file holds its header and no data", which the same list says four
+      lines down — while the calibration hints above it went on describing cells and the
+      timing hints went on describing rows and a time column.
+
+      The names are the exception: an empty window still writes the header row, so a channel
+      whose label was empty really does appear there under the name the warning gives it.
+    */
+    const gap = path.join(dir, 'gap.edf');
+    const { buildTal } = await import('./fixtures/edf-writer.mjs');
+    writeEdf({
+      path: gap, reserved: 'EDF+D', numRecords: 3, recordDuration: 1,
+      talsForRecord: (r) => buildTal(r === 2 ? 5 : r),
+      signals: [
+        { ...base, label: 'dup', digMin: 0, digMax: 0 },
+        { ...base, label: '' },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 40, annotations: true },
+      ],
+    });
+    for (const mode of [['--info'], ['--out', path.join(dir, 'empty-window')]]) {
+      const empty = await cli([gap, '--start', '2', '--duration', '1', ...mode]);
+      assert.equal(empty.code, 0, empty.stderr);
+      const flat = empty.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /so the signal file holds its header and no data/u, flat);
+      assert.match(
+        flat,
+        /No samples are converted for a window that selects none, so there are no cells/u,
+        flat,
+      );
+      assert.match(
+        flat,
+        /The requested window holds no samples, so nothing here is timed from the records/u,
+        flat,
+      );
+      assert.doesNotMatch(flat, /Its cells are left empty rather than filled/u, flat);
+      assert.doesNotMatch(flat, /Each row carries its true recording time/u, flat);
+      // The column is still written and still named, so that sentence is left alone.
+      assert.match(flat, /It will appear as "signal_1"/u, flat);
+    }
+    // And a window that holds samples keeps every word.
+    const held = await cli([gap, '--start', '0', '--duration', '1', '--info']);
+    const heldFlat = held.stderr.replace(/\s+/gu, ' ');
+    assert.match(heldFlat, /Its cells are left empty rather than filled/u, held.stderr);
+    assert.match(heldFlat, /Each row carries its true recording time/u, held.stderr);
   });
 
   it('does not describe rows of a signal table --annotations-only will not write', async () => {

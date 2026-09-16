@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.39
+
+### cells and rows described above the warning that there are none
+
+There are three ways a conversion ends up writing no cells and no rows. `--annotations-only`
+writes no signal table at all, `--channels` writes none for the channels it leaves out, and a
+window that lands in a gap — or past the last sample — writes the table and nothing in it. The
+rewrites that exist for the first two had never been shown the third:
+
+    warning: Signal 1 ("dup") has digital minimum equal to digital maximum (0), so its
+             values cannot be scaled.
+             Its cells are left empty rather than filled with a value the header cannot
+             justify.
+    warning: 2 data records start earlier than the record before them.
+             Rows are written in file order, so the time column will not increase
+             monotonically.
+    warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+             signal files hold their headers and no data.
+
+Six sentences about cells, rows and a time column, above the tool's own statement that the
+run writes none of them. They now say what is true of that run — "No samples are converted for
+a window that selects none", "The requested window holds no samples" — and `channels.csv`,
+which such a run does write, is still offered as where the calibration is recorded.
+
+The three sentences that name a channel's *column* are deliberately left alone: an empty
+window still writes the header row, so the columns are there and named exactly as they say.
+
+Read off `EMPTY_WINDOW`, which is already in the list this pass is handed and is the plan's
+own answer, so `--info` and a conversion get it alike.
+
 ## 0.9.38
 
 ### a file offered one line above the warning that says to convert for it

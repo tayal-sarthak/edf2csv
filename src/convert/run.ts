@@ -2043,8 +2043,37 @@ export function withSignalTableUnwritten(
   */
   toStdout = false,
 ): Diagnostic[] {
+  /*
+    And the third way to arrive with no cells and no rows, which is a window holding none.
+
+    `--annotations-only` writes no signal table and `--channels` writes none for the channels
+    it leaves out; a window that falls in a gap, or past the last sample, writes the table and
+    nothing in it — "so the signal file holds its header and no data", which is the warning
+    sitting in this very list. The sentences above it went on describing the rows and cells of
+    a conversion that writes none of either:
+
+        warning: Signal 1 ("dup") has digital minimum equal to digital maximum (0), so its
+                 values cannot be scaled.
+                 Its cells are left empty rather than filled with a value the header cannot
+                 justify.
+        warning: 2 data records start earlier than the record before them.
+                 Rows are written in file order, so the time column will not increase
+                 monotonically.
+        warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+                 signal files hold their headers and no data.
+
+    Taken from `EMPTY_WINDOW` rather than from a new argument, because that diagnostic is
+    already here and is the plan's own answer to the question — raised by `--info` and by a
+    conversion alike, so all four callers get it without being asked.
+
+    The rewrites about a channel's *name* are not taken: an empty window still writes the
+    header row, so every column is there and named exactly as those three sentences say.
+  */
+  const NAMES_A_COLUMN = new Set(['EMPTY_LABEL', 'DUPLICATE_LABEL', 'NONPRINTABLE_LABEL']);
+  const noRows = writesSignals && diagnostics.some((d) => d.code === 'EMPTY_WINDOW');
   const skipped = (diagnostic: Diagnostic): boolean => {
     if (!writesSignals) return true;
+    if (noRows) return !NAMES_A_COLUMN.has(diagnostic.code);
     const named = /^Signal (\d+)\b/u.exec(diagnostic.message);
     return named !== null && !converted.has(Number(named[1]));
   };
@@ -2079,11 +2108,18 @@ export function withSignalTableUnwritten(
       : `${channelsFile} still records ${what}.`;
   return diagnostics.map((diagnostic) => {
     if (!skipped(diagnostic)) return diagnostic;
-    // The reason the cells are missing, which is the only part that differs between the two.
-    const because = writesSignals ? 'for a channel --channels left out' : 'with --annotations-only';
-    // The run-level sentences below are only reached when no signal table is written at all:
-    // a selection leaves the rows alone, so nothing it excludes changes what the column says.
-    const writes = '--annotations-only writes no signal rows';
+    // The reason the cells are missing, which is the only part that differs between the three.
+    const because = !writesSignals
+      ? 'with --annotations-only'
+      : noRows
+        ? 'for a window that selects none'
+        : 'for a channel --channels left out';
+    // The run-level sentences below are reached when the run writes no signal rows at all,
+    // which a selection does not cause: it leaves the rows alone, so nothing it excludes
+    // changes what the time column says.
+    const writes = noRows
+      ? 'The requested window holds no samples'
+      : '--annotations-only writes no signal rows';
 
     /*
       And the three calibration warnings, whose hints are about cells.
