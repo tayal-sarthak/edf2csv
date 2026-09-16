@@ -1097,14 +1097,37 @@ async function showInfo(
       rows. `knownEvents` three lines up already counts through `eventWindow`, for the reason
       its comment gives; this was the second copy that comment says not to make.
     */
-    plan.diagnostics.push(
-      ...durationDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
-    );
-    // And what those descriptions carry; see descriptionDiagnostics. Only reached where the
-    // events have been read, which is the same set of files the duration warnings cover.
-    plan.diagnostics.push(
-      ...descriptionDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
-    );
+    /*
+      And not under `--stdout`, where the run they describe writes no event list at all.
+
+      Every one of these six sentences ends in the file the events land in — "the text is
+      written to annotations.csv exactly as the file has it", "an empty duration_s otherwise
+      means the file stated no duration" — and `--stdout` streams the signal table and
+      nothing else. The conversion knows: both functions are called from the branch that
+      writes into a directory, so a real `--stdout` run raises none of them. `--info` called
+      them either way and so reported warnings the command it was previewing does not:
+
+          $ edf2csv scored.edf --info --stdout
+          warning: 3 annotations have descriptions starting with =, which Excel, ...
+                   The text is written to annotations.csv exactly as the file has it, ...
+
+          $ edf2csv scored.edf --stdout > rows.csv
+          (nothing)
+
+      Under `--stdout --gzip` it named `annotations.csv.gz`, a file no run of this tool writes
+      to a stream. `--info --strict` failed over them too, which is the mode documented as a
+      cheap way to screen a directory before converting it.
+    */
+    if (!toStdout) {
+      plan.diagnostics.push(
+        ...durationDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
+      );
+      // And what those descriptions carry; see descriptionDiagnostics. Only reached where the
+      // events have been read, which is the same set of files the duration warnings cover.
+      plan.diagnostics.push(
+        ...descriptionDiagnostics(annotationData.annotations, eventWindow, plan.gzip),
+      );
+    }
     /*
       And the empty-table warning, where the count is in hand to raise it from.
 

@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.33
+
+### warnings about an annotations.csv the previewed run does not write
+
+`--info` exists to say what a conversion will do, and under `--stdout` it reported two
+warnings that conversion does not raise. Both are about the events — what a duration says,
+and what a description carries into a spreadsheet or a terminal — and both are counted
+against the rows that reach `annotations.csv`, which is why the conversion raises them from
+the branch that writes into a directory and nowhere else. `--info` called them whatever the
+destination was:
+
+    $ edf2csv scored.edf --info --stdout
+    warning: 3 annotations have descriptions starting with =, which Excel, LibreOffice and
+             Google Sheets read as the start of a formula rather than as text.
+             The text is written to annotations.csv exactly as the file has it, ...
+
+    $ edf2csv scored.edf --stdout > rows.csv
+    (nothing)
+
+There is no annotations.csv: that run streams the signal table and writes no file at all.
+Under `--stdout --gzip` the same sentence named `annotations.csv.gz`, a name no run of this
+tool writes to a stream. `--info --strict` failed over them too, which is the mode documented
+as a cheap way to screen a directory before converting it.
+
+Found by comparing `--info`'s warnings with the conversion's across 909 file-and-flag pairs;
+these two were the only divergence that was not the documented one about event counts on a
+continuous file.
+
 ## 0.9.32
 
 ### an empty notes array, over a directory the run warned about

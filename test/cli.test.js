@@ -1543,6 +1543,46 @@ describe('--info', () => {
     // And without --stdout nothing changes.
     const plain = await cli([fixture('mixed-rates.edf'), '--info']);
     assert.doesNotMatch(plain.stderr, /would refuse/u, plain.stderr);
+
+    /*
+      Nor does it describe the events, which a --stdout run writes nowhere.
+
+      The two functions raising the warnings about what an annotation's duration and
+      description carry are called from the branch that writes into a directory, so a real
+      --stdout run raises none of them. --info called them whatever the destination was, and
+      so previewed a command by reporting warnings it does not raise — each ending in the
+      annotations.csv that run does not write, or, under --gzip, in an annotations.csv.gz no
+      run of this tool writes to a stream. --info --strict failed over them too.
+    */
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-stream-events-'));
+    temporaries.push(dir);
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
+    const scored = path.join(dir, 'scored.edf');
+    writeEdf({
+      path: scored,
+      reserved: 'EDF+D',
+      numRecords: 2,
+      recordDuration: 1,
+      signals: [
+        { label: 'ch1', dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048,
+          digMax: 2047, samplesPerRecord: 2, gen: () => 1 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 60, annotations: true },
+      ],
+      talsForRecord: (r) => buildTal(r, [{ onset: r + 0.5, text: '=HYPERLINK("http://x","W")' }]),
+    });
+    const intoDirectory = await cli([scored, '--info']);
+    assert.match(intoDirectory.stderr, /descriptions starting with =/u, intoDirectory.stderr);
+    for (const args of [[scored, '--info', '--stdout'], [scored, '--info', '--stdout', '--gzip'],
+      [scored, '--stdout']]) {
+      const streamed = await cli(args);
+      assert.equal(streamed.code, 0, streamed.stderr);
+      assert.doesNotMatch(
+        streamed.stderr,
+        /annotations\.csv/u,
+        `${args.join(' ')}: ${streamed.stderr}`,
+      );
+    }
   });
 
   it('says where a recording starts when that is not zero', async (t) => {
