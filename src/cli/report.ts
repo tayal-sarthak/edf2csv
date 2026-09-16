@@ -191,6 +191,30 @@ export function formatInfo(
    * could not say.
    */
   toStdout = false,
+  /**
+   * Whether `--stdout` would refuse the run this describes, in which case it writes nothing.
+   *
+   * The paragraph above the estimate already says so for the commonest of the three
+   * refusals — "this recording makes 3 tables, one per rate — more than `--stdout` can
+   * write" — and the line under it went on predicting the rows anyway:
+   *
+   *     Sampling rates differ, so this recording makes 3 tables, one per rate — more
+   *     than --stdout can write. Converting into a directory writes one file each;
+   *     --layout long puts them all in one table.
+   *     Would write 14 rows, roughly 262 B.
+   *
+   *     warning: --stdout would refuse this run: needs exactly one table, ...
+   *
+   * Three statements about one command, and the middle one is of a run that exits 1 having
+   * written nothing. The estimate is still the answer to a question worth asking — it is
+   * what converting into a directory would write — so it is kept and its subject corrected,
+   * which is the same repair `--annotations-only` got on this line at 0.4.51.
+   *
+   * Taken from the caller rather than worked out here: `stdoutRefusal` is the conversion's
+   * own guard, and the warning below the report is already built from it, so there is one
+   * answer rather than two that can drift.
+   */
+  stdoutRefused = false,
 ): string {
   const { header } = file;
   const lines: string[] = [];
@@ -541,14 +565,20 @@ export function formatInfo(
       ? `, and ${outputCsvName('annotations', plan.gzip)}` +
         `${events === null ? '' : ` with ${counted(events, 'event')}`}`
       : '';
+  // A window narrow enough to select one sample is an ordinary thing to ask for, and this
+  // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
+  // and missed here, because the recording that test builds never estimates exactly one.
+  const size =
+    `${counted(plan.estimate.rows, 'row')}, roughly ` +
+    `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}`;
   lines.push(
     wrap(
-      // A window narrow enough to select one sample is an ordinary thing to ask for, and this
-      // read "Would write 1 rows, roughly 22 B." — the slip 0.5.74 fixed on the lines above it
-      // and missed here, because the recording that test builds never estimates exactly one.
-      `Would write ${counted(plan.estimate.rows, 'row')}, roughly ` +
-        `${formatBytes(plan.estimate.bytes)}${compressing ? ' before compression' : ''}` +
-        `${alsoEvents}.`,
+      stdoutRefused
+        ? // "That conversion" is the directory one the paragraph above has just named, which
+          // is the only shape this branch refuses: the other two refusals write no signal
+          // table at all and are answered on the line above.
+          `That conversion would write ${size}; --stdout writes none of them.`
+        : `Would write ${size}${alsoEvents}.`,
     ),
   );
 

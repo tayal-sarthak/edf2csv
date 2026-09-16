@@ -1516,6 +1516,27 @@ describe('--info', () => {
     assert.match(preview.stderr, /--stdout would refuse this run/u, preview.stderr);
     assert.ok(preview.stdout.includes('EEG Fpz-Cz'), 'and it still describes the recording');
 
+    /*
+      Including the estimate, which is the line the paragraph about it contradicted. It read
+      "Would write 1,155 rows, roughly 22.2 KB." directly under "more than --stdout can
+      write", for a run that exits 1 having written nothing. The figures are still the answer
+      to a question worth asking — they are what converting into a directory would write —
+      so the subject is corrected rather than the line removed, as it was at 0.4.51 for
+      --annotations-only.
+    */
+    // Read with the wrapping taken out, since these are sentences the report re-flows.
+    const unwrapped = (text) => text.replace(/\s+/gu, ' ');
+    assert.doesNotMatch(unwrapped(preview.stdout), /(?:^| )Would write /u, preview.stdout);
+    assert.match(unwrapped(preview.stdout), /--stdout writes none of them\./u, preview.stdout);
+    // And the numbers are still there, unchanged from the conversion the report describes.
+    const intoDir = await cli([fixture('mixed-rates.edf'), '--info']);
+    const rows = /Would write ([\d,]+ rows, roughly [^.;]+)/u.exec(unwrapped(intoDir.stdout));
+    assert.ok(rows, intoDir.stdout);
+    assert.ok(
+      unwrapped(preview.stdout).includes(rows[1]),
+      `${rows[1]} is gone from ${preview.stdout}`,
+    );
+
     // The words are the conversion's, so the two cannot drift apart.
     const refused = await cli([fixture('mixed-rates.edf'), '--stdout']);
     assert.equal(refused.code, 2, refused.stderr);

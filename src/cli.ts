@@ -1171,26 +1171,28 @@ async function showInfo(
       guards: --info writes nothing, so a rule about the output has no business stopping it
       from describing the recording — and being told the command will not work is exactly
       what was asked. The conversion's own guard supplies the words, so there is one wording.
+
+      Worked out before the branch that reports it, because the report body needs the same
+      answer: the estimate under the channel table was describing a run that does not happen.
+      See `formatInfo`'s last parameter.
     */
-    if (toStdout) {
-      const refusal = stdoutRefusal(file, plan);
-      if (refusal) {
-        plan.diagnostics.push({
-          code: 'STDOUT_UNSUPPORTED',
-          severity: 'warning',
-          /*
-            "this run", not "this recording". Two of the three refusals are about the file —
-            more than one rate, no signal channels — and the third is about the flags: the
-            same recording streams perfectly once `--annotations-only` comes off. It read
-            `--stdout would refuse this recording: has no signal data to write because
-            --annotations-only was given`, blaming the recording for a combination the hint
-            underneath it then tells you to fix by dropping a flag. It is the same distinction
-            the exit codes draw and USAGE_ERROR_CODES exists for.
-          */
-          message: `--stdout would refuse this run: ${refusal.message.replace(/^--stdout /u, '')}`,
-          ...(refusal.hint === undefined ? {} : { hint: refusal.hint }),
-        });
-      }
+    const refusal = toStdout ? stdoutRefusal(file, plan) : null;
+    if (refusal) {
+      plan.diagnostics.push({
+        code: 'STDOUT_UNSUPPORTED',
+        severity: 'warning',
+        /*
+          "this run", not "this recording". Two of the three refusals are about the file —
+          more than one rate, no signal channels — and the third is about the flags: the
+          same recording streams perfectly once `--annotations-only` comes off. It read
+          `--stdout would refuse this recording: has no signal data to write because
+          --annotations-only was given`, blaming the recording for a combination the hint
+          underneath it then tells you to fix by dropping a flag. It is the same distinction
+          the exit codes draw and USAGE_ERROR_CODES exists for.
+        */
+        message: `--stdout would refuse this run: ${refusal.message.replace(/^--stdout /u, '')}`,
+        ...(refusal.hint === undefined ? {} : { hint: refusal.hint }),
+      });
     }
     // Under --json the warnings travel inside the document, exactly as they do for a
     // conversion, so stderr stays empty and the whole result is one parseable thing.
@@ -1224,7 +1226,7 @@ async function showInfo(
     const audit = auditStdout();
     const description = asJson
       ? `${infoJson(file, plan, diagnostics, knownEvents, jsonIndent, toStdout)}\n`
-      : `${formatInfo(file, plan, knownEvents, toStdout)}\n`;
+      : `${formatInfo(file, plan, knownEvents, toStdout, refusal !== null)}\n`;
     process.stdout.write(description);
     audit?.count(Buffer.byteLength(description));
     audit?.verify();

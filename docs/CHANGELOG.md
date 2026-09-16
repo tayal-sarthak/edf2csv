@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.34
+
+### an estimate of the run the line above it says cannot happen
+
+`--info --stdout` on a mixed-rate recording printed a paragraph saying the run cannot happen
+and then estimated it anyway:
+
+    Sampling rates differ, so this recording makes 3 tables, one per rate — more
+    than --stdout can write. Converting into a directory writes one file each;
+    --layout long puts them all in one table.
+    Would write 1,155 rows, roughly 22.2 KB.
+
+    warning: --stdout would refuse this run: needs exactly one table, ...
+
+Three statements about one command, and the middle one describes a run that exits 1 having
+written nothing — the same shape 0.4.51 took off this line for `--annotations-only`, where it
+read "Would write 0 rows, roughly 0 B." of a run that goes on to write a file.
+
+The figures are the answer to a question worth asking, so the subject is corrected rather than
+the line removed:
+
+    That conversion would write 1,155 rows, roughly 22.2 KB; --stdout writes none
+    of them.
+
+Whether the run would be refused comes from `stdoutRefusal`, the conversion's own guard, which
+is where the warning under the report already comes from — so the two cannot drift apart.
+
 ## 0.9.33
 
 ### warnings about an annotations.csv the previewed run does not write

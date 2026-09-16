@@ -654,6 +654,8 @@ warning: --stdout would refuse this run: needs exactly one table, but this recor
 
 A warning rather than a refusal for the reason the destination guards are: `--info` writes nothing, so a rule about the output has no business stopping it from describing the recording — and being told the command will not work is exactly what was asked. Until 0.5.87 `--info` ignored `--stdout` entirely and predicted rows and named files for a command that writes neither.
 
+The report body says it too. The estimate under the channel table read `Would write 1,155 rows, roughly 22.2 KB.` until 0.9.34 — of a run that exits 1 having written nothing — on the line under the paragraph explaining that `--stdout` cannot write it. The figures are still worth having, so the subject is corrected rather than the line dropped: `That conversion would write 1,155 rows, roughly 22.2 KB; --stdout writes none of them.`
+
 **What to do.** Take the advice in the hint, or drop `--stdout`. Nothing is wrong with the recording.
 
 ### MISSING_EDF_PLUS_MARKER
