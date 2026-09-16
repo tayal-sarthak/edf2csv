@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.36
+
+### names that appear only in a file the same report says is not written
+
+0.9.29 taught the rewrites that take a cell away to say `--stdout writes no channels.csv`
+instead of offering it, and did it for two of the three ways a run arrives with no signal
+table. The third — `--annotations-only` — kept the sentence it had:
+
+    $ edf2csv montage.edf --info --stdout --annotations-only
+    warning: 2 signals share the label "T8" (positions #0, #1).
+             Their names are suffixed with the signal number so they stay
+             distinguishable. --annotations-only writes no signal table, so the
+             suffixed names appear only in channels.csv's column cells.
+    warning: Signal 2 is labelled "T8_ch0", ...
+             Channel names are unique, and --stdout writes no channels.csv to look
+             this channel up in by its signal_index — convert to a directory for that.
+
+Two warnings, one file, and one report saying both that the names appear only there and that
+the run writes no such file. `--stdout --annotations-only` is refused, so `--info` is where
+this is read — which is the mode whose whole purpose is saying what the command would do.
+
+The sibling branch for `--channels` had the answer already; this one now gives it.
+
 ## 0.9.35
 
 ### two files promised by a run that writes none

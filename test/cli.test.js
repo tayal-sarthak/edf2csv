@@ -6446,6 +6446,31 @@ describe('--stdout', () => {
     }
 
     /*
+      And the third way to arrive with no signal table, which only `--info` can describe:
+      `--stdout --annotations-only` is refused, so `--info --stdout --annotations-only` is the
+      run that prints the sentence. The `--channels` half of this rewrite was hedged at 0.9.29
+      and the `--annotations-only` half was not, so one report carried both halves of the
+      contradiction — "the suffixed names appear only in channels.csv's column cells", two
+      warnings above "--stdout writes no channels.csv to look this channel up in".
+    */
+    const previewed = await cli([
+      fixture('label-suffix-collision.edf'), '--info', '--stdout', '--annotations-only',
+    ]);
+    assert.equal(previewed.code, 0, previewed.stderr);
+    const suffixed = previewed.stderr.replace(/\s+/gu, ' ');
+    assert.match(
+      suffixed,
+      /--annotations-only writes no signal table, and --stdout writes no channels\.csv/u,
+      suffixed,
+    );
+    assert.doesNotMatch(suffixed, /suffixed names appear only in/u, suffixed);
+    // And into a directory, where that file is written, the sentence is unchanged.
+    const kept = await cli([
+      fixture('label-suffix-collision.edf'), '--info', '--annotations-only',
+    ]);
+    assert.match(kept.stderr.replace(/\s+/gu, ' '), /suffixed names appear only in/u, kept.stderr);
+
+    /*
       And the two raised by the plan rather than by the parser, which name a file the same way.
       `destination` three functions above them has said `the CSV on stdout` since the rate
       warnings were taught the difference; these two had "the signal file" and "at least one

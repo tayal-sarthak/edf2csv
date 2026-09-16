@@ -2174,8 +2174,16 @@ export function withSignalTableUnwritten(
                 `its suffixed name to appear in — convert to a directory for that.`
               : `--channels left this channel out, so its suffixed name appears in ` +
                 `${channelsFile}'s column cell and nowhere else.`
-            : '--annotations-only writes no signal table, so the suffixed names appear only ' +
-              `in ${channelsFile}'s column cells.`),
+            : toStdout
+              ? // The one of the three this pass was extended without at 0.9.29. `--stdout`
+                // writes no channels.csv either, and the report saying this goes on to say
+                // so two warnings later — "--stdout writes no channels.csv to look this
+                // channel up in" — so one run carried both sentences about one file.
+                `--annotations-only writes no signal table, and --stdout writes no ` +
+                `${channelsFile} for the suffixed names to appear in — convert to a ` +
+                `directory for that.`
+              : '--annotations-only writes no signal table, so the suffixed names appear ' +
+                `only in ${channelsFile}'s column cells.`),
       };
     }
     /*
