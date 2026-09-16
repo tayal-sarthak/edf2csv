@@ -3456,6 +3456,26 @@ describe('converting several recordings at once', () => {
     );
     const events = await readFile(path.join(dir, 'annotations.csv'), 'utf8');
     assert.ok(events.trimEnd().split('\n').length > 1, 'and it holds events');
+
+    /*
+      And it promises neither file under --stdout, which refuses both of the runs that reach
+      this line: a recording with no signal channels has nothing to stream, and neither has
+      --annotations-only. The sentence named two files for a run that writes none, three
+      lines above the warning saying the run would not happen and one above a hint offering
+      the same annotations.csv as the reason to convert to a directory instead.
+    */
+    for (const args of [
+      [fixture('annotations-only.edf'), '--info', '--stdout'],
+      [fixture('annotations.edf'), '--info', '--stdout', '--annotations-only'],
+    ]) {
+      const streamed = await cli(args);
+      assert.equal(streamed.code, 0, streamed.stderr);
+      const said = streamed.stdout.replace(/\s+/gu, ' ');
+      assert.doesNotMatch(said, /(?:^| )Would write /u, `${args.join(' ')}: ${streamed.stdout}`);
+      assert.match(said, /--stdout writes nothing here/u, `${args.join(' ')}: ${streamed.stdout}`);
+      assert.match(said, /channels\.csv/u, 'and still says what a directory conversion gets');
+      assert.match(streamed.stderr, /--stdout would refuse this run/u, streamed.stderr);
+    }
   });
 
   it('names the annotation-only files as --gzip will actually write them', async () => {

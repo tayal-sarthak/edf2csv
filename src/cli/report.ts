@@ -527,17 +527,45 @@ export function formatInfo(
     // Named as they will be written. --info is read to find out what a run leaves behind,
     // and a script that opens the name it was given must find a file there.
     const suffix = plan.gzip ? '.csv.gz' : '.csv';
+    const files =
+      file.annotationSignals.length > 0
+        ? events === null
+          ? `annotations${suffix} and channels${suffix}, and no signal data`
+          : `annotations${suffix} with ${counted(events, 'event')} and ` +
+            `channels${suffix}, and no signal data`
+        : `channels${suffix} and no signal data — and no annotations${suffix} ` +
+          'either, since this recording has no annotation channel';
+    // The one form of this line whose count is not in hand; see the `events` parameter.
+    const unknown =
+      file.annotationSignals.length > 0 && events === null
+        ? ' How many events there are cannot be told from the header, and finding out means ' +
+          'reading the annotation channel record by record.'
+        : '';
+    /*
+      And the other half of what 0.9.34 corrected one branch down.
+
+      Both of the refusals that land here are refusals: `--stdout` has nothing to stream for
+      `--annotations-only`, and nothing for a recording with no signal channels. So this line
+      named two files for a run that writes none, three lines above the warning saying the
+      run will not happen and one of them above a hint offering the same two files as the
+      thing to convert to a directory for:
+
+          Would write annotations.csv and channels.csv, and no signal data.
+
+          warning: --stdout would refuse this run: has no signal data to write: this
+                   recording has no signal channels, only EDF+ annotations.
+                   Convert to a directory to get its annotations.csv, or drop --stdout.
+
+      Named as the conversion that does write them, which is the one the hint sends you to.
+    */
     lines.push(
       wrap(
-        file.annotationSignals.length > 0
-          ? events === null
-            ? `Would write annotations${suffix} and channels${suffix}, and no signal data. How ` +
-              'many events there are cannot be told from the header, and finding out means ' +
-              'reading the annotation channel record by record.'
-            : `Would write annotations${suffix} with ${counted(events, 'event')} and ` +
-              `channels${suffix}, and no signal data.`
-          : `Would write channels${suffix} and no signal data — and no annotations${suffix} ` +
-            'either, since this recording has no annotation channel.',
+        stdoutRefused
+          ? // Refusal first, since two of the three forms end in a subordinate clause that a
+            // trailing one would have to be read past.
+            `--stdout writes nothing here; converting into a directory would write ` +
+            `${files}.${unknown}`
+          : `Would write ${files}.${unknown}`,
       ),
     );
     return lines.join('\n');

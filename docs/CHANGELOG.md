@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.35
+
+### two files promised by a run that writes none
+
+The other half of what 0.9.34 corrected. `--info` replaces the row estimate with a list of
+files when the run writes no signal table, and both of the ways to arrive there are ways
+`--stdout` refuses a run — `--annotations-only`, and a recording with no signal channels at
+all. The line named two files for a command that writes none:
+
+    Would write annotations.csv and channels.csv, and no signal data. How many events
+    there are cannot be told from the header, and finding out means reading the
+    annotation channel record by record.
+
+    warning: --stdout would refuse this run: has no signal data to write: this
+             recording has no signal channels, only EDF+ annotations.
+             Convert to a directory to get its annotations.csv, or drop --stdout.
+
+The hint three lines under it offers that same annotations.csv as the reason to convert to a
+directory instead, which is the file the line above had just promised. It now names the
+conversion that does write them:
+
+    --stdout writes nothing here; converting into a directory would write
+    annotations.csv and channels.csv, and no signal data. ...
+
+The refusal leads, because two of the three forms of this sentence end in a subordinate
+clause a trailing one would have to be read past.
+
 ## 0.9.34
 
 ### an estimate of the run the line above it says cannot happen
