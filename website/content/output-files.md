@@ -578,8 +578,11 @@ warning: The input changed while it was being converted, so this output covers t
 
 `notes` carries every diagnostic the conversion raised, each with a `code`, a `severity` and a
 `message`. These are the same warnings printed to standard error during the run, preserved so they
-stay attached to the data rather than scrolling out of a terminal. An empty array means the
-recording parsed cleanly.
+stay attached to the data rather than scrolling out of a terminal. All but one: `STALE_OUTPUT` is
+noticed after this file has been written, and says something about the destination rather than about
+the recording, so it reaches the terminal and `--json` and never the archive. An empty array means
+the recording parsed cleanly, and that leftovers from an earlier conversion are the one thing it
+does not rule out.
 
 Read the diagnostics before you analyse the data. `MIXED_SAMPLING_RATES` explains why you have
 three signal files. `RECORD_COUNT_MISMATCH` says the recording is shorter than its header promised.

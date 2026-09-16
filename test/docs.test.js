@@ -3663,6 +3663,24 @@ describe('documentation and source agree on their lists', () => {
       /STALE_OUTPUT/u,
       'the page states the three as plain equalities, and one of them is not',
     );
+
+    /*
+      And so does the section describing the field itself, which is the one a reader of
+      metadata.json arrives at. It said `notes` "carries every diagnostic the conversion
+      raised", that those are "the same warnings printed to standard error during the run",
+      and that "an empty array means the recording parsed cleanly" — three statements the
+      exception above makes false, on the page that documents the file. A conversion into a
+      directory holding another one's output prints a warning, exits, and leaves an empty
+      `notes` that this page reads as a clean run.
+    */
+    const fields = await read('website/content/output-files.md');
+    const section = /### notes: [^\n]*\n([\s\S]*?)\n## /u.exec(fields);
+    assert.ok(section, 'the notes section of output-files.md is gone');
+    assert.match(
+      section[1],
+      /STALE_OUTPUT/u,
+      'the section describing notes states it without the one exception',
+    );
   });
 
   it('says the same thing in both places about --channels under --annotations-only', async () => {

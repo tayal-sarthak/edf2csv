@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.32
+
+### an empty notes array, over a directory the run warned about
+
+`metadata.json`'s `notes` array does not carry `STALE_OUTPUT`: that warning is raised after
+the file has been written, and it is a fact about the destination rather than about the
+recording, so an archived conversion does not keep asserting it. Two pages say so. The page
+documenting the field said the opposite three times over — `notes` "carries every diagnostic
+the conversion raised", those are "the same warnings printed to standard error during the
+run", and "an empty array means the recording parsed cleanly":
+
+    $ edf2csv mixed-rates.edf --out ./converted
+    $ edf2csv tiny.edf --out ./converted --force
+    warning: signals_1hz.csv, signals_2hz.csv, signals_4hz.csv are left over from an
+             earlier conversion into this directory and were not rewritten.
+    $ jq .notes converted/metadata.json
+    []
+
+Read as this page documented it, that directory holds a recording that parsed cleanly. It
+holds three files from a different one. The section now states the exception the other two
+pages state, and the docs test that holds the reference to it holds this section too.
+
 ## 0.9.31
 
 ### the fourth file a conversion writes, named by nothing
