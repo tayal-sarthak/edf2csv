@@ -298,9 +298,21 @@ for (const name of names) {
   }
 }
 
-// Nothing narrowed is not every narrowing returning its part; see the comment in estimate.mjs.
-if (columns + windows === 0) {
-  console.error('Nothing was narrowed, so nothing was compared against a full conversion.');
+/*
+  Nothing narrowed is not every narrowing returning its part; see the comment in estimate.mjs.
+
+  Every count the summary prints, not the first two. This guarded `columns + windows` and went
+  on to report "plus 0 single-channel selections in the long layout / and 0 pairs of windows
+  meeting at a bound / with 0 more meeting on or beside an event" — three claims held over
+  nothing, and correctness.md quotes all three as numbers. The long-layout loop skips a channel
+  in silence when its conversion fails, and the partition and annotation sweeps need fixtures
+  with more than one rate and with events; any of the three can fall to zero while the first two
+  stay large. 0.7.137 closed this for the total on six harnesses and left the sub-counts.
+*/
+const counted = { columns, windows, longs, partitions, annotationCuts };
+const nothing = Object.entries(counted).filter(([, n]) => n === 0).map(([name]) => name);
+if (nothing.length > 0) {
+  console.error(`Nothing was compared in: ${nothing.join(', ')}.`);
   process.exitCode = 1;
 } else if (problems.length > 0) {
   console.error(problems.slice(0, 20).join('\n'));

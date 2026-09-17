@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.50
+
+### plus 0 selections in the long layout, and a passing sweep
+
+0.7.137 closed a real hole in six of this repository's sweeps: each printed its invariant as
+held after comparing nothing. Each got a guard — on its *total*. Three of them report more than
+one count, and the counts past the first were left unguarded.
+
+`npm run narrowing` reports five and guarded two:
+
+    106 single-channel selections and 253 windows checked over 50 recordings,
+    plus 0 single-channel selections in the long layout
+    and 0 pairs of windows meeting at a bound,
+    with 0 more meeting on or beside an event and compared as annotations.
+    Narrowing a conversion returned exactly the part it names, and two of them
+    meeting at a bound returned the whole of it.
+
+Exit 0, and three claims held over nothing — while correctness.md quotes all three as numbers.
+Any of the three can fall to zero on its own: the long-layout loop skips a channel in silence
+when its conversion fails, and the partition and annotation sweeps need fixtures with more than
+one rate and with events.
+
+`npm run estimate` has the same shape in two columns: `checked` was guarded and `sized` was
+not, so a run with no size comparison read "every byte count between the truth and 3x it (sizes
+read 0% high on average, worst 0.00x at )". `npm run layouts` claims its result "per channel"
+and guarded the conversions rather than the channel sequences.
+
+All three now guard every count their success line asserts over, and name the one that came out
+empty. Verified by forcing each to zero and watching the sweep fail.
+
 ## 0.9.49
 
 ### an estimate the text qualifies and the JSON does not

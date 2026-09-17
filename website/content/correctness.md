@@ -465,4 +465,8 @@ The CLI tests run the real built binary as a subprocess and inspect its exit cod
 
 **Timing is taken from the file.** Sample times are derived from the record duration in the header and, for EDF+D recordings, from the timestamps in the annotation channel. There's no correction for amplifier clock drift, and no attempt to reconcile the header's start time with any external clock.
 
+Each of these sweeps refuses to report an invariant it held over nothing, and since 0.9.50 that
+is asked of every count it prints rather than of the first: `npm run narrowing` reports five, and
+a guard on two of them let it say "plus 0 single-channel selections in the long layout" and pass.
+
 **Nothing here verifies your pipeline.** A conversion that's bit-exact is still only the first step. `metadata.json` records the tool version, the source file, the time window converted and, with `--checksum`, a SHA-256 of the input, so a result can be traced back to the exact bytes it came from.

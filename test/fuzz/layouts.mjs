@@ -167,9 +167,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     `\n${compared} conversions compared over ${recordings} recordings ` +
       `(${channels} channel sequences, ${skipped} refused by both).\n`,
   );
-  // Nothing compared is not both layouts agreeing; see the comment in estimate.mjs.
-  if (compared === 0) {
-    process.stdout.write('No conversion was compared, so the two layouts were not.\n');
+  // Nothing compared is not both layouts agreeing; see the comment in estimate.mjs. Both
+  // counts, because the claim below is per channel and `channels` is what it holds over: a
+  // run that compared conversions and no channel sequence within them proves nothing about
+  // the order of samples in either layout.
+  if (compared === 0 || channels === 0) {
+    process.stdout.write(
+      `${compared === 0 ? 'No conversion' : 'No channel sequence'} was compared, so the two ` +
+        'layouts were not.\n',
+    );
     process.exit(1);
   }
   if (problems.length > 0) {

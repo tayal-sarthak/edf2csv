@@ -250,6 +250,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.stdout.write('Nothing was predicted, so nothing was checked.\n');
     process.exit(1);
   }
+  // And the byte counts, which are a second sweep with a second claim: "every byte count
+  // between the truth and 3x it". `sized` is what that holds over, and a zero of it read as
+  // "sizes read 0% high on average, worst 0.00x at " — the same empty sentence `checked`
+  // was guarded against, one column over.
+  if (sized === 0) {
+    process.stdout.write('No size was compared, so no byte count was checked.\n');
+    process.exit(1);
+  }
   if (problems.length > 0) {
     process.stdout.write(`${problems.length} wrong:\n`);
     for (const problem of problems.slice(0, 20)) process.stdout.write(`  ${problem}\n`);
