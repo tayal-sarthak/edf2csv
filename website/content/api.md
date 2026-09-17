@@ -661,6 +661,7 @@ interface RateGroup {
   fileName: string;          // 'signals.csv', or 'signals_256hz.csv' when rates differ
   timeDecimals: number;      // decimals used for the time_s column
   channels: PlannedChannel[];
+  rows: number;              // rows this group's table gets under the window asked for
 }
 
 interface PlannedChannel {

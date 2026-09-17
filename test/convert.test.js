@@ -1574,6 +1574,49 @@ describe('an empty result', () => {
     assert.ok(!together.diagnostics.some((d) => d.code === 'EMPTY_RATE_WINDOW'));
   });
 
+  it('does not describe cells of a channel whose rate the window emptied', async () => {
+    /*
+      The third way a channel ends up with no cells, after --annotations-only and the channels
+      --channels leaves out. A rate group is what gets a file, so a window a hundredth of a
+      second wide leaves a 1 Hz channel's file holding its header while a 256 Hz channel in
+      the same recording keeps rows — and "Its cells carry that value" was as untrue of the
+      first as it is of a channel nothing converts at all. The run-level sentences are not
+      touched, because the run does write rows.
+    */
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const dir = await mkdtemp(path.join(tmpdir(), 'edf2csv-rate-cells-'));
+    temporaries.push(dir);
+    const base = { dimension: 'uV', physMin: -100, physMax: 100, digMin: -2048, digMax: 2047,
+      gen: (r, s) => r + s };
+    const input = path.join(dir, 'part.edf');
+    writeEdf({
+      path: input, numRecords: 2, recordDuration: 1,
+      signals: [
+        { ...base, label: 'fast', samplesPerRecord: 4 },
+        { ...base, label: 'slowflat', samplesPerRecord: 1, physMin: 0, physMax: 0 },
+      ],
+    });
+
+    const narrow = await outDir();
+    const some = await convert(input, { outputDir: narrow, start: 0.1, end: 0.4 });
+    const cells = some.diagnostics.find((d) => d.code === 'DEGENERATE_PHYSICAL_RANGE');
+    assert.ok(cells, JSON.stringify(some.diagnostics.map((d) => d.code)));
+    assert.match(cells.message, /would convert to the same value/u, cells.message);
+    assert.match(
+      cells.hint,
+      /^No samples are converted for a window holding none of this channel's samples\./u,
+      cells.hint,
+    );
+    assert.deepEqual(await readCsv(narrow, 'signals_1hz.csv'), ['time_s,slowflat']);
+
+    // And a window that holds its samples keeps the sentence that is true of it.
+    const whole = await outDir();
+    const all = await convert(input, { outputDir: whole });
+    const kept = all.diagnostics.find((d) => d.code === 'DEGENERATE_PHYSICAL_RANGE');
+    assert.match(kept.message, /so every sample converts to the same value/u, kept.message);
+    assert.match(kept.hint, /^Its cells carry that value/u, kept.hint);
+  });
+
   it('leaves the paths that write no signal files alone', async () => {
     // --annotations-only writes no signal table by design, and a file with no signal
     // channels has none to write; neither is an empty window and neither should say so.

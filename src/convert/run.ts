@@ -220,6 +220,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             convertedChannels(plan),
             true,
             plan.layout === 'long',
+            channelsWithoutRows(plan),
           ),
           { toStdout: true, gzip: plan.gzip },
         ),
@@ -360,6 +361,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           convertedChannels(plan),
           false,
           plan.layout === 'long',
+          channelsWithoutRows(plan),
         ),
         { toStdout: false, gzip: plan.gzip },
       ),
@@ -1980,6 +1982,27 @@ export function convertedChannels(plan: ConversionPlan): Set<number> {
 }
 
 /**
+ * The channels whose rate the window holds no samples of, while the run has rows elsewhere.
+ *
+ * The third way a channel ends up with no cells, after `--annotations-only` and the channels
+ * `--channels` leaves out. A rate group is what gets a file, so a window a hundredth of a
+ * second wide leaves a 1 Hz channel's file holding its header while a 256 Hz channel in the
+ * same recording keeps three rows — and "Its cells carry that value" was as untrue of the
+ * first as it is of a channel nothing converts at all.
+ *
+ * Empty for a run with no rows anywhere, which is `EMPTY_WINDOW`'s case and already answered
+ * with its own wording, and for the long layout, where every rate shares one table.
+ */
+export function channelsWithoutRows(plan: ConversionPlan): Set<number> {
+  if (plan.layout === 'long' || plan.estimate.rows === 0) return new Set();
+  return new Set(
+    plan.groups
+      .filter((group) => group.rows === 0)
+      .flatMap((group) => group.channels.map((c) => c.signal.index)),
+  );
+}
+
+/**
  * The signal table an `--annotations-only` run does not write, taken out of the hints about it.
  *
  * That mode writes the event list and nothing else — no signal files at all — and four hints
@@ -2067,6 +2090,8 @@ export function withSignalTableUnwritten(
     have always offered in its place.
   */
   longLayout = false,
+  /** The channels this run writes no rows for; see `channelsWithoutRows`. */
+  emptiedByWindow: ReadonlySet<number> = new Set(),
 ): Diagnostic[] {
   /*
     And the third way to arrive with no cells and no rows, which is a window holding none.
@@ -2096,11 +2121,22 @@ export function withSignalTableUnwritten(
   */
   const NAMES_A_COLUMN = new Set(['EMPTY_LABEL', 'DUPLICATE_LABEL', 'NONPRINTABLE_LABEL']);
   const noRows = writesSignals && diagnostics.some((d) => d.code === 'EMPTY_WINDOW');
+  const signalOf = (diagnostic: Diagnostic): number | null => {
+    const named = /^Signal (\d+)\b/u.exec(diagnostic.message);
+    return named === null ? null : Number(named[1]);
+  };
+  // A channel whose rate the window emptied. Its own question, because the run does write
+  // rows — just none of this channel's — so nothing run-level here changes.
+  const emptied = (diagnostic: Diagnostic): boolean => {
+    const index = signalOf(diagnostic);
+    return index !== null && emptiedByWindow.has(index);
+  };
   const skipped = (diagnostic: Diagnostic): boolean => {
     if (!writesSignals) return true;
     if (noRows) return longLayout || !NAMES_A_COLUMN.has(diagnostic.code);
-    const named = /^Signal (\d+)\b/u.exec(diagnostic.message);
-    return named !== null && !converted.has(Number(named[1]));
+    if (emptied(diagnostic)) return true;
+    const index = signalOf(diagnostic);
+    return index !== null && !converted.has(index);
   };
   if (writesSignals && diagnostics.every((d) => !skipped(d))) return [...diagnostics];
   /*
@@ -2138,7 +2174,9 @@ export function withSignalTableUnwritten(
       ? 'with --annotations-only'
       : noRows
         ? 'for a window that selects none'
-        : 'for a channel --channels left out';
+        : emptied(diagnostic)
+          ? "for a window holding none of this channel's samples"
+          : 'for a channel --channels left out';
     // The run-level sentences below are reached when the run writes no signal rows at all,
     // which a selection does not cause: it leaves the rows alone, so nothing it excludes
     // changes what the time column says.
@@ -2906,6 +2944,7 @@ async function writeMetadata(
         convertedChannels(plan),
         false,
         plan.layout === 'long',
+        channelsWithoutRows(plan),
       ),
       // metadata.json is only written into a directory, so this is never the stdout case.
       { toStdout: false, gzip: plan.gzip },

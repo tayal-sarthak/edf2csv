@@ -34,6 +34,15 @@ export interface RateGroup {
   fileName: string;
   timeDecimals: number;
   channels: PlannedChannel[];
+  /**
+   * How many rows this group's table gets, under whatever window was asked for.
+   *
+   * A rate group is what gets a file, and the same window can hold samples of one rate and
+   * none of another — so this is the number that says whether a file comes out with rows in
+   * it, which `EMPTY_RATE_WINDOW` is raised from and which the sentences about a channel's
+   * cells are true or false of. Set once the window is resolved, since it depends on it.
+   */
+  rows: number;
 }
 
 export interface PlanInput {
@@ -255,6 +264,12 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   const groups = writeSignals
     ? groupByRate(chosen, columnNames, options.decimals, options.gzip === true, layout)
     : [];
+  // Once, here, because three things read it: the estimate adds them up, the warning about a
+  // rate with no rows in the window is raised from it, and so are the sentences about the
+  // cells of a channel in such a group.
+  for (const group of groups) {
+    group.rows = rowsInRange(group, range, input.recordDuration, input.recordStarts);
+  }
   const estimate = estimateOutput(
     groups,
     range,
@@ -470,9 +485,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       Only the wide layout: a long conversion puts every rate in one table, so a rate with no
       samples in the window costs it rows and not a file.
     */
-    const empty = groups.filter(
-      (group) => rowsInRange(group, range, input.recordDuration, input.recordStarts) === 0,
-    );
+    const empty = groups.filter((group) => group.rows === 0);
     const kept = groups.filter((group) => !empty.includes(group));
     if (empty.length > 0 && kept.length > 0) {
       const rates = (which: readonly RateGroup[]): string =>
@@ -597,6 +610,8 @@ function groupByRate(
         column: columnNames.get(signal.index) ?? `signal_${signal.index}`,
         decimals: forcedDecimals ?? decimalsForSignal(signal),
       })),
+      // Filled in by buildPlan, which is where the window is known.
+      rows: 0,
     };
   });
 }
@@ -903,7 +918,7 @@ function estimateOutput(
   let longRows = 0;
 
   for (const group of groups) {
-    const groupRows = rowsInRange(group, range, recordDuration, recordStarts);
+    const groupRows = group.rows;
     if (layout === 'long') {
       // A row per sample per channel rather than a row per sample time.
       const groupCells = groupRows * group.channels.length;

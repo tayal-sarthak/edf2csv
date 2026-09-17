@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.44
+
+### cells described in a file the warning below says has none
+
+The last way a channel ends up with no cells, after `--annotations-only` and the channels
+`--channels` leaves out. A rate group is what gets a file, so a window a hundredth of a second
+wide leaves a 1 Hz channel's file holding its header while a 256 Hz channel in the same
+recording keeps rows — and the sentence about the first channel's cells went on describing
+them:
+
+    $ edf2csv mixed.edf --start 0.1 --end 0.4 --out ./converted
+    warning: Signal 1 ("slowflat") has physical minimum equal to physical maximum (0),
+             so every sample converts to the same value.
+             Its cells carry that value rather than being left empty, since the
+             mapping is defined — it just has one point in it.
+    warning: No samples fall inside the requested window at 1 Hz, so signals_1hz.csv
+             holds its header and no data.
+
+Two warnings about one file, and the first describes cells the second says are not there. It
+now reads "No samples are converted for a window holding none of this channel's samples", the
+third reason this clause takes after `--annotations-only` and `--channels`.
+
+The run-level sentences — the timing hints, the rate warning — are deliberately untouched: this
+run does write rows, just none of this channel's. That is what separates it from 0.9.39's case,
+where the window empties every rate.
+
+`RateGroup` gains `rows`, the number of rows the window leaves that group, which 0.9.43's
+warning was recomputing and `estimateOutput` was already working out per group in order to add
+them up.
+
 ## 0.9.43
 
 ### a file with no rows in it, and a summary line as the only sign

@@ -21,7 +21,8 @@ import process from 'node:process';
 import { EdfError } from './edf/errors.js';
 import { EdfFile } from './edf/reader.js';
 import { buildPlan, withoutFileRateWarning } from './convert/plan.js';
-import { convertedChannels,
+import { channelsWithoutRows,
+  convertedChannels,
   ConversionError,
   USAGE_ERROR_CODES,
   auditStdout,
@@ -1213,6 +1214,7 @@ async function showInfo(
         convertedChannels(plan),
         toStdout,
         plan.layout === 'long',
+        channelsWithoutRows(plan),
       ),
       { toStdout, gzip: plan.gzip },
     );
