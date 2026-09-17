@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.42
+
+### each row carrying its own time, in a table with no rows
+
+`MIXED_SAMPLING_RATES` explains the shape of the output, and it says so differently for each
+layout. The wide hint names one file per rate, which a window holding no samples still writes —
+with a header and nothing in it, but written. The long hint is a sentence about rows:
+
+    $ edf2csv gappy.edf --layout long --start 2 --duration 1 --out ./converted
+    warning: Channels use 2 different sampling rates (4 Hz, 1 Hz).
+             They share one table, each row carrying its own time, so no channel is
+             resampled.
+    warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+             signal file holds its header and no data.
+
+There are no rows to carry anything. Only that clause moves — the rates and the promise not to
+resample are facts about the recording, not about this run:
+
+    They share one table, which the requested window leaves holding its header and no
+    rows. No channel is resampled.
+
+The seventh sentence of the empty-window set, and the one left over from 0.9.39 and 0.9.40
+because it is the only one whose two halves are true in different layouts.
+
 ## 0.9.41
 
 ### every sample written, in order, out of a window holding none

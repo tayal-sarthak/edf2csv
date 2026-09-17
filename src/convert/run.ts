@@ -2356,6 +2356,28 @@ export function withSignalTableUnwritten(
       warning is raised per rate group from the channels the plan converts, so a run that
       converts none raises none.
     */
+    /*
+      And the rate warning, whose long-layout half is a sentence about rows.
+
+      `MIXED_SAMPLING_RATES` explains why the output is shaped the way it is, and it says so
+      differently for each layout: the wide one writes "one file per rate", which a window
+      holding no samples still writes — with a header and nothing in it, but written. The long
+      one writes "They share one table, each row carrying its own time", and there are no rows
+      to carry anything. Only the clause about the rows moves; the rates and the promise not
+      to resample are facts about the recording.
+    */
+    if (
+      noRows &&
+      diagnostic.code === 'MIXED_SAMPLING_RATES' &&
+      diagnostic.hint?.startsWith('They share one table') === true
+    ) {
+      return {
+        ...diagnostic,
+        hint:
+          'They share one table, which the requested window leaves holding its header and ' +
+          'no rows. No channel is resampled.',
+      };
+    }
     if (diagnostic.code === 'VALUE_RESOLUTION') {
       return {
         ...diagnostic,

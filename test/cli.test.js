@@ -6370,6 +6370,32 @@ describe('--stdout', () => {
       assert.match(flat, /so none is rounded at all/u, flat);
       assert.doesNotMatch(flat, /Every sample is written, in order/u, flat);
     }
+
+    /*
+      And the rate warning's long-layout half, which is also a sentence about rows. The wide
+      half names one file per rate, and a window holding no samples still writes those — with
+      a header and nothing in it, but written. The long half says "They share one table, each
+      row carrying its own time", over a table with no rows to carry anything.
+    */
+    for (const mode of [['--info'], ['--out', path.join(dir, 'rates-window')]]) {
+      const rates = await cli([
+        fixture('records-backwards.edf'), '--layout', 'long', '--start', '2', '--duration', '1',
+        ...mode,
+      ]);
+      assert.equal(rates.code, 0, rates.stderr);
+      const flat = rates.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /which the requested window leaves holding its header and no rows/u, flat);
+      assert.doesNotMatch(flat, /each row carrying its own time/u, flat);
+    }
+    // The wide layout keeps its own sentence, which names files this run does write.
+    const wideRates = await cli([
+      fixture('records-backwards.edf'), '--start', '2', '--duration', '1', '--info',
+    ]);
+    assert.match(
+      wideRates.stderr.replace(/\s+/gu, ' '),
+      /They are written to one file per rate/u,
+      wideRates.stderr,
+    );
   });
 
   it('does not describe rows of a signal table --annotations-only will not write', async () => {
