@@ -1587,6 +1587,28 @@ describe('--info', () => {
       2,
       `and it described both: ${surveyed.stdout}`,
     );
+    /*
+      And every one of those reports says the run is refused, rather than going back to
+      predicting a stream. tiny.edf is single-rate, so `--stdout` would take it on its own and
+      `stdoutRefusal` says nothing about it — the count is what refuses this run, which is a
+      fact `showInfo` has and that guard does not. Both estimates named the conversion that
+      does write the rows, which for a single-rate recording has no paragraph above it to
+      refer back to.
+    */
+    const estimates = surveyed.stdout.replace(/\s+/gu, ' ').match(/[A-Za-z ]*would write [^;.]*/gu) ?? [];
+    assert.equal(estimates.length, 2, surveyed.stdout);
+    for (const line of estimates) {
+      assert.match(
+        line.trim(),
+        /^(?:That conversion|Converting into a directory) would write/u,
+        line,
+      );
+    }
+    assert.equal(
+      (surveyed.stdout.replace(/\s+/gu, ' ').match(/--stdout writes none of them/gu) ?? []).length,
+      2,
+      surveyed.stdout,
+    );
     // Still a refusal without --info, and under --json, which has nowhere to put it.
     for (const args of [[folder, '--stdout'], [folder, '--info', '--stdout', '--json']]) {
       const refused = await cli(args);

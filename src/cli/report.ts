@@ -602,10 +602,12 @@ export function formatInfo(
   lines.push(
     wrap(
       stdoutRefused
-        ? // "That conversion" is the directory one the paragraph above has just named, which
-          // is the only shape this branch refuses: the other two refusals write no signal
-          // table at all and are answered on the line above.
-          `That conversion would write ${size}; --stdout writes none of them.`
+        ? // "That conversion" where the paragraph above has just named the directory one,
+          // which is every multi-rate refusal; a batch refusal reaches this line on a
+          // single-rate recording too, and there the sentence has to name it itself.
+          (plan.groups.length > 1 && plan.layout !== 'long'
+            ? 'That conversion would write '
+            : 'Converting into a directory would write ') + `${size}; --stdout writes none of them.`
         : `Would write ${size}${alsoEvents}.`,
     ),
   );

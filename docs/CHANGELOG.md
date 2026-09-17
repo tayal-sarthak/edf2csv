@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.47
+
+### a stream predicted for every recording of a batch that refuses
+
+0.9.46 stopped `--info --stdout` over a folder from refusing, so it describes every recording —
+and each report went straight back to predicting a stream:
+
+    $ edf2csv ./study --info --stdout
+    warning: --stdout would refuse this run: it writes a single CSV, and it cannot take
+             3 recordings.
+    File       study/a.edf
+    ...
+    Would write 12 rows, roughly 683 B.
+
+That is the sentence 0.9.34 corrected, printed again by the mode that had just been let past
+the batch guard. `stdoutRefusal` is asked of one recording and cannot see how many there are;
+`showInfo` has taken the count as an argument since batches existed, so the answer was already
+in the function.
+
+Every report in a refused batch now says so, single-rate recordings included — which is where
+most of them are, since a recording whose own shape streams fine is exactly the one that had
+nothing to correct it:
+
+    Converting into a directory would write 20 rows, roughly 495 B; --stdout writes none
+    of them.
+
+"That conversion" is kept where the paragraph above has just named the directory conversion,
+which is every multi-rate refusal. A batch refusal reaches this line on a single-rate recording
+too, and there the sentence has to name it itself.
+
 ## 0.9.46
 
 ### forty recordings, described as none, by the mode for surveying them

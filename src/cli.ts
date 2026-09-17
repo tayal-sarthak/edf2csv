@@ -1208,6 +1208,15 @@ async function showInfo(
       answer: the estimate under the channel table was describing a run that does not happen.
       See `formatInfo`'s last parameter.
     */
+    /*
+      And the count, which `stdoutRefusal` cannot see and this function already knows.
+
+      0.9.46 stopped `--info --stdout` over a folder from refusing, so each recording is now
+      described — and each report went back to predicting a stream: `(stdout)` in the OUTPUT
+      column and "Would write 12 rows" under it, for a run the warning at the top of the same
+      output says would be refused. That is the sentence 0.9.34 corrected for the one-recording
+      refusals, printed again by the mode that had just been let past the batch guard.
+    */
     const refusal = toStdout ? stdoutRefusal(file, plan) : null;
     if (refusal) {
       plan.diagnostics.push({
@@ -1260,7 +1269,7 @@ async function showInfo(
     const audit = auditStdout();
     const description = asJson
       ? `${infoJson(file, plan, diagnostics, knownEvents, jsonIndent, toStdout)}\n`
-      : `${formatInfo(file, plan, knownEvents, toStdout, refusal !== null)}\n`;
+      : `${formatInfo(file, plan, knownEvents, toStdout, refusal !== null || (toStdout && batch))}\n`;
     process.stdout.write(description);
     audit?.count(Buffer.byteLength(description));
     audit?.verify();
