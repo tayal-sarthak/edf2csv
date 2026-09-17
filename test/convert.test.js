@@ -1535,6 +1535,43 @@ describe('an empty result', () => {
     const ordinary = await outDir();
     const whole = await convert(fixture('tiny.edf'), { outputDir: ordinary });
     assert.ok(!whole.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'));
+
+    /*
+      And one rate's file empty while the run has rows, which the check above cannot see: it
+      asks whether the conversion wrote any rows, and a rate group is what gets a file.
+      mixed-rates.edf runs at 256, 128 and 1 Hz, so a window of a hundredth of a second holds
+      samples of the first two and none of the third — and what came out was a summary line
+      reading `signals_1hz.csv 0 rows`, exit 0, no warning and --strict passing, where the
+      same empty file arrived at through a window that empties every rate raises EMPTY_WINDOW
+      and fails it.
+
+      Its own code, because EMPTY_WINDOW means the run produced nothing — what a script
+      watching for a useless conversion matches on — and this run produced 5 rows.
+    */
+    const partial = await outDir();
+    const some = await convert(fixture('mixed-rates.edf'), {
+      outputDir: partial, start: 0.01, end: 0.02,
+    });
+    const rate = some.diagnostics.find((d) => d.code === 'EMPTY_RATE_WINDOW');
+    assert.ok(rate, `no warning: ${JSON.stringify(some.diagnostics.map((d) => d.code))}`);
+    assert.match(rate.message, /at 1 Hz, so signals_1hz\.csv holds its header and no data/u, rate.message);
+    assert.match(rate.hint, /does hold samples at 256 Hz, 128 Hz/u, rate.hint);
+    assert.ok(
+      !some.diagnostics.some((d) => d.code === 'EMPTY_WINDOW'),
+      'the run wrote rows, so it is not an empty result',
+    );
+    assert.deepEqual(await readCsv(partial, 'signals_1hz.csv'), ['time_s,Temp rectal']);
+    assert.ok((await readCsv(partial, 'signals_256hz.csv')).length > 1, 'and the fast rate has rows');
+
+    /*
+      The long layout puts every rate in one table, so a rate with no samples in the window
+      costs it rows rather than a file, and there is no empty file to report.
+    */
+    const asLong = await outDir();
+    const together = await convert(fixture('mixed-rates.edf'), {
+      outputDir: asLong, start: 0.01, end: 0.02, layout: 'long',
+    });
+    assert.ok(!together.diagnostics.some((d) => d.code === 'EMPTY_RATE_WINDOW'));
   });
 
   it('leaves the paths that write no signal files alone', async () => {

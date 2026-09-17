@@ -28,6 +28,16 @@ export type DiagnosticCode =
   | 'STALE_OUTPUT'
   | 'INPUT_CHANGED'
   | 'EMPTY_WINDOW'
+  /*
+    One rate's file empty while the run has rows, which `EMPTY_WINDOW` cannot say.
+
+    A rate group is what gets a file, and a window can hold samples of one rate and none of
+    another. `EMPTY_WINDOW` means the run produced nothing, which is what a script watching
+    for a useless conversion matches on; this one means the run produced something and one of
+    its files came out with a header and no rows. Coding them the same would have that script
+    quarantine a conversion that worked.
+  */
+  | 'EMPTY_RATE_WINDOW'
   | 'TIME_RESOLUTION'
   | 'VALUE_RESOLUTION'
   | 'HEADER_BYTES_MISMATCH'

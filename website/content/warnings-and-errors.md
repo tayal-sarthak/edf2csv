@@ -95,6 +95,7 @@ If you want to know about a file before committing to a conversion, `--info` is 
 | `NONPRINTABLE_LABEL` | A channel's label, unit, transducer or prefiltering contains control characters, or an annotation's description carries text a terminal does not print as itself; the warning says which |
 | `FORMULA_LABEL` | A channel's label, unit, transducer or prefiltering — or an annotation's description — starts with a character a spreadsheet reads as the start of a formula |
 | `EMPTY_WINDOW` | The requested window lands where the recording has no data, so the signal files hold only their headers |
+| `EMPTY_RATE_WINDOW` | The requested window holds samples of some of the recording's sampling rates and none of others, so those rates' files hold only their headers |
 | `INPUT_CHANGED` | The input changed while it was being converted |
 | `TIME_RESOLUTION` | Samples arrive faster than the time column can distinguish, so consecutive rows share a `time_s` — or the rate overflowed to `Infinity` and no rows are written at all |
 | `VALUE_RESOLUTION` | A channel steps by less than the decimals written can express, so consecutive samples share a value |
@@ -904,6 +905,28 @@ warning: No samples fall inside the requested window (2.000s to 10.000s), so the
          without --start and --end and read time_s to see where the records
          actually sit.
 ```
+
+### EMPTY_RATE_WINDOW
+
+One rate's file holds its header and no rows while the rest of the conversion has data.
+
+**Cause.** A rate group is what gets a file, and the same window can hold samples of one rate and none of another: a channel sampled once a second has a sample every 1s, so `--start 0.1 --end 0.4` falls between two of them while a 4 Hz channel in the same recording keeps one. Until 0.9.43 nothing was said about it — the summary listed a file with `0 rows` and the run exited 0 and passed `--strict`, where the same empty file arrived at through a window that empties *every* rate raises `EMPTY_WINDOW` and fails it.
+
+```
+warning: No samples fall inside the requested window at 1 Hz, so signals_1hz.csv holds
+         its header and no data.
+         The window does hold samples at 4 Hz. A window narrower than a channel's
+         sample interval can fall between two of its samples, and the slower the
+         channel the wider that gap is.
+```
+
+**Its own code, not `EMPTY_WINDOW`.** That one means the run produced nothing, which is what a script watching for a useless conversion matches on. This one means the run produced something and one of its files came out empty; coding them the same would have that script quarantine a conversion that worked.
+
+**What edf2csv does.** Writes the file, header and all, so the set of files a mixed-rate conversion produces does not depend on the window. Named as they will be written, so `--gzip` names the compressed file and `--stdout` names the stream.
+
+**What to do.** Widen the window to at least one sample interval of the slowest rate named, or convert with `--layout long`, where every rate shares one table and a rate with no samples in the window costs it rows rather than a file. `--channels` narrowing the run to the rates you want also removes it, since the warning is about the files this run writes.
+
+Only the wide layout raises it.
 
 **What to do.** Convert the whole recording and read `time_s`, which carries one true time per row — `--info` gives the count, the duration and a time span that "includes discontinuities", but not the positions. On an EDF+D file the gaps are the point: the row times are true recording times, so a window chosen from wall-clock arithmetic can miss the data entirely.
 

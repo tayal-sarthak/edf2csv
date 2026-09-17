@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.43
+
+### a file with no rows in it, and a summary line as the only sign
+
+`EMPTY_WINDOW` asks whether the conversion wrote any rows. A rate group is what gets a file,
+and the same window can hold samples of one rate and none of another: a channel sampled once a
+second has a sample every 1s, so a window a hundredth of a second wide falls between two of
+them while a 256 Hz channel in the same recording keeps three.
+
+    $ edf2csv sleep-study.edf --start 0.01 --end 0.02 --out ./converted
+    Wrote ./converted
+      signals_256hz.csv  3  rows
+      signals_128hz.csv  1  row
+      signals_1hz.csv    0  rows
+
+A file holding its header and nothing else, one line of a summary, no warning, exit 0, and
+`--strict` passing — where the same empty file arrived at through a window that empties *every*
+rate raises a warning and fails `--strict`. The rule `EMPTY_WINDOW`'s own docstring states is
+that everywhere a request produces nothing this tool says so.
+
+    warning: No samples fall inside the requested window at 1 Hz, so signals_1hz.csv
+             holds its header and no data.
+             The window does hold samples at 256 Hz, 128 Hz. A window narrower than a
+             channel's sample interval can fall between two of its samples, and the
+             slower the channel the wider that gap is.
+
+**Its own code, `EMPTY_RATE_WINDOW`.** `EMPTY_WINDOW` means the run produced nothing, which is
+what a script watching for a useless conversion matches on; this run produced five rows.
+Coding them the same would have that script quarantine a conversion that worked.
+
+Only the wide layout: `--layout long` puts every rate in one table, so a rate with no samples
+in the window costs it rows rather than a file. The per-group row count this needs came out of
+`estimateOutput`, which was already computing it per group to add up.
+
 ## 0.9.42
 
 ### each row carrying its own time, in a table with no rows

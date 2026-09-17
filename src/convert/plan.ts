@@ -448,6 +448,48 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
     diagnostics.push(
       emptyWindow(range, input.recordCount, groups, options.gzip === true, options.toStdout === true),
     );
+  } else if (writeSignals && (options.layout ?? 'wide') !== 'long' && !untimeable) {
+    /*
+      And a window that empties one rate and not another, which nothing said at all.
+
+      The check above asks whether the run wrote any rows. A rate group is what gets a file,
+      and a window can hold samples of one rate and none of another — a channel sampled once
+      a second has a sample every 1s, so `--start 0.1 --end 0.4` falls between two of them
+      while a 4 Hz channel in the same recording keeps one:
+
+          $ edf2csv mixed.edf --start 0.1 --end 0.4 --out ./converted
+          Wrote ./converted
+            signals_4hz.csv  1  row
+            signals_1hz.csv  0  rows
+
+      Two lines of a summary, one of them a file holding its header and nothing else, and no
+      warning — where the same file arrived at through a window that empties every rate
+      raises one, and `--strict` exits 1 over it. The rule EMPTY_WINDOW's own docstring
+      states is that everywhere a request produces nothing this tool says so.
+
+      Only the wide layout: a long conversion puts every rate in one table, so a rate with no
+      samples in the window costs it rows and not a file.
+    */
+    const empty = groups.filter(
+      (group) => rowsInRange(group, range, input.recordDuration, input.recordStarts) === 0,
+    );
+    const kept = groups.filter((group) => !empty.includes(group));
+    if (empty.length > 0 && kept.length > 0) {
+      const rates = (which: readonly RateGroup[]): string =>
+        listed(formatRates(which.map((g) => g.rate)).map((rate) => `${rate} Hz`));
+      diagnostics.push({
+        code: 'EMPTY_RATE_WINDOW',
+        severity: 'warning',
+        message:
+          `No samples fall inside the requested window at ${rates(empty)}, so ` +
+          `${listed(empty.map((g) => destination(g)))} ` +
+          `${empty.length === 1 ? 'holds its header' : 'hold their headers'} and no data.`,
+        hint:
+          `The window does hold samples at ${rates(kept)}. A window narrower than a ` +
+          `channel's sample interval can fall between two of its samples, and the slower ` +
+          `the channel the wider that gap is.`,
+      });
+    }
   }
 
   if (estimate.exceedsSpreadsheetLimit) {
@@ -815,6 +857,36 @@ function emptyWindow(
   };
 }
 
+/**
+ * How many rows of one rate group fall inside the window.
+ *
+ * Lifted out of `estimateOutput`, which counted this per group to add up, because the count
+ * per group is a fact the report needs on its own: a window can hold samples of one rate and
+ * none of another, and the file for the second is then written with its header and no data
+ * while the run as a whole has rows and says nothing about it.
+ */
+function rowsInRange(
+  group: RateGroup,
+  range: ResolvedRange,
+  recordDuration: number,
+  recordStarts: Float64Array | null | undefined,
+): number {
+  let rows = 0;
+  for (let record = range.startRecord; record < range.endRecord; record++) {
+    const recordStart = recordStarts
+      ? (recordStarts[record] ?? record * recordDuration)
+      : record * recordDuration;
+    rows += countSamplesInRange({
+      recordStart,
+      rate: group.rate,
+      samplesPerRecord: group.samplesPerRecord,
+      startSeconds: range.startSeconds,
+      endSeconds: range.endSeconds,
+    });
+  }
+  return rows;
+}
+
 function estimateOutput(
   groups: readonly RateGroup[],
   range: ResolvedRange,
@@ -831,19 +903,7 @@ function estimateOutput(
   let longRows = 0;
 
   for (const group of groups) {
-    let groupRows = 0;
-    for (let record = range.startRecord; record < range.endRecord; record++) {
-      const recordStart = recordStarts
-        ? (recordStarts[record] ?? record * recordDuration)
-        : record * recordDuration;
-      groupRows += countSamplesInRange({
-        recordStart,
-        rate: group.rate,
-        samplesPerRecord: group.samplesPerRecord,
-        startSeconds: range.startSeconds,
-        endSeconds: range.endSeconds,
-      });
-    }
+    const groupRows = rowsInRange(group, range, recordDuration, recordStarts);
     if (layout === 'long') {
       // A row per sample per channel rather than a row per sample time.
       const groupCells = groupRows * group.channels.length;

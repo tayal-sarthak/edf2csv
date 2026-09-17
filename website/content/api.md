@@ -211,6 +211,7 @@ INPUT_CHANGED              EMPTY_WINDOW               TIME_RESOLUTION
 VALUE_RESOLUTION           HEADER_BYTES_MISMATCH      NONPRINTABLE_LABEL
 FORMULA_LABEL              START_TIME_UNREADABLE      LEAP_SECOND_START
 START_DATE_MISMATCH        MISSING_EDF_PLUS_MARKER    STDOUT_UNSUPPORTED
+EMPTY_RATE_WINDOW
 ```
 
 `file.diagnostics` carries only the ones the header parser can raise. Conversion adds more, which is why `convert()` returns its own combined list.
