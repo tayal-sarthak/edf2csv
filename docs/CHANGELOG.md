@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.46
+
+### forty recordings, described as none, by the mode for surveying them
+
+`--stdout` has four refusals. Three are facts about the recording — more than one sampling rate,
+no signal channels, `--annotations-only` — and `--info` previews all three rather than refusing,
+for the reason 0.5.51 gives about the destination guards: `--info` writes nothing, so a rule
+about the output has no business stopping it from describing the recording, and being told the
+command will not work is exactly what was asked.
+
+The fourth is that one stream holds one recording, and it refused outright:
+
+    $ edf2csv ./study --info --stdout
+    error: --stdout writes a single CSV, so it cannot take 40 recordings.
+
+Nothing about the forty, in the mode whose purpose is surveying a folder before converting it —
+and `edf2csv ./study --info` describes every one of them. How many recordings there are is a
+fact about the input exactly as the rate count is, so it now warns once and carries on:
+
+    warning: --stdout would refuse this run: it writes a single CSV, and it cannot take
+             40 recordings.
+             Convert them to directories instead, or run edf2csv once per file.
+
+Under `--json` it stays a refusal: that mode is documented to keep every warning inside the
+document and leave stderr empty, and over a folder it writes one document per recording, so a
+sentence about how many there are has nowhere to go.
+
+The flag contradictions stay refusals under `--info` too — `--stdout` with `--out`, `--force`
+or `--checksum` are errors in the command line itself, which `--info` refuses as it refuses
+`--end` together with `--duration`.
+
 ## 0.9.45
 
 ### the header only, on a mode that reads records

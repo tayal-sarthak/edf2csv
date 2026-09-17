@@ -1566,6 +1566,35 @@ describe('--info', () => {
     assert.doesNotMatch(plain.stderr, /would refuse/u, plain.stderr);
 
     /*
+      And a batch, where how many recordings there are is a fact about the input exactly as
+      the rate count is. This guard refused it outright — "error: --stdout writes a single
+      CSV, so it cannot take 40 recordings", and nothing about the forty — in the mode whose
+      purpose is surveying a folder before converting it. Under --json it stays a refusal:
+      that mode keeps every warning inside the document and emits one per recording, so a
+      sentence about how many there are has nowhere to go.
+    */
+    const folder = await mkdtemp(path.join(tmpdir(), 'edf2csv-batch-preview-'));
+    temporaries.push(folder);
+    for (const name of ['tiny.edf', 'mixed-rates.edf']) {
+      await copyFile(fixture(name), path.join(folder, name));
+    }
+    const surveyed = await cli([folder, '--info', '--stdout']);
+    assert.equal(surveyed.code, 0, surveyed.stderr);
+    assert.match(surveyed.stderr, /--stdout would refuse this run: it writes a single CSV/u, surveyed.stderr);
+    assert.match(surveyed.stderr, /cannot take 2 recordings/u, surveyed.stderr);
+    assert.equal(
+      (surveyed.stdout.match(/^File /gmu) ?? []).length,
+      2,
+      `and it described both: ${surveyed.stdout}`,
+    );
+    // Still a refusal without --info, and under --json, which has nowhere to put it.
+    for (const args of [[folder, '--stdout'], [folder, '--info', '--stdout', '--json']]) {
+      const refused = await cli(args);
+      assert.equal(refused.code, 2, `${args.join(' ')}: ${refused.stderr}`);
+      assert.match(refused.stderr, /^error: --stdout writes a single CSV/u, refused.stderr);
+    }
+
+    /*
       Nor does it describe the events, which a --stdout run writes nowhere.
 
       The two functions raising the warnings about what an annotation's duration and

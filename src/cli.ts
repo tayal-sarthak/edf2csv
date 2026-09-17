@@ -467,7 +467,38 @@ export async function main(argv: readonly string[]): Promise<number> {
     A folder is still refused however few recordings it turns out to hold, for the reason
     0.5.5 gives: what it holds is not known until it is walked.
   */
-  if (toStdout && (inputs.length > 1 || namedDirectory)) {
+  /*
+    A warning rather than a refusal under `--info`, like the three refusals about the file.
+
+    `--info --stdout` on a three-rate recording is not refused: it says "--stdout would refuse
+    this run" and goes on describing the recording, for the reason 0.5.51 gives about the
+    destination guards — `--info` writes nothing, so a rule about the output has no business
+    stopping it from describing the recording, and being told the command will not work is
+    exactly what was asked. How many recordings there are is a fact about the input, exactly
+    as the rate count is, and this guard refused it outright:
+
+        $ edf2csv ./study --info --stdout
+        error: --stdout writes a single CSV, so it cannot take 40 recordings.
+
+    Nothing about forty recordings, in the mode whose whole purpose is surveying a folder
+    before converting it — and `edf2csv ./study --info` describes every one of them. The flag
+    contradictions below stay refusals: `--stdout --out` and `--stdout --checksum` are errors
+    in the command line itself, which `--info` refuses as it refuses `--end` with
+    `--duration`.
+
+    Not under `--json`, which is documented to keep every warning inside the document and
+    leave stderr empty — "nothing else reaches stderr in this mode". This one belongs to the
+    run rather than to a recording, and over a folder that mode emits one document per
+    recording, so there is nowhere in it to put a sentence about how many there are. The
+    refusal is what says it there.
+  */
+  if (toStdout && (inputs.length > 1 || namedDirectory) && values['info'] === true && !asJson) {
+    process.stderr.write(
+      `\nwarning: --stdout would refuse this run: it writes a single CSV, and ` +
+        `${inputs.length === 1 ? 'a folder is converted as a batch even when it holds one recording' : `it cannot take ${counted(inputs.length, 'recording')}`}.\n` +
+        `${wrap('Convert them to directories instead, or run edf2csv once per file.', '         ')}\n`,
+    );
+  } else if (toStdout && (inputs.length > 1 || namedDirectory)) {
     // Prefixed and indented like the rest; see the --json refusal above. The recording's
     // name goes through `printable` for the reason 0.5.67 gives: a path is untrusted text,
     // and this one is read straight out of a directory the caller named.
