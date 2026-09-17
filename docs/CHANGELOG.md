@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.49
+
+### an estimate the text qualifies and the JSON does not
+
+The `--info --json` field table says `estimate.rows` and `estimate.bytes` are `null` "when no
+signal table would be written — under `--annotations-only`, or on a recording that has no signal
+channels", and that "the text output says the same thing in words on that line".
+
+A `--stdout` run the recording refuses writes no signal table either, and reports numbers:
+
+    $ edf2csv sleep-study.edf --info --json --stdout | jq .estimate
+    { "rows": 1155, "bytes": 22735, "exceeds_spreadsheet_limit": false }
+
+That is the right answer — the figures are what converting into a directory would write, and
+throwing them away would tell a reader less, not more. What stopped being true is the sentence
+beside them: since 0.9.34 the text form says "That conversion would write 1,155 rows, roughly
+22.2 KB; --stdout writes none of them", and the JSON carries the numbers alone. A script summing
+`estimate.rows` across a folder with `--stdout` counts rows nothing writes, and the only thing
+saying so is `STDOUT_UNSUPPORTED` in `warnings`.
+
+The row now states the case and names the code to branch on. The docs test that holds the `null`
+rule holds this one too, and asserts the behaviour first, so it measures rather than matches.
+
 ## 0.9.48
 
 ### annotations.csv.gz, named twice by a run that writes no file

@@ -133,6 +133,29 @@ describe('documentation and source agree on their lists', () => {
       const row = /\n\| `estimate` \|([^\n]*)\n/u.exec(reference);
       assert.ok(row, 'the estimate row is gone from the field table');
       assert.match(row[1], /`null`/u, 'the field table does not say when they are null');
+
+      /*
+        And the one case that is neither: a `--stdout` run the recording refuses writes no
+        signal table either, and reports numbers. The row said `null` covers every such run
+        and that the text form "says the same thing in words on that line" — which stopped
+        being true at 0.9.34, when the text learned to say the figures are what converting
+        into a directory would write. A script summing `estimate.rows` over a folder with
+        `--stdout` counts rows nothing writes, and only `STDOUT_UNSUPPORTED` says so.
+      */
+      const refused = await run(process.execPath, [
+        CLI, generated('mixed-rates.edf'), '--info', '--json', '--stdout',
+      ]);
+      const preview = JSON.parse(refused.stdout);
+      assert.equal(typeof preview.estimate.rows, 'number', refused.stdout);
+      assert.ok(
+        preview.warnings.some((w) => w.code === 'STDOUT_UNSUPPORTED'),
+        JSON.stringify(preview.warnings),
+      );
+      assert.match(
+        row[1],
+        /STDOUT_UNSUPPORTED/u,
+        'the field table says null covers every run that writes no signal table',
+      );
     }
   });
 
