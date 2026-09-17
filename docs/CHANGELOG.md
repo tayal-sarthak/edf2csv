@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.41
+
+### every sample written, in order, out of a window holding none
+
+`VALUE_RESOLUTION` says a channel's quantization step is below any precision `toFixed` can
+print, so consecutive samples land on the same text — and then reassures the reader that
+nothing is lost from the data: "Every sample is written, in order". A window holding no samples
+writes none, which the warning directly under it says in as many words:
+
+    warning: fine steps by less than any number of decimals this can print, so some
+             consecutive samples round to the same value in signals.csv.
+             Every sample is written, in order, and the physical values are computed
+             at full precision either way. What is lost is only in the printed text.
+    warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+             signal file holds its header and no data.
+
+plan.ts already gives this exact reassurance its own branch where a channel's rate overflows to
+Infinity, on the stated grounds that "no rows are written at all, so `Every sample is written,
+in order` would be the third untrue sentence". This is that sentence, reached by the other
+route — and 0.9.39 amended the five warnings beside it without it, because no committed fixture
+carries both a step below 1e-98 and a gap for a window to fall into.
+
+`--annotations-only` and `--channels` never reach it: the warning is raised per rate group from
+the channels the plan converts, so a run that converts none of them raises none.
+
 ## 0.9.40
 
 ### names in a header row the long layout does not have

@@ -6341,6 +6341,35 @@ describe('--stdout', () => {
       /It will appear as "signal_1"/u,
       longHeld.stderr,
     );
+
+    /*
+      And the one warning about the printed text of a sample rather than about a cell.
+      VALUE_RESOLUTION reassures the reader that "Every sample is written, in order" — over a
+      window that writes none. plan.ts already gives that reassurance its own branch where
+      the rate overflows to Infinity, for the stated reason that no rows are written there;
+      this is the same sentence reached by the other route. Needs a step below any printable
+      precision, which no committed fixture has.
+    */
+    const fine = path.join(dir, 'fine-gap.edf');
+    writeEdf({
+      path: fine, reserved: 'EDF+D', numRecords: 3, recordDuration: 1,
+      talsForRecord: (r) => buildTal(r === 2 ? 5 : r),
+      signals: [
+        { ...base, label: 'fine', dimension: 'm', physMin: -1e-99, physMax: 1e-99 },
+        { label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+          digMax: 32767, samplesPerRecord: 40, annotations: true },
+      ],
+    });
+    const whole = await cli([fine, '--info']);
+    assert.match(whole.stderr.replace(/\s+/gu, ' '), /Every sample is written, in order/u, whole.stderr);
+    for (const mode of [['--info'], ['--out', path.join(dir, 'fine-window')]]) {
+      const none = await cli([fine, '--start', '2', '--duration', '1', ...mode]);
+      assert.equal(none.code, 0, none.stderr);
+      const flat = none.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /would round to the same value/u, flat);
+      assert.match(flat, /so none is rounded at all/u, flat);
+      assert.doesNotMatch(flat, /Every sample is written, in order/u, flat);
+    }
   });
 
   it('does not describe rows of a signal table --annotations-only will not write', async () => {

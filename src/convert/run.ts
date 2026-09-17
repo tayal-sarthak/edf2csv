@@ -2334,6 +2334,41 @@ export function withSignalTableUnwritten(
           `${records('the physical range the header gives')}`,
       };
     }
+    /*
+      And the one warning here that is about the printed text of a sample rather than a cell.
+
+      `VALUE_RESOLUTION` says a channel's step is below any precision `toFixed` can print, so
+      consecutive samples land on the same text — and reassures the reader that nothing is
+      lost from the data: "Every sample is written, in order". A window holding none writes no
+      samples at all, which the warning under it says in as many words:
+
+          warning: fine steps by less than any number of decimals this can print, so some
+                   consecutive samples round to the same value in signals.csv.
+                   Every sample is written, in order, and the physical values are computed
+                   at full precision either way.
+          warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+                   signal file holds its header and no data.
+
+      plan.ts already gives this reassurance its own branch where the rate overflows to
+      Infinity, on the stated grounds that "no rows are written at all, so 'Every sample is
+      written, in order' would be the third untrue sentence". This is that same sentence,
+      reached by the other route. `--annotations-only` and `--channels` never see it: the
+      warning is raised per rate group from the channels the plan converts, so a run that
+      converts none raises none.
+    */
+    if (diagnostic.code === 'VALUE_RESOLUTION') {
+      return {
+        ...diagnostic,
+        message: diagnostic.message.replace(
+          ' so some consecutive samples round to the same value in',
+          ' so some consecutive samples would round to the same value in',
+        ),
+        hint:
+          `No samples are converted ${because}, so none is rounded at all. The physical ` +
+          'values are computed at full precision either way, and what a printed one loses ' +
+          'is only in its text.',
+      };
+    }
     if (diagnostic.code === 'DEGENERATE_DIGITAL_RANGE') {
       return {
         ...diagnostic,
