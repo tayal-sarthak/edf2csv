@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.40
+
+### names in a header row the long layout does not have
+
+0.9.39 gave the empty-window case the rewrites that already existed for `--annotations-only`
+and for the channels `--channels` leaves out, and deliberately left three of them out: the ones
+saying where a channel's *name* lands. A window holding no samples still writes the signal
+file's header row, so every column is there and named exactly as those sentences say.
+
+True of the wide layout, and of only the wide layout. A long `signals.csv` is
+`time_s,channel,value`: a channel appears in it as a *value* in the channel column, so a run
+with no rows names no channel anywhere.
+
+    $ edf2csv gappy.edf --layout long --start 2 --duration 1 --out ./converted
+    warning: Signal 0 has no label. It will appear as "signal_0".
+    warning: 2 signals share the label "dup" (positions #1, #2).
+             ... a column name each in the wide layout, and a distinct value in the
+             channel column under --layout long.
+    warning: Signal 3 is labelled "dup_ch1", ... so it is named "dup_ch1_ch3" in the
+             channel column.
+    warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+             signal file holds its header and no data.
+
+One header line, and three sentences about where names appear in it. All three now point at
+the `channels.csv` such a run does write, which is what the `--annotations-only` rewrites have
+always offered in their place. The fourth sentence, the `_ch` collision, reaches this pass in a
+third spelling under `--layout long` — "in the channel column" — that neither existing pattern
+matched.
+
+The wide layout is unchanged, and so is any long-layout run that writes rows.
+
 ## 0.9.39
 
 ### cells and rows described above the warning that there are none

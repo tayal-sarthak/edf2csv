@@ -6319,6 +6319,28 @@ describe('--stdout', () => {
     const heldFlat = held.stderr.replace(/\s+/gu, ' ');
     assert.match(heldFlat, /Its cells are left empty rather than filled/u, held.stderr);
     assert.match(heldFlat, /Each row carries its true recording time/u, held.stderr);
+
+    /*
+      The names are the exception in the wide layout only. A long signals.csv is
+      `time_s,channel,value`: a channel appears in it as a value in the channel column, so a
+      run with no rows names no channel anywhere, and the three sentences about where a name
+      lands said it did — "It will appear as `signal_1`" over a file holding one header line.
+      `channels.csv` still carries it, which is what those rewrites already offer.
+    */
+    for (const mode of [['--info'], ['--out', path.join(dir, 'empty-window-long')]]) {
+      const long = await cli([gap, '--start', '2', '--duration', '1', '--layout', 'long', ...mode]);
+      assert.equal(long.code, 0, long.stderr);
+      const flat = long.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /It is named "signal_1" in channels\.csv's column cell/u, flat);
+      assert.doesNotMatch(flat, /It will appear as "signal_1"/u, flat);
+    }
+    // And a long-layout run that does write rows names the channel column, as it should.
+    const longHeld = await cli([gap, '--start', '0', '--duration', '1', '--layout', 'long', '--info']);
+    assert.match(
+      longHeld.stderr.replace(/\s+/gu, ' '),
+      /It will appear as "signal_1"/u,
+      longHeld.stderr,
+    );
   });
 
   it('does not describe rows of a signal table --annotations-only will not write', async () => {

@@ -219,6 +219,7 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
             plan.gzip,
             convertedChannels(plan),
             true,
+            plan.layout === 'long',
           ),
           { toStdout: true, gzip: plan.gzip },
         ),
@@ -357,6 +358,8 @@ export async function convert(inputPath: string, options: ConvertOptions = {}): 
           plan.writeSignals,
           plan.gzip,
           convertedChannels(plan),
+          false,
+          plan.layout === 'long',
         ),
         { toStdout: false, gzip: plan.gzip },
       ),
@@ -2042,6 +2045,28 @@ export function withSignalTableUnwritten(
     ones it has never been shown: they do not exist until this pass writes them.
   */
   toStdout = false,
+  /*
+    And whether the run puts the channel names in rows rather than in a header.
+
+    The three rewrites this pass makes about a channel's *name* were deliberately left out of
+    the empty-window case at 0.9.39, on the grounds that a window holding no samples still
+    writes the signal file's header row, so every column is there and named exactly as those
+    sentences say. True of the wide layout, and of only the wide layout. A long signals.csv
+    is `time_s,channel,value`: a channel appears in it as a *value* in the channel column, so
+    a run with no rows names no channel anywhere, and all three went on saying it did:
+
+        $ edf2csv gappy.edf --layout long --start 2 --duration 1 --out ./converted
+        warning: Signal 0 has no label. It will appear as "signal_0".
+        warning: 2 signals share the label "dup" (positions #1, #2).
+                 ... a column name each in the wide layout, and a distinct value in the
+                 channel column under --layout long.
+        warning: No samples fall inside the requested window (2.000s to 3.000s), so the
+                 signal file holds its header and no data.
+
+    `channels.csv` still carries the name, which is what the `--annotations-only` rewrites
+    have always offered in its place.
+  */
+  longLayout = false,
 ): Diagnostic[] {
   /*
     And the third way to arrive with no cells and no rows, which is a window holding none.
@@ -2073,7 +2098,7 @@ export function withSignalTableUnwritten(
   const noRows = writesSignals && diagnostics.some((d) => d.code === 'EMPTY_WINDOW');
   const skipped = (diagnostic: Diagnostic): boolean => {
     if (!writesSignals) return true;
-    if (noRows) return !NAMES_A_COLUMN.has(diagnostic.code);
+    if (noRows) return longLayout || !NAMES_A_COLUMN.has(diagnostic.code);
     const named = /^Signal (\d+)\b/u.exec(diagnostic.message);
     return named !== null && !converted.has(Number(named[1]));
   };
@@ -2186,12 +2211,20 @@ export function withSignalTableUnwritten(
       happens, since the names are derived from the whole file so that they agree with
       channels.csv and across runs, and the column it is named for is one this run has not got.
     */
-    if (diagnostic.code === 'DUPLICATE_LABEL' && / so its column is "/u.test(diagnostic.message)) {
+    // Either noun the plan may have written: a column of the wide table, or the channel
+    // column a long one names it in. Both are places this run has no rows in.
+    if (
+      diagnostic.code === 'DUPLICATE_LABEL' &&
+      / so (?:its column is "|it is named "[^"]*" in the channel column)/u.test(diagnostic.message)
+    ) {
       return {
         ...diagnostic,
         message: diagnostic.message.replace(
-          / so its column is ("[^"]*")\.$/u,
-          ` so it is named $1 in ${channelsFile}'s column cell` +
+          / so (?:its column is ("[^"]*")|it is named ("[^"]*") in the channel column)\.$/u,
+          // Whichever of the two groups matched carries the name; the other is undefined,
+          // and `$1` would have written an empty pair of quotes for the long-layout form.
+          (_all, wide: string | undefined, long: string | undefined) =>
+            ` so it is named ${wide ?? long} in ${channelsFile}'s column cell` +
             `${toStdout ? ' in any conversion that writes one' : ''}.`,
         ),
       };
@@ -2233,11 +2266,18 @@ export function withSignalTableUnwritten(
         hint:
           'Their names are suffixed with the signal number so they stay distinguishable. ' +
           (writesSignals
-            ? toStdout
-              ? `--channels left this channel out, and --stdout writes no ${channelsFile} for ` +
-                `its suffixed name to appear in — convert to a directory for that.`
-              : `--channels left this channel out, so its suffixed name appears in ` +
-                `${channelsFile}'s column cell and nowhere else.`
+            ? noRows
+              ? toStdout
+                ? `The requested window holds no samples, and --stdout writes no ` +
+                  `${channelsFile} for the suffixed names to appear in — convert to a ` +
+                  `directory for that.`
+                : `The requested window holds no samples, so the suffixed names appear only ` +
+                  `in ${channelsFile}'s column cells.`
+              : toStdout
+                ? `--channels left this channel out, and --stdout writes no ${channelsFile} for ` +
+                  `its suffixed name to appear in — convert to a directory for that.`
+                : `--channels left this channel out, so its suffixed name appears in ` +
+                  `${channelsFile}'s column cell and nowhere else.`
             : toStdout
               ? // The one of the three this pass was extended without at 0.9.29. `--stdout`
                 // writes no channels.csv either, and the report saying this goes on to say
@@ -2807,6 +2847,8 @@ async function writeMetadata(
         plan.writeSignals,
         plan.gzip,
         convertedChannels(plan),
+        false,
+        plan.layout === 'long',
       ),
       // metadata.json is only written into a directory, so this is never the stdout case.
       { toStdout: false, gzip: plan.gzip },

@@ -1212,6 +1212,7 @@ async function showInfo(
         plan.gzip,
         convertedChannels(plan),
         toStdout,
+        plan.layout === 'long',
       ),
       { toStdout, gzip: plan.gzip },
     );
