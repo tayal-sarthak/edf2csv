@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.51
+
+### a crash counted as a refusal, in the sweep that would have caught it
+
+`npm run stream` checks that what `--stdout` puts on the stream is byte for byte what the same
+run writes into a directory, and skips the recordings `--stdout` refuses — a mixed-rate file in
+the wide layout, one with no signal channels, a window past the end. It identified them by
+catching the failure:
+
+    } catch {
+      refused++;
+      continue;
+    }
+
+Any non-zero exit. A `--stdout` run that started crashing, or failing part way through the
+stream, landed in that bucket — reported as "45 refused by --stdout" in a number nobody reads
+against a list — and the sweep went on printing that every stream held the bytes the directory
+holds. Which is the shape 0.9.50 closed in three sweeps and 0.7.137 in six: a check that passes
+by not running, this time by counting a failure as a deliberate skip.
+
+Exit 2 is this tool's usage code and every deliberate refusal carries it; a failure mid-stream
+exits 1. The skip is now conditional on that and on an `error:` line being printed, and anything
+else is reported with its exit code and its first line. Verified by making one mode fail for a
+reason that is not a refusal and watching 33 of them come back as problems.
+
 ## 0.9.50
 
 ### plus 0 selections in the long layout, and a passing sweep

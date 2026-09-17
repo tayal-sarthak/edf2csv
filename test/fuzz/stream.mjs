@@ -62,9 +62,29 @@ for (const name of names) {
         stdio: ['ignore', 'pipe', 'pipe'],
         maxBuffer: 256 * 1024 * 1024,
       });
-    } catch {
-      // A mixed-rate recording in the wide layout, a file with no signal channels, a window
-      // outside the data: all refused, all deliberately, and all tested elsewhere.
+    } catch (failure) {
+      /*
+        A mixed-rate recording in the wide layout, a file with no signal channels, a window
+        outside the data: all refused, all deliberately, and all tested elsewhere.
+
+        Checked to be one of those rather than assumed. This caught every non-zero exit and
+        counted it as a deliberate refusal — so a `--stdout` run that started crashing, or
+        failing part way through the stream, would land in the same bucket, be reported as
+        "45 refused by --stdout" in a line nobody reads against a list, and leave the sweep
+        printing that every stream held the bytes the directory holds. Exit 2 is this tool's
+        usage code and a refusal always carries it; a failure mid-stream exits 1. The refusal
+        is not always about `--stdout`: `--start 1` on a one-second recording is refused for
+        being past the end, before the stream is reached, which is a fourth deliberate no.
+      */
+      const status = failure.status;
+      const said = String(failure.stderr ?? '');
+      if (status !== 2 || !/^error: /u.test(said)) {
+        problems.push(
+          `${name} [${mode.join(' ') || 'no options'}]: --stdout exited ${status} — not a ` +
+            `refusal: ${said.split('\n')[0] ?? ''}`,
+        );
+        continue;
+      }
       refused++;
       continue;
     }
