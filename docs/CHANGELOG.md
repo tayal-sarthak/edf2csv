@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.45
+
+### the header only, on a mode that reads records
+
+Two pages carry the same careful sentence: `--info` "reads the header, and on an EDF+ recording
+a little of the annotation channel: at most sixteen records of a continuous file to find where
+it begins, stopping at the first that says, and the whole channel for a discontinuous one".
+warnings-and-errors and cli-reference document the same two-tier read, and the JSON field table
+says which of the two a run did.
+
+sampling-rates.md said `--info` "reads the header only, converts nothing". It does read data
+records — that is why it raises `ANNOTATION_DECODE_FAILED` on a continuous file whose
+timekeeping is unreadable, prints a `Timed from` line, and counts the events of a discontinuous
+one. The page a reader arrives at from "seeing the split before you convert" was the one telling
+them otherwise.
+
+The same shape as 0.9.32: two pages state the exception and a third states the rule.
+
+A test for this has existed since the last time it happened, and it did not catch this one — it
+looked for the phrase "continuous EDF+" on two named pages, and this sentence has neither. It
+now reads every page and every wording of the claim.
+
 ## 0.9.44
 
 ### cells described in a file the warning below says has none

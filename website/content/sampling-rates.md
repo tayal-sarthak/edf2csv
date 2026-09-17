@@ -130,7 +130,7 @@ The third is `value`, and it is the one to know before you aggregate. Every chan
 
 ## Seeing the split before you convert
 
-`--info` reads the header only, converts nothing, and shows which file each channel is destined for:
+`--info` converts nothing, returns in milliseconds whatever the file's size, and shows which file each channel is destined for. It reads the header, and on an EDF+ recording a little of the annotation channel: at most sixteen records of a continuous file to find where it begins, and the whole channel for a discontinuous one, whose record times are stored rather than arithmetic.
 
 ```bash
 edf2csv recording.edf --info

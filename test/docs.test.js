@@ -2594,6 +2594,28 @@ describe('documentation and source agree on their lists', () => {
         );
       }
     }
+
+    /*
+      And every page, in whatever words. The two filters above look for "continuous EDF+" on
+      two named pages, so sampling-rates.md's flat "`--info` reads the header only, converts
+      nothing" matched neither and stood until 0.9.45 — the third page stating the rule while
+      two others state the exception, which is the shape 0.9.32 fixed in `notes`.
+    */
+    const pages = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((name) => name.endsWith('.md'));
+    for (const page of pages) {
+      const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
+      for (const [claim] of text.matchAll(/[^.]*`--info`[^.]*\./gu)) {
+        if (!/reads (?:the header only|only the header)|no further than the header/u.test(claim)) {
+          continue;
+        }
+        assert.match(
+          claim,
+          /annotation channel|sixteen/u,
+          `${page} says --info reads only the header: ${claim.trim()}`,
+        );
+      }
+    }
   });
 
   it('scopes the cheap timing recipe to the recordings it is right for', async () => {
