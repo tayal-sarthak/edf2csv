@@ -2158,6 +2158,32 @@ export function withSignalTableUnwritten(
   const channelsFile = outputCsvName('channels', gzip && !toStdout);
   const annotationsFile = outputCsvName('annotations', gzip);
   /*
+    And the event list, which `--stdout --annotations-only` does not write either.
+
+    0.9.29 taught `channelsFile` that `--stdout` writes no sidecar and gave every sentence
+    offering one a `--stdout` form; the file the *other* four rewrites offer was left naming
+    itself. All four say the events keep their own onsets whatever the records do, and send
+    the reader to `annotations.csv` for them — and `--stdout --annotations-only` is refused
+    outright, so `--info` is where it is read and nothing is written at all:
+
+        $ edf2csv scored.edf --info --stdout --gzip --annotations-only
+        warning: This recording is marked discontinuous (EDF+D): ...
+                 --annotations-only writes no signal rows, so nothing here is timed from
+                 the records. annotations.csv.gz carries each event's own onset, and the
+                 record it came from in record_index.
+        warning: --stdout would refuse this run: has no signal data to write because
+                 --annotations-only was given.
+
+    `annotations.csv.gz` under a flag pair that writes no file under either name. Named as
+    the conversion that does write it, which is the advice the refusal under it gives.
+  */
+  const eventsInstead =
+    toStdout && !writesSignals
+      ? `--stdout writes no ${outputCsvName('annotations', false)} either, so nothing is ` +
+        `written at all; a conversion to a directory carries each event's own onset and the ` +
+        `record it came from in record_index.`
+      : null;
+  /*
     What channels.csv still holds about the channel, or that there is no channels.csv.
 
     Worded the way the sidecar pass words the hints it rewrites — the file is named, so the
@@ -2471,8 +2497,9 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           `${writes}, so nothing is timed from ${one ? 'that record' : 'those records'}. ` +
-          `The events in ${one ? 'it' : 'them'} carry their own onsets, and ` +
-          `${annotationsFile}'s record_index still names ${one ? 'it' : 'them'}.`,
+          (eventsInstead ??
+            `The events in ${one ? 'it' : 'them'} carry their own onsets, and ` +
+              `${annotationsFile}'s record_index still names ${one ? 'it' : 'them'}.`),
       };
     }
     if (diagnostic.code !== 'DISCONTINUOUS' || diagnostic.hint === undefined) return diagnostic;
@@ -2480,9 +2507,10 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          `${writes}, so nothing here is timed from the ` +
-          `records. ${annotationsFile} carries each event's own onset, and the record it ` +
-          'came from in record_index.',
+          `${writes}, so nothing here is timed from the records. ` +
+          (eventsInstead ??
+            `${annotationsFile} carries each event's own onset, and the record it ` +
+              'came from in record_index.'),
       };
     }
     if (diagnostic.hint.startsWith('Rows are written in file order')) {
@@ -2490,7 +2518,8 @@ export function withSignalTableUnwritten(
         ...diagnostic,
         hint:
           `${writes}, so no time column is affected. ` +
-          `${annotationsFile}'s record_index still names the record each event came from.`,
+          (eventsInstead ??
+            `${annotationsFile}'s record_index still names the record each event came from.`),
       };
     }
     if (diagnostic.hint.startsWith('Sample times are written from zero')) {
@@ -2528,9 +2557,10 @@ export function withSignalTableUnwritten(
       return {
         ...diagnostic,
         hint:
-          `${writes}, so no times are written from the ` +
-          `records at all. ${annotationsFile} carries each event's own onset, which the ` +
-          'records do not decide.',
+          `${writes}, so no times are written from the records at all. ` +
+          (eventsInstead ??
+            `${annotationsFile} carries each event's own onset, which the ` +
+              'records do not decide.'),
       };
     }
     // The marker warning's hint, which `withTimingPromiseKept` has already rewritten once and
@@ -2658,6 +2688,29 @@ export function withSidecarsNamed(
       Two consecutive warnings, the first offering the file the second says to convert to a
       directory to get. Named as the conversion that does write them, which is that advice.
     */
+    /*
+      And the empty event list, whose message ends in the file that holds nothing.
+
+      `emptyAnnotations` is only raised where no signal table is written, which under
+      `--stdout` means `--annotations-only` — a pair this tool refuses, so `--info` is where
+      it is read. Both forms of the message name the file, and `--gzip` named the compressed
+      one: "annotations.csv.gz holds its header and no rows", of a run that writes no file
+      under either name, two lines above the warning saying the run would be refused.
+
+      The message stays a statement about the recording — its channel really does carry no
+      events, or none inside the window — and what moves is the file: the one a conversion to
+      a directory would write, which is where the refusal under it sends the reader.
+    */
+    if (toStdout && diagnostic.code === 'NO_ANNOTATIONS' && / holds its header and no rows\.$/u.test(diagnostic.message)) {
+      return {
+        ...diagnostic,
+        message: diagnostic.message.replace(
+          /, so [\w.]+ holds its header and no rows\.$/u,
+          `, and --stdout writes no ${outputCsvName('annotations', false)}; a conversion ` +
+            `to a directory writes one holding its header and no rows.`,
+        ),
+      };
+    }
     if (
       toStdout &&
       diagnostic.code === 'NO_SAMPLES' &&

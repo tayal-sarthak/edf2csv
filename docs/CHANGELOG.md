@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.48
+
+### annotations.csv.gz, named twice by a run that writes no file
+
+0.9.29 taught the sentences that offer `channels.csv` in place of a cell that `--stdout` writes
+no sidecar, and gave each a `--stdout` form. The file the *other* rewrites offer was left
+naming itself. Five sentences send the reader to the event list — the four saying the events
+keep their own onsets whatever the records do, and the one saying the list came out empty — and
+`--stdout --annotations-only` is refused outright, so nothing is written at all:
+
+    $ edf2csv scored.edf --info --stdout --gzip --annotations-only
+    warning: This recording is marked discontinuous (EDF+D): ...
+             --annotations-only writes no signal rows, so nothing here is timed from
+             the records. annotations.csv.gz carries each event's own onset, and the
+             record it came from in record_index.
+    warning: This recording's annotation channel carries no events, so annotations.csv.gz
+             holds its header and no rows.
+    warning: --stdout would refuse this run: has no signal data to write because
+             --annotations-only was given.
+
+`annotations.csv.gz` twice, under a flag pair that writes no file under either name, two lines
+above the warning saying the run will not happen. Both now name the conversion that does write
+it, which is the advice the refusal underneath gives:
+
+    --stdout writes no annotations.csv either, so nothing is written at all; a
+    conversion to a directory carries each event's own onset and the record it came
+    from in record_index.
+
+    This recording's annotation channel carries no events, and --stdout writes no
+    annotations.csv; a conversion to a directory writes one holding its header and no
+    rows.
+
+A conversion into a directory is unchanged, `.gz` and all.
+
 ## 0.9.47
 
 ### a stream predicted for every recording of a batch that refuses

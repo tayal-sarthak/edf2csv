@@ -6646,6 +6646,32 @@ describe('--stdout', () => {
     );
 
     /*
+      And the event list itself, which the four timing rewrites and the empty-list warning
+      both send the reader to. 0.9.29 taught `channelsFile` that `--stdout` writes no sidecar;
+      the file those five sentences offer was left naming itself, and under `--gzip` naming
+      `annotations.csv.gz` — a name no run of this tool writes to a stream. Read through
+      `--info`, since `--stdout --annotations-only` is refused outright.
+    */
+    for (const compressed of [[], ['--gzip']]) {
+      const events = await cli([
+        fixture('discontinuous.edf'), '--info', '--stdout', '--annotations-only', ...compressed,
+      ]);
+      assert.equal(events.code, 0, events.stderr);
+      const flat = events.stderr.replace(/\s+/gu, ' ');
+      assert.match(flat, /--stdout writes no annotations\.csv either, so nothing is written at all/u, flat);
+      assert.match(flat, /carries no events, and --stdout writes no annotations\.csv;/u, flat);
+      assert.doesNotMatch(flat, /annotations\.csv\.gz/u, flat);
+      assert.doesNotMatch(flat, /annotations\.csv carries each event's own onset/u, flat);
+    }
+    // And into a directory, where it is written, both sentences name it as written.
+    const intoDir2 = await cli([
+      fixture('discontinuous.edf'), '--info', '--annotations-only', '--gzip',
+    ]);
+    const dirFlat = intoDir2.stderr.replace(/\s+/gu, ' ');
+    assert.match(dirFlat, /annotations\.csv\.gz carries each event's own onset/u, intoDir2.stderr);
+    assert.match(dirFlat, /so annotations\.csv\.gz holds its header and no rows/u, intoDir2.stderr);
+
+    /*
       And the third way to arrive with no signal table, which only `--info` can describe:
       `--stdout --annotations-only` is refused, so `--info --stdout --annotations-only` is the
       run that prints the sentence. The `--channels` half of this rewrite was hedged at 0.9.29
