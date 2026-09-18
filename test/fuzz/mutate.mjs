@@ -143,9 +143,39 @@ export function fuzz(seed = 1, files = DEFAULT_FILES) {
   return { runs, files, failures };
 }
 
+/*
+  Both arguments, not the second one.
+
+  The comment under the zero-guard covers `npm run fuzz -- 42 typo`: a count that is NaN makes
+  an empty loop, which `runs === 0` catches. A *seed* that is NaN does not reach that guard —
+  the generator picks a fixture by index and NaN indexes nothing, so this read `undefined` as a
+  path and came back as
+
+      TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an
+      instance of Buffer or URL. Received undefined
+          at Object.openSync (node:fs:556:5)
+
+  a stack trace out of `fs`, from the sweep whose whole invariant is that a damaged file is
+  reported and never a stack trace. `<seed> <count>` is how CONTRIBUTING documents invoking it,
+  so a typo in the first of the two is an ordinary mistake to make.
+
+  `trees.mjs` takes the same pair and survived it by coincidence — a NaN seed built folders with
+  no recordings in them and its zero-guard caught that — and printed "(seed NaN)" on the way.
+  Both say which argument was wrong now.
+*/
+const whole = (what, value, fallback) => {
+  if (value === undefined) return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    process.stderr.write(`${what} must be a whole number, zero or more, got "${value}".\n`);
+    process.exit(2);
+  }
+  return n;
+};
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const seed = Number(process.argv[2] ?? 1);
-  const files = Number(process.argv[3] ?? 300);
+  const seed = whole('The seed', process.argv[2], 1);
+  const files = whole('The number of recordings', process.argv[3], 300);
   const { runs, failures } = fuzz(seed, files);
 
   process.stdout.write(`\n${runs} runs over ${files} corrupted recordings (seed ${seed}).\n`);

@@ -43,6 +43,12 @@ npm run fuzz -- 42 2000        # 2,000 corrupted recordings from seed 42
 npm run fuzz:batch -- 42 40    # 40 folder trees from seed 42
 ```
 
+Each of the two is checked, since 0.9.58: a seed or a count that is not a whole number is
+reported and exits 2. A NaN *count* was already caught by the sweep's own refusal to report an
+invariant over nothing, but a NaN *seed* picked a fixture by an index that indexes nothing and
+came back as a `TypeError` out of `fs` — a stack trace from the sweep whose invariant is that a
+damaged file is reported and never a stack trace.
+
 The rest convert the fixture set, so there is no seed to give them and no count to raise.
 Six ignore extra arguments entirely. `npm run estimate` is the one that does not: its single
 argument is a name filter, so `npm run estimate -- biosemi` narrows the sweep to the three

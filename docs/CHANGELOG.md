@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.58
+
+### a stack trace out of the sweep that forbids them
+
+`npm run fuzz` corrupts real recordings byte by byte and requires every run to exit 0, 1 or 2
+with something to say, "and never a stack trace". CONTRIBUTING documents invoking it as
+`npm run fuzz -- <seed> <count>`, and a typo in the first of the two produced this:
+
+    $ npm run fuzz -- typo 2000
+    TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an
+    instance of Buffer or URL. Received undefined
+        at Object.openSync (node:fs:556:5)
+
+A stack trace out of `fs`, from the sweep whose whole invariant is that there are none. The
+generator picks a fixture by index, `NaN` indexes nothing, and the path it read was `undefined`.
+
+The comment under that sweep's zero-guard covers the *other* argument — "`npm run fuzz -- 42
+typo`, which is NaN files and the same empty loop" — so the second of the pair was thought
+about and the first was not.
+
+`fuzz:batch` takes the same pair and survived a NaN seed by coincidence: it built folder trees
+with no recordings in them, printed "(seed NaN)" on the way, and failed on its own refusal to
+report an invariant over nothing. Both now say which argument was wrong and exit 2, the code
+this repository uses for a request it cannot carry out.
+
 ## 0.9.57
 
 ### nothing checked, reported as everything passing

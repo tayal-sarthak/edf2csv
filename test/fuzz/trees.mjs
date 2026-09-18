@@ -318,8 +318,19 @@ export function fuzzTrees(seed = 1, trees = 12) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const seed = Number(process.argv[2] ?? 1);
-  const trees = Number(process.argv[3] ?? 12);
+  // The same pair `mutate.mjs` takes, and checked the same way: this survived a NaN seed by
+  // coincidence, building folders with no recordings in them, and said "(seed NaN)" doing it.
+  const whole = (what, value, fallback) => {
+    if (value === undefined) return fallback;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0) {
+      process.stderr.write(`${what} must be a whole number, zero or more, got "${value}".\n`);
+      process.exit(2);
+    }
+    return n;
+  };
+  const seed = whole('The seed', process.argv[2], 1);
+  const trees = whole('The number of folder trees', process.argv[3], 12);
   const { problems, recordings, directories } = fuzzTrees(seed, trees);
 
   process.stdout.write(
