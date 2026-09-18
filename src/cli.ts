@@ -492,36 +492,73 @@ export async function main(argv: readonly string[]): Promise<number> {
     recording, so there is nowhere in it to put a sentence about how many there are. The
     refusal is what says it there.
   */
-  if (toStdout && (inputs.length > 1 || namedDirectory) && values['info'] === true && !asJson) {
-    process.stderr.write(
-      `\nwarning: --stdout would refuse this run: it writes a single CSV, and ` +
-        `${inputs.length === 1 ? 'a folder is converted as a batch even when it holds one recording' : `it cannot take ${counted(inputs.length, 'recording')}`}.\n` +
-        `${wrap('Convert them to directories instead, or run edf2csv once per file.', '         ')}\n`,
-    );
-  } else if (toStdout && (inputs.length > 1 || namedDirectory)) {
-    // Prefixed and indented like the rest; see the --json refusal above. The recording's
-    // name goes through `printable` for the reason 0.5.67 gives: a path is untrusted text,
-    // and this one is read straight out of a directory the caller named.
-    //
-    // Quoted where a shell would not hand it back unchanged, by the same rule as the
-    // --stdout --gzip hint below, whose comment sets it out: this sentence names a recording
-    // to type in place of the folder, and one found inside a folder is as likely to hold a
-    // space as the folder is. Unquoted it was two arguments, which --stdout then refuses for
-    // being two recordings — the message one step on from the one being read.
+  /*
+    Worked out once, for whichever of the two says it.
+
+    0.9.46 gave `--info` a preview of this refusal and wrote it out by hand, which lost both
+    halves of what the refusal knows. It has two shapes — a folder, whose contents are not
+    known until they are walked, and several recordings named on the command line — and each
+    has its own advice: name the recording inside the folder, or convert them to directories.
+    The preview gave the second to both, so `edf2csv ./one-recording --info --stdout` was told
+    to "convert them to directories instead" where the refusal itself names the recording to
+    type in place of the folder. Which is the drift the comment on the refusal above warns
+    against in as many words: the conversion's own guard supplies the words, so there is one
+    wording rather than two that can drift.
+
+    The recording's name goes through `printable` for the reason 0.5.67 gives: a path is
+    untrusted text, and this one is read straight out of a directory the caller named. Quoted
+    where a shell would not hand it back unchanged, by the same rule as the `--stdout --gzip`
+    hint below: this sentence names a recording to type in place of the folder, and one found
+    inside a folder is as likely to hold a space as the folder is. Unquoted it was two
+    arguments, which `--stdout` then refuses for being two recordings — the message one step
+    on from the one being read.
+  */
+  let previewed = 0;
+  if (toStdout && (inputs.length > 1 || namedDirectory)) {
     const only = printable(inputs[0] as string);
-    process.stderr.write(
+    const refusal =
       inputs.length === 1
-        ? `error: --stdout writes a single CSV, and a folder is converted as a batch even ` +
-          `when it holds one recording.\n` +
-          detail(
-            `Name the recording itself — ${survivesBare(only) ? only : singleQuoted(only)} — ` +
-              `or convert to a directory instead.`,
-          )
-        : `error: --stdout writes a single CSV, so it cannot take ` +
-          `${counted(inputs.length, 'recording')}.\n` +
-          detail('Convert them to directories instead, or run edf2csv once per file.'),
-    );
-    return EXIT_USAGE;
+        ? {
+            message:
+              '--stdout writes a single CSV, and a folder is converted as a batch even when ' +
+              'it holds one recording.',
+            hint:
+              `Name the recording itself — ${survivesBare(only) ? only : singleQuoted(only)} ` +
+              `— or convert to a directory instead.`,
+          }
+        : {
+            message:
+              `--stdout writes a single CSV, so it cannot take ` +
+              `${counted(inputs.length, 'recording')}.`,
+            hint: 'Convert them to directories instead, or run edf2csv once per file.',
+          };
+    /*
+      A warning under `--info`, and counted as one.
+
+      Written straight to stderr rather than as a diagnostic, because it belongs to the run
+      and not to any one recording — but `--strict` is documented as exiting 1 on a warning,
+      and the three refusals `--info` already previewed do fail it. This one did not, so
+      `edf2csv ./study --info --strict --stdout` exited 0 over a run that cannot happen while
+      the same preview for a single mixed-rate recording exited 1.
+
+      Not under `--json`, which keeps every warning inside the document and writes one per
+      recording, so a sentence about how many there are has nowhere to go; the refusal is
+      what says it there.
+    */
+    if (values['info'] === true && !asJson) {
+      process.stderr.write(
+        // "it", because this message opens by naming --stdout and saying what it does,
+        // where the three the conversion's own guard supplies open with the fault.
+        `\nwarning: --stdout would refuse this run: it ` +
+          `${refusal.message.replace(/^--stdout /u, '')}\n` +
+          `${wrap(refusal.hint, '         ')}\n`,
+      );
+      previewed = 1;
+    } else {
+      // Prefixed and indented like the rest; see the --json refusal above.
+      process.stderr.write(`error: ${refusal.message}\n${detail(refusal.hint)}`);
+      return EXIT_USAGE;
+    }
   }
 
   /*
@@ -708,7 +745,8 @@ export async function main(argv: readonly string[]): Promise<number> {
 
     if (values['info'] === true) {
       const failures: number[] = [];
-      let warnings = 0;
+      // Seeded with the batch refusal previewed above, which --strict counts like any other.
+      let warnings = previewed;
       for (const [index, input] of inputs.entries()) {
         // A blank line between reports, so several tables read as one document.
         if (batch && !asJson && index > 0) process.stdout.write('\n');

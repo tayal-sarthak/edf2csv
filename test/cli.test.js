@@ -1617,6 +1617,46 @@ describe('--info', () => {
     }
 
     /*
+      And --strict counts it, as it counts the three refusals --info already previewed. This
+      was written straight to stderr rather than through the tally, so
+      `edf2csv ./study --info --strict --stdout` exited 0 over a run that cannot happen while
+      the same preview for a single mixed-rate recording exited 1. Both recordings here are
+      quiet ones, so the batch refusal is the only warning there is to count.
+    */
+    const quiet = await mkdtemp(path.join(tmpdir(), 'edf2csv-batch-quiet-'));
+    temporaries.push(quiet);
+    for (const name of ['tiny.edf', 'annotations.edf']) {
+      await copyFile(fixture(name), path.join(quiet, name));
+    }
+    assert.equal((await cli([quiet, '--info', '--strict'])).code, 0, 'the recordings are quiet');
+    const strictly = await cli([quiet, '--info', '--strict', '--stdout']);
+    assert.equal(strictly.code, 1, strictly.stderr);
+    assert.match(strictly.stderr, /--strict: 1 warning raised/u, strictly.stderr);
+
+    /*
+      And the advice is the refusal's own, which has two shapes: a folder, whose contents are
+      not known until they are walked, and several recordings named on the command line. The
+      preview gave the second to both, so a folder holding one recording was told to "convert
+      them to directories instead" where the refusal names the recording to type in place of
+      the folder.
+    */
+    const single = await mkdtemp(path.join(tmpdir(), 'edf2csv-batch-one-'));
+    temporaries.push(single);
+    await copyFile(fixture('tiny.edf'), path.join(single, 'tiny.edf'));
+    const alone = await cli([single, '--info', '--stdout']);
+    assert.equal(alone.code, 0, alone.stderr);
+    const flat = alone.stderr.replace(/\s+/gu, ' ');
+    assert.match(flat, /a folder is converted as a batch even when it holds one recording/u, flat);
+    assert.match(flat, /Name the recording itself/u, flat);
+    assert.doesNotMatch(flat, /run edf2csv once per file/u, flat);
+    // Word for word the refusal's, which is what keeps the two from drifting.
+    const asError = await cli([single, '--stdout']);
+    assert.equal(asError.code, 2, asError.stderr);
+    for (const piece of ['a folder is converted as a batch even when it holds one recording', 'Name the recording itself']) {
+      assert.ok(asError.stderr.replace(/\s+/gu, ' ').includes(piece), `${piece}: ${asError.stderr}`);
+    }
+
+    /*
       Nor does it describe the events, which a --stdout run writes nowhere.
 
       The two functions raising the warnings about what an annotation's duration and

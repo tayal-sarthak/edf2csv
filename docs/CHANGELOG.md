@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.54
+
+### a preview with the wrong advice, that --strict did not count
+
+0.9.46 gave `--info` a preview of the one `--stdout` refusal it used to refuse outright — one
+stream holds one recording — and wrote the notice out by hand instead of taking the refusal's
+words. Both halves of what the refusal knows were lost.
+
+**The advice.** The refusal has two shapes: a folder, whose contents are not known until they
+are walked, and several recordings named on the command line. Each has its own remedy. The
+preview gave the second to both:
+
+    $ edf2csv ./one-recording --info --stdout
+    warning: --stdout would refuse this run: it writes a single CSV, and a folder is
+             converted as a batch even when it holds one recording.
+             Convert them to directories instead, or run edf2csv once per file.
+
+    $ edf2csv ./one-recording --stdout
+    error: --stdout writes a single CSV, and a folder is converted as a batch even when
+           it holds one recording.
+           Name the recording itself — one-recording/tiny.edf — or convert to a
+           directory instead.
+
+Which is the drift the comment on that guard warns against in as many words: the conversion's
+own guard supplies the words, so there is one wording rather than two that can drift. Both now
+come from one place.
+
+**And `--strict`.** The notice went straight to stderr rather than through the warning tally, so
+`edf2csv ./study --info --strict --stdout` exited 0 over a run that cannot happen, while the
+same preview for a single mixed-rate recording exited 1. It is counted now, which is what
+`--strict` is documented to do with a warning.
+
+Under `--json` it stays a refusal, unchanged: that mode keeps every warning inside the document
+and writes one per recording, so a sentence about how many there are has nowhere to go.
+
 ## 0.9.53
 
 ### one warning's message with the advice belonging to another
