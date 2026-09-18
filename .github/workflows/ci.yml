@@ -79,8 +79,11 @@ jobs:
       - name: The stream holds the bytes the directory holds
         run: node test/fuzz/stream.mjs
       # The only one that needs something Node cannot provide: a pseudo terminal, borrowed
-      # from python3, which ubuntu-latest has. It reports that it checked nothing and exits 0
-      # where python3 does not, so this step can never fail for the wrong reason.
+      # from python3, which ubuntu-latest has. Where python3 does not, it says it checked
+      # nothing and exits 2 — the convention compare.py states for the same situation, since
+      # 0.9.57: a status meaning "did not run" must not be the status meaning "agreed". This
+      # step would then fail, which is the point; a green tick for a sweep that did not run is
+      # worse than no tick, the same argument the crossvalidate workflow makes.
       - name: Every prefix begins its own line on a terminal
         run: node test/fuzz/terminal.mjs
 

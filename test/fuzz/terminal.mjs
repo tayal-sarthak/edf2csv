@@ -41,8 +41,22 @@ function havePython() {
 }
 
 if (!havePython()) {
-  process.stdout.write('python3 with the pty module is not available; nothing checked.\n');
-  process.exit(0);
+  /*
+    Two, not nought. This is the convention `compare.py` states for the same situation and the
+    same reason: "an exit status meaning 'did not run' must not be the status meaning 'agreed'".
+    It printed "nothing checked" and exited 0, so a machine without python3 — or one where the
+    `pty` module is missing, which is how a stripped container arrives — ran this sweep, was
+    told nothing was checked, and got the status that means every prefix begins its own line.
+    CI runs it on a runner that has python3, so the status only changes where it should.
+
+    Distinct from 1 so a real failure is still tellable apart, and the same convention the CLI
+    uses: 2 is the request that could not be carried out.
+  */
+  process.stdout.write(
+    'python3 with the pty module is not available, so nothing was checked. ' +
+      'Exiting 2: this sweep did not run, which is not the same as it passing.\n',
+  );
+  process.exit(2);
 }
 
 /**

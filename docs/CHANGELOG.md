@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.57
+
+### nothing checked, reported as everything passing
+
+`compare.py` states the rule, in its own docstring, and gives the reason:
+
+> Exits 0 when every value agrees, 1 on any mismatch, and 2 when pyEDFlib is not installed. Two
+> rather than nought, because this is the one check whose whole value is that it compares
+> against an implementation nobody here wrote: an exit status meaning "did not run" must not be
+> the status meaning "agreed".
+
+`npm run terminal` is the other sweep that needs something the repository cannot provide — a
+pseudo terminal, borrowed from python3 — and it printed "python3 with the pty module is not
+available; nothing checked." and exited **0**. A machine without python3, or a container
+stripped of the `pty` module, ran the sweep, was told nothing was checked, and got the status
+that means every prefix began its own line and nothing but text reached the screen.
+
+It exits 2 now, and says which of the two happened. CI runs it on a runner that has python3, so
+the status only changes where it should — and the CI step's own comment, which named exiting 0
+as the reason this step "can never fail for the wrong reason", now says the opposite, with the
+argument the crossvalidate workflow already makes: a green tick for a sweep that did not run is
+worse than no tick.
+
+The same class as 0.7.136, which is where `compare.py` got its rule; this is the second sweep
+that needed it.
+
 ## 0.9.56
 
 ### a skip for a case that never happens

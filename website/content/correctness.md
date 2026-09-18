@@ -471,6 +471,9 @@ a guard on two of them let it say "plus 0 single-channel selections in the long 
 Each also tells a refusal from a failure before it skips a case, which since 0.9.51, 0.9.55 and 0.9.56 is
 asked of all five that skip: they counted any non-zero exit as a deliberate refusal, so a crash
 or a conversion that stopped part way through read as "nothing here to compare" and the sweep
-still reported its invariant over what was left.
+still reported its invariant over what was left. A sweep that cannot run at all exits 2 rather
+than 0, for the reason `compare.py` gives — a status meaning "did not run" must not be the status
+meaning "agreed" — which since 0.9.57 is true of the terminal sweep as well, the one that needs a
+pseudo terminal borrowed from python3.
 
 **Nothing here verifies your pipeline.** A conversion that's bit-exact is still only the first step. `metadata.json` records the tool version, the source file, the time window converted and, with `--checksum`, a SHA-256 of the input, so a result can be traced back to the exact bytes it came from.
