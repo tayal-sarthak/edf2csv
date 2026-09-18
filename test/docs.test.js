@@ -5248,24 +5248,53 @@ describe('documentation and source agree on their lists', () => {
     const pages = (await readdir(path.join(ROOT, 'website/content')))
       .filter((f) => f.endsWith('.md'))
       .map((f) => `website/content/${f}`);
-    const repeated = [];
-    for (const where of [...pages, 'README.md', 'CONTRIBUTING.md', 'SECURITY.md']) {
-      // Fenced blocks are output, and output really does repeat a line.
-      const prose = (await read(where)).split(/```[\s\S]*?```/gu).join('\n');
+    /*
+      Lifted out so the detector can be pointed at something with a known answer.
+
+      What this asserts is an absence, and an absence is what a check that read nothing also
+      reports: if the fence-stripping swallowed a page, or the sentence split stopped splitting,
+      `repeated` comes back empty and this passes. Which is the failure it exists to prevent —
+      "nothing here reads these pages as prose" — arriving in the reader.
+    */
+    const repeats = (prose) => {
       const sentences = prose
         .split(/(?<=[.!?])\s+/u)
         .map((sentence) => sentence.replace(/\s+/gu, ' ').trim())
         .filter((sentence) => sentence.length >= 45);
+      const found = [];
       const seen = new Map();
       for (const [at, sentence] of sentences.entries()) {
         const previous = seen.get(sentence);
-        if (previous !== undefined && at - previous <= 4) {
-          repeated.push(`${where}: ${sentence.slice(0, 120)}`);
-        }
+        if (previous !== undefined && at - previous <= 4) found.push(sentence);
         seen.set(sentence, at);
       }
+      return { found, read: sentences.length };
+    };
+
+    const repeated = [];
+    let sentencesRead = 0;
+    for (const where of [...pages, 'README.md', 'CONTRIBUTING.md', 'SECURITY.md']) {
+      // Fenced blocks are output, and output really does repeat a line.
+      const prose = (await read(where)).split(/```[\s\S]*?```/gu).join('\n');
+      const { found, read: counted } = repeats(prose);
+      sentencesRead += counted;
+      for (const sentence of found) repeated.push(`${where}: ${sentence.slice(0, 120)}`);
     }
     assert.deepEqual(repeated, [], `a sentence is repeated beside itself:\n${repeated.join('\n')}`);
+    /*
+      And that there were sentences to read, and that a pasted one is still caught. The
+      specimen is the paragraph this check was written for, cut down: forty-one words, twice,
+      four sentences apart at most.
+    */
+    assert.ok(
+      sentencesRead > 2000,
+      `these pages hold more prose than ${sentencesRead} sentences`,
+    );
+    const pasted = 'A span shorter than the duration is the other way the two can disagree, '
+      + 'and the line says records overlap in time instead. A span shorter than the duration '
+      + 'is the other way the two can disagree, and the line says records overlap in time '
+      + 'instead.';
+    assert.equal(repeats(pasted).found.length, 1, 'this check no longer catches a pasted sentence');
   });
 
   it('describes every rejected value through the one function that formats them', async () => {

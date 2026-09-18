@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.60
+
+### the one check that reads the pages, able to read none of them
+
+0.9.11 added the one check that reads the pages as prose, because nothing else did: a
+41-word sentence had been pasted beside itself on a published page and every other check passed
+— the quotations still matched the tool, the enumerations still matched the source, the counts
+were still right.
+
+What it asserts is an absence, and an absence is also what a check that read nothing reports. If
+the fence-stripping swallowed a page, or the sentence split stopped splitting, `repeated` came
+back empty and the check passed. Which is the failure it exists to prevent, arriving in the
+reader.
+
+It now says how much prose it read — 2,800-odd sentences across fourteen files — and points its
+detector at a specimen with a known answer: the paragraph it was written for, cut down to two
+copies of one sentence. Breaking the splitter fails it on both counts.
+
+The second of these this week. 0.9.59 gave the `--info`-reads check the same treatment, for the
+same reason: a negative check cannot be shown to have run by counting what it found.
+
 ## 0.9.59
 
 ### a check over two pages that covered one
