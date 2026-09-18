@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.61
+
+### a walk over no files, reporting no offenders
+
+`unprintable.ts` defines the class of bytes this tool escapes before anything reaches a
+terminal, and its own docstring once carried one: a U+202E, written in to demonstrate the
+reordering, which turned every line after it in that file backwards under `cat`, `less` and
+`git diff`. The check that keeps them out of the repository walks every readable file and
+asserts the list of offenders is empty.
+
+An empty list is also what a walk that visited nothing reports. The skip set and the extension
+list are both easy to widen by accident — `dist` and `generated` are in the first, a new source
+extension is not in the second — and either leaves the check passing over no files at all.
+
+It now says how many it read, and points the detector at the byte it is about: narrowing the
+extension list to something that matches nothing fails it, and so does a detector that stops
+recognising an override.
+
+The third this week, after 0.9.59 and 0.9.60. A check whose result is an absence cannot be shown
+to have run by what it found.
+
 ## 0.9.60
 
 ### the one check that reads the pages, able to read none of them

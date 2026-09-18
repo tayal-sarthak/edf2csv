@@ -5087,6 +5087,14 @@ describe('documentation and source agree on their lists', () => {
     const skip = new Set(['node_modules', 'dist', 'generated', '.git', 'deleted', '.next']);
     const readable = /\.(ts|tsx|js|jsx|mjs|cjs|md|json|yml|yaml|cff|html|css|txt|sh)$/u;
     const offenders = [];
+    /*
+      Counted, because an empty list of offenders is also what a walk that visited nothing
+      reports. The skip set and the extension list are both easy to widen by accident — `dist`
+      and `generated` are in one, and a new source extension is not in the other — and either
+      would leave this passing over no files at all, on the check that exists because the file
+      defining this class of bytes once carried one.
+    */
+    let scanned = 0;
     const walk = async (dir) => {
       for (const entry of await readdir(path.join(ROOT, dir), { withFileTypes: true })) {
         if (skip.has(entry.name)) continue;
@@ -5096,6 +5104,7 @@ describe('documentation and source agree on their lists', () => {
           continue;
         }
         if (!readable.test(entry.name)) continue;
+        scanned++;
         const text = await read(relative);
         // Written as text files are; every other member of the class is what this is about.
         const found = unprintableIn(text).filter((c) => !'\t\n\r'.includes(c));
@@ -5110,6 +5119,7 @@ describe('documentation and source agree on their lists', () => {
       await walk(top);
     }
     for (const file of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'CITATION.cff', 'package.json']) {
+      scanned++;
       const text = await read(file);
       const found = unprintableIn(text).filter((c) => !'\t\n\r'.includes(c));
       for (const character of found) {
@@ -5117,6 +5127,14 @@ describe('documentation and source agree on their lists', () => {
       }
     }
     assert.deepEqual(offenders, [], `a byte this tool escapes, written into its own source: ${offenders.join(', ')}`);
+    assert.ok(scanned > 40, `this walk reads more than ${scanned} files`);
+    // And that the detector still reacts to the byte it is about: the override written into
+    // unprintable.ts's own docstring, which is what this check was written for.
+    assert.deepEqual(
+      unprintableIn(`a docstring with \u202e in it`).filter((c) => !'\t\n\r'.includes(c)),
+      ['\u202e'],
+      'this check no longer recognises a bidirectional override',
+    );
   });
 
   it('gives every warning something to say about the output too', async () => {
