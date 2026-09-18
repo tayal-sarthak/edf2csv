@@ -540,9 +540,12 @@ Compared against what the file can express rather than for equality, since a rec
 
 ```
 warning: 2 data records start before the record before them ends, so their samples overlap in time.
-         Rows are written in file order, so the time column will not increase
-         monotonically.
+         Rows are written in file order, and two records describe the same
+         stretch of time. Where they overlap by more than one sample interval
+         the time column steps backwards.
 ```
+
+The hint is this warning's own. Until 0.9.53 the block above carried the one belonging to the entry before it — "so the time column will not increase monotonically", which is what a recording whose records run *backwards* is told — so the page showed a warning no run produces, and said nothing about the overlap the message had just reported.
 
 Until 0.5.25 only the strictly-backwards case above was looked for, so this went unreported: starts of 0, 0.5 and 1.0 on one-second records are increasing, and the column steps backwards anyway, because the first record's samples run to 0.75 while the second begins at 0.5.
 

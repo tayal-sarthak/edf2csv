@@ -2901,6 +2901,8 @@ describe('documentation and source agree on their lists', () => {
     */
     const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-order-'));
     const spoken = new Set();
+    // The advice each of the two carries, keyed by the message it belongs under.
+    const hints = new Map();
     try {
       const { writeEdf, buildTal } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
       // Backwards by one and by two, then overlapping by one and by two. A record lasts a
@@ -2935,6 +2937,24 @@ describe('documentation and source agree on their lists', () => {
         for (const [, line] of stderr.matchAll(/^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/gmu)) {
           spoken.add(line);
         }
+        /*
+          And the advice under each, which this checked the message of and not the hint.
+
+          The two warnings have different hints — the out-of-order one says the column "will
+          not increase monotonically", the overlap one that "two records describe the same
+          stretch of time" and where they overlap by more than a sample interval "the time
+          column steps backwards" — and warnings-and-errors quoted the overlap message with
+          the out-of-order hint under it until 0.9.53. A warning no run produces, on the page
+          that exists to show what the tool says, under the one test written for these two.
+        */
+        for (const block of stderr.split(/\n(?=warning: )/u)) {
+          const lines = block.split('\n');
+          const message = /^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/u.exec(lines[0] ?? '');
+          if (!message) continue;
+          const hint = lines.slice(1).filter((l) => /^\s+\S/u.test(l)).join(' ')
+            .replace(/\s+/gu, ' ').trim();
+          if (hint !== '') hints.set(message[1], hint);
+        }
       }
     } finally {
       await rm(work, { recursive: true, force: true });
@@ -2945,6 +2965,7 @@ describe('documentation and source agree on their lists', () => {
       n.endsWith('.md'),
     );
     let checked = 0;
+    let hinted = 0;
     for (const page of [...names.map((n) => `website/content/${n}`), 'README.md']) {
       const text = await read(page);
       for (const [, quoted] of text.matchAll(/^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/gmu)) {
@@ -2954,8 +2975,30 @@ describe('documentation and source agree on their lists', () => {
           `${page}: "${quoted}" is not a sentence the tool prints (${[...spoken].join(' / ')})`,
         );
       }
+      // And the hint under each quotation, where the page shows one.
+      for (const block of text.split(/\n(?=warning: )/u)) {
+        const lines = block.split('\n');
+        const message = /^warning: (\d+ data records? starts? (?:earlier than|before) the record before[^\n]*)$/u.exec(lines[0] ?? '');
+        if (!message) continue;
+        const shown = [];
+        for (const line of lines.slice(1)) {
+          if (!/^\s+\S/u.test(line)) break;
+          shown.push(line);
+        }
+        if (shown.length === 0) continue;
+        const quotedHint = shown.join(' ').replace(/\s+/gu, ' ').trim();
+        const real = hints.get(message[1]);
+        assert.ok(real, `${page}: no hint was generated for "${message[1]}"`);
+        assert.ok(
+          real.startsWith(quotedHint),
+          `${page}: the hint quoted under "${message[1].slice(0, 50)}..." is not its own\n` +
+            `  page: ${quotedHint}\n  tool: ${real}`,
+        );
+        hinted++;
+      }
     }
     assert.ok(checked >= 3, `expected the pages to quote these warnings, found ${checked}`);
+    assert.ok(hinted >= 2, `expected the pages to quote the advice too, found ${hinted}`);
   });
 
   it('closes a batch with the count in the number the tool would use', async () => {

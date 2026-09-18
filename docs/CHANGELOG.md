@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.53
+
+### one warning's message with the advice belonging to another
+
+EDF+ allows two things a strictly increasing time column cannot survive, and each has its own
+warning and its own advice. Records stored out of order: "Rows are written in file order, so the
+time column will not increase monotonically." Records that overlap — starts of 0s and 0.25s on
+one-second records, so the first record's samples run past where the second begins: "Rows are
+written in file order, and two records describe the same stretch of time. Where they overlap by
+more than one sample interval the time column steps backwards."
+
+warnings-and-errors.md showed the overlap message with the out-of-order hint under it:
+
+    warning: 2 data records start before the record before them ends, so their samples
+             overlap in time.
+             Rows are written in file order, so the time column will not increase
+             monotonically.
+
+A warning no run produces, on the page that exists to show what the tool says — and the
+overlap, which the message had just reported, went unexplained.
+
+There is a test for exactly these two, written the last time the page quoted them wrongly. It
+generates both, singular and plural, and holds every quoted sentence to one of the four it
+collected — the *message* lines. The hint under each was never compared, which is how a hint
+belonging to the entry above could sit under this one. It now collects both and checks both,
+and fails on the old page text.
+
 ## 0.9.52
 
 ### onsets to add, in a file with no rows in it
