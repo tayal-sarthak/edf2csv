@@ -33,12 +33,29 @@ export const WINDOWS = [
   [0.5, 1],
 ];
 
+/*
+  Whether it converted, and when it did not, whether that was a refusal.
+
+  Every caller below skips on a `false`, and this returned one for any non-zero exit — so a
+  crash, or a conversion that stopped part way through, was indistinguishable from a window
+  this tool deliberately refuses, and the sweep went on reporting that narrowing returns
+  exactly the part it names. Exit 2 is the usage code every refusal carries. 0.9.51 closed the
+  same hole in `stream.mjs`.
+*/
+const refusals = [];
 function convert(source, out, extra) {
   try {
     execFileSync(process.execPath, [CLI, source, '--out', out, '--quiet', ...extra],
       { stdio: 'pipe', maxBuffer: 1 << 28 });
     return true;
-  } catch {
+  } catch (error) {
+    if ((error.status ?? 1) !== 2) {
+      refusals.push(
+        `${path.basename(source)} ${extra.join(' ') || '(no options)'}: exited ` +
+          `${error.status ?? 1}, which is not a refusal — ` +
+          `${String(error.stderr ?? error.message).trim().split('\n')[0] || 'no message'}`,
+      );
+    }
     return false;
   }
 }
@@ -207,9 +224,20 @@ for (const name of names) {
         const next = onsets[i + 1];
         if (Number.isFinite(next) && next > onset) cuts.add((onset + next) / 2);
       }
-      for (const at of cuts) {
-        const before = path.join(work, `ann-a-${annotationCuts}`);
-        const after = path.join(work, `ann-b-${annotationCuts}`);
+      /*
+        Named by the cut rather than by the count of the ones that worked.
+
+        `annotationCuts` only advances once both halves convert, so a cut this tool refuses —
+        `--end` at the first event's onset selects no events and is refused — left the counter
+        where it was and the *next* cut reused the same two directory names. `ann-a-N` was
+        already there from the half that did convert, so that conversion failed with "already
+        exists", and every cut after the first refusal on a recording was skipped. Silently,
+        because a failure and a refusal were the same thing to `convert` until this release:
+        the sweep reported 41 pairs and had stopped early on three recordings.
+      */
+      for (const [index, at] of [...cuts].entries()) {
+        const before = path.join(work, `ann-a-${index}`);
+        const after = path.join(work, `ann-b-${index}`);
         if (!convert(source, before, [`--end=${at}`])) continue;
         if (!convert(source, after, [`--start=${at}`])) continue;
         annotationCuts++;
@@ -309,6 +337,8 @@ for (const name of names) {
   with more than one rate and with events; any of the three can fall to zero while the first two
   stay large. 0.7.137 closed this for the total on six harnesses and left the sub-counts.
 */
+// A conversion that failed for a reason that is not a refusal; see `convert`.
+if (refusals.length > 0) problems.push(...refusals);
 const counted = { columns, windows, longs, partitions, annotationCuts };
 const nothing = Object.entries(counted).filter(([, n]) => n === 0).map(([name]) => name);
 if (nothing.length > 0) {

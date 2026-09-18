@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.55
+
+### three more sweeps that counted a crash as a skip
+
+0.9.51 fixed `npm run stream`, which identified the runs `--stdout` refuses by catching the
+failure and so counted a crash as a deliberate skip. Three of the other sweeps do the same
+thing, and I fixed one of four:
+
+- `npm run layouts` skips a recording or window the wide layout refuses, and counted any
+  non-zero exit as that refusal — reported as "30 refused by both" in a number nobody reads
+  against a list, under "Both layouts hold the same samples, in the same order, per channel".
+- `npm run narrowing` had it worse: its `convert` returned a bare `true`/`false`, so every one
+  of its five sweeps skipped on any failure with nothing recorded at all.
+- `npm run estimate` skipped `--info` and the conversion alike on any non-zero exit.
+
+Exit 2 is this tool's usage code and every deliberate refusal carries it. All four now skip only
+on that and report anything else with its code and its first line. Verified by making one option
+set fail for a reason that is not a refusal in each and watching the problems come back.
+
+**And the fault the typing exposed.** `narrowing`'s annotation-cut sweep named its two output
+directories after the count of cuts that had *worked*, so a cut this tool refuses — `--end` at
+the first event's onset selects no events — left the counter where it was and the next cut
+reused the same two names. The half that did convert was already there, so the next conversion
+failed with "already exists" and was skipped as though it had been refused. No pair was lost
+from the current fixture set beyond those legitimately refused, but a failure and a refusal
+reached the same outcome by a second route, and which cuts ran depended on the order the
+refusals fell in. Named by the cut now.
+
 ## 0.9.54
 
 ### a preview with the wrong advice, that --strict did not count

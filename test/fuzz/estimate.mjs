@@ -151,8 +151,25 @@ export function sweepEstimates(filter = '') {
   for (const name of names) {
     const source = path.join(FIXTURES, name);
     for (const options of OPTIONS) {
+      /*
+        A refusal is a skip; anything else is a failure, and the two were the same `continue`.
+
+        `--info` is refused for a window past the end and for a flag pair it cannot act on,
+        both of which this sweep has nothing to predict for. Every other non-zero exit is a
+        fault — and a run of `--info` that started crashing would have been skipped here in
+        silence, leaving the sweep reporting every row count exact over whatever was left.
+        Exit 2 is the usage code every refusal carries. 0.9.51 closed the same hole in
+        `stream.mjs`.
+      */
       const info = run([source, '--info', '--json', ...options]);
-      if (info.code !== 0) continue;
+      if (info.code === 2) continue;
+      if (info.code !== 0) {
+        problems.push(
+          `${name} [${options.join(' ') || 'no options'}]: --info exited ${info.code}, ` +
+            `which is not a refusal`,
+        );
+        continue;
+      }
 
       let estimate;
       try {
@@ -167,7 +184,16 @@ export function sweepEstimates(filter = '') {
       const base = mkdtempSync(path.join(tmpdir(), 'edf2csv-estimate-'));
       try {
         const out = path.join(base, 'out');
-        if (run([source, '--out', out, '--quiet', ...options]).code !== 0) continue;
+        // The conversion the prediction is about, held to the same rule.
+        const conversion = run([source, '--out', out, '--quiet', ...options]);
+        if (conversion.code === 2) continue;
+        if (conversion.code !== 0) {
+          problems.push(
+            `${name} [${options.join(' ') || 'no options'}]: the conversion exited ` +
+              `${conversion.code}, which is not a refusal`,
+          );
+          continue;
+        }
 
         const actual = written(out);
         checked++;

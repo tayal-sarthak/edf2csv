@@ -468,5 +468,9 @@ The CLI tests run the real built binary as a subprocess and inspect its exit cod
 Each of these sweeps refuses to report an invariant it held over nothing, and since 0.9.50 that
 is asked of every count it prints rather than of the first: `npm run narrowing` reports five, and
 a guard on two of them let it say "plus 0 single-channel selections in the long layout" and pass.
+Each also tells a refusal from a failure before it skips a case, which since 0.9.51 and 0.9.55 is
+asked of all four that skip: they counted any non-zero exit as a deliberate refusal, so a crash
+or a conversion that stopped part way through read as "nothing here to compare" and the sweep
+still reported its invariant over what was left.
 
 **Nothing here verifies your pipeline.** A conversion that's bit-exact is still only the first step. `metadata.json` records the tool version, the source file, the time window converted and, with `--checksum`, a SHA-256 of the input, so a result can be traced back to the exact bytes it came from.

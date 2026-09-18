@@ -56,12 +56,24 @@ function unquote(cell) {
  * that was a transient filesystem failure under load. A harness that reports a disagreement
  * without the evidence for it costs more than it saves.
  */
+/*
+  The exit code as well as the message, because one of the two callers skips on a failure.
+
+  A refusal is this tool's usage code, 2. Any other non-zero exit is a failure — a crash, or a
+  conversion that stopped part way — and the skip below counted those as "refused by both",
+  reported them in a number nobody reads against a list, and left the sweep saying both layouts
+  hold the same samples. 0.9.51 closed the same hole in `stream.mjs`; this is the harness next
+  door, and `narrowing.mjs` and `estimate.mjs` are two more.
+*/
 function convert(args) {
   try {
     execFileSync(process.execPath, [CLI, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
     return null;
   } catch (error) {
-    return String(error.stderr ?? error.message).trim().split('\n')[0] || 'no message';
+    return {
+      code: error.status ?? 1,
+      message: String(error.stderr ?? error.message).trim().split('\n')[0] || 'no message',
+    };
   }
 }
 
@@ -83,14 +95,25 @@ export function sweepLayouts() {
       const long = path.join(base, 'long');
       try {
         // A recording or window the wide layout refuses is refused for a reason the other
-        // harnesses cover; there is nothing here to compare.
-        if (convert([source, '--out', wide, '--quiet', ...options]) !== null) {
+        // harnesses cover; there is nothing here to compare. A failure that is not a refusal
+        // is not a reason to skip, so it is reported.
+        const wideRefusal = convert([source, '--out', wide, '--quiet', ...options]);
+        if (wideRefusal !== null) {
+          if (wideRefusal.code !== 2) {
+            problems.push(
+              `${name} ${options.join(' ') || '(no options)'}: the wide layout exited ` +
+                `${wideRefusal.code}, which is not a refusal — ${wideRefusal.message}`,
+            );
+            continue;
+          }
           skipped++;
           continue;
         }
         const refusal = convert([source, '--out', long, '--layout', 'long', '--quiet', ...options]);
         if (refusal !== null) {
-          problems.push(`${name} ${options.join(' ')}: long refused what wide accepted — ${refusal}`);
+          problems.push(
+            `${name} ${options.join(' ')}: long refused what wide accepted — ${refusal.message}`,
+          );
           continue;
         }
         compared++;
