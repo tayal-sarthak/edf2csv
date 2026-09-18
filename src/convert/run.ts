@@ -2777,11 +2777,13 @@ export function withSidecarsNamed(
         ...diagnostic,
         hint: toStdout
           ? 'Sample times are written from zero instead, so every row is present and the ' +
-            'column increases. The onsets that recover absolute times are in the annotation ' +
-            'channel; --stdout writes no annotations.csv, so convert to a directory for them.'
+            "column increases. The onsets that recover it are the events' own, in the " +
+            'annotation channel; --stdout writes no annotations.csv to read them from, and ' +
+            'a recording carrying no events has none of them either.'
           : 'Sample times are written from zero instead, so every row is present and the ' +
-            `column increases. Add the onsets in ${annotations} to recover absolute times if ` +
-            'you need them.',
+            `column increases. An event's own onset is on the original clock, so the onsets ` +
+            `in ${annotations} recover it for a recording that carries events — the ` +
+            'timekeeping entries that place the records are never exported.',
       };
     }
     return diagnostic;

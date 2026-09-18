@@ -553,9 +553,13 @@ warning: This recording's timekeeping annotations place it -10000000000000002s f
          start date, which is too far out for its 1s records to be told apart: at that
          magnitude adding a sample interval leaves the number unchanged.
          Sample times are written from zero instead, so every row is present and
-         the column increases. Add the onsets in annotations.csv to recover
-         absolute times if you need them.
+         the column increases. An event's own onset is on the original clock, so
+         the onsets in annotations.csv recover it for a recording that carries
+         events — the timekeeping entries that place the records are never
+         exported.
 ```
+
+Until 0.9.52 that read "Add the onsets in annotations.csv to recover absolute times if you need them", which is advice a reader can follow into an empty file: an onset belongs to an *event*, and a recording that reaches this warning has an annotation channel carrying nothing but the timekeeping entries that place its records — which is how the origin was read, and which are never exported. Nothing else in the output records it either: `time_s` counts from zero, `first_sample_seconds` is `0`, and `time_span_seconds` is the nominal length, so on a recording with no events this warning is the only trace of the origin.
 
 The magnitude is what matters, not the sign — a negative origin the same distance out fails identically. Until 0.5.17 the check looked only in the positive direction, seeded from zero, so an all-negative recording never reached it: twelve rows became four, exit 0, and nothing was said, while the byte-for-byte positive mirror of the same file wrote all twelve and explained itself.
 

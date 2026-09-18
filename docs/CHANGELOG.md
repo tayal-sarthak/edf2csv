@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.52
+
+### onsets to add, in a file with no rows in it
+
+A recording whose timekeeping annotations put it too far from zero for its own sample interval
+has its origin dropped — `time_s` counts from zero, because at 1e17 seconds adding a sample
+interval leaves the number unchanged. The warning said so and then gave one piece of advice:
+
+    warning: This recording's timekeeping annotations place it 100000000000000000s from its
+             own start date, which is too far out for its 1s records to be told apart ...
+             Sample times are written from zero instead, so every row is present and the
+             column increases. Add the onsets in annotations.csv to recover absolute times
+             if you need them.
+
+    Wrote ./converted
+      signals.csv      12  rows
+      annotations.csv   0  rows
+
+An onset belongs to an *event*, and a recording that reaches this warning has an annotation
+channel carrying nothing but the timekeeping entries that place its records — which is how the
+origin was read in the first place, and which are never exported. So the file the advice names
+holds one header line.
+
+Nothing else in the output records the origin either: `first_sample_seconds` is `0`,
+`time_span_seconds` is the nominal length, and `time_s` starts at zero — this warning is its
+only trace. The advice now says which onsets recover the clock and that a recording without
+events has none of them:
+
+    An event's own onset is on the original clock, so the onsets in annotations.csv recover
+    it for a recording that carries events — the timekeeping entries that place the records
+    are never exported.
+
+The `--stdout` form, which already said the onsets are in the annotation channel, says the same
+about a recording that carries none.
+
 ## 0.9.51
 
 ### a crash counted as a refusal, in the sweep that would have caught it

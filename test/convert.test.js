@@ -4130,6 +4130,18 @@ describe('converting', () => {
       assert.equal(warning.severity, 'warning');
       assert.match(warning.hint, /written from zero instead/u);
       assert.doesNotMatch(warning.message, /Infinity|NaN/u, warning.message);
+      /*
+        And the advice says whose onsets recover the clock. "Add the onsets in annotations.csv
+        to recover absolute times" was the whole of it, and an onset belongs to an event — while
+        every recording that reaches this warning has an annotation channel carrying nothing but
+        the timekeeping entries that place its records, which is how the origin was read and
+        which are never exported. So the file it named holds one header line, and nothing else
+        in the output records the origin either: time_s counts from zero and
+        first_sample_seconds is 0.
+      */
+      assert.match(warning.hint, /for a recording that carries events/u, warning.hint);
+      assert.match(warning.hint, /timekeeping entries that place the records/u, warning.hint);
+      assert.equal(result.annotationCount, 0, 'and these recordings carry no events');
     }
 
     // Timed from zero, so the column is usable and increases.

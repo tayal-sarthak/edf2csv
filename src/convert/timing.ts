@@ -567,8 +567,34 @@ function unusableOrigin(origin: number, file: EdfFile): Diagnostic {
       `This recording's timekeeping annotations place it ${away}, which is too far out for ` +
       `its ${plainSeconds(file.header.recordDuration)}s records to be told apart: at that magnitude ` +
       `adding a sample interval leaves the number unchanged.`,
+    /*
+      And where the absolute times actually are, which is not always anywhere.
+
+      "Add the onsets in annotations.csv to recover absolute times if you need them" is the
+      whole of the advice, and an onset belongs to an *event*. The recording this is raised
+      on has an annotation channel carrying nothing but the timekeeping entries that place
+      its records — which is how the origin was read in the first place, and which are never
+      exported. So the file it sent the reader to holds one header line:
+
+          warning: This recording's timekeeping annotations place it 100000000000000000s
+                   from its own start date ...
+                   Sample times are written from zero instead, so every row is present and
+                   the column increases. Add the onsets in annotations.csv to recover
+                   absolute times if you need them.
+
+          Wrote ./converted
+            signals.csv      12  rows
+            annotations.csv   0  rows
+
+      Nothing else in the output records the origin either: `time_s` counts from zero,
+      `first_sample_seconds` is 0 and `time_span_seconds` is the nominal length, so on a
+      recording with no events this warning is the only trace of it. The advice now says
+      which onsets those are and that a recording without events has none of them.
+    */
     hint:
       'Sample times are written from zero instead, so every row is present and the column ' +
-      'increases. Add the onsets in annotations.csv to recover absolute times if you need them.',
+      "increases. An event's own onset is on the original clock, so the onsets in " +
+      'annotations.csv recover it for a recording that carries events — the timekeeping ' +
+      'entries that place the records are never exported.',
   };
 }
