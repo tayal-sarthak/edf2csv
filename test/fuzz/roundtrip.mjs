@@ -85,6 +85,8 @@ export async function sweepRoundTrip() {
   const problems = [];
   let checked = 0;
   let calibrations = 0;
+  // A calibration this tool really does refuse, which none of these is; see the skip below.
+  let refused = 0;
 
   try {
     for (const digMin of DIGITAL_MINS) {
@@ -108,14 +110,44 @@ export async function sweepRoundTrip() {
 
             const out = path.join(base, 'out');
             rmSync(out, { recursive: true, force: true });
+            /*
+              A skip for a case that does not arise, which can only ever swallow a fault.
+
+              "A calibration this rejects is reported elsewhere; nothing to round-trip" — and
+              over the 1,260 calibrations this sweep builds, nothing is rejected: a degenerate
+              or inverted range converts and warns, which is the whole point of the four
+              calibration warnings. So this `catch` never fired, and the only thing it could
+              catch was a conversion that had started failing — which it would have skipped in
+              silence, leaving the sweep reporting that every cell recovered its digital code
+              over whatever was left. The same hole 0.9.51 and 0.9.55 closed in four other
+              sweeps; this is the fifth, and the one where the skip was unreachable.
+
+              Exit 2 is the usage code a refusal carries, so a calibration this really does
+              refuse would still be a skip — and would be counted, rather than silently
+              dropping out of `calibrations`.
+            */
             try {
-              execFileSync(process.execPath, [CLI, file, '--out', out, '--quiet'], { stdio: 'ignore' });
-            } catch {
-              // A calibration this rejects is reported elsewhere; nothing to round-trip.
+              execFileSync(process.execPath, [CLI, file, '--out', out, '--quiet'], { stdio: 'pipe' });
+            } catch (failure) {
+              const said = String(failure.stderr ?? failure.message).trim().split('\n')[0];
+              if ((failure.status ?? 1) === 2) {
+                refused++;
+                continue;
+              }
+              problems.push(
+                `${bdf ? 'BDF' : 'EDF'} digital ${digMin}..${digMax}, physical ` +
+                  `${physMin}..${physMax}: the conversion exited ${failure.status ?? 1} — ${said}`,
+              );
               continue;
             }
             const table = readdirSync(out).find((n) => n.startsWith('signals'));
-            if (!table) continue;
+            if (!table) {
+              problems.push(
+                `${bdf ? 'BDF' : 'EDF'} digital ${digMin}..${digMax}, physical ` +
+                  `${physMin}..${physMax}: the conversion wrote no signal file`,
+              );
+              continue;
+            }
             calibrations++;
 
             const cells = readFileSync(path.join(out, table), 'utf8')
@@ -156,13 +188,16 @@ export async function sweepRoundTrip() {
     rmSync(base, { recursive: true, force: true });
   }
 
-  return { problems, checked, calibrations };
+  return { problems, checked, calibrations, refused };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { problems, checked, calibrations } = await sweepRoundTrip();
+  const { problems, checked, calibrations, refused } = await sweepRoundTrip();
 
-  process.stdout.write(`\n${checked} cells over ${calibrations} calibrations.\n`);
+  process.stdout.write(
+    `\n${checked} cells over ${calibrations} calibrations` +
+      `${refused > 0 ? ` (${refused} refused)` : ''}.\n`,
+  );
   // Nothing checked is not everything right; see the comment in estimate.mjs.
   if (checked === 0) {
     process.stdout.write('No cell was read, so nothing was recovered.\n');

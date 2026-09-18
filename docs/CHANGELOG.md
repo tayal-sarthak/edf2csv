@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.56
+
+### a skip for a case that never happens
+
+The fifth sweep with the same hole, and the one where the skip was unreachable.
+
+`npm run roundtrip` builds 1,260 calibrations, converts each and checks that every printed cell
+recovers the digital code the file holds. It skipped a conversion that failed:
+
+    } catch {
+      // A calibration this rejects is reported elsewhere; nothing to round-trip.
+      continue;
+    }
+
+Nothing is rejected. A degenerate range, an inverted one, a range too small to scale — all of
+them convert and warn, which is what the four calibration warnings are for. Instrumented, the
+`catch` fires zero times in 1,260 calibrations, so the only thing it could ever catch was a
+conversion that had started failing — and it would have skipped that in silence, leaving the
+sweep reporting that every cell recovered its code over whatever was left. The `if (!table)
+continue` under it was the same: a conversion that wrote no signal file is a fault, not a case
+with nothing to compare.
+
+Exit 2 is the usage code a refusal carries, so a calibration this tool really does refuse is
+still a skip — counted now, and named in the summary, rather than dropping out of the
+calibration count without trace.
+
+0.9.51 closed this in `stream.mjs` and 0.9.55 in `layouts`, `narrowing` and `estimate`. All five
+that skip now tell a refusal from a failure.
+
 ## 0.9.55
 
 ### three more sweeps that counted a crash as a skip
