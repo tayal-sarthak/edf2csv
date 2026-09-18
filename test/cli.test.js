@@ -6597,9 +6597,11 @@ describe('--stdout', () => {
       [fixture('single-rate-empty-channel.edf'), [],
         /--stdout writes no channels\.csv to describe it in/u,
         /It is described in channels\.csv but left out/u],
+      // Both halves reworded at 0.9.52, which corrected the advice: the onsets that recover
+      // the clock belong to the events, and this recording carries none.
       [fixture('far-origin-collapsed.edf'), ['--channels', '#0'],
-        /--stdout writes no annotations\.csv, so convert to a directory/u,
-        /Add the onsets in annotations\.csv to recover absolute times/u],
+        /--stdout writes no annotations\.csv to read them from/u,
+        /the onsets in annotations\.csv recover it for a recording that carries events/u],
       /*
         And the collision hint, whose whole advice is a file to look the channel up in. A
         renamed column is the only name the table carries, so the sentence sends the reader to

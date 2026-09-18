@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.62
+
+### a test asserting the sentence 0.9.52 replaced
+
+0.9.52 reworded the advice under the collapsed-origin warning, in both its forms, and left one
+test asserting the old wording — the `--stdout` sidecar sweep, which holds each amended hint to
+the text it should carry and to the text it should not:
+
+    [fixture('far-origin-collapsed.edf'), ['--channels', '#0'],
+      /--stdout writes no annotations\.csv, so convert to a directory/u,
+      /Add the onsets in annotations\.csv to recover absolute times/u],
+
+Both halves are the sentences 0.9.52 replaced, so the suite fails at v0.9.52 through v0.9.61.
+CI caught it on Linux; nothing was published from those tags, and the versions before them are
+unaffected.
+
+The expectations now name the sentences the tool prints. Nothing about the tool changes in this
+release.
+
+**Why it got through.** The suite was run after the change and reported `tests 538`, and I read
+only the first lines of that summary — the `pass` and `fail` counts were below the cut. The
+count of tests is not the count that passed. The ten tags between here and 0.9.51 publish with
+`skip_tests_matching` naming this one test, which is the mechanism this workflow documents for
+exactly this: a tag cannot be corrected without rewriting the commit under it, and everything
+else still gates.
+
 ## 0.9.61
 
 ### a walk over no files, reporting no offenders
