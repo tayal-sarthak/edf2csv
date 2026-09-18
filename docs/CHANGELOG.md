@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.59
+
+### a check over two pages that covered one
+
+The check that holds the pages to what `--info` actually reads is the one that let
+sampling-rates.md say "reads the header only" for as long as it did. 0.9.45 widened it to every
+page and every wording. Both halves of it could still pass by matching nothing.
+
+**The half over two named pages** looked for sentences containing "continuous EDF+" and held
+those to the sixteen-record statement. `getting-started.md` does not contain that phrase — it
+says "a continuous file" — so the loop covered one of the two pages it was written for, and
+covered it by one sentence that is about the speed of the scan rather than its extent. Both
+pages carry the statement itself, word for word; that is what is required now, of each page
+directly.
+
+**The half over every page** is a negative: when the pages are right it matches nothing, so no
+count of its hits can show that it ran. What can is the matcher — it now has to catch the
+sentence it was written for, which is the one 0.9.45 removed from sampling-rates.md. A reworded
+filter or a renamed flag goes quiet otherwise, which is the exact failure the check exists to
+prevent, arriving inside the check.
+
+Verified by breaking each half in turn: dropping the statement from one page fails the first,
+and rewording the filter fails the second.
+
 ## 0.9.58
 
 ### a stack trace out of the sweep that forbids them

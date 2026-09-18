@@ -2606,16 +2606,24 @@ describe('documentation and source agree on their lists', () => {
       '--info no longer reads records of a continuous EDF+, so the pages may be right',
     );
 
+    /*
+      Asserted of each page rather than of whatever a filter happens to match.
+
+      This looked for sentences containing "continuous EDF+" on these two pages and held those
+      to the sixteen-record statement. getting-started.md does not contain that phrase — it
+      says "a continuous file" — so the loop covered one of the two pages it was written for,
+      and covered it by one sentence that is about the speed of the scan. Both pages carry the
+      statement itself, word for word, which is the thing to require: a page that stops making
+      it is a page that no longer tells the reader what `--info` costs.
+    */
+    const READ = 'at most sixteen records of a continuous file to find where it begins';
     for (const page of ['getting-started.md', 'recipes.md']) {
       const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
-      for (const [claim] of text.matchAll(/[^.]*\bcontinuous EDF\+[^.]*\./gu)) {
-        if (!/only the header|past the header|Nothing is read/u.test(claim)) continue;
-        assert.match(
-          claim,
-          /sixteen/u,
-          `${page} says --info reads no further than the header: ${claim.trim()}`,
-        );
-      }
+      assert.ok(text.includes(READ), `${page} no longer says how much of a file --info reads`);
+      assert.ok(
+        text.includes('the whole channel for a discontinuous one'),
+        `${page} states the continuous read and not the discontinuous one`,
+      );
     }
 
     /*
@@ -2624,14 +2632,16 @@ describe('documentation and source agree on their lists', () => {
       nothing" matched neither and stood until 0.9.45 — the third page stating the rule while
       two others state the exception, which is the shape 0.9.32 fixed in `notes`.
     */
+    const CLAIMS = /[^.]*`--info`[^.]*\./gu;
+    const HEADER_ONLY = /reads (?:the header only|only the header)|no further than the header/u;
     const pages = (await readdir(path.join(ROOT, 'website/content')))
       .filter((name) => name.endsWith('.md'));
+    let sentences = 0;
     for (const page of pages) {
       const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
-      for (const [claim] of text.matchAll(/[^.]*`--info`[^.]*\./gu)) {
-        if (!/reads (?:the header only|only the header)|no further than the header/u.test(claim)) {
-          continue;
-        }
+      for (const [claim] of text.matchAll(CLAIMS)) {
+        sentences++;
+        if (!HEADER_ONLY.test(claim)) continue;
         assert.match(
           claim,
           /annotation channel|sixteen/u,
@@ -2639,6 +2649,18 @@ describe('documentation and source agree on their lists', () => {
         );
       }
     }
+    /*
+      This one is a negative: when the pages are right it matches nothing, so a count of its
+      hits cannot be what proves it ran. What can is the matcher itself — the sentence it was
+      written to catch, which is the one 0.9.45 took off sampling-rates.md. Reworded filters
+      and a renamed flag both go quiet otherwise, which is the whole failure this check exists
+      to prevent, arriving in the check.
+    */
+    assert.ok(sentences > 0, 'no page mentions --info, so nothing was read');
+    const specimen = '`--info` reads the header only, converts nothing, and shows which file '
+      + 'each channel is destined for.';
+    const caught = [...specimen.matchAll(CLAIMS)].filter(([claim]) => HEADER_ONLY.test(claim));
+    assert.equal(caught.length, 1, `this check would not catch "${specimen}"`);
   });
 
   it('scopes the cheap timing recipe to the recordings it is right for', async () => {
