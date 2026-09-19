@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.65
+
+### the correctness page describing a check as it behaved two releases ago
+
+0.9.57 gave the terminal sweep the exit code this repository uses for "did not run", because
+`compare.py` states the rule and it was on the wrong side of it: a machine without python3 was
+told nothing had been checked and handed the status that means every prefix began its own line.
+
+The correctness page still described the old behaviour, and described it as the choice:
+
+> The tenth needs a pseudo terminal, which Node cannot allocate, so it borrows python3's `pty`
+> module and reports that it checked nothing when that is unavailable rather than failing a
+> machine without it.
+
+A page that describes the superseded behaviour of a check is worse than one that describes
+none — it is the page a reader consults to decide whether a green run means anything.
+
+The sentence now says what the sweep does, and a test holds the two together: it reads the exit
+code out of the sweep and the claim out of the page, so the next person to change one is told
+about the other. Verified by putting the 0 back and watching it fail.
+
 ## 0.9.64
 
 ### every value agreed, over no annotations at all

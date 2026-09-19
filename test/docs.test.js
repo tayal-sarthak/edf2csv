@@ -835,6 +835,25 @@ describe('documentation and source agree on their lists', () => {
       outgrown.
     */
     const page = await read('website/content/correctness.md');
+    /*
+      And what the page says a sweep does when it cannot run, against what it does.
+
+      The terminal sweep borrows a pseudo terminal from python3, and the page described it as
+      reporting that it checked nothing "rather than failing a machine without it" — which was
+      true until 0.9.57 gave it the exit code this repository uses for "did not run". A page
+      that describes the old behaviour of a check is worse than one that describes none: it is
+      the page a reader consults to decide whether a green run means anything.
+    */
+    const sweep = await read('test/fuzz/terminal.mjs');
+    const exits = /process\.exit\((\d)\);/u.exec(sweep.slice(sweep.indexOf('havePython()')));
+    assert.ok(exits, 'the terminal sweep no longer exits on a missing python3');
+    assert.equal(exits[1], '2', 'it exits something other than 2 where python3 is missing');
+    assert.match(
+      page,
+      /pty` module; where that is unavailable it says it checked nothing and exits 2/u,
+      'the page describes what the terminal sweep does without python3 differently',
+    );
+
     const workflows = await readdir(path.join(ROOT, '.github/workflows'));
     let yaml = '';
     for (const file of workflows) yaml += await read(path.join('.github/workflows', file));
