@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.74
+
+### headers for files nobody checks exist, and a permanent redirect nobody checks lands
+
+`vercel.json` is the other half of what gets served, and nothing read it. It names eight files
+and two directories to attach caching, content types and `X-Robots-Tag` to — `og.png`,
+`favicon.svg`, `sitemap.xml`, `llms-full.txt` and the rest — and it redirects `/docs`
+**permanently** to one page by slug.
+
+Every one of those is a name that has to keep matching something the build produces. Rename
+`og.png` and its headers apply to nothing, so the file ships with whatever the defaults are.
+Rename `getting-started.md` and `/docs` becomes a permanent redirect to a 404 — permanent, so
+the browsers that saw it keep going there.
+
+Two lists nobody diffed. They are diffed now: every file the config gives headers to has to be
+in `website/public` or written by the prerender, and every redirect has to land on a page that
+exists. The static files and the pages are both in the repository, so this needs no site build
+and runs in `npm test` beside the checks on the pages themselves.
+
+Nothing was wrong today. Renaming either side fails it.
+
 ## 0.9.73
 
 ### no link broken, out of a check that matched none

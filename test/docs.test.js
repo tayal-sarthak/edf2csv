@@ -768,6 +768,53 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('gives headers to files the site actually has, and redirects somewhere real', async () => {
+    /*
+      `vercel.json` is the other half of what gets served, and nothing read it. It names eight
+      files and two directories to attach caching, content types and `X-Robots-Tag` to, and it
+      redirects `/docs` permanently to one page by slug. Every one of those is a name that has
+      to keep matching something the build produces: rename `og.png` and its headers apply to
+      nothing, rename `getting-started.md` and `/docs` is a permanent redirect to a 404.
+
+      The static files come from `website/public` and the pages from `website/content`, so this
+      needs no build — which is what lets it run in `npm test` beside the checks on the pages
+      themselves rather than only where the site is deployed.
+    */
+    const config = JSON.parse(await read('vercel.json'));
+    const statics = new Set(await readdir(path.join(ROOT, 'website/public')));
+    const pages = new Set(
+      (await readdir(path.join(ROOT, 'website/content')))
+        .filter((name) => name.endsWith('.md'))
+        .map((name) => name.replace(/\.md$/u, '')),
+    );
+
+    // The literal file names inside the header sources, unescaped.
+    const named = new Set();
+    for (const rule of config.headers) {
+      for (const [, name] of rule.source.matchAll(/([A-Za-z0-9-]+\\?\.(?:png|svg|xml|txt))/gu)) {
+        named.add(name.replace('\\', ''));
+      }
+    }
+    assert.ok(named.size >= 6, `expected vercel.json to name static files, found ${named.size}`);
+
+    // sitemap.xml, robots.txt, llms.txt and llms-full.txt are written by the prerender rather
+    // than copied from public/, so they are checked against the script that writes them.
+    const prerender = await read('website/scripts/prerender.mjs');
+    const missing = [...named].filter(
+      (name) => !statics.has(name) && !prerender.includes(`'${name}'`),
+    );
+    assert.deepEqual(missing, [], `vercel.json gives headers to files nothing produces: ${missing.join(', ')}`);
+
+    for (const redirect of config.redirects ?? []) {
+      const slug = /^\/docs\/([a-z0-9-]+)$/u.exec(redirect.destination);
+      assert.ok(slug, `vercel.json redirects to ${redirect.destination}, which is not a docs page`);
+      assert.ok(
+        pages.has(slug[1]),
+        `vercel.json redirects ${redirect.source} to "${slug[1]}", which is not a page`,
+      );
+    }
+  });
+
   it('runs every example the API reference prints', async () => {
     /*
       api.md is the library's documentation, and its examples are what a reader copies. Eleven
