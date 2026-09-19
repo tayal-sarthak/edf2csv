@@ -144,6 +144,85 @@ def compare_annotations(name: str, reader, out: str, mismatches: list[str]) -> i
     return len(ours)
 
 
+def compare_header(name: str, reader, source: str, mismatches: list[str]) -> int:
+    """Read the header this tool reports and hold every field to pyEDFlib's.
+
+    Claim 2 on the correctness page — that the parser reads the format correctly — is checked
+    against files this repository writes, so the expected answer is known independently of the
+    reader. It is not known independently of the *writer*: a field both sides of this project
+    misread the same way agrees with itself. pyEDFlib parses the same 256 bytes from the same
+    specification and was written by other people, and the reader for it is already open here
+    for the samples. The numbers under this are what a conversion is built out of — a record
+    count, a record duration, the four calibration points — so they are worth the few
+    milliseconds it costs to ask twice.
+
+    Through `--info --json`, which is the header as this tool publishes it rather than as it
+    holds it internally: what a consumer reads is what has to be right.
+    """
+    run = subprocess.run(
+        ["node", CLI, source, "--info", "--json"], capture_output=True, text=True
+    )
+    if run.returncode != 0:
+        mismatches.append(
+            f"{name}: --info --json exited {run.returncode}: {run.stderr.strip()[:200]}"
+        )
+        return 0
+
+    mine = json.loads(run.stdout)
+    checked = 0
+
+    def differ(field: str, ours, theirs) -> None:
+        mismatches.append(f"{name}: {field} {ours!r}, pyEDFlib {theirs!r}")
+
+    checked += 1
+    if mine["data_records"] != reader.datarecords_in_file:
+        differ("data_records", mine["data_records"], reader.datarecords_in_file)
+    checked += 1
+    if abs(mine["record_duration_seconds"] - reader.datarecord_duration) > 1e-12:
+        differ(
+            "record_duration_seconds",
+            mine["record_duration_seconds"],
+            reader.datarecord_duration,
+        )
+    # pyEDFlib keeps the annotation channel out of signals_in_file; this tool reports it apart
+    # from the signal channels too, so the two lists are the same list.
+    checked += 1
+    if len(mine["channels"]) != reader.signals_in_file:
+        differ("signal count", len(mine["channels"]), reader.signals_in_file)
+        return checked
+
+    samples = reader.getNSamples()
+    for channel in mine["channels"]:
+        i = channel["signal_index"]
+        pairs = [
+            ("label", channel["label"], reader.getLabel(i).strip()),
+            ("unit", channel["unit"], reader.getPhysicalDimension(i).strip()),
+            (
+                "samples",
+                channel["samples_per_record"] * mine["data_records"],
+                int(samples[i]),
+            ),
+        ]
+        for field, ours, theirs in pairs:
+            checked += 1
+            if ours != theirs:
+                differ(f"#{i} {field}", ours, theirs)
+        numbers = [
+            ("physical_min", channel["physical_min"], reader.getPhysicalMinimum(i)),
+            ("physical_max", channel["physical_max"], reader.getPhysicalMaximum(i)),
+            ("digital_min", channel["digital_min"], reader.getDigitalMinimum(i)),
+            ("digital_max", channel["digital_max"], reader.getDigitalMaximum(i)),
+        ]
+        for field, ours, theirs in numbers:
+            checked += 1
+            # The calibration points are written as text into an eight-character field, so
+            # both sides are parsing decimal digits; a relative tolerance covers the last bit
+            # of a double rather than any disagreement about the value.
+            if abs(ours - theirs) > 1e-9 * max(1.0, abs(theirs)):
+                differ(f"#{i} {field}", ours, theirs)
+    return checked
+
+
 def main() -> int:
     pyedflib = load()
 
@@ -157,6 +236,7 @@ def main() -> int:
     names = sorted(n for n in os.listdir(RECORDINGS) if n.endswith((".edf", ".bdf")))
     compared = 0
     events = 0
+    fields = 0
     files = 0
     mismatches: list[str] = []
 
@@ -206,13 +286,14 @@ def main() -> int:
                 )
                 continue
             events += compare_annotations(name, reader, out, mismatches)
+            fields += compare_header(name, reader, source, mismatches)
             files += 1
         finally:
             reader.close()
 
     sys.stdout.write(
-        f"\nCompared {compared:,} sample values bit for bit, and {events:,} annotations, "
-        f"across {files} recordings.\n"
+        f"\nCompared {compared:,} sample values bit for bit, {events:,} annotations and "
+        f"{fields:,} header fields, across {files} recordings.\n"
     )
     if mismatches:
         sys.stdout.write(f"{len(mismatches)} disagreed:\n")
@@ -237,6 +318,12 @@ def main() -> int:
     # followed by "Every value agreed", which is two claims and one of them held over nothing.
     # Same failure the eight JavaScript sweeps had until 0.9.50, in the one check whose whole
     # point is that it compares against an implementation nobody here wrote.
+    # Every count this sentence states, not the first; see the sample guard above.
+    if fields == 0:
+        sys.stdout.write(
+            "No header field was compared, so the parser has agreed with nothing.\n"
+        )
+        return 2
     if events == 0:
         sys.stdout.write(
             "No annotation was compared, so the event list has agreed with nothing. The "

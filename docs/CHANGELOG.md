@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.66
+
+### a second implementation, asked about the samples and not the header
+
+The pyEDFlib cross-check opens every recording with a second implementation and compares the
+physical values bit for bit, and the annotations. It had the reader open the whole time and
+never asked it about the header.
+
+Claim 2 on the correctness page — that the parser reads the format correctly — is checked
+against files this repository writes, "so the expected answer is known independently of the code
+under test". Independently of the *reader*. A field that this project's writer and reader both
+misread the same way agrees with itself and nothing else; pyEDFlib parses the same 256 bytes
+from the same specification and was written by other people.
+
+So the cross-check now holds `--info --json` to pyEDFlib for the numbers a conversion is built
+out of: the record count, the record duration, the signal count, and per channel the label, the
+unit, the total samples and the four calibration points.
+
+    Compared 16,943 sample values bit for bit, 120 annotations and 750 header fields,
+    across 75 recordings.
+
+All 750 agree. It reads the header as this tool *publishes* it rather than as it holds it
+internally, because what a consumer reads is what has to be right — and the new count is
+guarded like the two beside it, since a comparison that compared nothing has agreed with
+nothing.
+
 ## 0.9.65
 
 ### the correctness page describing a check as it behaved two releases ago

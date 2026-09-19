@@ -11,7 +11,7 @@ past the "three" this section used to promise as the batch, fuzz and estimate ha
 added, and the heading did not keep up until 0.4.34 — nor after it: a ninth claim was added
 and the heading still said eight, which is what the test below now counts.
 
-1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values and 120 annotations, all in agreement**.
+1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values, 120 annotations and 750 header fields, all in agreement**. The header fields joined it at 0.9.66: claim 2 below is checked against files this repository writes, which makes the expected answer independent of the reader and not of the writer, and the numbers a conversion is built out of — the record count, the record duration, the four calibration points, the samples per channel — are worth asking a second implementation about while its reader is already open.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes — every file but `metadata.json`, which records when the conversion ran and so cannot be identical across two of them. Checked by `npm run fuzz:batch`.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **2,700 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
@@ -37,7 +37,7 @@ npm run crossvalidate
 ```
 
 ```
-Compared 16,943 sample values bit for bit, and 120 annotations, across 75 recordings.
+Compared 16,943 sample values bit for bit, 120 annotations and 750 header fields, across 75 recordings.
 Every value agreed.
 ```
 
