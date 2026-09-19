@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.71
+
+### eleven examples in the API reference, one of them ever run
+
+`api.md` is the library's documentation, and its examples are what a reader copies. Eleven of
+them import the package and do something with it — open a recording, scale a sample, build a
+plan, catch each error type, parse a time spec — and between them they touch most of the public
+surface.
+
+One was run by a test, for a different reason: the timing recipe, because the page recommended it
+for recordings it is wrong for. The other ten were prose that happened to be valid JavaScript. A
+rename or a changed signature would have left the reference telling people to call something that
+is not there, and nothing would have said so.
+
+`npm test` runs all eleven now, against the recording the website is written about — it carries
+the channels these examples name, `EEG Fpz-Cz` and `Temp rectal`, so the code is the page's own.
+Two substitutions it cannot run without: the import, which a reader gets from `npm install
+edf2csv` and which here points at the build under test, and the placeholder paths, which name
+directories nobody has. Exit 0 is the whole assertion, which is the right one — what it guards is
+that the instructions still work.
+
+All eleven pass today, in about four seconds. Renaming `makeScaler` in one of them fails it.
+
 ## 0.9.70
 
 ### the one recipe for reproducing the headline claim, never run

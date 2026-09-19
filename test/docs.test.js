@@ -768,6 +768,59 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('runs every example the API reference prints', async () => {
+    /*
+      api.md is the library's documentation, and its examples are what a reader copies. Eleven
+      of them import the package and do something with it — open a recording, scale a sample,
+      build a plan, catch each error type, parse a time spec — and between them they touch most
+      of the public surface. One of them was run by a test, for a different reason: the timing
+      recipe, because the page recommended it for recordings it is wrong for. The other ten
+      were prose that happened to be valid JavaScript.
+
+      Run against the recording the website is written about, which carries the channels these
+      examples name — `EEG Fpz-Cz`, `Temp rectal` — so the code is the page's own, unedited
+      except for two substitutions it cannot be run without: the import, which a reader gets
+      from `npm install edf2csv` and here points at the build under test, and the placeholder
+      paths, which name directories nobody has.
+
+      Exit 0 is the whole assertion. What these guard against is a rename or a signature change
+      leaving the page telling people to call something that is not there — which is what the
+      examples are for, and what nothing was checking.
+    */
+    const page = await read('website/content/api.md');
+    const examples = [...page.matchAll(/```js\n([\s\S]*?)```/gu)]
+      .map(([, body]) => body)
+      .filter((body) => /\bfrom 'edf2csv'|import\('edf2csv'\)/u.test(body));
+    assert.ok(examples.length >= 10, `expected the reference to print examples, found ${examples.length}`);
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-examples-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = path.join(work, 'sleep-study.edf');
+      writeSleepStudy(recording);
+      const build = JSON.stringify(path.join(ROOT, 'dist/index.js'));
+
+      for (const [index, body] of examples.entries()) {
+        const script = path.join(work, `example-${index}.mjs`);
+        const runnable = body
+          // The recording, under every name the page gives it.
+          .replace(/'\/data\/recordings\/sleep-study\.edf'|'sleep-study\.edf'|'recording\.edf'/gu, JSON.stringify(recording))
+          // Any other placeholder path is somewhere to write.
+          .replace(/'\/data\/[^']*'/gu, () => JSON.stringify(path.join(work, `out-${index}`)))
+          .replace(/from 'edf2csv'/gu, `from ${build}`)
+          .replace(/import\('edf2csv'\)/gu, `import(${build})`);
+        await writeFile(script, runnable);
+        const ran = await run(process.execPath, [script]).catch((error) => error);
+        assert.ok(
+          ran.code === undefined || ran.code === 0,
+          `api.md example ${index} does not run:\n${String(ran.stderr ?? ran).slice(0, 600)}`,
+        );
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('runs the dumper it prints, and gets what the checked-in one gets', async () => {
     /*
       The correctness page tells a reader how to reproduce claim 1 themselves: save this
