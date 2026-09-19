@@ -476,7 +476,8 @@ or a conversion that stopped part way through read as "nothing here to compare" 
 still reported its invariant over what was left. A sweep that cannot run at all exits 2 rather
 than 0, for the reason `compare.py` gives — a status meaning "did not run" must not be the status
 meaning "agreed" — which since 0.9.57 is true of the terminal sweep as well, the one that needs a
-pseudo terminal borrowed from python3. The pyEDFlib cross-check compares two things and states
+pseudo terminal borrowed from python3, and since 0.9.72 of the two scripts that build this site:
+each reported how many pages it had written and would have accepted none. The pyEDFlib cross-check compares two things and states
 both, and since 0.9.64 guards both: it refused to claim agreement over no *samples* and would
 have claimed it over no *annotations*.
 

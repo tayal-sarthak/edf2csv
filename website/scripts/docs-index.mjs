@@ -34,7 +34,26 @@ export function readDocs() {
 }
 
 function main() {
-  const docs = readDocs().map(({ slug, title, description, order }) => ({
+  /*
+    A build that indexed nothing is not a build with nothing to index.
+
+    This writes the sidebar and the card grid, and it reported what it wrote — "docs-index: 11
+    pages" — without ever asking whether that number was zero. An empty `content/`, a
+    frontmatter split that stopped splitting, a directory read from the wrong place: each of
+    them produces `[]`, a site whose documentation is missing entirely, and a CI job that goes
+    green because `vite build` succeeded. The convention this repository applies to every other
+    check that can measure nothing: a status meaning "did not run" must not be the status
+    meaning "agreed".
+  */
+  const found = readDocs();
+  if (found.length === 0) {
+    process.stderr.write(
+      `docs-index: no pages found in ${CONTENT_DIR}. The site would build without its ` +
+        'documentation, so this stops here.\n',
+    );
+    process.exit(2);
+  }
+  const docs = found.map(({ slug, title, description, order }) => ({
     slug,
     title,
     description,

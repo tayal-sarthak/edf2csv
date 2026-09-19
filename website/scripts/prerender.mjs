@@ -804,6 +804,26 @@ Sitemap: ${SITE_URL}/sitemap.xml
 async function main() {
   const assets = findAssets();
   const docs = readDocs().map((doc) => ({ ...doc, html: renderMarkdown(doc.body) }));
+  /*
+    And the same question here, where the pages are actually written.
+
+    `assertLinksResolve` and `assertAnchorsResolve` at the end of this run over whatever was
+    rendered, so over nothing they assert nothing, and the line this prints — "prerender: 11
+    pages + 11 markdown mirrors" — reported the count without ever refusing a zero. A page that
+    rendered to an empty string is the same failure one page at a time: the file is written, the
+    link check passes over it, and what ships is a blank page.
+  */
+  if (docs.length === 0) {
+    process.stderr.write(
+      'prerender: no pages to render. The site would ship without its documentation.\n',
+    );
+    process.exit(2);
+  }
+  const blank = docs.filter((doc) => doc.html.trim() === '').map((doc) => doc.slug);
+  if (blank.length > 0) {
+    process.stderr.write(`prerender: rendered nothing for ${blank.join(', ')}.\n`);
+    process.exit(2);
+  }
 
   const rendered = new Map();
   for (const doc of docs) {

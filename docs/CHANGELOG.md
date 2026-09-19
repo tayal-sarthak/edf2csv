@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.72
+
+### a site that would build with no documentation in it
+
+Two scripts build this site. `docs-index.mjs` writes the index the sidebar and the card grid
+are drawn from; `prerender.mjs` renders every page to static HTML and then checks that every
+link and anchor in what it rendered resolves. Both print how many pages they handled:
+
+    docs-index: 11 pages
+    prerender: 11 pages + 11 markdown mirrors, landing (830 words), 404, sitemap, ...
+
+Neither refused a zero. An empty `content/`, a frontmatter split that stopped splitting, a
+directory read from the wrong place — each produces an empty list, a site with no documentation
+in it, link checks that pass by having nothing to check, and a CI job that goes green because
+`vite build` succeeded.
+
+Both stop now, with the status this repository uses for a step that did not do its work. The
+prerender also refuses a page that rendered to an empty string, which is the same failure one
+page at a time: the file is written, the link check passes over it, and what ships is blank.
+
+Verified by pointing the index at an extension nothing has, and by blanking one page's HTML.
+
 ## 0.9.71
 
 ### eleven examples in the API reference, one of them ever run
