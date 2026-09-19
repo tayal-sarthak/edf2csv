@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.69
+
+### a nanosecond of slack on numbers that are the same digits
+
+0.9.67 took the tolerance off the calibration points. The column next to them had the same
+instrument: annotation onsets and durations were compared to within an absolute `1e-9`.
+
+Wrong in both directions. An onset is decimal text in the TAL and decimal text in the CSV — this
+tool publishes the onset the file states — so both sides parse the same digits and there is
+nothing for a tolerance to absorb; a nanosecond of drift on an ordinary onset was accepted. And
+on a recording timed from 1e17 seconds, where one ulp is sixteen, no two readings of the same
+number could ever satisfy it.
+
+Compared bit for bit now, like the samples and the calibration. All 120 agree exactly, which is
+what they were doing all along — the check just could not have said so.
+
+The one disagreement that stays by design is the missing duration: pyEDFlib reports it as -1.0
+and this tool leaves the cell empty, because a duration that was never recorded is not a
+duration of minus one second.
+
 ## 0.9.68
 
 ### to the last bit, on a header both sides read alike

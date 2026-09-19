@@ -129,7 +129,14 @@ def compare_annotations(name: str, reader, out: str, mismatches: list[str]) -> i
         # float() throughout: pyEDFlib hands back numpy scalars, which repr as
         # "np.float64(0.25)" and make a mismatch harder to read than it needs to be.
         onset, duration = float(onset), float(duration)
-        if abs(onset - mine_onset) > 1e-9:
+        # Bit for bit, like everything else here. An onset is decimal text in the TAL and
+        # decimal text in the CSV — this tool publishes the onset the file states — so both
+        # sides are parsing the same digits and there is nothing for a tolerance to absorb.
+        # An absolute 1e-9 was the wrong instrument in both directions: it accepted a
+        # nanosecond of drift on an ordinary onset, and on a recording timed from 1e17
+        # seconds, where one ulp is sixteen, it could not be satisfied by any two readings
+        # at all. All 120 agree exactly.
+        if bits(onset) != bits(mine_onset):
             mismatches.append(f"{name} annotation {k}: onset {onset!r} vs {mine_onset!r}")
         if str(text) != mine_text:
             mismatches.append(f"{name} annotation {k}: text {str(text)!r} vs {mine_text!r}")
@@ -139,7 +146,7 @@ def compare_annotations(name: str, reader, out: str, mismatches: list[str]) -> i
                 mismatches.append(
                     f"{name} annotation {k}: pyEDFlib has no duration, edf2csv wrote {mine_duration!r}"
                 )
-        elif mine_duration == "" or abs(duration - float(mine_duration)) > 1e-9:
+        elif mine_duration == "" or bits(duration) != bits(float(mine_duration)):
             mismatches.append(f"{name} annotation {k}: duration {duration!r} vs {mine_duration!r}")
     return len(ours)
 
