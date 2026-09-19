@@ -3605,6 +3605,12 @@ describe('documentation and source agree on their lists', () => {
       'url(#': 'url(#...) matching no element',
       'server-rendered to': 'almost no text',
       'the server-rendered homepage is missing': 'landing page missing its',
+      // The two 0.9.72 added and the two 0.9.73 added, which shipped while both pages went
+      // on describing a build that refuses five things.
+      'no pages to render': 'documentation at all',
+      'rendered nothing for': 'rendered to an empty string',
+      'were looked at, which is too': 'looked at too little to have checked anything',
+      'so this checked nothing much': 'looked at too little to have checked anything',
     };
     const raised = Object.keys(named).filter((phrase) => script.includes(phrase));
     assert.ok(raised.length >= 6, `found ${raised.length} of the build's refusals in the script`);

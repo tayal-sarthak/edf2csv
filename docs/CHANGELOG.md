@@ -8,6 +8,24 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.75
+
+### a build that refuses nine things, on two pages that describe five
+
+`website/README.md` heads a section "What the build refuses to ship"; CONTRIBUTING.md repeats the
+list in a sentence and points at it. Both named five — a page that rendered with almost no text or
+a landing page missing its heading, a link pointing at a file the build did not write, an id used
+twice, an `href="#…"` matching no element, a `url(#…)` matching no element.
+
+Four more went in three days ago and neither page moved. 0.9.72 made the build refuse a `content/`
+with no pages in it and a page that rendered to an empty string; 0.9.73 made the link and anchor
+checks refuse having looked at too little to have covered the pages. The section's own criterion is
+that each of these exists because the failure it catches is invisible in a browser, and a site that
+shipped without its documentation is the plainest case of that there is.
+
+Both pages carry all nine now, and the test that holds the two sides together carries the four as
+well — so a page that stops mentioning one fails rather than drifting.
+
 ## 0.9.74
 
 ### headers for files nobody checks exist, and a permanent redirect nobody checks lands

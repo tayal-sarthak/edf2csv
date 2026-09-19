@@ -76,6 +76,15 @@ Each of these exists because the failure it catches is invisible in a browser:
   this is the quietest failure of the set: nothing throws, nothing 404s, and the property
   simply resolves to none. The hero's edge fade is one — mistype it and the traces stop
   looking like they continue past the border, which you have to already know to notice.
+- No documentation at all, or a page that rendered to an empty string. `scripts/docs-index.mjs`
+  refuses an empty `content/` and the prerenderer refuses both, since 0.9.72. Each of them
+  used to print the count it had written without asking whether it was zero, so a site with
+  its documentation missing entirely was a green build and a 404 at every address anyone
+  came for.
+- A link or anchor check that looked at too little to have checked anything, since 0.9.73.
+  Both find what they check with a regular expression over rendered HTML and then report an
+  absence, so a template that quoted its attributes differently would leave them matching
+  nothing and reporting that no link is broken.
 
 The `/docs/<slug>.md` mirrors and `llms-full.txt` are served with `X-Robots-Tag: noindex`
 (see the repository root's `vercel.json`). They are the same prose as the HTML pages they
