@@ -768,6 +768,61 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('runs the dumper it prints, and gets what the checked-in one gets', async () => {
+    /*
+      The correctness page tells a reader how to reproduce claim 1 themselves: save this
+      `dump-doubles.mjs`, run it on a channel, read the same channel with pyEDFlib, compare the
+      uint64 views. It is the one recipe on any page whose whole purpose is that somebody else
+      can check the project's headline claim without taking it on trust — and nothing ran it.
+      `EdfFile.open`, `dataSignals`, `makeScaler`, `readRecords`, `sampleAt`, `batch.recordCount`
+      and `signal.samplesPerRecord` all appear in it, and a change to any of them would leave
+      the instructions broken with no test to say so.
+
+      The page also claims the printed dumper and `test/crossvalidate/dump-doubles.mjs` are "the
+      same code", differing only in that the checked-in one does every channel at once. That is
+      checked here by running both and requiring the same bytes.
+
+      One rewrite before running: the recipe imports from `edf2csv`, as a reader who ran
+      `npm install edf2csv` would, and here it imports the build under test. Nothing else about
+      it is touched — the arithmetic, the traversal and the order the samples are written in are
+      exactly what the page prints.
+    */
+    const page = await read('website/content/correctness.md');
+    const block = /Save this as `dump-doubles\.mjs`:\s*\n```js\n([\s\S]*?)```/u.exec(page);
+    assert.ok(block, 'the dumper recipe is gone from the correctness page');
+    const recipe = block[1];
+    assert.match(recipe, /from 'edf2csv'/u, 'the recipe no longer imports the published package');
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-dumper-'));
+    try {
+      const script = path.join(work, 'dump-doubles.mjs');
+      await writeFile(
+        script,
+        recipe.replace("from 'edf2csv'", `from ${JSON.stringify(path.join(ROOT, 'dist/index.js'))}`),
+      );
+      const recording = path.join(ROOT, 'test/fixtures/generated/magnetometer.edf');
+      const printed = path.join(work, 'printed.f64');
+      const ran = await run(process.execPath, [script, recording, '0', printed]);
+      assert.match(ran.stdout, /samples from ".*" -> /u, ran.stdout);
+
+      const together = path.join(work, 'together');
+      await run(process.execPath, [path.join(ROOT, 'test/crossvalidate/dump-doubles.mjs'), recording, together]);
+      const channels = JSON.parse(await readFile(path.join(together, 'channels.json'), 'utf8'));
+      assert.ok(channels.length > 0, 'the checked-in dumper wrote no channels');
+
+      const mine = await readFile(printed);
+      const theirs = await readFile(path.join(together, channels[0].file));
+      assert.ok(mine.length > 0, 'the printed dumper wrote nothing');
+      assert.deepEqual(
+        [...new Float64Array(mine.buffer, mine.byteOffset, mine.length / 8)],
+        [...new Float64Array(theirs.buffer, theirs.byteOffset, theirs.length / 8)],
+        'the dumper the page prints and the one it says is the same code disagree',
+      );
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('states what the bit-for-bit claim rests on', async () => {
     /*
       "The physical values edf2csv computes match the values a reference implementation

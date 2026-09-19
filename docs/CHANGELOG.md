@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.70
+
+### the one recipe for reproducing the headline claim, never run
+
+The correctness page tells a reader how to check the project's headline claim without taking it
+on trust: save this `dump-doubles.mjs`, run it on a channel, read the same channel with
+pyEDFlib, compare the `uint64` views. It is the one recipe on any page whose whole purpose is
+that somebody else can reproduce the claim — and nothing ran it.
+
+It reaches seven parts of the public API — `EdfFile.open`, `dataSignals`, `makeScaler`,
+`readRecords`, `sampleAt`, `batch.recordCount` and `signal.samplesPerRecord` — so a change to any
+of them would have left the instructions broken with no test to say so. The page also states that
+the printed dumper and `test/crossvalidate/dump-doubles.mjs` are "the same code", differing only
+in that the checked-in one does every channel at once. That was a statement, not a check.
+
+`npm test` now runs the recipe on a fixture and requires the doubles it writes to be the ones the
+checked-in dumper writes for the same channel. One line is rewritten before running: the import,
+which the recipe takes from `edf2csv` as a reader who ran `npm install edf2csv` would, and which
+here points at the build under test. The arithmetic, the traversal and the order the samples come
+out in are exactly what the page prints — doubling one value in the printed version fails it.
+
 ## 0.9.69
 
 ### a nanosecond of slack on numbers that are the same digits
