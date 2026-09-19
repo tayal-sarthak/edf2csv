@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.80
+
+### a sample skipped for ending in an ellipsis
+
+The landing page opens with a comment: "Every terminal block and CSV sample on this page is real
+output." The `--info` block is rebuilt and compared exactly, and four of the six file samples are
+held to being how the conversion starts. Two were skipped, on one line:
+
+    if (sample.includes('...')) continue;
+
+An ellipsis marks where a sample stops. It does not mark the part before it as invented. What
+that line dropped is `channels.csv` — the only place on this site that names that file's first
+eight columns and the order they come in — together with two rows under it carrying a channel's
+index, unit, sampling rate and both calibration points. Rename a column and the page would have
+gone on showing the old name with every check green.
+
+Those samples are compared line by line now, each line a prefix of a line the conversion wrote,
+and in order: the sample shows the header, the first channel and then a channel at another rate,
+skipping the two between them. Six lines checked where the rule that skipped them counted four
+samples.
+
+Only the CSV files. `metadata.json`'s sample is re-wrapped to fit the column it is printed in —
+its `"tool": { "name": ..., "version": ... }` is four lines in the file — so its lines are not
+the file's lines and a prefix rule would be wrong about it rather than lenient.
+
 ## 0.9.79
 
 ### a Mac told it has no hdiutil

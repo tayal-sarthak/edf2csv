@@ -1633,6 +1633,39 @@ describe('documentation and source agree on their lists', () => {
         checked++;
       }
       assert.ok(checked >= 3, `only ${checked} samples were literal enough to check`);
+
+      /*
+        And the ones that elide, which were skipped whole.
+
+        An ellipsis marks where a sample stops, not that what precedes it was made up. The
+        rule above read "contains ..." as "unverifiable" and dropped `channels.csv` — the one
+        place on this site that names that file's first eight columns and the order they come
+        in — along with the two rows under it, which carry a channel's index, unit, rate and
+        both calibration points. All of it is output and none of it was compared.
+
+        Line by line and in order, since the sample shows the header, the first channel and
+        then a channel at another rate, skipping the two between them. Only the CSV files: the
+        `metadata.json` sample is re-wrapped to fit the column it is printed in, so its lines
+        are not the file's lines.
+      */
+      for (const [, name, sample] of samples) {
+        if (!sample.includes('...') || !name.endsWith('.csv')) continue;
+        const lines = (await readFile(path.join(out, name), 'utf8')).split('\n');
+        let at = -1;
+        for (const shown of sample.split('\n')) {
+          const prefix = shown.replace(/\.\.\.$/u, '');
+          assert.ok(prefix.trim() !== '', `${name} shows a line that is only an ellipsis`);
+          const found = lines.findIndex((line, i) => i > at && line.startsWith(prefix));
+          assert.notEqual(
+            found,
+            -1,
+            `${name} on the page shows a line the conversion does not write:\n  ${prefix}`,
+          );
+          at = found;
+          checked++;
+        }
+      }
+      assert.ok(checked >= 6, `only ${checked} sample lines were checked`);
     } finally {
       await rm(work, { recursive: true, force: true });
     }
