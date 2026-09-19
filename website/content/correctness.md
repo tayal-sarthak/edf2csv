@@ -12,6 +12,8 @@ added, and the heading did not keep up until 0.4.34 — nor after it: a ninth cl
 and the heading still said eight, which is what the test below now counts.
 
 1. **The arithmetic is right.** The physical values edf2csv computes match the values a reference implementation computes, to the last bit. Checked against [pyEDFlib](https://github.com/holgern/pyedflib) by `npm run crossvalidate`, which dumps the doubles from 75 generated recordings and compares the 64 bits of each against pyEDFlib's: **16,943 values, 120 annotations and 750 header fields, all in agreement**. The header fields joined it at 0.9.66: claim 2 below is checked against files this repository writes, which makes the expected answer independent of the reader and not of the writer, and the numbers a conversion is built out of — the record count, the record duration, the four calibration points, the samples per channel — are worth asking a second implementation about while its reader is already open.
+
+    **What "to the last bit" rests on.** Both sides compute from the same four calibration numbers, which each reads out of the same eight-character text fields — so the agreement is about the arithmetic only where the two read those fields the same way. They do not always. A physical bound of `-1e-99` fits in eight characters, and pyEDFlib reads it four ulps below the correctly rounded double where this tool reads the nearest one; the values computed from it then differ in their last bits, which is a disagreement about parsing a decimal string and not about the conversion formula. No recording the sweep generates reaches it, and since 0.9.67 the calibration points are compared bit for bit rather than to within a tolerance, so a file that did reach it would be reported rather than passed over. When that happens the file's own text settles it, not whichever implementation is being compared against.
 2. **The parser reads the format correctly, including the parts real files get wrong.** Checked against generated EDF and BDF files whose byte layout and expected contents are written out in code, so the expected answer is known independently of the code under test.
 3. **A batch converts each recording exactly as converting it alone would.** Random folder trees are converted serially and in parallel, and both must produce the same directories with the same bytes — every file but `metadata.json`, which records when the conversion ran and so cannot be identical across two of them. Checked by `npm run fuzz:batch`.
 4. **A damaged file is reported, never a crash.** Real recordings are corrupted byte by byte and converted; every one must exit 0, 1 or 2 with something to say, and never a stack trace. Checked by `npm run fuzz`: **2,700 runs over 300 corrupted recordings, all reported cleanly** at the default seed, and more on request (`npm run fuzz -- 42 2000`).
@@ -421,20 +423,20 @@ npm test
 `npm test` compiles the TypeScript, regenerates the fixtures, and runs the six test files with Node's built-in test runner. There's no test framework to install and no configuration file to read. It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` spawns the built binary as a subprocess for every case and interrupts a thirty-file batch to watch it stop, `large.test.js` builds and reads multi-gigabyte recordings, and `stdout-audit.test.js` creates and mounts a small disk image to fill it up — with `hdiutil`, so those nine run on macOS and are skipped on Linux, CI included. Two more in `cli.test.js` go with them, for filesystem behaviour rather than for a tool: one needs a filesystem that folds case, the other one that folds Unicode normalisation, and Linux does neither. Eleven of the numbers below are a laptop's; CI's own summary says which. Three of `large.test.js`'s six are conditional on the machine instead of the platform — they skip below 8 GiB of RAM, since one builds a 32 MB recording into a 283 MB CSV and two more hold a single record of over two gigabytes — so a small machine produces fourteen fewer than a large one and says so on each. Every one of these is a `t.skip`, reported as a skip and never as a pass. The rest — the parser, the conversion planning, the CSV contents, the documentation checks — runs in about a second between them:
 
 ```
-ℹ tests 539
+ℹ tests 540
 ℹ suites 59
-ℹ pass 539
+ℹ pass 540
 ℹ fail 0
 ```
 
-The 539 tests are split across six files by what they exercise:
+The 540 tests are split across six files by what they exercise:
 
 | File | Tests | What it covers |
 | --- | --- | --- |
 | `test/edf.test.js` | 71 | Header parsing, diagnostics, digital-to-physical conversion, chunked reading, BDF, EDF+ annotation decoding |
 | `test/convert.test.js` | 146 | Time specifications, option checking, column naming, channel selection, rate grouping, and the contents of the written CSV files |
 | `test/cli.test.js` | 194 | The built executable: exit codes, stdout versus stderr, overwrite refusal, unwritable destinations, invocation through a symlink as `npx` does. Two cases need a filesystem that folds case or Unicode normalisation and skip where there is none, which is everywhere CI runs |
-| `test/docs.test.js` | 113 | That this documentation and the source agree on their lists of codes, flags and exit codes |
+| `test/docs.test.js` | 114 | That this documentation and the source agree on their lists of codes, flags and exit codes |
 | `test/stdout-audit.test.js` | 9 | A destination that fills up, for `--stdout` and for `--out`, which needs a filesystem of a known small size and so is kept apart. It builds one with `hdiutil`, which only macOS has, and skips rather than pretends anywhere else — including in CI, which runs on Linux. These nine are counted here and exercised on a laptop; a skip is reported as a skip and never as a pass |
 | `test/large.test.js` | 6 | Recordings of a few gigabytes, built sparse, kept apart for the same reason |
 

@@ -768,6 +768,37 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('states what the bit-for-bit claim rests on', async () => {
+    /*
+      "The physical values edf2csv computes match the values a reference implementation
+      computes, to the last bit" is the claim this project leads with, and it is true where the
+      two implementations read the same four calibration numbers out of the header. They do not
+      always: a physical bound of `-1e-99` fits in the eight characters the format gives it, and
+      pyEDFlib reads that four ulps below the correctly rounded double while this tool reads the
+      nearest one — so the values computed from it differ in their last bits over a decimal
+      string, not over the formula.
+
+      The condition belongs beside the claim, which is the rule 0.7.132 and 0.7.133 set for the
+      two claims on this page that were stated without the conditions the source states beside
+      the arithmetic.
+
+      Held to the claim's own words rather than to a sentence: the page must say the agreement
+      is about the arithmetic only where both read the header alike, and must say what settles
+      it when they do not.
+    */
+    const page = await read('website/content/correctness.md');
+    const claim = /\*\*The arithmetic is right\.\*\*[\s\S]*?(?=\n\d\. \*\*)/u.exec(page);
+    assert.ok(claim, 'the arithmetic claim is gone from the correctness page');
+    assert.match(claim[0], /to the last bit/u, 'the claim no longer states its unit');
+    for (const [what, pattern] of [
+      ['the condition', /read those fields the same way|read the header alike/u],
+      ['the case that breaks it', /1e-99/u],
+      ['what settles it', /the file's own text settles it/u],
+    ]) {
+      assert.match(claim[0], pattern, `the claim does not state ${what}`);
+    }
+  });
+
   it('reads a workflow input through the environment, never into the script', async () => {
     /*
       `${{ inputs.seed }}` written into a `run:` line is substituted by the runner before the

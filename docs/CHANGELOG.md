@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.68
+
+### to the last bit, on a header both sides read alike
+
+The claim this project leads with is that the physical values match a reference implementation's
+"to the last bit". It holds — over every calibration the sweep generates, and over every one this
+repository's fixtures carry. What it rests on was not stated.
+
+Both implementations compute from the same four calibration numbers, and each reads those out of
+the same eight-character text fields. The agreement is about the arithmetic only where the two
+read those fields the same way, and they do not always: `-1e-99` fits in eight characters, and
+pyEDFlib reads it four ulps below the correctly rounded double where this tool reads the nearest
+one. The values computed from it then differ in their last bits — a disagreement about parsing a
+decimal string, not about the conversion formula.
+
+Measured on a recording built for it: the exact rational the calibration defines rounds to
+`-9.743589743589752e-101`; this tool writes a double two ulps from it and pyEDFlib one ten ulps
+away, because it started from a different physical minimum.
+
+The condition now sits beside the claim, with the case that breaks it and with what settles it
+when it does — the text in the file, not whichever implementation is being compared against.
+Since 0.9.67 those four numbers are compared bit for bit rather than to within a tolerance, so a
+recording that reached this would be reported rather than passed over.
+
+The rule 0.7.132 and 0.7.133 set for the other two claims on that page: read a promise, then look
+for the condition the source states beside the arithmetic.
+
 ## 0.9.67
 
 ### a bit-for-bit check with a tolerance two-thirds of a double wide
