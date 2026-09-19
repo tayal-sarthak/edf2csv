@@ -199,8 +199,10 @@ def compare_header(name: str, reader, source: str, mismatches: list[str]) -> int
         return checked
 
     samples = reader.getNSamples()
-    for channel in mine["channels"]:
-        i = channel["signal_index"]
+    # Position among the data channels, as above: `signal_index` is where the channel sits in
+    # the file, and on a recording whose annotation channel is not last that indexes a
+    # different signal here, or none — pyEDFlib raises IndexError and this check does not run.
+    for i, channel in enumerate(mine["channels"]):
         pairs = [
             ("label", channel["label"], reader.getLabel(i).strip()),
             ("unit", channel["unit"], reader.getPhysicalDimension(i).strip()),
@@ -213,7 +215,7 @@ def compare_header(name: str, reader, source: str, mismatches: list[str]) -> int
         for field, ours, theirs in pairs:
             checked += 1
             if ours != theirs:
-                differ(f"#{i} {field}", ours, theirs)
+                differ(f"#{channel['signal_index']} {field}", ours, theirs)
         numbers = [
             ("physical_min", channel["physical_min"], reader.getPhysicalMinimum(i)),
             ("physical_max", channel["physical_max"], reader.getPhysicalMaximum(i)),
@@ -234,7 +236,7 @@ def compare_header(name: str, reader, source: str, mismatches: list[str]) -> int
             # fires, the answer is not an allowance — it is the text in the file, and which
             # side matches it.
             if bits(ours) != bits(theirs):
-                differ(f"#{i} {field}", ours, theirs)
+                differ(f"#{channel['signal_index']} {field}", ours, theirs)
     return checked
 
 
@@ -264,11 +266,15 @@ def main() -> int:
             if channels is None:
                 continue
 
-            for channel in channels:
-                # Addressed by the signal's own position in the file, not by its label:
-                # labels are free text and need not be unique, and matching on them let a
-                # duplicated label compare one channel against another's samples.
-                reference = reader.readSignal(channel["index"])
+            for position, channel in enumerate(channels):
+                # By position among the data channels, not by label and not by position in
+                # the file. Labels are free text and need not be unique, and matching on them
+                # let a duplicated label compare one channel against another's samples; but
+                # `signal_index` counts the annotation channel and pyEDFlib numbers the
+                # signals without it, so the two agree only while every annotation channel
+                # sits last. `channels.json` is written in data-channel order, which is the
+                # order pyEDFlib reports them in.
+                reference = reader.readSignal(position)
                 ours = channel["values"]
                 if len(reference) != len(ours):
                     mismatches.append(

@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.77
+
+### a channel addressed by where it sits in the file, to a reader that counts without the annotation channel
+
+The cross-check asked pyEDFlib for a channel by `signal_index` — where the channel sits in the
+file, which is what `#N` addresses everywhere else in this tool and what `channels.csv`
+documents. pyEDFlib numbers the signals *without* the annotation channel. The two are the same
+number only while every annotation channel sits after every signal.
+
+EDF+ does not say where it goes, and real files put it at either end. Put it first and the
+sample comparison asks for channel 1 of a file pyEDFlib says has one:
+
+    IndexError: Trying to access channel 1, but only 1 channels found
+
+That is not a disagreement reported. It is the only check on this project's headline claim
+falling over, with a traceback, on an ordinary EDF+ arrangement — and with more signals behind
+the annotation channel the indices come back into range instead, and one channel is compared
+against another channel's samples. Which is the failure the comment beside that line was
+avoiding when it chose position over label: "matching on them let a duplicated label compare
+one channel against another's samples." Position does the same thing, for a different reason.
+
+The header comparison added at 0.9.66 had it too, across its ten fields a recording. Both
+address the channel by its position among the data channels now — the order `channels.json` is
+written in and the order pyEDFlib reports them in. A mismatch still names the channel
+`#signal_index`, since that is how the rest of the tool addresses it.
+
+And the corpus stops being arranged one way: half the annotated recordings carry the annotation
+channel first. Nothing about its size changes, so the figures are unmoved — 16,943 sample
+values, 120 annotations and 750 header fields across 75 recordings, now over both arrangements
+rather than one.
+
 ## 0.9.76
 
 ### the check that caught it could not have caught it
