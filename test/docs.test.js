@@ -1666,6 +1666,49 @@ describe('documentation and source agree on their lists', () => {
         }
       }
       assert.ok(checked >= 6, `only ${checked} sample lines were checked`);
+
+      /*
+        And the JSON one, which is not line-comparable and is not therefore unverifiable.
+
+        `metadata.json`'s sample is re-wrapped to fit the column it is printed in, so the
+        rule above rightly leaves it alone — and then nothing else looked at it either. It
+        names nine keys under four sections and states seven of their values outright: the
+        source's size in bytes, a `sha256` of `null`, the format, the start instant, the
+        record count. Rename a key or change what `sha256` holds when nothing asked for one,
+        and the page keeps showing the old document.
+
+        Read as claims rather than as text: every key it names has to exist where it says,
+        and every value it spells out has to be that value. `...` is the sample saying it
+        stopped, and is skipped.
+
+        Against a conversion with no window, since `whole_recording: true` is one of the
+        values shown — one channel of it, so the run stays under a second.
+      */
+      const whole = path.join(work, 'whole');
+      await run(process.execPath,
+        [CLI, recording, '--out', whole, '--channels', 'Temp rectal', '--quiet']);
+      const real = JSON.parse(await readFile(path.join(whole, 'metadata.json'), 'utf8'));
+      const shape = samples.find(([, name]) => name === 'metadata.json');
+      assert.ok(shape, 'the landing page no longer shows a metadata.json');
+
+      let section = null;
+      let claims = 0;
+      for (const line of shape[2].split('\n')) {
+        for (const [, key, raw] of line.matchAll(
+          /"([a-z0-9_]+)":\s*(\{|"[^"]*"|-?[\d.]+|true|false|null)/giu,
+        )) {
+          if (raw === '{') { section = key; continue; }
+          assert.ok(section !== null && section in real,
+            `metadata.json on the page has a "${section}" the file does not`);
+          assert.ok(key in real[section],
+            `metadata.json on the page names ${section}.${key}, which the file does not have`);
+          if (raw === '"..."') continue;
+          assert.equal(JSON.stringify(real[section][key]), raw,
+            `metadata.json on the page shows ${section}.${key} as ${raw}`);
+          claims++;
+        }
+      }
+      assert.ok(claims >= 6, `only ${claims} values in the metadata.json sample were checked`);
     } finally {
       await rm(work, { recursive: true, force: true });
     }

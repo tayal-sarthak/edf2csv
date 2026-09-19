@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.81
+
+### nine keys and seven values, shown and never read
+
+The other sample the ellipsis rule skipped, and the one 0.9.80 could not take: `metadata.json`
+is printed re-wrapped to fit the column it sits in — its `"tool": { "name": ..., "version": ... }`
+is four lines in the real file — so a line-by-line comparison would be wrong about it rather
+than lenient. 0.9.80 excluded it on those grounds and nothing else looked at it either.
+
+It is not text that happens to resemble a document. It names nine keys under four sections and
+spells out seven of their values: `"name": "edf2csv"`, `"bytes": 19643392`, `"sha256": null`,
+`"format": "EDF+ (continuous)"`, `"start_datetime_local": "2002-03-02T23:10:00"`,
+`"data_records": 28800`, `"whole_recording": true`. Every one of those is a fact about a
+document this tool writes, and a reader deciding whether the output is enough to reproduce a run
+is reading exactly them.
+
+Read as claims now rather than as text: every key it names has to exist where it says it does,
+and every value it spells out has to be that value. `...` is the sample saying where it stopped
+and is skipped — the part before it is not.
+
+Against a conversion with no window, since `whole_recording: true` is one of the values shown.
+One channel of it, which is 28,800 rows and well under a second, rather than the 103 MB the
+whole recording writes.
+
 ## 0.9.80
 
 ### a sample skipped for ending in an ellipsis
