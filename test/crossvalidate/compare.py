@@ -351,6 +351,22 @@ def main() -> int:
             "recordings this reads include EDF+ files with annotations.\n"
         )
         return 2
+    # And a floor rather than a zero, which is the lesson the site build took at 0.9.73 and
+    # this file did not. The three guards above refuse a comparison of nothing; none of them
+    # refuses one of almost nothing. `generate.mjs` drops any calibration pair it cannot use
+    # without saying so, so a narrowed list of physical or digital spans — or a directory left
+    # half-written — leaves a corpus a fraction of this size, every value in it agreeing, and
+    # this sentence reporting bit-for-bit agreement over it while the correctness page quotes
+    # 16,943 values across 75 recordings. Each floor is about a third of what the fixed seed
+    # produces — low enough that changing the spread of calibrations on purpose does not trip
+    # it, high enough that a corpus which quietly stopped being written does.
+    if files < 25 or compared < 5_000 or events < 40 or fields < 250:
+        sys.stdout.write(
+            f"{compared:,} values, {events:,} annotations and {fields:,} header fields across "
+            f"{files} recordings is too little to be the set `npm run crossvalidate` "
+            "generates, so this has agreed with less than it says.\n"
+        )
+        return 2
     sys.stdout.write("Every value agreed.\n")
     return 0
 

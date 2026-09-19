@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.78
+
+### a cross-check that refuses nothing and accepts almost nothing
+
+Three guards in `compare.py` refuse a comparison of nothing: no sample value, no header field,
+no annotation. None of them refuses a comparison of almost nothing.
+
+`generate.mjs` writes the recordings this reads, and it drops any calibration pair it cannot use
+without saying so — `if (digMax <= digMin || physMax <= physMin) continue`. Narrow either list,
+or leave the directory half-written, and the corpus is a fraction of its size. Every value in it
+still agrees, every guard above still passes, and the line that comes out is
+
+    Compared 656 sample values bit for bit, 9 annotations and 50 header fields, across 5 recordings.
+    Every value agreed.
+
+against a correctness page that quotes 16,943 values across 75. Nothing is wrong in that output
+except its size, which is the one thing nothing looked at.
+
+The same lesson the site build took at 0.9.73, in the file that argued for it: a check whose
+result is an absence has to say how much it looked at. All four counts now have a floor at about
+a third of what the fixed seed produces — low enough that changing the spread of calibrations on
+purpose does not trip it, high enough that a corpus which quietly stopped being written does.
+It exits 2, the same code a cross-check that did not run has used since 0.9.57.
+
 ## 0.9.77
 
 ### a channel addressed by where it sits in the file, to a reader that counts without the annotation channel
