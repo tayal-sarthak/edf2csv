@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.63
+
+### a dispatch input expanded into the script that reads it
+
+`publish.yml` takes both of its dispatch inputs through `env:` and reads them as `"$SKIP"` and
+`"${RELEASE_TAG}"`. `fuzz.yml` takes one, and wrote it into the script:
+
+    - name: Use the seed given, if one was
+      if: inputs.seed != ''
+      run: echo "SEED=${{ inputs.seed }}" >> "$GITHUB_ENV"
+
+An expression inside a `run:` block is substituted by the runner before the shell starts, so
+whatever a dispatch carries becomes part of the script rather than an argument to it. This
+workflow pins every action by SHA and asks for `contents: read`, so the one input it accepts
+should not be the way in. It goes through `env` now; a well-formed seed behaves exactly as
+before, and one that is not a whole number has been refused by the sweeps themselves since
+0.9.58.
+
+A check over all four workflows comes with it: no `run:` block may interpolate `inputs`,
+`github.event` or `github.head_ref` — the contexts a contributor can write into. It reads the
+YAML as text, because there is no parser here and what it looks for is lexical, and it proves
+its own matcher on a specimen, the way 0.9.59 through 0.9.61 had to: what it asserts is an
+absence, and an absence is also what a scan that read nothing reports.
+
 ## 0.9.62
 
 ### a test asserting the sentence 0.9.52 replaced

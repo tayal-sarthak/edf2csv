@@ -768,6 +768,60 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('reads a workflow input through the environment, never into the script', async () => {
+    /*
+      `${{ inputs.seed }}` written into a `run:` line is substituted by the runner before the
+      shell is started, so whatever the dispatch carried becomes part of the script rather than
+      an argument to it. The fix is the one `publish.yml` already uses for both of its inputs —
+      bind it with `env:` and read `"$NAME"` — and `fuzz.yml` was the one workflow that did not,
+      interpolating the seed a dispatch may supply straight into the line that exports it.
+
+      Read as text rather than as YAML, because there is no YAML parser here and the thing being
+      looked for is lexical: an expression inside a `run:` block. `github.*` contexts a
+      contributor can write — a branch name, a pull request title — belong on the same list, and
+      none is used today.
+    */
+    const workflows = (await readdir(path.join(ROOT, '.github/workflows'))).sort();
+    assert.ok(workflows.length >= 4, `expected the workflows, found ${workflows.length}`);
+    const injected = [];
+    let steps = 0;
+    for (const file of workflows) {
+      const lines = (await read(path.join('.github/workflows', file))).split('\n');
+      let inRun = false;
+      let indent = 0;
+      lines.forEach((line, i) => {
+        const opens = /^(\s*)(?:- name:.*\n)?\s*run:\s*(\|)?\s*$/u.exec(line)
+          ?? /^(\s*)run:\s*(\|)?/u.exec(line);
+        if (opens) {
+          inRun = true;
+          indent = opens[1].length;
+          steps++;
+        } else if (inRun && line.trim() !== '' && (line.length - line.trimStart().length) <= indent) {
+          inRun = false;
+        }
+        if (!inRun) return;
+        if (/\$\{\{\s*(?:inputs|github\.event|github\.head_ref)/u.test(line)) {
+          injected.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`);
+        }
+      });
+    }
+    assert.ok(steps >= 10, `expected several run: steps to read, found ${steps}`);
+    assert.deepEqual(
+      injected,
+      [],
+      `a workflow input is expanded inside a script:\n${injected.join('\n')}`,
+    );
+    // And the detector still recognises one, so a reworded matcher fails rather than going
+    // quiet — the same rule 0.9.59 to 0.9.61 gave the other checks whose result is an absence.
+    const specimen = '        run: echo "SEED=${{ inputs.seed }}" >> "$GITHUB_ENV"';
+    assert.match(
+      specimen,
+      /\$\{\{\s*(?:inputs|github\.event|github\.head_ref)/u,
+      'this check no longer recognises an input inside a script',
+    );
+    assert.match(specimen, /^\s*run:\s/u, 'nor the line that opens one');
+  });
+
   it('runs every sweep it offers as evidence', async () => {
     /*
       A sweep nobody runs is a claim nobody checks. `npm test` covers the suite and not the

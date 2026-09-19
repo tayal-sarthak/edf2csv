@@ -42,9 +42,17 @@ jobs:
       # `npm run fuzz -- <seed> 2000` runs exactly the same files on anybody's machine.
       - name: Pick a seed
         run: echo "SEED=$(( $(date -u +%s) / 86400 ))" >> "$GITHUB_ENV"
+      # Through `env`, never interpolated into the script. `${{ inputs.seed }}` written straight
+      # into a `run:` line is expanded by the workflow runner before the shell sees it, so a
+      # dispatch whose seed carries shell syntax is running that syntax rather than being read
+      # as a seed. publish.yml takes both of its inputs this way — `SKIP` and `RELEASE_TAG` —
+      # and this was the one that did not. Nothing about a well-formed seed changes, and one
+      # that is not a whole number is refused by the sweeps themselves since 0.9.58.
       - name: Use the seed given, if one was
         if: inputs.seed != ''
-        run: echo "SEED=${{ inputs.seed }}" >> "$GITHUB_ENV"
+        env:
+          GIVEN: ${{ inputs.seed }}
+        run: echo "SEED=$GIVEN" >> "$GITHUB_ENV"
 
       - name: A damaged file is reported, never a crash
         run: node test/fuzz/mutate.mjs "$SEED" 2000
