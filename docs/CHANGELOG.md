@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.79
+
+### a Mac told it has no hdiutil
+
+`stdout-audit.test.js` builds a filesystem of a known small size to fill up, with `hdiutil`, and
+its header says these tests "skip rather than pretend" anywhere else. Anywhere else means not
+macOS. The check did more than that:
+
+    if (process.platform !== 'darwin') return false;
+    try { await run('hdiutil', ['info']); return true; } catch { return false; }
+
+A failure from `hdiutil` on a Mac came back as the same `false` a Linux machine gets, and all
+nine cases skipped with `needs hdiutil, which only macOS has` — printed by a machine that has
+it.
+
+Nothing there claims to have passed; a skip is reported as a skip. What is lost is the reason,
+and with it the file's whole subject. CI is `ubuntu-latest` on every job, so those nine have
+never run on a push and a Mac is the only place they run at all. The defect they exist for is
+`--stdout` writing 94,977 of 102,400 rows, ending mid-row, and printing "Wrote 102,400 rows to
+stdout." over it at exit 0. That could come back on a machine whose `hdiutil` was unhappy, with
+the suite green and the platform blamed for it.
+
+The catch is gone. Off macOS nothing changed. On macOS a failing `hdiutil` is this machine's
+fault and is reported as one, which is the answer this repository gives everywhere else it has
+asked the question — the sweeps at 0.9.51 and 0.9.55, `roundtrip` at 0.9.56, `terminal` at
+0.9.57 and the cross-check the release before this one.
+
 ## 0.9.78
 
 ### a cross-check that refuses nothing and accepts almost nothing

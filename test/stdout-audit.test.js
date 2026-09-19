@@ -39,12 +39,16 @@ const VOLUME_NAME = `edf2csvaudit${process.pid}`;
 
 async function volumeAvailable() {
   if (process.platform !== 'darwin') return false;
-  try {
-    await run('hdiutil', ['info']);
-    return true;
-  } catch {
-    return false;
-  }
+  /*
+    And on macOS it is there, so a failure from it belongs to this machine and not to the
+    platform. Caught, it came back as the same `false` Linux gets, and all nine cases below
+    skipped as needing a tool only macOS has, on a machine that has it.
+    CI is ubuntu-latest on every job, so a Mac is the only place these ever run: the file's
+    whole subject would go missing with the suite green and the platform blamed for it. The
+    header above says these skip rather than pretend anywhere *else*.
+  */
+  await run('hdiutil', ['info']);
+  return true;
 }
 
 /** The mount point hdiutil reports, which is not always the one the name asks for. */
