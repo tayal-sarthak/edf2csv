@@ -477,7 +477,10 @@ still reported its invariant over what was left. A sweep that cannot run at all 
 than 0, for the reason `compare.py` gives — a status meaning "did not run" must not be the status
 meaning "agreed" — which since 0.9.57 is true of the terminal sweep as well, the one that needs a
 pseudo terminal borrowed from python3, and since 0.9.72 of the two scripts that build this site:
-each reported how many pages it had written and would have accepted none. The pyEDFlib cross-check compares two things and states
+each reported how many pages it had written and would have accepted none. The link and anchor
+checks that run at the end of that build say how much they looked at for the same reason
+(0.9.73): both find what they check with a regular expression over rendered HTML, and a
+template that quoted its attributes differently would have left them reporting nothing broken. The pyEDFlib cross-check compares two things and states
 both, and since 0.9.64 guards both: it refused to claim agreement over no *samples* and would
 have claimed it over no *annotations*.
 

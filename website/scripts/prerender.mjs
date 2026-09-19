@@ -725,14 +725,20 @@ function assertPagesHaveContent(docs, pages) {
  */
 function assertAnchorsResolve(pages) {
   const problems = [];
+  // The same counting as the link check below it, for the same reason: every id and every
+  // reference to one is found by a regular expression over rendered HTML.
+  let ids_seen = 0;
+  let refs = 0;
   for (const [name, html] of pages) {
     const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+    ids_seen += ids.length;
     for (const id of new Set(ids)) {
       const count = ids.filter((other) => other === id).length;
       if (count > 1) problems.push(`${name}: id "${id}" appears ${count} times`);
     }
     const present = new Set(ids);
     for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
+      refs++;
       if (!present.has(target)) problems.push(`${name}: #${target} matches no element`);
     }
     /*
@@ -747,6 +753,12 @@ function assertAnchorsResolve(pages) {
     for (const [, target] of html.matchAll(/url\(#([^)"]+)\)/g)) {
       if (!present.has(target)) problems.push(`${name}: url(#${target}) matches no element`);
     }
+  }
+  if (ids_seen < 50 || refs < 5) {
+    throw new Error(
+      `prerender: ${ids_seen} ids and ${refs} anchor references were looked at, which is too ` +
+        'few to have checked the pages that were rendered',
+    );
   }
   if (problems.length > 0) {
     throw new Error(`prerender: broken anchors:\n  ${problems.join('\n  ')}`);
@@ -764,8 +776,19 @@ function assertAnchorsResolve(pages) {
  */
 function assertLinksResolve(pages, emitted) {
   const broken = [];
+  /*
+    Counted, because what this asserts is an absence.
+
+    Every link it checks it finds with a regular expression over rendered HTML, and a template
+    that started quoting its attributes differently — or a renderer that stopped emitting them
+    — leaves the expression matching nothing and this function reporting that no link is
+    broken. The pages themselves are guaranteed non-empty since 0.9.72; what was not guaranteed
+    is that anything in them was looked at.
+  */
+  let seen = 0;
   for (const [name, html] of pages) {
     for (const [, href] of html.matchAll(/(?:href|src)="(\/[^"#?]*)(?:[#?][^"]*)?"/g)) {
+      seen++;
       // Vercel injects the analytics script at request time; no build writes it.
       if (href.startsWith('/_vercel/')) continue;
       const relative = href.replace(/^\//, '').replace(/\/$/, '');
@@ -780,6 +803,11 @@ function assertLinksResolve(pages, emitted) {
   }
   if (broken.length > 0) {
     throw new Error(`prerender: these links point at files the build did not write:\n  ${broken.join('\n  ')}`);
+  }
+  // A page links to its siblings, its assets and the landing page; a dozen across the site
+  // would already mean the renderer had stopped emitting most of them.
+  if (seen < 50) {
+    throw new Error(`prerender: only ${seen} links were checked, so this checked nothing much`);
   }
 }
 

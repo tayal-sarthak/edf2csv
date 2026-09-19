@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.73
+
+### no link broken, out of a check that matched none
+
+The site build ends by checking that every link points at a file it wrote and that every anchor
+and `url(#…)` reference points at an element that exists. Both find what they check with a
+regular expression over rendered HTML, and both report an absence:
+
+    if (broken.length > 0) throw new Error(...)
+
+A template that started quoting its attributes differently, or a renderer that stopped emitting
+them, leaves the expression matching nothing and the check reporting that no link is broken.
+0.9.72 guaranteed the pages are there and non-empty; it did not guarantee that anything in them
+was looked at.
+
+They now say how much they looked at, and refuse a number too small to have covered the pages
+that were rendered. Across the eleven pages that is 353 links, 267 ids and 482 anchor
+references — far above the floors, which are set where a renderer that had stopped emitting most
+of its markup would fall.
+
+The third instance of one rule this week, after 0.9.59 to 0.9.61 in the docs tests and 0.9.72 in
+the build beside this: a check whose result is an absence cannot be shown to have run by what it
+found.
+
 ## 0.9.72
 
 ### a site that would build with no documentation in it
