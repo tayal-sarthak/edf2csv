@@ -215,10 +215,18 @@ def compare_header(name: str, reader, source: str, mismatches: list[str]) -> int
         ]
         for field, ours, theirs in numbers:
             checked += 1
-            # The calibration points are written as text into an eight-character field, so
-            # both sides are parsing decimal digits; a relative tolerance covers the last bit
-            # of a double rather than any disagreement about the value.
-            if abs(ours - theirs) > 1e-9 * max(1.0, abs(theirs)):
+            # Bit for bit, like the samples. A relative tolerance of 1e-9 was two-thirds of
+            # the decimal digits of a double wide, and these four numbers are what every
+            # sample is computed from: a calibration point that differs in its last bits
+            # produces values that differ in theirs, which is the disagreement this whole
+            # check exists to find. It passes over the 300 points here.
+            #
+            # A file can reach a calibration the two parse differently: the physical bounds
+            # are eight characters, so `-1e-99` fits, and pyEDFlib reads that four ulps below
+            # the correctly rounded double while this tool reads the nearest one. If this
+            # fires, the answer is not an allowance — it is the text in the file, and which
+            # side matches it.
+            if bits(ours) != bits(theirs):
                 differ(f"#{i} {field}", ours, theirs)
     return checked
 

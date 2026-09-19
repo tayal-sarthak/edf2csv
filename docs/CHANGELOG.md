@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.67
+
+### a bit-for-bit check with a tolerance two-thirds of a double wide
+
+0.9.66 put the header fields into the pyEDFlib cross-check and held the four calibration points
+to a relative tolerance of 1e-9. That is two-thirds of a double's decimal digits wide, on the
+one check whose stated unit is the last bit — and these four numbers are what every sample value
+is computed from, so a calibration point that differs in its last bits produces values that
+differ in theirs. The tolerance would have hidden exactly the disagreement the sweep exists to
+find.
+
+They are compared bit for bit now, like the samples. All 300 agree.
+
+**What the tolerance was hiding elsewhere.** A physical bound is eight characters, so `-1e-99`
+fits, and at that exponent the two implementations do not agree: pyEDFlib reads it four ulps
+below the correctly rounded double and this tool reads the nearest one. The values computed from
+it then differ in their last bits — which is a disagreement about parsing a decimal string, not
+about the arithmetic. No generated recording reaches it, so the comparison passes; the comment
+now says that if it ever fires the answer is not an allowance but the text in the file, and
+which side matches it.
+
 ## 0.9.66
 
 ### a second implementation, asked about the samples and not the header
