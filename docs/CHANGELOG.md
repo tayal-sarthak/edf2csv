@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.82
+
+### two directories counted in a sentence and never looked at
+
+0.9.74 read `vercel.json` for the first time and said what it was reading: "eight files and two
+directories to attach caching, content types and `X-Robots-Tag` to". It checked the files. The
+two directories it counted in that sentence it never looked at, and neither did anything else.
+
+Both are given `max-age=31536000, immutable` — a year, with no revalidation — which is the
+strongest promise in the file and the one that is wrong the moment it points at the wrong path.
+`/assets/` is vite's output directory, hashed per build, so the promise is true of it. `/fonts/`
+is copied verbatim out of `public/`. Rename either and the files fall through to the catch-all
+underneath, which says `max-age=0, must-revalidate`: no error, no missing file, every page still
+correct, and every asset fetched again on every request.
+
+Three more lines nothing read at all. `outputDirectory` is where the deploy serves from,
+`buildCommand` names a script that has to exist in `website/package.json`, and `installCommand`
+is `npm ci`, which refuses without a lockfile. None of the three runs in CI — the website job
+does its own `cd website && npm ci && npm run build` — so the first thing that would notice a
+rename is a failed deploy, or a deploy of an empty directory.
+
+All five are diffed against the repository now: the directories against vite's `assetsDir` and
+`website/public`, the output directory against vite's `outDir`, the build command against the
+scripts that exist, and `npm ci` against the lockfile being there. Nothing was wrong today.
+
 ## 0.9.81
 
 ### nine keys and seven values, shown and never read

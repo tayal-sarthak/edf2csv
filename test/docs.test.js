@@ -813,6 +813,46 @@ describe('documentation and source agree on their lists', () => {
         `vercel.json redirects ${redirect.source} to "${slug[1]}", which is not a page`,
       );
     }
+
+    /*
+      And the two directories, which the paragraph above counts and did not look at.
+
+      Both are given a year of `immutable`, which is the strongest promise this config makes
+      and the one that is wrong the moment it applies to the wrong path: `/assets/` is vite's
+      output directory, hashed per build, and `/fonts/` is copied verbatim out of `public/`.
+      Rename either and the files it named fall through to the catch-all below it and are
+      revalidated on every request, which nothing would ever report.
+    */
+    const vite = await read('website/vite.config.js');
+    const assetsDir = /assetsDir:\s*'([^']+)'/u.exec(vite)?.[1] ?? 'assets';
+    const directories = config.headers
+      .map((rule) => /^\/([a-z0-9-]+)\/\(\.\*\)$/u.exec(rule.source)?.[1])
+      .filter((dir) => dir !== undefined);
+    assert.ok(directories.length >= 2,
+      `expected vercel.json to cache directories, found ${directories.length}`);
+    for (const dir of directories) {
+      assert.ok(
+        dir === assetsDir || statics.has(dir),
+        `vercel.json caches /${dir}/ for a year and no build writes a ${dir}/`,
+      );
+    }
+
+    /*
+      And what it deploys with, which nothing read at all. The output directory is where vite
+      is configured to write and the prerenderer to finish; the build command is a script that
+      has to exist in `website/package.json`; `npm ci` is a lockfile away from refusing. None
+      of the three runs in CI — the website job does its own `cd website && npm ci && npm run
+      build` — so a rename lands as a failed deploy or, worse, a deploy of nothing.
+    */
+    const site = JSON.parse(await read('website/package.json'));
+    const outDir = /outDir:\s*'([^']+)'/u.exec(vite)?.[1] ?? 'dist';
+    assert.equal(config.outputDirectory, `website/${outDir}`,
+      `vercel.json serves ${config.outputDirectory} and vite writes website/${outDir}`);
+    const built = /^cd website && npm run ([\w:-]+)$/u.exec(config.buildCommand ?? '');
+    assert.ok(built && built[1] in site.scripts,
+      `vercel.json builds with "${config.buildCommand}", which is not a script website has`);
+    assert.match(config.installCommand ?? '', /npm ci\b/u);
+    await stat(path.join(ROOT, 'website/package-lock.json'));
   });
 
   it('runs every example the API reference prints', async () => {
