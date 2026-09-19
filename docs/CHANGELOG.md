@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.64
+
+### every value agreed, over no annotations at all
+
+The pyEDFlib cross-check compares two things and says so:
+
+    Compared 16,943 sample values bit for bit, and 120 annotations, across 75 recordings.
+    Every value agreed.
+
+It refuses to claim agreement over no samples — 0.7.136 gave it that guard, and the reason it
+states is the one this repository applies everywhere: a status meaning "did not run" must not be
+the status meaning "agreed". The annotations are a second comparison with a second claim, and
+they had no guard. A recording set with no annotation channel in it, or a `compare_annotations`
+that stopped finding them, read
+
+    Compared 16,943 sample values bit for bit, and 0 annotations, across 75 recordings.
+    Every value agreed.
+
+and exited 0.
+
+Same failure the eight JavaScript sweeps had until 0.9.50 — a guard on the first of several
+counts — in the one check whose whole value is that it compares against an implementation
+nobody here wrote. It exits 2 now, with the code and the wording the sample guard uses.
+
+Verified by zeroing the annotation count and watching it refuse.
+
 ## 0.9.63
 
 ### a dispatch input expanded into the script that reads it

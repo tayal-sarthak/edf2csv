@@ -230,6 +230,19 @@ def main() -> int:
             "the recordings this reads.\n"
         )
         return 2
+    # And the other half of the sentence above, which is a second comparison with a second
+    # claim. The guard was written for the samples and reported on both: a recording set with
+    # no annotation channel in it, or a `compare_annotations` that stopped finding them, read
+    # "Compared 16,943 sample values bit for bit, and 0 annotations, across 75 recordings."
+    # followed by "Every value agreed", which is two claims and one of them held over nothing.
+    # Same failure the eight JavaScript sweeps had until 0.9.50, in the one check whose whole
+    # point is that it compares against an implementation nobody here wrote.
+    if events == 0:
+        sys.stdout.write(
+            "No annotation was compared, so the event list has agreed with nothing. The "
+            "recordings this reads include EDF+ files with annotations.\n"
+        )
+        return 2
     sys.stdout.write("Every value agreed.\n")
     return 0
 
