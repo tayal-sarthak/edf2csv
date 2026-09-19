@@ -3595,37 +3595,61 @@ describe('documentation and source agree on their lists', () => {
       Derived from the prerenderer, so a sixth refusal added tomorrow fails this until both
       pages account for it.
     */
+    /*
+      Enumerated from the scripts, which the paragraph above claimed and the code did not do.
+
+      `named` was a list of phrases looked for *in* the script, so a refusal whose wording was
+      not already on the list was not reported absent — it was invisible. Four went in between
+      0.9.72 and 0.9.73 and this went on passing over the five it knew, which is the drift it
+      exists to catch, one level up. The scripts' own refusals are collected instead, and each
+      has to be accounted for below or the test names it.
+    */
     const script = await read('website/scripts/prerender.mjs');
-    /* What each refusal is called on the pages. Every message below needs an entry. */
+    const raises = [
+      ...(script + (await read('website/scripts/docs-index.mjs'))).matchAll(
+        /(?:throw new Error|process\.stderr\.write)\(\s*[`'"]([^`'"\n]*)/gu,
+      ),
+    ].map(([, message]) => message);
+    // The same floor the build's own checks took at 0.9.73: a matcher that stopped matching
+    // reports an absence, and an absence here would be every page accounted for.
+    assert.ok(raises.length >= 10, `found ${raises.length} refusals in the two scripts`);
+
+    /* Keyed by the refusal's first line, and worth what each is called on the pages. */
     const named = {
-      'rendered with almost no text': 'almost no text',
-      'these links point at files the build did not write': 'did not write',
-      'appears': 'id used twice',
-      'matches no element': 'href="#..." matching no element',
-      'url(#': 'url(#...) matching no element',
-      'server-rendered to': 'almost no text',
-      'the server-rendered homepage is missing': 'landing page missing its',
-      // The two 0.9.72 added and the two 0.9.73 added, which shipped while both pages went
-      // on describing a build that refuses five things.
-      'no pages to render': 'documentation at all',
-      'rendered nothing for': 'rendered to an empty string',
-      'were looked at, which is too': 'looked at too little to have checked anything',
-      'so this checked nothing much': 'looked at too little to have checked anything',
+      'these pages rendered with almost no text': ['almost no text'],
+      'the landing page server-rendered to': ['almost no text'],
+      'the server-rendered homepage is missing': ['landing page missing its'],
+      'these links point at files the build did not write': ['did not write'],
+      // One refusal over three problem kinds, so all three have to be on the pages.
+      'broken anchors': ['id used twice', 'href="#..." matching no element',
+        'url(#...) matching no element'],
+      'no pages to render': ['documentation at all'],
+      'no pages found': ['documentation at all'],
+      'rendered nothing for': ['rendered to an empty string'],
+      'anchor references were looked at': ['looked at too little to have checked anything'],
+      'links were checked': ['looked at too little to have checked anything'],
+      // Not a page it would ship: vite has not run, so nothing was emitted to be wrong about.
+      'could not find the built stylesheet': [],
     };
-    const raised = Object.keys(named).filter((phrase) => script.includes(phrase));
-    assert.ok(raised.length >= 6, `found ${raised.length} of the build's refusals in the script`);
+    const names = Object.keys(named);
+    const unaccounted = raises.filter((message) => !names.some((key) => message.includes(key)));
+    assert.deepEqual(unaccounted, [],
+      `the build refuses these and nothing here names them:\n  ${unaccounted.join('\n  ')}`);
+    const gone = names.filter((key) => !raises.some((message) => message.includes(key)));
+    assert.deepEqual(gone, [], `named here and no longer refused: ${gone.join(', ')}`);
 
     for (const page of ['website/README.md', 'CONTRIBUTING.md']) {
       // Backticks come out, since the pages mark up the phrases and the build does not.
       const text = (await read(page)).replace(/`/gu, '').replace(/\s+/gu, ' ');
-      for (const phrase of raised) {
-        const wanted = named[phrase];
-        // CONTRIBUTING keeps the short form and points at the README for the rest.
-        if (page === 'CONTRIBUTING.md' && wanted === 'landing page missing its') continue;
-        assert.ok(
-          text.includes(wanted),
-          `the build refuses "${phrase}" and ${page} does not mention it (${wanted})`,
-        );
+      for (const [phrase, wanted] of Object.entries(named)) {
+        for (const want of wanted) {
+          // CONTRIBUTING keeps the short form and points at the README for the rest.
+          if (page === 'CONTRIBUTING.md' && want === 'landing page missing its') continue;
+          assert.ok(
+            text.includes(want),
+            `the build refuses "${phrase}" and ${page} does not mention it (${want})`,
+          );
+        }
       }
     }
   });

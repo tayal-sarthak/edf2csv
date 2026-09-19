@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.76
+
+### the check that caught it could not have caught it
+
+The check that caught 0.9.75 could not have caught it. Its own comment said otherwise —
+"derived from the prerenderer, so a sixth refusal added tomorrow fails this until both pages
+account for it" — and four were added the day after it was written, and it stayed green.
+
+It was a table of phrases looked for *in* the script:
+
+    const raised = Object.keys(named).filter((phrase) => script.includes(phrase));
+
+Every phrase it knows, it finds; a refusal worded in a way nobody had put in the table is not
+reported missing, it is simply not seen. The pages were held to five refusals because five was
+the length of the table, not because five was the number the build has.
+
+The scripts are enumerated now — every `throw new Error` and every `process.stderr.write` that
+precedes an exit, in `prerender.mjs` and in `docs-index.mjs` — and each one has to be accounted
+for: matched to what the pages call it, or exempted with a reason, which one is (a missing
+stylesheet is vite not having run, not a page anyone would read). A refusal that is neither
+fails the test by name.
+
+And the enumeration is given the floor 0.9.73 gave the build's own checks, for the same reason:
+a matcher that stopped matching would report that every refusal is accounted for.
+
 ## 0.9.75
 
 ### a build that refuses nine things, on two pages that describe five
