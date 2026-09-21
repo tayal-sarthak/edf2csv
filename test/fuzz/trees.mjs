@@ -127,6 +127,9 @@ export function fuzzTrees(seed = 1, trees = 12) {
   const problems = [];
   let recordings = 0;
   let directories = 0;
+  // What check 2 holds over. `directories` is check 1's population; the summary makes two
+  // claims and guarded the first, which is the sub-count gap 0.9.50 closed elsewhere.
+  let compared = 0;
 
   for (let round = 0; round < trees; round++) {
     const base = mkdtempSync(path.join(tmpdir(), 'edf2csv-trees-'));
@@ -239,21 +242,41 @@ export function fuzzTrees(seed = 1, trees = 12) {
       }
 
       // 2. A batch may reorder the work; it may not change it.
-      for (const relative of fromSerial) {
+      for (const [index, relative] of fromSerial.entries()) {
         const stem = relative.split(path.sep).filter(Boolean);
         const source = placed.find(
           (file) => path.relative(study, file).replace(/\.[^.]*$/u, '') === stem.join(path.sep),
         );
         if (!source) continue;
 
-        const alone = path.join(base, 'alone', stem.join('_'));
+        /*
+          Indexed, and the conversion's failure reported rather than skipped.
+
+          Two nested recordings whose paths flatten to the same name — `sub.dir-1/rec-0` and a
+          file called `sub.dir-1_rec-0` — asked for the same `--out`, and the second refused as
+          an overwrite. That refusal, and a crash, and any other non-zero exit, all went into a
+          bare `catch { continue; }`: the recording dropped out of the comparison this sweep
+          exists for, and the summary still said every batch matched converting it alone. It is
+          the shape narrowing.mjs was skipping its own cuts with until 0.9.55, in the last of
+          the eight sweeps that had not been asked the question.
+
+          The batch converted this recording. Converting it alone failing is therefore not a
+          refusal to work around — it is the two disagreeing, which is the whole subject.
+        */
+        const alone = path.join(base, 'alone', `${index}-${stem.join('_')}`);
         try {
           execFileSync(process.execPath, [CLI, source, '--out', alone, '--quiet', ...extra], {
-            stdio: 'ignore',
+            stdio: ['ignore', 'ignore', 'pipe'],
           });
-        } catch {
+        } catch (error) {
+          problems.push(
+            `round ${round} [${extra.join(' ') || 'no options'}]: the batch converted ` +
+              `${relative} and converting it alone exited ${error.status}: ` +
+              `${String(error.stderr ?? '').trim().split('\n')[0]}`,
+          );
           continue;
         }
+        compared++;
         for (const name of readdirSync(alone)) {
           // metadata.json carries the time of the conversion, which differs by design.
           if (name === 'metadata.json') continue;
@@ -314,7 +337,7 @@ export function fuzzTrees(seed = 1, trees = 12) {
     }
   }
 
-  return { problems, recordings, directories, trees };
+  return { problems, recordings, directories, compared, trees };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -331,14 +354,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   const seed = whole('The seed', process.argv[2], 1);
   const trees = whole('The number of folder trees', process.argv[3], 12);
-  const { problems, recordings, directories } = fuzzTrees(seed, trees);
+  const { problems, recordings, directories, compared } = fuzzTrees(seed, trees);
 
   process.stdout.write(
     `\n${trees} folder trees, ${recordings} recordings, ${directories} conversions (seed ${seed}).\n`,
   );
   // Nothing converted is not everything agreeing; see the comment in estimate.mjs.
-  if (directories === 0) {
-    process.stdout.write('No recording was converted, so nothing was compared.\n');
+  if (directories === 0 || compared === 0) {
+    process.stdout.write(
+      directories === 0
+        ? 'No recording was converted, so nothing was compared.\n'
+        : 'No batched recording was converted alone, so the two were never compared.\n',
+    );
     process.exit(1);
   }
   /*
@@ -361,5 +388,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     process.exit(1);
   }
-  process.stdout.write('Serial and parallel agreed, and every batch matched converting alone.\n');
+  process.stdout.write(
+    `Serial and parallel agreed, and all ${compared} batched recordings matched converting ` +
+      'alone.\n',
+  );
 }

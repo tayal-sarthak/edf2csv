@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.83
+
+### the batch sweep's own comparison, skipped without a word
+
+`npm run fuzz:batch` is the check behind claim 6 — a batch converts each recording as converting
+it alone would. Its second check converts each recording of the batch on its own and compares
+the bytes, and it reached that comparison through:
+
+    try {
+      execFileSync(process.execPath, [CLI, source, '--out', alone, '--quiet', ...extra],
+        { stdio: 'ignore' });
+    } catch {
+      continue;
+    }
+
+Every way that can fail — a crash, an exit 1, a refusal — dropped the recording out of the
+comparison the sweep exists for, with no message, because stderr was not even captured. The
+summary then said every batch matched converting it alone, over the ones that had not been
+tried. This is the shape `narrowing.mjs` was skipping its own cuts with until 0.9.55, in the
+last of the eight sweeps nobody had asked the question of.
+
+The batch converted the recording. Converting it alone failing is therefore not a refusal to
+step around — it is the two disagreeing, which is the subject. It is reported now, with the
+first line of what the run said.
+
+Two things behind that. The destination was named after the recording's path flattened with
+underscores, so `sub.dir-1/rec-0` and a file called `sub.dir-1_rec-0` asked for the same `--out`
+and the second refused as an overwrite — the same self-inflicted collision narrowing.mjs had.
+It carries the index now. And the summary makes two claims while its guard covered one:
+`directories` is check 1's population, and nothing counted what check 2 held over. It does, and
+refuses a zero, and says the number — 49 at the default seed, which the correctness page now
+quotes.
+
 ## 0.9.82
 
 ### two directories counted in a sentence and never looked at

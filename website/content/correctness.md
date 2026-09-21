@@ -74,7 +74,7 @@ npm run fuzz:batch -- 42 40     # a different seed, more trees
 
 ```
 12 folder trees, 49 recordings, 49 conversions (seed 1).
-Serial and parallel agreed, and every batch matched converting alone.
+Serial and parallel agreed, and all 49 batched recordings matched converting alone.
 ```
 
 Converting a folder is the hardest part of this tool to reason about: the tree is walked, links are followed, destinations are derived from file names, and the conversions may run in any order across several processes. Rather than guess which arrangement breaks, this builds arrangements — nesting, names with spaces and non-ASCII characters, mixed-case extensions, symlinks, files that are not recordings — and checks five things that must hold whatever shape comes out:
