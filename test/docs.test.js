@@ -5052,7 +5052,7 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
-  it('tracks nothing at the top level that nobody put there on purpose', async () => {
+  it('tracks nothing at the top level that nobody put there on purpose', async (t) => {
     /*
       0.5.30's own commit — the one that fixed `npm pack` shipping no code — also committed a
       directory called `undefined`: ten files of conversion output from a command whose `--out`
@@ -5065,13 +5065,17 @@ describe('documentation and source agree on their lists', () => {
       down, and a new one has to be added here deliberately.
 
       Skipped rather than failed where git isn't available or this isn't a checkout — an
-      extracted tarball is a legitimate place to run the suite from.
+      extracted tarball is a legitimate place to run the suite from. Skipped through `t.skip`
+      and not through a bare `return`, which the runner counts as a pass: this is a guard
+      written as `catch { return; }` rather than as `if (…) return;`, and both end a test the
+      same way.
     */
     let tracked;
     try {
       const { stdout } = await run('git', ['ls-files', '-z'], { cwd: ROOT });
       tracked = stdout.split('\0').filter(Boolean);
     } catch {
+      t.skip('git said nothing, so this is not a checkout');
       return;
     }
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
@@ -6096,7 +6100,20 @@ describe('documentation and source agree on their lists', () => {
         .split('\n')
         .filter((line) => !line.includes('{0,6}'))
         .join('\n');
-      for (const [, guard] of source.matchAll(/\n {4}if \([^\n]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
+      /*
+        A `catch` ends a test as surely as an `if` does, and this only knew the `if`.
+
+        `tracks nothing at the top level that nobody put there on purpose` guarded itself with
+        `catch { return; }` around `git ls-files`, so anywhere git is absent — an extracted
+        tarball, which its own comment names as a legitimate place to run from — it reported
+        a pass. Widened the release after this file joined the scan, which is the order these
+        keep arriving in: find the shape, then find the spelling of it nobody matched.
+      */
+      const guards = [
+        ...source.matchAll(/\n {4}if \([^\n]*\)([^\n]*(?:\n[^\n]*){0,6})/gu),
+        ...source.matchAll(/\n {4}\} catch[^\n]*\{([^\n]*(?:\n[^\n]*){0,6})/gu),
+      ];
+      for (const [, guard] of guards) {
         // `return <value>` hands the answer to a caller that decides; a bare `return` ends the
         // test where it stands, and that is the one the runner counts as a pass.
         if (/\breturn;/u.test(guard) && !/t\.skip\(/u.test(guard)) {

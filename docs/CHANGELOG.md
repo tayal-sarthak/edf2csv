@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.85
+
+### a catch ends a test as surely as an if does
+
+0.9.84 put this file into the scan that refuses a guard ending a test with a bare `return`, and
+found one. It found one because the scan looks for `if (…)` followed by a `return` — and a
+`catch` ends a test exactly as surely:
+
+    let tracked;
+    try {
+      const { stdout } = await run('git', ['ls-files', '-z'], { cwd: ROOT });
+      tracked = stdout.split('\0').filter(Boolean);
+    } catch {
+      return;
+    }
+
+That is `tracks nothing at the top level that nobody put there on purpose` — the check that
+exists because 0.5.30 committed a directory called `undefined` and it sat in the repository for
+eighty versions. Anywhere `git` is absent it reported a pass. Its own comment names the case:
+"an extracted tarball is a legitimate place to run the suite from", which is exactly a place
+with no git in it.
+
+It skips now, and the scan matches both spellings. The order these arrive in is worth noting,
+because it is the third time: find the shape, fix the instance, then find the spelling of the
+shape that nobody's matcher covered. 0.9.45 said it after the same thing happened to a prose
+check — widen the guard to every wording, not the one you just read.
+
 ## 0.9.84
 
 ### the file that forbids a silent guard had one
