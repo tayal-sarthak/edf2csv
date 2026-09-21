@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.86
+
+### five releases fixing one rule, and nothing held the rule
+
+Five releases have now fixed the same defect in five different sweeps. `stream.mjs` at 0.9.51,
+`layouts`, `narrowing` and `estimate` at 0.9.55, `roundtrip` at 0.9.56, and `trees` — the last of
+the eight — three releases ago: a sweep runs the tool, the run fails, and the `catch` around it
+decides what happened without looking. A crash and a refusal are the same `continue`, and the
+summary goes on stating the invariant over the runs that were never made.
+
+Nothing held the rule. Each time it was found by reading one sweep and fixing that sweep, which
+is why it took five goes to reach all of them and why the sixth would have taken a sixth.
+
+It is held now, beside the check that refuses a sweep which measured nothing — the other half of
+the same question. A `catch` around a block that runs the CLI has to look at the failure it was
+handed: its `status`, or the error itself. Skipping a refusal is still allowed; skipping without
+knowing it was one is not. Reintroducing 0.9.83's `catch { continue; }` fails it by name.
+
+And the one instance the rule found while being written. `stream.mjs` reports its failed
+conversion rather than skipping it — that was 0.9.51 — but it ran the tool with `stdio: 'ignore'`
+and reported `streamed but would not convert`: the only line anybody gets, naming neither the
+exit code nor a word of the reason. It carries both now.
+
 ## 0.9.85
 
 ### a catch ends a test as surely as an if does

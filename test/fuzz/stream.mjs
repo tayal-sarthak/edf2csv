@@ -94,10 +94,16 @@ for (const name of names) {
       const out = path.join(work, 'out');
       try {
         execFileSync(process.execPath, [CLI, source, '--out', out, '--quiet', ...mode], {
-          stdio: 'ignore',
+          stdio: ['ignore', 'ignore', 'pipe'],
         });
-      } catch {
-        problems.push(`${name} [${mode.join(' ') || 'no options'}]: streamed but would not convert`);
+      } catch (failure) {
+        // With what it said. `stdio: 'ignore'` threw the message away and the line read
+        // "streamed but would not convert" — the one report anybody gets, naming neither the
+        // exit code nor a word of the reason.
+        problems.push(
+          `${name} [${mode.join(' ') || 'no options'}]: streamed but --out exited ` +
+            `${failure.status}: ${String(failure.stderr ?? '').trim().split('\n')[0]}`,
+        );
         continue;
       }
 

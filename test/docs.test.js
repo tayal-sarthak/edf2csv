@@ -6311,6 +6311,36 @@ describe('documentation and source agree on their lists', () => {
     }
     assert.deepEqual(missing, [], `sweeps that still pass on nothing: ${missing.join(', ')}`);
 
+    /*
+      And what each of them does when a conversion inside it fails.
+
+      The rule above is about a sweep that measured nothing. This is the other half, and it is
+      the one that keeps coming back: a sweep that ran the tool, the run failed, and the catch
+      around it threw the failure away. `stream.mjs` at 0.9.51, `layouts`, `narrowing` and
+      `estimate` at 0.9.55, `roundtrip` at 0.9.56, and `trees` — the last of the eight — at
+      0.9.83, where the comparison the sweep exists for dropped a recording per failure and
+      the summary still said every batch matched converting it alone.
+
+      Five releases fixing instances of one rule, and nothing held the rule. It is held here:
+      a `catch` around a block that runs the CLI has to look at the failure — its `status`, or
+      the error it was handed — rather than decide what happened without asking. A sweep that
+      wants to skip a refusal still may; what it may not do is skip without knowing.
+    */
+    const untyped = [];
+    for (const name of [...sweeps, 'terminal']) {
+      const source = await read(`test/fuzz/${name}.mjs`);
+      for (const [, body, bound, handler] of source.matchAll(
+        /try \{([\s\S]{0,900}?)\} catch(?: \((\w+)\))? \{([\s\S]{0,300}?)\n *\}/gu,
+      )) {
+        if (!/\bCLI\b/u.test(body)) continue;
+        const looks = /status|\.code\b/u.test(handler)
+          || (bound !== undefined && new RegExp(`\\b${bound}\\b`, 'u').test(handler));
+        if (!looks) untyped.push(`${name}.mjs: ${handler.trim().split('\n')[0].slice(0, 70)}`);
+      }
+    }
+    assert.deepEqual(untyped, [],
+      `a sweep decides a conversion failed without looking at how:\n  ${untyped.join('\n  ')}`);
+
     // And the one whose zero case a documented flag reaches, run for real.
     const outcome = await run(process.execPath, [path.join(ROOT, 'test/fuzz/estimate.mjs'), 'no-such-fixture'], {
       cwd: ROOT,
