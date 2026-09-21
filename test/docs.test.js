@@ -909,7 +909,63 @@ describe('documentation and source agree on their lists', () => {
       `og.png` is here for the same reason — its 1200x630 is declared twice more, in the
       prerenderer's `og:image:width` and in website/README.md's tree.
     */
+    /*
+      And the two facts underneath all of it, each written out by hand in four places.
+
+      The theme a reader chooses is kept under one localStorage key, and that key is spelled
+      five times: the script inlined in `index.html`, `Nav.jsx`'s `STORAGE_KEY`, and three
+      strings in the prerenderer — the pre-paint script, and the toggle's own reader and
+      writer, which the documentation pages and the 404 get instead of React. Change it in one
+      and a reader's chosen theme survives the landing page and is forgotten on every
+      documentation page, with nothing thrown, nothing 404ing and no test that can see it:
+      precisely the criterion `website/README.md` gives for what this build refuses to ship.
+
+      The theme colour is the same shape. `--bg` in the stylesheet is what the page is actually
+      painted, and `<meta name="theme-color">` tells the browser what to paint around it — six
+      copies of it across `index.html`, the prerenderer's shared chrome, its 404 head, and the
+      manifest's `theme_color` and `background_color`. A stale one is a browser chrome that
+      does not match the page under it.
+
+      Both are held to their one source: the key to the component that owns it, the colours to
+      the stylesheet that paints them.
+    */
+    const index = await read('website/index.html');
+    const styles = await read('website/src/styles.css');
+    const nav = await read('website/src/components/Nav.jsx');
+    const key = /const STORAGE_KEY = '([^']+)';/u.exec(nav);
+    assert.ok(key, 'Nav.jsx no longer names the key the theme is kept under');
+    for (const [where, text, wanted] of [
+      ['website/index.html', index, 1],
+      ['the prerenderer', prerender, 3],
+    ]) {
+      const spelt = [...text.matchAll(new RegExp(`'${key[1]}'`, 'gu'))].length;
+      assert.equal(spelt, wanted,
+        `${where} spells the theme key ${spelt} times, not ${wanted} — a copy was added or moved`);
+    }
+
+    const painted = (theme) => {
+      const block = theme === 'dark'
+        ? styles.slice(0, styles.indexOf("[data-theme='light']"))
+        : styles.slice(styles.indexOf("[data-theme='light']"));
+      return /--bg:\s*(#[0-9a-f]{6})/iu.exec(block)?.[1];
+    };
+    for (const theme of ['dark', 'light']) {
+      const colour = painted(theme);
+      assert.ok(colour, `the stylesheet declares no --bg for ${theme}`);
+      const meta = new RegExp(
+        `theme-color" media="\\(prefers-color-scheme: ${theme}\\)" content="([^"]+)"`, 'gu');
+      const declared = [...index.matchAll(meta), ...prerender.matchAll(meta)].map((m) => m[1]);
+      assert.ok(declared.length >= 3, `only ${declared.length} heads declare a ${theme} theme colour`);
+      const wrong = [...new Set(declared)].filter((value) => value !== colour);
+      assert.deepEqual(wrong, [],
+        `the ${theme} page is painted ${colour} and a head tells the browser ${wrong.join(', ')}`);
+    }
+
     const manifest = JSON.parse(await read('website/public/site.webmanifest'));
+    for (const field of ['theme_color', 'background_color']) {
+      assert.equal(manifest[field], painted('dark'),
+        `site.webmanifest's ${field} is not the colour the dark page is painted`);
+    }
     const pngSize = async (name) => {
       const bytes = await readFile(path.join(ROOT, 'website/public', name));
       assert.equal(bytes.subarray(1, 4).toString(), 'PNG', `${name} is not a PNG`);

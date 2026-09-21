@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.89
+
+### one theme key spelled five times, one colour six
+
+Two facts about this site are written out by hand in four files each, and nothing compared them.
+
+The theme a reader chooses is kept under one localStorage key, spelled five times: the script
+inlined in `index.html`, `Nav.jsx`'s `STORAGE_KEY`, and three strings in the prerenderer — the
+pre-paint script, and the reader and writer of the toggle that the documentation pages and the
+404 get instead of React. Change it in one place and a reader's chosen theme survives the
+landing page and is forgotten on every documentation page. Nothing throws, nothing 404s, and no
+test could see it, which is the criterion `website/README.md` gives for what this build refuses
+to ship.
+
+The theme colour is the same shape with a different cost. `--bg` in the stylesheet is what the
+page is actually painted; `<meta name="theme-color">` is what the browser paints around it, and
+the manifest's `theme_color` and `background_color` are what an installed window gets. Six
+copies of two hex values across `index.html`, the prerenderer's shared chrome, its 404 head and
+`site.webmanifest`. A stale one is browser chrome that does not match the page under it — on a
+site whose own README argues that the failures worth catching are the ones invisible in a
+browser, this one is visible and nothing was looking.
+
+Both are held to their single source now: the key to the component that owns it, the colours to
+the stylesheet that paints them, counted per file so a copy moved rather than changed fails too.
+
 ## 0.9.88
 
 ### a manifest every page links and no check reads
