@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.87
+
+### four copies of one subtraction, and nothing derived any of them
+
+The landing page's sampling-rate comparison is the argument this tool exists to make, drawn to
+scale: three real samples beside 768 values, 765 of which nobody measured. It states those counts
+four times — `const REAL = 3`, `const FABRICATED = 765`, and again as markup, `<b>768</b> values
+· 765 of them interpolated` — while `sampling-rates.md` sets the example up in prose ("three
+seconds of recording with EEG at 256 Hz and temperature at 1 Hz") and `website/README.md`
+repeats the 765 in its note on why the block animates at all.
+
+Every one of those is `256 × 3` and `1 × 3` and the difference between them. Nothing derived any
+of them, and nothing compared them. Change the example to four seconds on the page and the
+component goes on drawing 765 dots beside the new numbers, with the whole point of the figure —
+that the count is the recording's arithmetic and not a decoration — quietly untrue.
+
+0.4.67 and 0.5.150 were a row count and a byte count that drifted on this site, and the check
+next to this one exists because of them: "these are the figures with no source at all, which
+makes them the ones most able to go stale quietly." That check covers the four numbers in large
+type at the foot of the page. These are the four in the argument above it.
+
+Derived now from the rates and the duration the page states, which is the one place they appear
+with what they mean.
+
 ## 0.9.86
 
 ### five releases fixing one rule, and nothing held the rule

@@ -766,6 +766,56 @@ describe('documentation and source agree on their lists', () => {
           `anywhere near ${words.join(', ')}`,
       );
     }
+
+    /*
+      And the figures in the argument beside them, which are arithmetic and were copied.
+
+      The landing page's sampling-rate comparison states two counts — 3 samples at 1 Hz over
+      3 seconds, 768 values with 765 of them interpolated — as a constant, `FABRICATED = 765`,
+      and again as text in the markup. sampling-rates.md states the same trio in prose, and
+      `website/README.md` repeats the 765. Four copies of one subtraction, and nothing derived
+      any of them: change the example to four seconds on the page and the component goes on
+      drawing 765 dots beside the new numbers.
+
+      Derived here from the page's own rates and duration, which is the one place they are
+      stated with what they mean.
+    */
+    const rates = await read('website/content/sampling-rates.md');
+    const setup = /Take (\w+) seconds of recording with EEG at ([\d,]+) Hz and temperature at ([\d,]+) Hz/u
+      .exec(rates);
+    assert.ok(setup, 'sampling-rates.md no longer sets up the comparison it is built on');
+    const seconds = { one: 1, two: 2, three: 3, four: 4, five: 5 }[setup[1]];
+    assert.ok(seconds, `the comparison runs for "${setup[1]}" seconds, which is not a number here`);
+    const fast = seconds * Number(setup[2].replaceAll(',', ''));
+    const real = seconds * Number(setup[3].replaceAll(',', ''));
+    const made = fast - real;
+
+    const comparison = await read('website/src/components/RateComparison.jsx');
+    for (const [what, value, source] of [
+      ['REAL', real, comparison],
+      ['FABRICATED', made, comparison],
+    ]) {
+      assert.match(
+        source,
+        new RegExp(`const ${what} = ${value};`, 'u'),
+        `the comparison's ${what} is not ${value}, which is what the page it illustrates says`,
+      );
+    }
+    for (const [where, text] of [
+      ['the comparison component', comparison],
+      ['website/README.md', await read('website/README.md')],
+      ['sampling-rates.md', rates],
+    ]) {
+      assert.ok(
+        new RegExp(`\\b${made}\\b`, 'u').test(text),
+        `${where} no longer states ${made}, the count of values nobody measured`,
+      );
+    }
+    assert.match(
+      comparison,
+      new RegExp(`<b>${fast}</b> values · ${made} of them interpolated`, 'u'),
+      `the comparison's own caption disagrees with ${fast} and ${made}`,
+    );
   });
 
   it('gives headers to files the site actually has, and redirects somewhere real', async () => {
