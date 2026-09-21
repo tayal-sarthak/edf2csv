@@ -894,6 +894,58 @@ describe('documentation and source agree on their lists', () => {
       of the three runs in CI — the website job does its own `cd website && npm ci && npm run
       build` — so a rename lands as a failed deploy or, worse, a deploy of nothing.
     */
+    /*
+      And the third list of file references on this site, which is the one nothing resolves.
+
+      `site.webmanifest` is linked from every page and names two icons with a declared type and
+      size each. The build's own link check finds what it checks with a regular expression over
+      rendered HTML, so a `src` inside a JSON document is invisible to it, and vercel.json's
+      header rules name files rather than read them. Rename `apple-touch-icon.png` and the
+      manifest points at a 404 that only an install prompt would ever reveal; re-export it at
+      another size and the manifest goes on declaring the old one.
+
+      Measured from the file rather than taken from the manifest: a PNG states its own
+      dimensions in the eight bytes after `IHDR`, which is what makes `sizes` checkable at all.
+      `og.png` is here for the same reason — its 1200x630 is declared twice more, in the
+      prerenderer's `og:image:width` and in website/README.md's tree.
+    */
+    const manifest = JSON.parse(await read('website/public/site.webmanifest'));
+    const pngSize = async (name) => {
+      const bytes = await readFile(path.join(ROOT, 'website/public', name));
+      assert.equal(bytes.subarray(1, 4).toString(), 'PNG', `${name} is not a PNG`);
+      return `${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`;
+    };
+    assert.ok(manifest.icons?.length >= 2, 'the manifest no longer names its icons');
+    for (const icon of manifest.icons) {
+      const name = icon.src.replace(/^\//u, '');
+      assert.ok(statics.has(name), `site.webmanifest names ${icon.src}, which public/ has not`);
+      if (!name.endsWith('.png') || icon.sizes === 'any') continue;
+      assert.equal(await pngSize(name), icon.sizes,
+        `site.webmanifest declares ${name} as ${icon.sizes}`);
+    }
+
+    // The social card, declared in the prerenderer and described in website/README.md.
+    const card = await pngSize('og.png');
+    const [wide, tall] = card.split('x');
+    assert.match(prerender, new RegExp(`og:image:width" content="${wide}"`, 'u'),
+      `og.png is ${card} and the prerenderer declares another width`);
+    assert.match(prerender, new RegExp(`og:image:height" content="${tall}"`, 'u'),
+      `og.png is ${card} and the prerenderer declares another height`);
+    assert.ok((await read('website/README.md')).includes(card),
+      `og.png is ${card} and website/README.md describes it as something else`);
+
+    /*
+      And the sentence in it, which is the landing page's lede at a second address. The
+      prerenderer refuses to ship a homepage without that lede; nothing tied the manifest's
+      copy of it to the one being refused over.
+    */
+    const lede = /\['the one-sentence lede', \/([^/]+)\/\]/u.exec(prerender);
+    assert.ok(lede, 'the prerenderer no longer pins the landing page lede');
+    assert.ok(
+      manifest.description.startsWith(lede[1].replace(/\\/gu, '')),
+      `site.webmanifest opens with "${manifest.description.slice(0, 60)}", not the page's lede`,
+    );
+
     const site = JSON.parse(await read('website/package.json'));
     const outDir = /outDir:\s*'([^']+)'/u.exec(vite)?.[1] ?? 'dist';
     assert.equal(config.outputDirectory, `website/${outDir}`,

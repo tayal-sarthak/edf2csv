@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.88
+
+### a manifest every page links and no check reads
+
+Every page on this site links `site.webmanifest`, and nothing had ever read it. It is the third
+list of file references here, and the only one that resolves to nothing: the build's link check
+finds what it checks with a regular expression over rendered HTML, so a `src` inside a JSON
+document is invisible to it, and `vercel.json`'s header rules name files without asking whether
+they exist — which is what 0.9.74 fixed for the files it names, and it does not name these.
+
+Four things in it are claims about something else:
+
+- The two icons it points at. Rename `apple-touch-icon.png` and the manifest points at a 404
+  that only an install prompt would ever surface.
+- The size it declares for each. A PNG states its own dimensions in the eight bytes after
+  `IHDR`, so `"sizes": "180x180"` is checkable against the file rather than against itself.
+- The same is true of `og.png`, whose 1200x630 is declared twice more — in the prerenderer's
+  `og:image:width` and `og:image:height`, and in `website/README.md`'s file tree. Re-export the
+  card at another size and three declarations are wrong and the crop is Twitter's problem.
+- Its `description`, which is the landing page's one-sentence lede at a second address. The
+  prerenderer refuses to ship a homepage that has lost that lede; nothing tied this copy of it
+  to the one being refused over.
+
+All four are diffed now, against the files and against the prerenderer. Nothing was wrong today.
+
 ## 0.9.87
 
 ### four copies of one subtraction, and nothing derived any of them
