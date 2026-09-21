@@ -6080,10 +6080,22 @@ describe('documentation and source agree on their lists', () => {
       deeper ones are inside `onProgress` and comparison callbacks, where a return is a value.
     */
     const silent = [];
-    // Not this file, whose own source holds the pattern below as a string.
-    for (const file of ['cli.test.js', 'convert.test.js', 'edf.test.js', 'large.test.js',
-      'stdout-audit.test.js']) {
-      const source = await read(path.join('test', file));
+    /*
+      This file too, which was left out because its own source holds the pattern below as a
+      string — a reason about how the scan is written and not about the guards in the file.
+      One was there: `does not pass its cross-check by not running it` answered a missing
+      python3 with `assert.ok(true)` and a bare return, so on a machine without it that test
+      reported a pass, in the file that fails everyone else for doing so.
+
+      The matcher's own text is excluded by where it sits rather than by which file it is in:
+      a line holding the literal below is the definition, not a guard.
+    */
+    for (const file of ['cli.test.js', 'convert.test.js', 'docs.test.js', 'edf.test.js',
+      'large.test.js', 'stdout-audit.test.js']) {
+      const source = (await read(path.join('test', file)))
+        .split('\n')
+        .filter((line) => !line.includes('{0,6}'))
+        .join('\n');
       for (const [, guard] of source.matchAll(/\n {4}if \([^\n]*\)([^\n]*(?:\n[^\n]*){0,6})/gu)) {
         // `return <value>` hands the answer to a caller that decides; a bare `return` ends the
         // test where it stands, and that is the one the runner counts as a pass.
@@ -6290,7 +6302,7 @@ describe('documentation and source agree on their lists', () => {
     assert.match(outcome.stdout, /0 predictions over 0 recordings/u, outcome.stdout);
   });
 
-  it('does not pass its cross-check by not running it', async () => {
+  it('does not pass its cross-check by not running it', async (t) => {
     /*
       `compare.py` is the only check here that compares against an implementation nobody in
       this repository wrote, which is what makes it the first claim on the correctness page —
@@ -6319,11 +6331,22 @@ describe('documentation and source agree on their lists', () => {
     const compare = await read('test/crossvalidate/compare.py');
     assert.match(compare, /if compared == 0:/u, 'compare.py can still agree over nothing');
 
+    /*
+      Reported as a skip below, not asserted true and returned from.
+
+      `assert.ok(true, 'python3 is not available')` followed by a bare `return` is a pass, so
+      on a machine without python3 this test counted itself among the ones that held while
+      checking nothing — the exact shape `says which of the tests it counts do not run where
+      CI runs` fails every other test file here for, in the test whose own subject is a check
+      that must not pass by not running. That guard's list left this file out for a reason
+      about how the scan is written, not about the guards in it.
+
+      Kept short inside the branch on purpose: that guard reads the six lines after an `if`,
+      so a skip pushed past them by a comment is a skip it cannot see.
+    */
     const python = await run('python3', ['-c', 'print(1)']).then(() => true, () => false);
     if (!python) {
-      // Same answer the terminal sweep gives: report that this proved nothing rather than
-      // turn a missing interpreter into a failure about the checker.
-      assert.ok(true, 'python3 is not available, so this check did not run');
+      t.skip('python3 is not available, so the cross-check could not be exercised');
       return;
     }
     const outcome = await run('python3', ['-S', path.join(ROOT, 'test/crossvalidate/compare.py')], {

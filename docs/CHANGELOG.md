@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.84
+
+### the file that forbids a silent guard had one
+
+`says which of the tests it counts do not run where CI runs` exists to hold one sentence true:
+that a reader can tell which of the numbers on the correctness page their own machine will
+produce. Part of it refuses a guard that ends a test with a bare `return`, because the runner
+counts that as a pass rather than a skip — "that test counted itself among the ones that ran
+while asserting nothing", as the comment there puts it.
+
+It scanned five of the six test files. The sixth is the one it lives in, left out because its
+own source holds the matcher as a string — a fact about how the scan is written, and not about
+the guards in the file. There was one:
+
+    const python = await run('python3', ['-c', 'print(1)']).then(() => true, () => false);
+    if (!python) {
+      assert.ok(true, 'python3 is not available, so this check did not run');
+      return;
+    }
+
+in `does not pass its cross-check by not running it` — the test whose whole subject is a check
+that must not report success for work it did not do. On a machine without python3 it passed,
+and said so in an assertion message nobody reads.
+
+It skips now, and this file is scanned with the rest. The matcher's own text is excluded by
+where it sits rather than by which file it is in: a line carrying the literal is the definition,
+not a guard. One more thing that follows from how that scan works, and is now written beside the
+guard: it reads the six lines after an `if`, so a skip pushed past them by a comment is a skip
+it cannot see — which is why the explanation for this one sits above the branch and not inside
+it.
+
 ## 0.9.83
 
 ### the batch sweep's own comparison, skipped without a word
