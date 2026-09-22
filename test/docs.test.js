@@ -1468,6 +1468,26 @@ describe('documentation and source agree on their lists', () => {
 
       Taken from the matrix, so dropping a version from CI moves the sentence.
     */
+    /*
+      And the dates the sitemap reports, which are a claim about which files a page is made of.
+
+      `<lastmod>` is the one field Google actually reads here, and being wrong in the "nothing
+      changed" direction tells a crawler not to re-fetch a page that has been rewritten. The
+      renderer writes every part of a documentation page except its prose, so it belongs in
+      every page's date — held at the source, since the dates themselves come out of git and
+      say nothing about which inputs were consulted.
+    */
+    const renderer = await read('website/scripts/prerender.mjs');
+    const dates = /function sitemap\([\s\S]*?\n\}/u.exec(renderer);
+    assert.ok(dates, 'the prerenderer no longer writes a sitemap');
+    assert.match(dates[0], /lastModified\('scripts\/prerender\.mjs'\)/u,
+      'the sitemap does not count the renderer among the sources of a page');
+    const perPage = /loc: `\$\{SITE_URL\}\/docs\/\$\{doc\.slug\}`,\s*\n\s*lastmod: ([^\n]+)/u
+      .exec(dates[0]);
+    assert.ok(perPage, 'the sitemap no longer dates the documentation pages');
+    assert.match(perPage[1], /template/u,
+      `a documentation page is dated by ${perPage[1].trim()}, which leaves the renderer out`);
+
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
     const listed = runs[1].split(',').map((value) => value.trim());

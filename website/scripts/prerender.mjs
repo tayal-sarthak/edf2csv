@@ -556,6 +556,23 @@ async function renderLanding() {
   gets no tag rather than a guess.
 */
 function sitemap(docs) {
+  /*
+    The renderer is a source of every page here, and was in the list for none of them.
+
+    Twice already this list has been too short — first three files named by hand where the
+    homepage was eight, then `content/*.md` where the homepage is not Markdown at all — and
+    both comments below say why that direction of wrongness is the one that costs something.
+    This is the same mistake once more: what a crawler fetches is a Markdown file *rendered by
+    this script*, and the script writes the whole of it except the prose. The nav, the
+    breadcrumbs, the canonical, the og tags, the structured data, the theme toggle. Change any
+    of them and eleven pages change, while every `<lastmod>` reports the day its own Markdown
+    was last touched — which tells a crawler not to re-read a page that has been rewritten.
+
+    Folded into all of them rather than added to the homepage's list, because the documentation
+    pages have the same dependency and only the homepage's list existed to be wrong.
+  */
+  const template = lastModified('scripts/prerender.mjs');
+  const newest = (...dates) => dates.filter(Boolean).sort().at(-1);
   const urls = [
     /*
       The landing page's date comes from the landing page's own sources.
@@ -570,7 +587,8 @@ function sitemap(docs) {
     */
     {
       loc: `${SITE_URL}/`,
-      lastmod: [
+      lastmod: newest(
+        template,
         ...docs.map((doc) => lastModified(`content/${doc.slug}.md`)),
         /*
           The whole of `src`, not three files named by hand.
@@ -584,14 +602,11 @@ function sitemap(docs) {
         */
         lastModified('src'),
         lastModified('index.html'),
-      ]
-        .filter(Boolean)
-        .sort()
-        .at(-1),
+      ),
     },
     ...docs.map((doc) => ({
       loc: `${SITE_URL}/docs/${doc.slug}`,
-      lastmod: lastModified(`content/${doc.slug}.md`),
+      lastmod: newest(template, lastModified(`content/${doc.slug}.md`)),
     })),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>

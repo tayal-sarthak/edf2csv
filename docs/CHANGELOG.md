@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.8
+
+### the third time this sitemap's list of what a page is made of was short
+
+`<lastmod>` is the one field of a sitemap Google actually reads, and the sitemap here has been
+wrong about it twice before. Both fixes are commented in place, and both say why this direction
+of wrongness is the one that costs something: a date that is too old tells a crawler not to
+bother re-reading a page that has been rewritten.
+
+The first time, the homepage's date was the newest `content/*.md` — and the homepage's text is
+not in `content/` at all. The second, it was three files named by hand, and the homepage is also
+the stylesheet and four components: "a directory cannot fall behind the files added to it."
+
+This is the same mistake a third time. What a crawler fetches is a Markdown file *rendered by*
+`scripts/prerender.mjs`, and that script writes the whole of a documentation page except the
+prose — the nav, the breadcrumbs, the canonical, the og tags, the structured data, the theme
+toggle. Change any of them and eleven pages change while every `<lastmod>` reports the day its
+own Markdown was last touched.
+
+The renderer is folded into all of them now, the documentation pages included, rather than added
+to the homepage's list — the homepage's list was the only one that existed to be wrong, and the
+eleven pages had the same dependency and no list at all.
+
+Held at the source, since the dates come out of git and say nothing about which inputs were
+consulted: the sitemap has to name the renderer, and a page's date has to be the later of its
+prose and its template.
+
 ## 0.10.7
 
 ### two versions named by hand, on a claim the suite now runs
