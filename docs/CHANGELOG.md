@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.0
+
+### the minor rolls, and a security policy's two checkable claims
+
+The minor rolls here, on the rule 0.9.95 made the suite enforce four releases ago: the patch
+number rolls into the minor at 100, so the successor to 0.9.99 is 0.10.0. It is not a claim that
+anything broke — `git diff --name-only v0.9.99 v0.10.0 -- src` is empty, as every release in this
+line has been.
+
+What it carries is the other half of the sentence 0.9.99 held. SECURITY.md tells a reporter what
+the surface is, and derives it rather than asserting it:
+
+> It makes no network calls, runs no code from the recordings it reads, and has no runtime
+> dependencies, so the surface is the parser and the filesystem work around it.
+
+A document that narrows the scope of a security report has to be right about what it is narrowing
+away, and two of those three are checkable. "No network calls" is a fact about what `src/`
+imports — this is ESM with no dynamic require, so the import list is the whole story, and none of
+`node:net`, `tls`, `http`, `https`, `http2`, `dgram`, `dns` or `cluster` is on it.
+
+And the paragraph under that one states the fuzzer's contract in numbers: "npm run fuzz asserts
+every corrupted input exits 0, 1 or 2 with something to say." That set is written down in
+`mutate.mjs` as `ALLOWED_EXITS`. Widen it there and the security policy is describing a guarantee
+the check no longer makes — the reverse of the drift this project usually finds, where the prose
+is the stale half.
+
 ## 0.9.99
 
 ### the claim a security policy rests on, decided by one absent field

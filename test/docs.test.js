@@ -1235,6 +1235,50 @@ describe('documentation and source agree on their lists', () => {
       }
     }
     assert.ok(claiming >= 5, `only ${claiming} documents claim there are no dependencies`);
+
+    /*
+      And the two claims in the same sentence that are about the code rather than the manifest.
+
+      SECURITY.md tells a reporter what the surface is, and derives it: "it makes no network
+      calls, runs no code from the recordings it reads, and has no runtime dependencies, so the
+      surface is the parser and the filesystem work around it." A document that narrows the
+      scope of a security report has to be right about what it is narrowing away.
+
+      "No network calls" is a fact about what `src/` imports — this is ESM with no dynamic
+      require, so the import list is the whole story, and none of Node's networking modules is
+      on it. And the paragraph below it states the exit codes the fuzzer accepts, which is a
+      set written down in `mutate.mjs`: "npm run fuzz asserts every corrupted input exits 0, 1
+      or 2 with something to say". Widen that set and the policy is describing a contract the
+      check no longer holds to.
+    */
+    const security = (await read('SECURITY.md')).replace(/\s+/gu, ' ');
+    assert.match(security, /makes no network calls/u, 'SECURITY.md no longer claims that');
+    const sources = await readdir(path.join(ROOT, 'src'), { recursive: true });
+    let imports = 0;
+    for (const name of sources) {
+      if (!name.endsWith('.ts')) continue;
+      const code = await read(path.join('src', name));
+      for (const [, module] of code.matchAll(/from '(node:[a-z/]+)'/gu)) {
+        assert.ok(
+          !/^node:(?:net|tls|http|https|http2|dgram|dns|cluster)$/u.test(module),
+          `SECURITY.md says this makes no network calls and src/${name} imports ${module}`,
+        );
+        imports++;
+      }
+    }
+    assert.ok(imports >= 8, `only ${imports} builtin imports were read across src/`);
+
+    const accepted = /exits ((?:\d+, )*\d+ or \d+) with something to say/u.exec(security);
+    assert.ok(accepted, 'SECURITY.md no longer says which exit codes the fuzzer accepts');
+    const policy = accepted[1].split(/,\s*|\s+or\s+/u).map(Number).sort();
+    const sweep = /const ALLOWED_EXITS = new Set\(\[([^\]]+)\]\)/u
+      .exec(await read('test/fuzz/mutate.mjs'));
+    assert.ok(sweep, 'mutate.mjs no longer declares which exits it allows');
+    assert.deepEqual(
+      policy,
+      sweep[1].split(',').map((value) => Number(value.trim())).sort(),
+      'SECURITY.md and the fuzzer disagree about which exits are acceptable',
+    );
   });
 
   it('runs every example the API reference prints', async () => {
