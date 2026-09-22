@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.95
+
+### the one rule this changelog states about its own numbers
+
+`docs/CHANGELOG.md` opens by stating the only policy this repository has about its own version
+numbers: "The patch number rolls into the minor at 100." The paragraph under it says why, and
+says the answer used to be different — 0.6 ran to 149 and 0.7 to 260, and "0.6.149 tells a reader
+nothing they can hold, and sorting a list of them by eye stops working. Two digits is a number
+people can compare; three is a serial."
+
+0.8 ended at exactly 99 and rolled to 0.9.0, so the rule has been kept — once, by hand. Nothing
+would have stopped 0.9.100, on the document whose first job is explaining how to read these
+numbers, and with 0.9 five releases away from the ceiling.
+
+One comparison, against the paragraph rather than against a number restated in a test, since the
+paragraph is what a reader is given. It names the version that should have been cut instead:
+
+    0.9.100 is past the roll this changelog states at 100;
+    the successor to 0.9.99 is 0.10.0
+
+The history is left alone. The rule is forward-looking and the prose says so — "nothing forced
+the question until 0.6 reached 149" — so this holds the version being released and not the 870
+entries behind it.
+
 ## 0.9.94
 
 ### two sizes a header policy argues from, measured by nothing

@@ -1851,6 +1851,28 @@ describe('documentation and source agree on their lists', () => {
       `package.json is at ${version} and the newest changelog entry is ${newest[1]}; ` +
         'a release bumps both in one commit',
     );
+
+    /*
+      And the rule this document opens by stating, which nothing enforced.
+
+      "The patch number rolls into the minor at 100." It is the only policy this repository has
+      about its own version numbers, and it is there because the answer was once different: 0.6
+      ran to 149 and 0.7 to 260, and the paragraph explains why that stopped — "two digits is a
+      number people can compare; three is a serial". 0.8 ended at exactly 99 and rolled, so the
+      rule has been kept once by hand.
+
+      Nothing would have stopped 0.9.100. The check is one comparison and it belongs here,
+      against the prose rather than against a number restated in a test, since the paragraph is
+      what a reader is told.
+    */
+    const ceiling = /patch number rolls into the minor at (\d+)/u.exec(changelog);
+    assert.ok(ceiling, 'the changelog no longer states where the patch number rolls');
+    const [major, minor, patch] = version.split('.').map(Number);
+    assert.ok(
+      patch < Number(ceiling[1]),
+      `${version} is past the roll this changelog states at ${ceiling[1]}; ` +
+        `the successor to ${major}.${minor}.${Number(ceiling[1]) - 1} is ${major}.${minor + 1}.0`,
+    );
   });
 
   it('shows the landing page the output that recording really produces', async () => {
