@@ -901,11 +901,55 @@ async function main() {
   }
 
   enrichLandingPage(appHtml);
-  writeFileSync(path.join(DIST, 'llms-full.txt'), llmsFullTxt(docs));
+  const everything = llmsFullTxt(docs);
+  const index = llmsTxt(docs);
+  writeFileSync(path.join(DIST, 'llms-full.txt'), everything);
   writeFileSync(path.join(DIST, '404.html'), notFoundPage(docs, assets));
   writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap(docs));
   writeFileSync(path.join(DIST, 'robots.txt'), ROBOTS);
-  writeFileSync(path.join(DIST, 'llms.txt'), llmsTxt(docs));
+  writeFileSync(path.join(DIST, 'llms.txt'), index);
+
+  /*
+    The two sizes README.md argues from, against the two files it is arguing about.
+
+    Its case for `X-Robots-Tag: noindex` rests on which of these is a copy of the site and
+    which is an index of it: "llms-full.txt is the strongest case of all: it is every page at
+    once, over 400 kB of it", against "llms.txt stays indexable — it is a 3 kB index of the
+    site rather than a copy of it". Both are measurements of something this build writes, and
+    both were typed into prose once and never read again. An llms-full.txt that lost its
+    pages, or an llms.txt that became a copy rather than an index, leaves that paragraph
+    arguing for a header policy about two files that are not what it says they are.
+
+    Read out of the prose rather than restated here, so the number a reader is given is the
+    number that has to hold. "Over 400 kB" is a floor and is checked as one; "a 3 kB index" is
+    a round figure, so what has to stay true of it is that it still rounds to 3 — the file is
+    3.4 kB today and grows by a line a page.
+  */
+  const claims = readFileSync(path.join(ROOT, 'README.md'), 'utf8').replace(/\s+/g, ' ');
+  const sized = (what, pattern) => {
+    const found = pattern.exec(claims);
+    if (!found) {
+      process.stderr.write(`prerender: README.md no longer says how large ${what} is.\n`);
+      process.exit(2);
+    }
+    return Number(found[1]) * 1024;
+  };
+  const wanted = [
+    ['llms-full.txt', everything, sized('llms-full.txt', /every page at once, over (\d+) kB/u), 'over'],
+    ['llms.txt', index, sized('llms.txt', /it is a (\d+) kB index of the site/u), 'about'],
+  ];
+  for (const [name, text, claimed, how] of wanted) {
+    const actual = Buffer.byteLength(text);
+    const wrong = how === 'over'
+      ? actual < claimed
+      : Math.round(actual / 1024) !== Math.round(claimed / 1024);
+    if (wrong) {
+      throw new Error(
+        `prerender: README.md describes ${name} as ${how} ${Math.round(claimed / 1024)} kB and ` +
+          `this build wrote ${Math.round(actual / 1024)} kB`,
+      );
+    }
+  }
 
   // Last, so it sees every file the build produced, including the ones just written.
   const emitted = emittedFiles(DIST);

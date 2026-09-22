@@ -4075,6 +4075,8 @@ describe('documentation and source agree on their lists', () => {
       'rendered nothing for': ['rendered to an empty string'],
       'anchor references were looked at': ['looked at too little to have checked anything'],
       'links were checked': ['looked at too little to have checked anything'],
+      'README.md no longer says how large': ['size README.md argues from that the build does not write'],
+      'README.md describes': ['size README.md argues from that the build does not write'],
       // Not a page it would ship: vite has not run, so nothing was emitted to be wrong about.
       'could not find the built stylesheet': [],
     };

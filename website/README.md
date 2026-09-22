@@ -85,6 +85,11 @@ Each of these exists because the failure it catches is invisible in a browser:
   Both find what they check with a regular expression over rendered HTML and then report an
   absence, so a template that quoted its attributes differently would leave them matching
   nothing and reporting that no link is broken.
+- A size README.md argues from that the build does not write. The paragraph
+  below argues for `X-Robots-Tag: noindex` on the grounds that `llms-full.txt` is a copy of the
+  site and `llms.txt` is an index of it, and it states both sizes. Those are measurements of
+  two files this build writes, so the numbers are read back out of that paragraph and held to
+  what it actually produced.
 
 The `/docs/<slug>.md` mirrors and `llms-full.txt` are served with `X-Robots-Tag: noindex`
 (see the repository root's `vercel.json`). They are the same prose as the HTML pages they

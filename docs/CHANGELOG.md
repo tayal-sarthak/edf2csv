@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.94
+
+### two sizes a header policy argues from, measured by nothing
+
+`website/README.md` argues for the `X-Robots-Tag: noindex` header on the markdown mirrors and
+`llms-full.txt`, and the argument turns on which of two files is a copy of the site and which is
+an index of it:
+
+> `llms-full.txt` is the strongest case of all: it is every page at once, over 400 kB of it.
+> ... `llms.txt` stays indexable — it is a 3 kB index of the site rather than a copy of it.
+
+Both of those are measurements of files this build writes, typed into prose once and never read
+again. An `llms-full.txt` that lost its pages, or an `llms.txt` that became a copy rather than
+an index, leaves that paragraph arguing for a header policy about two files that are not what it
+describes — and the header policy is the part that stops them competing with the pages they
+mirror in search.
+
+The build measures them now, against the numbers in that paragraph rather than against a copy
+of them, so the figure a reader is given is the figure that has to hold. "Over 400 kB" is a
+floor and is checked as one; "a 3 kB index" is a round figure, so what has to stay true is that
+it still rounds to 3. It is 477 kB and 3.4 kB today.
+
+Two notes on the machinery. This is a new refusal in the site build, so 0.9.75's list on both
+pages and 0.9.76's derived map had to account for it — which they demanded, by name, the moment
+it was added. That is the first time that guard has been asked to do its job on a refusal it did
+not already know, and it worked.
+
 ## 0.9.93
 
 ### the number the page's argument rests on, beside a transcript that states it
