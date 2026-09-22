@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.98
+
+### the floor nothing had to run
+
+0.9.97 tied the six documents that state the Node floor to the one field that decides it. There
+is a seventh place the floor appears, and it is the only one that could ever have shown the floor
+was wrong: the matrix CI runs the suite on.
+
+    node-version: [20, 22, 24]
+
+The lowest of those is the oldest Node this project has any evidence about, and it happens to be
+the floor `engines.node` declares. Nothing said it had to be. Raise `engines` to 22 and a third of
+every CI run is spent on a version the package says it does not support, while the version it now
+claims to need is the one nothing has ever executed. Lower `engines` to 18 and there is no
+evidence for the bottom of the range at all — and 0.9.97's check would happily rewrite five
+documents to say 18 while nothing tested it.
+
+The floor has to be in the matrix, and it has to be the lowest thing in it. What the matrix
+carries above the floor is a choice, and this does not touch it.
+
+That completes the loop for this one fact: it is declared once, stated in six documents, and
+exercised by the job that would find out.
+
 ## 0.9.97
 
 ### six documents state the Node floor and one decides it

@@ -1185,6 +1185,30 @@ describe('documentation and source agree on their lists', () => {
       saying += versions.length;
     }
     assert.ok(saying >= 6, `only ${saying} statements of the Node floor were found, not six`);
+
+    /*
+      And the version that is actually run, which is the only one of these that could have
+      told anybody the floor was wrong.
+
+      CI runs the suite on a matrix of Node versions, and the lowest of them is the oldest
+      Node this project has any evidence about. It happens to be the floor `engines` declares.
+      Nothing said it had to be: raise `engines` and the matrix goes on spending a third of
+      its time on a version the package says it does not support, while the version it now
+      claims to need is the one nothing has ever run. Lower `engines` and there is no evidence
+      for the range at all.
+
+      The floor has to be in the matrix and has to be the lowest thing in it. What the matrix
+      carries above it is a choice this does not touch.
+    */
+    const matrix = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
+    assert.ok(matrix, 'the CI matrix no longer lists the Node versions it runs');
+    const versions = matrix[1].split(',').map((value) => Number(value.trim()));
+    assert.ok(versions.length >= 2, `the matrix runs ${versions.length} Node version`);
+    assert.equal(
+      Math.min(...versions),
+      Number(floor),
+      `CI's oldest Node is ${Math.min(...versions)} and package.json needs ${floor}`,
+    );
   });
 
   it('runs every example the API reference prints', async () => {
