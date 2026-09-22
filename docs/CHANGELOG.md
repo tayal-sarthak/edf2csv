@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.92
+
+### the fourth copy, in the document written for readers who never load the site
+
+0.9.91 derived the sampling-rate figures from the page that sets the example up and held the
+three places that state them: the comparison component, `sampling-rates.md` and
+`website/README.md`. There is a fourth, and it is the one written for readers who never load the
+site.
+
+`llms.txt` is what an agent fetches instead of the pages, and the prerenderer writes it with the
+same pair spelled out:
+
+    A 1 Hz channel in a 3 second recording produces 3 rows, not 768 interpolated values.
+
+That is the copy most likely to be quoted back at somebody, and the one nobody matched. It is
+held to the page's own rates and duration now — the rate, the duration, the row count and the
+interpolated count, in the sentence's own words.
+
+Not to the 765. That document states the two counts and leaves their difference implied, which
+is correct for it; the three places that name the difference are the three that had it.
+
+Third time this exact sequence has run — 0.9.45 and 0.9.85 were the others. Derive the figure,
+hold the places you read, then go and find the place you did not read. The lesson keeps being
+the same one and keeps needing a release: a guard written from the copies you happened to open
+is a guard against the drift you already found.
+
 ## 0.9.91
 
 ### the headline every paste of this link renders, hand-copied

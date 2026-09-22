@@ -801,10 +801,33 @@ describe('documentation and source agree on their lists', () => {
         `the comparison's ${what} is not ${value}, which is what the page it illustrates says`,
       );
     }
+    /*
+      Five places, not four. 0.9.87 derived these and held the component, website/README.md
+      and the page — and `llms.txt`, which the prerenderer writes for the crawlers that read
+      this project instead of the site, states the same pair in the same sentence: "A 1 Hz
+      channel in a 3 second recording produces 3 rows, not 768 interpolated values."
+
+      That document is the one an agent quotes back at somebody, and it was the copy nobody
+      matched. The third time this sequence has run: derive the figure, hold the places you
+      read, then find the place you did not.
+    */
+    const llms = /function llmsTxt\([\s\S]*?\n\}/u.exec(await read('website/scripts/prerender.mjs'));
+    assert.ok(llms, 'the prerenderer no longer writes an llms.txt');
+    assert.ok(
+      new RegExp(
+        `A ${setup[3]} Hz channel in a ${seconds} second recording produces ${real} rows, ` +
+          `not ${fast} interpolated values`,
+        'u',
+      ).test(llms[0]),
+      `llms.txt states the comparison as something other than ${real} rows against ${fast}`,
+    );
+
     for (const [where, text] of [
       ['the comparison component', comparison],
       ['website/README.md', await read('website/README.md')],
       ['sampling-rates.md', rates],
+      // Not llms.txt: it states the two counts and leaves their difference implied, which its
+      // own sentence above is held to. The 765 is the three places that name it.
     ]) {
       assert.ok(
         new RegExp(`\\b${made}\\b`, 'u').test(text),
