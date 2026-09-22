@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.5
+
+### three checkable things in one paragraph, all of them prose
+
+api.md makes a precise claim about how this package loads, and nothing ran any part of it:
+
+> The package is ESM only and needs Node 20 or newer. There's no CommonJS build.
+> `require("edf2csv")` nevertheless works on any Node that can require an ESM graph — verified
+> on 22.16 and 24.4 — because nothing here has top-level `await`. It fails on the older Node 20
+> releases that predate that, so `await import("edf2csv")` is the form that works everywhere.
+
+Three checkable things in one paragraph, all of them prose. That `require` of the build resolves
+and hands back the exports. That `await import` does. And the mechanism the first rests on, which
+is a property of the emitted JavaScript rather than of a Node version: a top-level `await`
+anywhere in `src/` breaks `require` for every reader following that paragraph, and breaks it
+silently — the build succeeds, every test here imports rather than requires, and the page keeps
+promising it works.
+
+All three run now, against `dist/`, which is what gets published. The exports asked for are the
+three the tarball check asks a consumer for, so the two agree about what the package is for.
+
+Adding `await Promise.resolve()` to the top of `dist/index.js` fails it, and fails it through the
+`require` assertion rather than through the scan for the pattern — the claim breaking is how you
+find out the reason broke, which is the right way round.
+
 ## 0.10.4
 
 ### the licence as a reader meets it, in prose nothing diffed

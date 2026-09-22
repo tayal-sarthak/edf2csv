@@ -1428,6 +1428,65 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('is importable the two ways the API reference says it is', async () => {
+    /*
+      api.md makes a precise, load-bearing claim about how this package loads, and nothing ran
+      any part of it:
+
+        The package is ESM only and needs Node 20 or newer. There's no CommonJS build.
+        `require("edf2csv")` nevertheless works on any Node that can require an ESM graph —
+        verified on 22.16 and 24.4 — because nothing here has top-level `await`. It fails on
+        the older Node 20 releases that predate that, which are inside the supported range, so
+        `await import("edf2csv")` is the form that works everywhere.
+
+      Three things there are checkable and all three were prose: that `require` of the build
+      resolves and hands back the exports; that `await import` does; and the mechanism the
+      first rests on, which is a property of the emitted JavaScript rather than of a Node
+      version. A top-level `await` added anywhere in `src/` breaks `require` for every reader
+      following that paragraph, and would break it silently — the build succeeds, the tests
+      import rather than require, and the page keeps promising it works.
+
+      Run against `dist/`, which is what gets published. The exports asserted are the three
+      the tarball check asks a consumer for, so this and that check agree about what the
+      package is for.
+    */
+    const page = (await read('website/content/api.md')).replace(/\s+/gu, ' ');
+    assert.match(page, /require\("edf2csv"\)`? nevertheless works on any Node/u,
+      'api.md no longer claims require() works');
+    assert.match(page, /nothing here has top-level .await./u,
+      'api.md no longer states why require() works');
+
+    const build = path.join(ROOT, 'dist/index.js');
+    const wanted = ['convert', 'EdfFile', 'parseHeader'];
+    for (const how of [
+      `const m = require(${JSON.stringify(build)});`,
+      `const m = await import(${JSON.stringify(build)});`,
+    ]) {
+      const script = `${how}\nfor (const name of ${JSON.stringify(wanted)}) {\n` +
+        '  if (typeof m[name] !== "function") { console.error(name); process.exit(1); }\n}\n';
+      const ran = await run(process.execPath, ['--input-type=module', '-e',
+        how.startsWith('const m = await') ? script : `const { createRequire } = await import('node:module');
+const require = createRequire(${JSON.stringify(path.join(ROOT, 'test/'))});
+${script}`,
+      ]).catch((error) => error);
+      assert.ok(
+        ran.code === undefined || ran.code === 0,
+        `${how.slice(0, 24)}… does not give the package's exports:\n` +
+          String(ran.stderr ?? ran).slice(0, 400),
+      );
+    }
+
+    // And the property the first of those rests on, in the code that ships.
+    const offenders = [];
+    for (const name of await readdir(path.join(ROOT, 'dist'), { recursive: true })) {
+      if (!name.endsWith('.js')) continue;
+      const code = await read(path.join('dist', name));
+      if (/^await\s|\bfor await\s*\(/mu.test(code.replace(/^ +.*$/gmu, ''))) offenders.push(name);
+    }
+    assert.deepEqual(offenders, [],
+      `api.md says nothing here has top-level await, and these do: ${offenders.join(', ')}`);
+  });
+
   it('runs the dumper it prints, and gets what the checked-in one gets', async () => {
     /*
       The correctness page tells a reader how to reproduce claim 1 themselves: save this
