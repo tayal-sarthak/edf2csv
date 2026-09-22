@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.93
+
+### the number the page's argument rests on, beside a transcript that states it
+
+The landing page shows six output files with a sample of each, and a sentence under each sample
+saying what the file is. 0.9.80 and 0.9.81 held the samples to being real output. The sentences
+carry numbers too, and one of them is the page's argument rather than a description:
+
+> Eight hours of recording gives 28,800 rows here, against 2,880,000 in the 100 Hz table.
+> Merging them would mean inventing 99 percent of this column.
+
+The whole point of that block is the second figure being what a resampling reader invents. Both
+are the record count times one channel's rate, and both sat twenty lines under an `--info`
+transcript this project already rebuilds and compares byte for byte — which states the record
+count and every rate the recording has, and was never asked about the prose beneath it.
+
+They are taken from that transcript now. Every grouped number in the descriptions has to be the
+record count times a rate the channel table actually lists: cut a zero off either figure and it
+stops being a whole multiple, or becomes a rate the recording has no channel at, and fails
+either way.
+
+Matched as any number in thousands rather than as the ones followed by the word "rows", because
+the second figure reads "against 2,880,000 in the 100 Hz table" — and it was the unguarded half
+of the pair for that reason.
+
+That check alone is too weak, which is worth saying because it is the failure this project keeps
+writing down: being a whole multiple of the record count at *some* rate the recording has is not
+the same as being this file's count. 28,800 cut to 288,000 is 10 Hz, which this recording also
+has, so it passes — while claiming the 1 Hz table holds ten times what it holds. The figure a
+description calls "rows here" is therefore held to the rate in its own file's name, which has one
+right answer. Both halves of the pair fail now.
+
 ## 0.9.92
 
 ### the fourth copy, in the document written for readers who never load the site

@@ -2018,6 +2018,68 @@ describe('documentation and source agree on their lists', () => {
         }
       }
       assert.ok(claims >= 6, `only ${claims} values in the metadata.json sample were checked`);
+
+      /*
+        And the prose beside each sample, which states two row counts.
+
+        `signals_1hz.csv`'s description reads "Eight hours of recording gives 28,800 rows here,
+        against 2,880,000 in the 100 Hz table. Merging them would mean inventing 99 percent of
+        this column." Those are the argument rather than decoration — the page turns on the
+        second number being what a resampling reader would invent — and both are the record
+        count times one channel's rate, out of the `--info` block this test already rebuilds
+        and compares exactly, twenty lines above them.
+
+        Nothing read them. Taken from that block now: the record count, and every rate the
+        channel table states, so a stated count that is not a real rate of this recording
+        fails rather than reading plausibly.
+      */
+      const records = /\((\d[\d,]*) records of /u.exec(shown);
+      assert.ok(records, 'the --info block no longer says how many records the recording has');
+      const count = Number(records[1].replaceAll(',', ''));
+      const bodies = [
+        ...(/const FILES = \[([\s\S]*?)\n\];/u.exec(jsx)[1].matchAll(/body: '([^']*)'/gu)),
+      ].map((m) => m[1]).join(' ');
+      assert.ok(bodies.length > 200, 'the landing page no longer describes its output files');
+
+      // Every grouped number in them, not the ones followed by the word "rows": the second
+      // figure reads "against 2,880,000 in the 100 Hz table", and it is the one carrying the
+      // argument. These descriptions state no other number in thousands.
+      let stated = 0;
+      for (const [figure] of bodies.matchAll(/\d{1,3}(?:,\d{3})+/gu)) {
+        const rows = Number(figure.replaceAll(',', ''));
+        assert.equal(rows % count, 0,
+          `a file description states ${figure}, which is not ${count} records at a whole rate`);
+        const rate = rows / count;
+        assert.ok(new RegExp(` {2}${rate} Hz {2}`, 'u').test(shown),
+          `a description states ${figure} rows — ${rate} Hz, which this recording has no channel at`);
+        stated++;
+      }
+      assert.ok(stated >= 2, `only ${stated} row counts in the descriptions were checked`);
+
+      /*
+        And the one that says "here", against the rate of the file it is under.
+
+        Being a whole multiple of the record count at some rate the recording has is not the
+        same as being this file's count: 28,800 cut to 288,000 is 10 Hz, which this recording
+        also has, so it passed the check above while saying the 1 Hz table holds ten times
+        what it holds. The file's own name carries the rate, so the figure it calls "here" has
+        one right answer.
+      */
+      let anchored = 0;
+      for (const [, name, body] of /const FILES = \[([\s\S]*?)\n\];/u
+        .exec(jsx)[1]
+        .matchAll(/name: '([^']+)',[\s\S]*?body: '([^']*)'/gu)) {
+        const rate = /^signals_(\d+)hz\.csv$/u.exec(name);
+        const here = /([\d,]+) rows here/u.exec(body);
+        if (!rate || !here) continue;
+        assert.equal(
+          Number(here[1].replaceAll(',', '')),
+          count * Number(rate[1]),
+          `${name}'s description says ${here[1]} rows, and ${count} records at ${rate[1]} Hz is not that`,
+        );
+        anchored++;
+      }
+      assert.ok(anchored >= 1, 'no file description states the row count of its own table');
     } finally {
       await rm(work, { recursive: true, force: true });
     }
