@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.4
+
+### the licence as a reader meets it, in prose nothing diffed
+
+The licence is the field a reader checks before they are allowed to use this at work, and it is
+stated in seven places: `package.json`, the licence file, `CITATION.cff`, the structured data
+twice as an SPDX URL, and the prose of README.md, getting-started.md and `llms.txt`, each ending
+a sentence with "MIT licensed".
+
+0.9.90 held the two URLs and 0.9.96 held the citation. The prose was left, which is the half a
+person actually reads: nobody checks `package.json` to find out whether they can ship something,
+they read the sentence at the bottom of the README.
+
+Every "<Word> licensed" in those documents now has to name the licence `package.json` declares,
+and at least three of them have to still be saying it. Matched on the word before "licensed"
+rather than on the string "MIT", so relicensing fails the check in every document at once
+instead of passing in the ones that were updated.
+
+That closes this project's identity: name, repository, registry, homepage, author, licence, Node
+floor — each declared once and diffed everywhere it is repeated, across eight releases from
+0.9.90 to here.
+
 ## 0.10.3
 
 ### a badge that renders a number for a package nobody publishes

@@ -1149,6 +1149,24 @@ describe('documentation and source agree on their lists', () => {
     // The licence, as a URL in the markup and as a word in the file that grants it.
     assert.equal(manifest.license, 'MIT');
     assert.match(licence, /MIT License/u, 'the licence file is no longer the one package.json names');
+    /*
+      The word itself, wherever the prose uses it. README.md, getting-started.md and llms.txt
+      each end a sentence with "MIT licensed", and CITATION.cff and the licence file carry it
+      too — five statements of one field, which is the field a reader checks before they are
+      allowed to use this at work.
+    */
+    let licensed = 0;
+    for (const where of ['README.md', 'website/content/getting-started.md',
+      'website/scripts/prerender.mjs', 'CITATION.cff']) {
+      const text = (await read(where)).replace(/\s+/gu, ' ');
+      for (const [, named] of text.matchAll(/([A-Z][A-Za-z0-9.-]*) licen[cs]ed/gu)) {
+        assert.equal(named, manifest.license,
+          `${where} says ${named} licensed and package.json says ${manifest.license}`);
+        licensed++;
+      }
+    }
+    assert.ok(licensed >= 3, `only ${licensed} documents name the licence in prose`);
+
     const licences = [...prerender.matchAll(/license: '([^']+)'/gu)].map((m) => m[1]);
     assert.ok(licences.length >= 2, `expected the licence to be published, found ${licences.length}`);
     const wrong = [...new Set(licences)].filter(
