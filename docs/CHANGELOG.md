@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.11
+
+### a default declared twice, and the page held to the copy nothing runs
+
+`states harness sizes that match the harnesses themselves` holds the correctness page's "2,700
+runs over 300 corrupted recordings" to `DEFAULT_FILES` and `INVOCATIONS.length`, exported from
+`mutate.mjs`. It has been doing that since a fifth invocation was added and made the page wrong
+by 300 runs.
+
+`DEFAULT_FILES` is not the number a bare `npm run fuzz` uses. The command-line branch had its
+own literal:
+
+    export const DEFAULT_FILES = 300;
+    ...
+    const files = whole('The number of recordings', process.argv[3], 300);
+
+Two declarations of one default, agreeing by coincidence. Change the constant and the page moves
+with it while the sweep goes on corrupting 300; change the literal and the sweep moves while the
+page and the check stay. Either way the check passes over a run of the other size, which is the
+thing a check on a number is for.
+
+`fuzz()`'s own signature already defaulted to the constant, so the exported default and the
+library default were one number and the command line was the odd one out — the path CI takes and
+the path CONTRIBUTING documents.
+
+One line, and a second check beside the first: the fallback in that call has to *be*
+`DEFAULT_FILES`, not a number that currently equals it. A figure verified against a constant
+nothing reaches is not verified.
+
 ## 0.10.10
 
 ### the other factor of every figure the page quotes

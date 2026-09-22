@@ -3120,6 +3120,21 @@ ${script}`,
       made the page wrong by 300 runs with nothing to say so — and five were added at once.
     */
     const mutate = await import(path.join(ROOT, 'test/fuzz/mutate.mjs'));
+    /*
+      And the constant is the one the command line uses, which it was not.
+
+      `DEFAULT_FILES` is what the page is held to here and what `fuzz()`'s signature defaults
+      to. The branch that runs when somebody types `npm run fuzz` had its own literal — a
+      second 300, agreeing by coincidence — so changing either alone left this check passing
+      over a sweep of the other size. A number checked against a constant nothing reaches is
+      not checked.
+    */
+    const fallback = /whole\('The number of recordings', process\.argv\[3\], ([^)]+)\)/u
+      .exec(await read('test/fuzz/mutate.mjs'));
+    assert.ok(fallback, 'mutate.mjs no longer takes a recording count');
+    assert.equal(fallback[1].trim(), 'DEFAULT_FILES',
+      `a bare \`npm run fuzz\` corrupts ${fallback[1].trim()} recordings, not DEFAULT_FILES`);
+
     const damaged = /([\d,]+) runs over ([\d,]+) corrupted recordings/gu;
     const fuzzed = [...page.matchAll(damaged)];
     assert.ok(fuzzed.length >= 2, 'the page no longer states the fuzz sweep size');

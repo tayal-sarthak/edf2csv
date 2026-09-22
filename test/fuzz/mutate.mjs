@@ -175,7 +175,11 @@ const whole = (what, value, fallback) => {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const seed = whole('The seed', process.argv[2], 1);
-  const files = whole('The number of recordings', process.argv[3], 300);
+  // `DEFAULT_FILES`, not another 300. The page's "300 corrupted recordings" is checked against
+  // the constant, and the constant was not what a bare `npm run fuzz` used: the two agreed by
+  // coincidence, and changing either one alone left the check passing over a sweep of the other
+  // size. The exported default and the command-line default are one number.
+  const files = whole('The number of recordings', process.argv[3], DEFAULT_FILES);
   const { runs, failures } = fuzz(seed, files);
 
   process.stdout.write(`\n${runs} runs over ${files} corrupted recordings (seed ${seed}).\n`);
