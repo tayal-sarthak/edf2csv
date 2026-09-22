@@ -1155,6 +1155,36 @@ describe('documentation and source agree on their lists', () => {
         .test(citation),
       `CITATION.cff names an author other than "${manifest.author}"`,
     );
+
+    /*
+      And the version a reader needs, which six documents state and one decides.
+
+      `engines.node` is the floor. "Node 20 or newer" is then written out in README.md, in
+      api.md, in correctness.md, in getting-started.md, in the structured data and in llms.txt
+      — and 0.9.90 tied exactly one of the six. Raise the floor and five documents go on
+      telling people an older Node is enough, which is the one kind of wrong answer that costs
+      a reader an afternoon: the install succeeds and something fails later for a reason the
+      page they trusted ruled out.
+    */
+    const floor = major[1];
+    const named = [
+      'README.md',
+      'website/content/api.md',
+      'website/content/correctness.md',
+      'website/content/getting-started.md',
+      'website/scripts/prerender.mjs',
+    ];
+    let saying = 0;
+    for (const where of named) {
+      const text = (await read(where)).replace(/\s+/gu, ' ');
+      const versions = [...text.matchAll(/Node(?:\.js)? (\d+) or newer/gu)].map((m) => m[1]);
+      if (versions.length === 0) continue;
+      const wrong = [...new Set(versions)].filter((stated) => stated !== floor);
+      assert.deepEqual(wrong, [],
+        `${where} says Node ${wrong.join(', ')} or newer; engines.node says ${floor}`);
+      saying += versions.length;
+    }
+    assert.ok(saying >= 6, `only ${saying} statements of the Node floor were found, not six`);
   });
 
   it('runs every example the API reference prints', async () => {

@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.97
+
+### six documents state the Node floor and one decides it
+
+`engines.node` decides the version of Node this package needs. Six documents then state it:
+README.md, api.md, correctness.md, getting-started.md, the structured data, and `llms.txt`.
+0.9.90 tied exactly one of the six — the structured data, because that was the file it was
+reading.
+
+Raise the floor and the other five go on telling people an older Node is enough. That is the
+kind of wrong answer that costs a reader an afternoon rather than a minute: the install succeeds,
+something fails later, and the page they checked first had ruled that cause out. `getting-started.md`
+opens with it and offers a command to check what you have.
+
+All six are read from `engines.node` now. A page that states the floor has to state that floor,
+and at least six statements have to be found — so a page that stops naming it, or a matcher that
+stops matching, fails rather than passing quietly.
+
+Deliberately matched on "Node N or newer" rather than on the bare number: these pages are full of
+Node versions that are not the floor, and api.md's own paragraph names two of them — "verified on
+22.16 and 24.4" — in a sentence about a different question entirely.
+
 ## 0.9.96
 
 ### the identity that ends up in a bibliography, left out of the check for it
