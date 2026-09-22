@@ -1064,6 +1064,41 @@ describe('documentation and source agree on their lists', () => {
       prerender.includes(`softwareRequirements: 'Node.js ${major[1]} or newer'`),
       `the structured data does not require Node ${major[1]}, which engines.node does`,
     );
+
+    /*
+      And the headline and the sentence under it, each written out twice.
+
+      `index.html` holds the landing page's `<title>` and its meta description; the
+      prerenderer then adds `og:title` and `og:description` to the same document, typed again
+      as literals. They are what a link to this site renders as anywhere it is pasted — a
+      pull request, a chat, a search result — and the pair that disagrees is the one nobody
+      sees, because the page in the browser reads correctly either way.
+
+      The description is the shorter of the two forms, which is also the manifest's and the
+      landing lede's: og cards are truncated, so it stops before the clause about pyEDFlib
+      that the meta description carries. Held to being the opening of the long one rather
+      than equal to it.
+    */
+    const index = await read('website/index.html');
+    const title = /<title>([^<]+)<\/title>/u.exec(index);
+    assert.ok(title, 'index.html no longer has a title');
+    assert.ok(
+      prerender.includes(`og:title" content="${title[1]}"`),
+      `og:title is not "${title[1]}", which is what the page is called`,
+    );
+
+    const described = /name="description"\s*\n?\s*content="([^"]+)"/u.exec(index);
+    assert.ok(described, 'index.html no longer has a meta description');
+    // The landing page's, which is a literal; the documentation pages template theirs from
+    // each page's own frontmatter and are checked against it elsewhere.
+    const social = [...prerender.matchAll(/og:description" content="([^"]+)"/gu)]
+      .map((m) => m[1])
+      .find((value) => !value.includes('${'));
+    assert.ok(social, 'the prerenderer no longer gives the landing page an og:description');
+    assert.ok(
+      described[1].startsWith(social),
+      `og:description is not how the meta description opens:\n  og:   ${social}\n  meta: ${described[1]}`,
+    );
   });
 
   it('runs every example the API reference prints', async () => {

@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.91
+
+### the headline every paste of this link renders, hand-copied
+
+`index.html` holds the landing page's `<title>` and its meta description. The prerenderer then
+adds `og:title` and `og:description` to the same document, typed again as literals:
+
+    <meta property="og:title" content="Convert EDF to CSV from the command line - edf2csv" />
+
+That is the headline anywhere a link to this site is pasted — a pull request, a chat, a search
+result — and it was a hand-copy of the `<title>` two files away. The pair that disagrees is
+exactly the pair nobody notices, because the page in the browser reads correctly either way and
+the card is rendered by somebody else's crawler.
+
+Both are tied to `index.html` now. The description is held to being the *opening* of the meta
+description rather than equal to it, which is deliberate and is why the two differ today: og
+cards get truncated, so the social copy stops before the clause about pyEDFlib that the meta
+description carries. Held that way, shortening the sentence still fails if the two stop agreeing
+about what it says, and lengthening the social copy past the card's limit is still allowed.
+
+The documentation pages are left alone: their og tags are templated from each page's own
+frontmatter, which other checks already hold. Only the landing page's literal pair is matched —
+picked out by not containing a `${`, since the same tag name serves both.
+
 ## 0.9.90
 
 ### an identity published twice and compared to nothing
