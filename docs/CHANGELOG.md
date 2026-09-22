@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.1
+
+### one control, two implementations, and only the key was shared
+
+The theme toggle exists twice. The landing page's is React, in `Nav.jsx`; every documentation
+page and the 404 get an inline script instead, because they are prerendered and carry no bundle.
+The same three-state control, written in two languages by two hands.
+
+0.9.89 tied the localStorage key they share. It did not tie what the control *does*. The cycle is
+a map in one:
+
+    var order={auto:'light',light:'dark',dark:'auto'};
+
+and a chain of ternaries in the other:
+
+    const next = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+
+Reverse one, or drop `auto` from it, and the same button in the same header behaves differently
+depending on which page of one site it is pressed on. Nothing throws, nothing looks broken, and
+a reader who notices assumes they misremembered — which is the criterion `website/README.md`
+gives for the failures this build is supposed to refuse.
+
+The order is read out of the prerenderer's map, which spells it out as pairs, and `Nav.jsx`'s
+ternary chain is held to the same succession. Three states, and each transition present in both.
+
 ## 0.10.0
 
 ### the minor rolls, and a security policy's two checkable claims

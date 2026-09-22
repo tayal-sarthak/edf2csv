@@ -984,6 +984,36 @@ describe('documentation and source agree on their lists', () => {
         `the ${theme} page is painted ${colour} and a head tells the browser ${wrong.join(', ')}`);
     }
 
+    /*
+      And the control itself, which exists twice and only shared its key.
+
+      The landing page's toggle is React, in `Nav.jsx`. Every documentation page and the 404
+      get an inline script instead, because they are prerendered and carry no bundle — so the
+      same three-state control is implemented in two languages by two hands. 0.9.89 tied the
+      localStorage key they share. What it did not tie is what the control *does*: the order
+      it cycles through, which is a map in one and a chain of ternaries in the other.
+
+      Change the cycle in `Nav.jsx` — drop `auto`, reverse the direction — and the same button
+      behaves differently depending on which page of one site it is pressed on. Nothing
+      throws, nothing looks broken, and the reader who notices assumes they misremembered.
+
+      Read the order out of the prerenderer's map, which spells it out, and hold `Nav.jsx`'s
+      ternary chain to the same succession.
+    */
+    const order = /var order=\{([^}]+)\}/u.exec(prerender);
+    assert.ok(order, 'the prerendered toggle no longer declares the order it cycles in');
+    const cycle = new Map(
+      order[1].split(',').map((pair) => pair.split(':').map((side) => side.replace(/'/gu, '').trim())),
+    );
+    assert.equal(cycle.size, 3, `the toggle cycles through ${cycle.size} states, not three`);
+    for (const [from, to] of cycle) {
+      assert.ok(
+        new RegExp(`theme === '${from}' \\? '${to}'`, 'u').test(nav)
+          || new RegExp(`: '${to}'`, 'u').test(nav) && [...cycle.keys()].at(-1) === from,
+        `the prerendered toggle goes ${from} -> ${to} and Nav.jsx does not`,
+      );
+    }
+
     const manifest = JSON.parse(await read('website/public/site.webmanifest'));
     for (const field of ['theme_color', 'background_color']) {
       assert.equal(manifest[field], painted('dark'),
