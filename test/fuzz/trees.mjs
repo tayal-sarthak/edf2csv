@@ -119,6 +119,17 @@ function converted(root) {
   return found.sort();
 }
 
+/*
+  How many trees a bare `npm run fuzz:batch` builds, exported rather than written inline.
+
+  The correctness page states it — "12 folder trees, the default seed" — beside the output of
+  a run at that default, and nothing connected the two: the number on the page and the number
+  in this file were separate 12s. `mutate.mjs` had the same shape one level down at 0.10.11,
+  where the literal and the exported constant were both 300 and the check was reading the one
+  the command line did not use. Here there was no constant to read at all.
+*/
+export const DEFAULT_TREES = 12;
+
 export function fuzzTrees(seed = 1, trees = 12) {
   const rnd = random(seed);
   const int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
@@ -353,7 +364,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     return n;
   };
   const seed = whole('The seed', process.argv[2], 1);
-  const trees = whole('The number of folder trees', process.argv[3], 12);
+  const trees = whole('The number of folder trees', process.argv[3], DEFAULT_TREES);
   const { problems, recordings, directories, compared } = fuzzTrees(seed, trees);
 
   process.stdout.write(

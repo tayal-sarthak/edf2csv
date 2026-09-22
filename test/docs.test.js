@@ -3135,6 +3135,28 @@ ${script}`,
     assert.equal(fallback[1].trim(), 'DEFAULT_FILES',
       `a bare \`npm run fuzz\` corrupts ${fallback[1].trim()} recordings, not DEFAULT_FILES`);
 
+    /*
+      And the batch sweep, which stated its default on the page with nothing behind it at all.
+
+      "npm run fuzz:batch  # 12 folder trees, the default seed", above the output of a run at
+      that default. `mutate.mjs` at least had a constant to be checked against, even if the
+      command line reached a different one; here the 12 on the page and the 12 in the harness
+      were two unrelated numbers. It is `DEFAULT_TREES` now, on both sides.
+    */
+    const batch = await import(path.join(ROOT, 'test/fuzz/trees.mjs'));
+    assert.equal(typeof batch.DEFAULT_TREES, 'number', 'trees.mjs exports no default');
+    const trees = /whole\('The number of folder trees', process\.argv\[3\], ([^)]+)\)/u
+      .exec(await read('test/fuzz/trees.mjs'));
+    assert.ok(trees, 'trees.mjs no longer takes a tree count');
+    assert.equal(trees[1].trim(), 'DEFAULT_TREES',
+      `a bare \`npm run fuzz:batch\` builds ${trees[1].trim()} trees, not DEFAULT_TREES`);
+    const quoted = [...page.matchAll(/([\d,]+) folder trees/gu)]
+      .map((m) => Number(m[1].replaceAll(',', '')));
+    assert.ok(quoted.length >= 2, `the page states the batch sweep size ${quoted.length} times`);
+    const wrongTrees = [...new Set(quoted)].filter((n) => n !== batch.DEFAULT_TREES);
+    assert.deepEqual(wrongTrees, [],
+      `the sweep builds ${batch.DEFAULT_TREES} trees and the page says ${wrongTrees.join(', ')}`);
+
     const damaged = /([\d,]+) runs over ([\d,]+) corrupted recordings/gu;
     const fuzzed = [...page.matchAll(damaged)];
     assert.ok(fuzzed.length >= 2, 'the page no longer states the fuzz sweep size');

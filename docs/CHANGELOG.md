@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.12
+
+### the other sweep that takes a size, with no constant to be wrong about
+
+The same question asked of the other sweep that takes a size, and the answer was worse.
+
+`mutate.mjs` at 0.10.11 had two declarations of 300 — a constant the page was checked against
+and a literal the command line used. `trees.mjs` had no constant at all. The correctness page
+says
+
+    npm run fuzz:batch              # 12 folder trees, the default seed
+
+directly above the output of a run at that default, and the 12 in the page and the 12 in the
+harness were unrelated numbers. Change the harness and the page describes a command that does
+something else; the batch sweep is the check behind claim 6, and the line is in the block telling
+a reader how to reproduce it.
+
+`DEFAULT_TREES` is exported now and both sides read it, the same shape `mutate.mjs` was given
+one release ago. Every count of trees on the page has to be that number, and the fallback in the
+argument parser has to be the constant rather than something equal to it.
+
+Two sweeps take a size. Both of them now state it once.
+
 ## 0.10.11
 
 ### a default declared twice, and the page held to the copy nothing runs
