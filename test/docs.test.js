@@ -1128,6 +1128,24 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(prerender.includes(`name: '${manifest.author}'`),
       `the structured data's author is not "${manifest.author}"`);
 
+    /*
+      And the one on the README, which is a URL a third party renders.
+
+      The downloads badge is two copies of the package's name — once in the shields.io URL that
+      generates the image, once in the registry link it wraps. Rename the package and the badge
+      draws whatever shields.io says about a name nobody publishes, which is not an error, not
+      a broken image, and not a blank: it is a number, in the first thing anybody sees.
+    */
+    const badge = /\[!\[[^\]]*\]\(https:\/\/img\.shields\.io\/npm\/[a-z]+\/([^?)]+)[^)]*\)\]\(([^)]+)\)/u
+      .exec(await read('README.md'));
+    assert.ok(badge, 'the README no longer carries a downloads badge');
+    assert.equal(badge[1], manifest.name, `the badge counts downloads of "${badge[1]}"`);
+    assert.equal(
+      badge[2],
+      `https://www.npmjs.com/package/${manifest.name}`,
+      `the badge links to ${badge[2]}, which is not this package`,
+    );
+
     // The licence, as a URL in the markup and as a word in the file that grants it.
     assert.equal(manifest.license, 'MIT');
     assert.match(licence, /MIT License/u, 'the licence file is no longer the one package.json names');

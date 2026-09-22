@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.3
+
+### a badge that renders a number for a package nobody publishes
+
+The README opens with a downloads badge, and a badge is two copies of the package's name: once
+in the shields.io URL that generates the image, once in the registry link it wraps.
+
+    [![downloads](https://img.shields.io/npm/dt/edf2csv?label=downloads)](https://www.npmjs.com/package/edf2csv)
+
+Rename the package and that badge does not break. It renders a number for a name nobody
+publishes — no error, no broken image, no blank — in the first thing anybody sees on the
+repository page, next to a link that now goes to a 404. shields.io answers `0` for a package
+that does not exist, which reads as a fact about this one.
+
+Both halves come from `package.json`'s `name` now.
+
+This is the same check 0.9.90 and 0.9.96 made of the prerenderer and `CITATION.cff`, at the
+fourth address the project's own name lives at. Worth noting what the three have in common: none
+of them is code, all three are rendered by somebody else — a crawler, a citation tool,
+shields.io — and none of them fails loudly when it is wrong.
+
 ## 0.10.2
 
 ### what that control tells a screen reader, said twice
