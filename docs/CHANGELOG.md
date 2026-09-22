@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.99
+
+### the claim a security policy rests on, decided by one absent field
+
+"No runtime dependencies" carries more weight than anything else stated about installing this.
+It is why `npx edf2csv` fetches one package, it is what the tarball check is protecting, and it
+is the first thing SECURITY.md's scope section rests on:
+
+> It makes no network calls, runs no code from the recordings it reads, and has no runtime
+> dependencies, so the surface is the parser and the filesystem work around it.
+
+Seven documents say it — README.md, api.md, correctness.md, getting-started.md, faq.md, llms.txt
+and that security policy — and `dependencies` in `package.json` is where it is decided. One
+dependency added in a hurry makes all seven wrong at once, and one of them is a document telling
+a reporter what the attack surface is.
+
+Held now: `dependencies` has to be empty, and at least five documents have to still be making
+the claim, so a page that quietly drops it fails too. Absent and empty are both accepted, since
+they are the same claim said two ways and the field is absent today.
+
 ## 0.9.98
 
 ### the floor nothing had to run

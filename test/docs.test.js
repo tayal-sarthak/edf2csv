@@ -1209,6 +1209,32 @@ describe('documentation and source agree on their lists', () => {
       Number(floor),
       `CI's oldest Node is ${Math.min(...versions)} and package.json needs ${floor}`,
     );
+
+    /*
+      And the other half of the same sentence, which five pages and SECURITY.md make.
+
+      "No runtime dependencies" is the claim that carries the most weight of anything stated
+      about installing this: it is why `npx edf2csv` pulls one package, why the tarball is what
+      it is, and it is the first thing SECURITY.md's scope section rests on — "it makes no
+      network calls, runs no code from the recordings it reads, and has no runtime
+      dependencies, so the surface is the parser and the filesystem work around it." A single
+      dependency added in a hurry makes six documents wrong at once, one of them a security
+      policy.
+
+      `dependencies` is where that is decided, and it is absent rather than empty today, which
+      is the same claim said two ways and worth accepting both of.
+    */
+    const runtime = Object.keys(manifest.dependencies ?? {});
+    assert.deepEqual(runtime, [],
+      `package.json declares ${runtime.join(', ')} while six documents say there are none`);
+    let claiming = 0;
+    for (const where of [...named, 'SECURITY.md', 'website/content/faq.md']) {
+      const text = (await read(where)).replace(/\s+/gu, ' ');
+      if (/(?:no|zero) (?:runtime )?dependencies|dependencies at all|has no dependencies/iu.test(text)) {
+        claiming++;
+      }
+    }
+    assert.ok(claiming >= 5, `only ${claiming} documents claim there are no dependencies`);
   });
 
   it('runs every example the API reference prints', async () => {
