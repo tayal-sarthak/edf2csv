@@ -1456,6 +1456,26 @@ describe('documentation and source agree on their lists', () => {
     assert.match(page, /nothing here has top-level .await./u,
       'api.md no longer states why require() works');
 
+    /*
+      And what the page says that rests on, which is now more than it claimed.
+
+      It said "verified on 22.16 and 24.4" — two versions somebody had once tried by hand, and
+      the only evidence there was, since nothing ran the claim. 0.10.5 made the suite run it,
+      so it is now exercised on every Node in the CI matrix, including the floor the same
+      paragraph says `require` fails on older releases of. A claim with more evidence than it
+      states is a smaller problem than the other way round, and it is still the page being
+      wrong about its own basis.
+
+      Taken from the matrix, so dropping a version from CI moves the sentence.
+    */
+    const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
+    assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
+    const listed = runs[1].split(',').map((value) => value.trim());
+    assert.ok(
+      page.includes(`which is ${listed.slice(0, -1).join(', ')} and ${listed.at(-1)}`),
+      `api.md does not say require() is verified on ${listed.join(', ')}`,
+    );
+
     const build = path.join(ROOT, 'dist/index.js');
     const wanted = ['convert', 'EdfFile', 'parseHeader'];
     for (const how of [

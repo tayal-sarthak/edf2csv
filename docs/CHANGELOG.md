@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.7
+
+### two versions named by hand, on a claim the suite now runs
+
+api.md said `require("edf2csv")` was "verified on 22.16 and 24.4". Those were two versions
+somebody had once tried by hand, and until 0.10.5 they were the only evidence there was, because
+nothing ran the claim.
+
+The suite runs it now, so it is exercised on every Node in the CI matrix — 20, 22 and 24,
+including the floor that the same paragraph says `require` fails on the older releases of. The
+sentence now says that, and takes the list from the matrix, so dropping a version from CI moves
+the prose rather than leaving it overstating what was run.
+
+A claim with more evidence than it states is the smaller of the two mistakes, and it is still the
+page being wrong about its own basis — which is the thing this page is careful about everywhere
+else. Two versions named by hand also age: 22.16 and 24.4 are the versions of a particular
+afternoon, and "every Node CI runs" keeps being true.
+
+That closes the paragraph. Four claims in it, all four now run or diffed: that `require` works,
+that `await import` works, that nothing has top-level `await`, that the declarations need no
+`@types/node` — and now what any of it was checked against.
+
 ## 0.10.6
 
 ### a docstring read as a type declaration, in the check for it
