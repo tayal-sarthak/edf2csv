@@ -3157,6 +3157,41 @@ ${script}`,
     assert.deepEqual(wrongTrees, [],
       `the sweep builds ${batch.DEFAULT_TREES} trees and the page says ${wrongTrees.join(', ')}`);
 
+    /*
+      And the sentences themselves, which are quoted from the sweeps and compared to nothing.
+
+      The page prints each sweep's output as a block: its count line, then the sentence that
+      says the invariant held. "Serial and parallel agreed, and all 49 batched recordings
+      matched converting alone." "Both layouts hold the same samples, in the same order, per
+      channel." "Every one exited cleanly with something to say." Those are string literals in
+      the harnesses, transcribed here by hand.
+
+      0.9.83 changed the first of them and the page had to be edited in the same commit,
+      by me, because I happened to remember. That is the whole mechanism keeping these in
+      agreement, and it is the mechanism this repository has a hundred releases about not
+      relying on.
+
+      Matched on the literal part around the numbers, since the counts are a run's and the
+      wording is the harness's.
+    */
+    const summaries = [
+      ['trees', ['Serial and parallel agreed, and all ', 'batched recordings matched converting ']],
+      ['layouts', ['Both layouts hold the same samples, in the same order, per channel.']],
+      ['mutate', ['Every one exited cleanly with something to say.']],
+    ];
+    // The page prints an output block for four of the nine; the rest it describes in prose,
+    // which has nothing to transcribe and so nothing to go stale.
+    for (const [sweep, parts] of [...summaries,
+      ['../crossvalidate/compare.py', ['Every value agreed.']]]) {
+      const source = await read(`test/fuzz/${sweep}${sweep.endsWith('.py') ? '' : '.mjs'}`);
+      for (const part of parts) {
+        assert.ok(source.includes(part),
+          `${sweep}.mjs no longer prints "${part}", which the page quotes`);
+        assert.ok(page.includes(part.trimEnd()),
+          `the page does not quote ${sweep}.mjs's "${part.trimEnd()}"`);
+      }
+    }
+
     const damaged = /([\d,]+) runs over ([\d,]+) corrupted recordings/gu;
     const fuzzed = [...page.matchAll(damaged)];
     assert.ok(fuzzed.length >= 2, 'the page no longer states the fuzz sweep size');

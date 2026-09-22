@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.13
+
+### four sentences transcribed by hand, kept in step by memory
+
+The correctness page prints four sweeps' output as blocks: a count line, then the sentence saying
+the invariant held.
+
+    Serial and parallel agreed, and all 49 batched recordings matched converting alone.
+    Both layouts hold the same samples, in the same order, per channel.
+    Every one exited cleanly with something to say.
+    Every value agreed.
+
+The counts have been checked for a while. The sentences are string literals in the harnesses,
+transcribed onto the page by hand, and nothing compared them.
+
+0.9.83 reworded the first one — it used to read "every batch matched converting alone" — and the
+page was corrected in the same commit because I happened to remember. That is the entire
+mechanism keeping these in agreement, and it is the mechanism this repository has spent a hundred
+releases not relying on: every check here exists because somebody once remembered and the next
+person did not.
+
+The literal part of each is now required on both sides, with the numbers left out since those
+belong to a run rather than to the wording. Four sweeps, because four is how many the page
+transcribes; the other five it describes in prose, which has nothing to go stale against.
+
 ## 0.10.12
 
 ### the other sweep that takes a size, with no constant to be wrong about
