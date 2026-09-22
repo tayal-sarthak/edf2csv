@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.96
+
+### the identity that ends up in a bibliography, left out of the check for it
+
+0.9.90 held the identity the prerenderer publishes — repository, registry, homepage, author,
+licence, Node version — against `package.json`. It went looking for copies in the prerenderer
+and stopped there.
+
+`CITATION.cff` carries four of the same facts, and it is the one document where being wrong about
+them ends up in somebody's bibliography. It is what GitHub's "Cite this repository" button reads
+and what anyone citing this in a paper copies:
+
+    repository-code: https://github.com/tayal-sarthak/edf2csv
+    url: https://edf2csv.vercel.app
+    license: MIT
+    authors:
+      - family-names: Tayal
+        given-names: Sarthak
+
+Its version and its release date have been checked since a partial bump shipped once. Its
+identity was not checked at all. Move the repository and the citation points at the old URL for
+as long as the papers citing it exist.
+
+All four now come from `package.json` — `repository`, `homepage`, `license` and `author`, the
+last split into the two halves a citation needs.
+
+Third time a guard written from the copies I happened to open has missed the one I did not, after
+0.9.85 and 0.9.92. The pattern is stable enough to state as a rule: when a fact turns out to be
+duplicated, the next question is not "is this copy right" but "how many copies are there".
+
 ## 0.9.95
 
 ### the one rule this changelog states about its own numbers

@@ -1122,6 +1122,39 @@ describe('documentation and source agree on their lists', () => {
       described[1].startsWith(social),
       `og:description is not how the meta description opens:\n  og:   ${social}\n  meta: ${described[1]}`,
     );
+
+    /*
+      And the file whose entire job is stating this, which the check above left out.
+
+      `CITATION.cff` is what GitHub's "Cite this repository" button reads and what anyone
+      citing this in a paper copies. It carries the repository URL, the site's address, the
+      licence and the author — the same four facts the structured data was just held to, in
+      the one document where being wrong about them ends up in somebody's bibliography.
+
+      Its version and date are checked elsewhere, and have been since a partial bump shipped.
+      Its identity was not: the check went looking for copies in the prerenderer and stopped
+      there, which is the third time a guard written from the copies I happened to open missed
+      the one I did not.
+    */
+    const citation = await read('CITATION.cff');
+    const field = (name) => {
+      const found = new RegExp(`^${name}:\\s*(.+)$`, 'mu').exec(citation);
+      assert.ok(found, `CITATION.cff no longer states ${name}`);
+      return found[1].trim();
+    };
+    assert.equal(field('repository-code'), repo,
+      'CITATION.cff cites a repository package.json does not name');
+    assert.equal(field('url'), manifest.homepage,
+      'CITATION.cff cites a homepage package.json does not name');
+    assert.equal(field('license'), manifest.license,
+      'CITATION.cff cites a licence package.json does not name');
+    // The author, which the file splits into the two halves a citation needs.
+    const [given, ...family] = manifest.author.split(' ');
+    assert.ok(
+      new RegExp(`family-names:\\s*${family.join(' ')}\\s*\\n\\s*given-names:\\s*${given}`, 'u')
+        .test(citation),
+      `CITATION.cff names an author other than "${manifest.author}"`,
+    );
   });
 
   it('runs every example the API reference prints', async () => {
