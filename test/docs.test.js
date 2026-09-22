@@ -1517,6 +1517,35 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(stale, [],
       `the generator writes ${fixtures.length} fixtures and the page says ${stale.join(', ')}`);
 
+    /*
+      And the other half of each of those sentences: what the fixtures are crossed with.
+
+      "Across every fixture crossed with thirteen option sets." "50 recordings crossed with
+      eight option sets." Those are the lengths of two arrays — `OPTIONS` in `estimate.mjs`
+      and in `layouts.mjs` — and adding a row to either is the ordinary way to widen a sweep.
+      Do it and the page understates the work while the prediction count beside it, 601, goes
+      quietly wrong in the same sentence.
+
+      The fixture count and the option-set count are the two factors of every figure quoted
+      here. 0.10.9 tied the first; this ties the second.
+    */
+    const WORDS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+      'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen'];
+    let crossed = 0;
+    for (const sweep of ['estimate', 'layouts']) {
+      const source = await read(`test/fuzz/${sweep}.mjs`);
+      const block = /const OPTIONS = \[([\s\S]*?)\n\];/u.exec(source);
+      assert.ok(block, `${sweep}.mjs no longer declares the option sets it crosses`);
+      const sets = [...block[1].matchAll(/^ {2}\[/gmu)].length;
+      assert.ok(sets >= 5, `${sweep}.mjs crosses ${sets} option sets, which is too few to be right`);
+      assert.ok(
+        correctness.includes(`${WORDS[sets - 1]} option sets`),
+        `${sweep}.mjs crosses ${sets} option sets and the page says no such thing`,
+      );
+      crossed++;
+    }
+    assert.equal(crossed, 2, 'both crossed sweeps have to be accounted for');
+
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
     const listed = runs[1].split(',').map((value) => value.trim());

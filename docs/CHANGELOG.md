@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.10
+
+### the other factor of every figure the page quotes
+
+Every figure the correctness page quotes from a sweep is the product of two numbers: how many
+recordings, and how many option sets each is crossed with. 0.10.9 tied the first. This ties the
+second.
+
+"Across every fixture crossed with thirteen option sets." "50 recordings crossed with eight
+option sets." Those are the lengths of two arrays — `OPTIONS` in `estimate.mjs` and in
+`layouts.mjs` — and adding a row to either is the ordinary way to widen a sweep. Do it and the
+page understates the work, while the prediction count in the same sentence, 601, goes quietly
+wrong beside it.
+
+Both are read from the arrays now, as the English word the page uses. Adding `['--bom']` to the
+layouts sweep fails with "layouts.mjs crosses 9 option sets and the page says no such thing".
+
+There is a floor under each, too, for the reason this project keeps rediscovering: a matcher
+that stopped matching would find zero option sets and then look for "zero option sets" on a page
+that does not say it, which fails — but only by luck of the wording. Five is the floor, well
+under either.
+
 ## 0.10.9
 
 ### one number counted from a directory, written out five times
