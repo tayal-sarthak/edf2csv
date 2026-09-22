@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.2
+
+### what that control tells a screen reader, said twice
+
+0.10.1 tied what the theme toggle does on both halves of the site. This ties what it says it
+does.
+
+The button's accessible name names the action rather than the state, which is a decision with a
+comment beside it in `Nav.jsx`:
+
+> It read "Switch theme, currently auto", which tells a screen-reader user the state they are
+> already in and leaves the outcome to be discovered by pressing. A button's accessible name is
+> its action; the state it happens to be in is what the icon shows.
+
+The prerendered copy carries the three resulting labels as a map; `Nav.jsx` builds them from a
+template. So the control that now provably behaves the same on the landing page and the
+documentation pages could still describe itself differently on them — to the readers with the
+least other way of telling, on a control whose whole visible state is an icon.
+
+Each label is held to the state the cycle leads to, on both sides. The reasoning that produced
+the wording is kept where it was; what is new is that the copy nobody re-reads cannot drift away
+from it.
+
+That is the third thing this one control duplicated: the storage key at 0.9.89, the cycle at
+0.10.1, the labels here. A control implemented twice has as many shared facts as it has
+behaviour, and they come to light one at a time.
+
 ## 0.10.1
 
 ### one control, two implementations, and only the key was shared

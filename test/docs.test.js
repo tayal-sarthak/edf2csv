@@ -1014,6 +1014,34 @@ describe('documentation and source agree on their lists', () => {
       );
     }
 
+    /*
+      And what it tells a screen reader, which is the same sentence three times over.
+
+      The button's accessible name names the action rather than the state — a decision with a
+      comment beside it in `Nav.jsx`: "It read 'Switch theme, currently auto', which tells a
+      screen-reader user the state they are already in and leaves the outcome to be discovered
+      by pressing." The prerendered copy carries the three resulting labels as a map; `Nav.jsx`
+      builds them from a template.
+
+      So the control that behaves the same on both halves of the site can still describe itself
+      differently on them, to the readers with the least other way of telling. Each label is
+      held to the state the cycle leads to, in both.
+    */
+    const labels = /var label=\{([^}]+)\}/u.exec(prerender);
+    assert.ok(labels, 'the prerendered toggle no longer labels its states');
+    const said = new Map(
+      [...labels[1].matchAll(/(\w+):'([^']+)'/gu)].map((m) => [m[1], m[2]]),
+    );
+    assert.equal(said.size, cycle.size, `${said.size} labels for ${cycle.size} states`);
+    for (const [state, label] of said) {
+      const wanted = state === 'auto' ? 'Match the system theme' : `Switch to the ${state} theme`;
+      assert.equal(label, wanted, `the prerendered toggle calls ${state} "${label}"`);
+      assert.ok(
+        nav.includes(state === 'auto' ? wanted : '`Switch to the ${next} theme`'),
+        `Nav.jsx does not produce "${wanted}" for ${state}`,
+      );
+    }
+
     const manifest = JSON.parse(await read('website/public/site.webmanifest'));
     for (const field of ['theme_color', 'background_color']) {
       assert.equal(manifest[field], painted('dark'),
