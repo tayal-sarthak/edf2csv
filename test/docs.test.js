@@ -1485,6 +1485,43 @@ ${script}`,
     }
     assert.deepEqual(offenders, [],
       `api.md says nothing here has top-level await, and these do: ${offenders.join(', ')}`);
+
+    /*
+      And the other claim in that paragraph about the published types.
+
+      "TypeScript declarations ship with the package, so `import type` works without installing
+      anything else — including `@types/node`, which the declarations deliberately avoid
+      needing. Raw bytes are typed as `Uint8Array` rather than `Buffer` for that reason."
+
+      `@types/node` is a devDependency here, so every declaration compiles against it whether
+      or not it needs it, and nothing would have said so: a `Buffer` or a `NodeJS.` in an
+      emitted `.d.ts` costs a consumer a dependency they were promised they would not need, and
+      the error they get names a type rather than a package. The second sentence is the rule
+      that keeps the first true, and it is checkable on the files that ship.
+    */
+    assert.match(page, /which the declarations deliberately avoid needing/u,
+      'api.md no longer claims the declarations need no @types/node');
+    /*
+      Comments out first, which the first version of this did not do and was wrong about.
+
+      `dist/edf/bytes.d.ts` names `Buffer` four times, all of them in the docstring explaining
+      why the file does not use it — "written against `Uint8Array` rather than `Buffer`",
+      "verified byte-for-byte against `Buffer.toString('latin1')`". A matcher that reads prose
+      as a type declaration reports the comment that keeps the claim true as the thing
+      breaking it.
+    */
+    const typed = [];
+    for (const name of await readdir(path.join(ROOT, 'dist'), { recursive: true })) {
+      if (!name.endsWith('.d.ts')) continue;
+      const declarations = (await read(path.join('dist', name)))
+        .replace(/\/\*[\s\S]*?\*\//gu, '')
+        .replace(/\/\/[^\n]*/gu, '');
+      for (const [, type] of declarations.matchAll(/\b(Buffer|NodeJS\.\w+)\b/gu)) {
+        typed.push(`${name}: ${type}`);
+      }
+    }
+    assert.deepEqual(typed, [],
+      `these declarations need @types/node, which api.md says they avoid: ${typed.join(', ')}`);
   });
 
   it('runs the dumper it prints, and gets what the checked-in one gets', async () => {

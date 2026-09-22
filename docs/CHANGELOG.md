@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.6
+
+### a docstring read as a type declaration, in the check for it
+
+The fourth claim in that paragraph, and the one with a cost a reader pays rather than sees:
+
+> TypeScript declarations ship with the package, so `import type` works without installing
+> anything else — including `@types/node`, which the declarations deliberately avoid needing.
+> Raw bytes are typed as `Uint8Array` rather than `Buffer` for that reason.
+
+`@types/node` is a devDependency here, so every declaration compiles against it whether it needs
+it or not, and nothing said which ones do. A `Buffer` or a `NodeJS.` in an emitted `.d.ts` costs
+a consumer a dependency they were told they would not need, and the error they get names a type
+rather than a package. The second sentence is the rule that keeps the first true; it is now
+checked on the files that ship.
+
+**And the first version of this check was wrong, which is worth the space.** It reported four
+offences in `dist/edf/bytes.d.ts` — every one of them inside the docstring explaining why that
+file does not use `Buffer`: "written against `Uint8Array` rather than `Buffer`", "verified
+byte-for-byte against `Buffer.toString('latin1')` across all 256 values". A matcher that reads
+prose as a type declaration reports the comment keeping the claim true as the thing breaking it.
+
+That is twice in this batch, after 0.10.3's first form passed a row count that was a different
+channel's. The question earns its place beside the other one: not only *can this check pass
+without measuring*, but *is it measuring the thing it names*.
+
 ## 0.10.5
 
 ### three checkable things in one paragraph, all of them prose
