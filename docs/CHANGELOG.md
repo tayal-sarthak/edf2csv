@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.9
+
+### one number counted from a directory, written out five times
+
+Seven of the eleven claims on the correctness page are checked by a sweep that reads its inputs
+out of `test/fixtures/generated`, and the page quotes each result with the number of recordings
+behind it. "601 predictions over 50 recordings." "50 recordings crossed with eight option sets."
+"305 streams over 50 recordings." "370 conversions compared over 50 recordings." The fixture
+table calls them "the fifty".
+
+Five statements of one number, and the number is a count of files in a directory that
+`test/fixtures/generate.mjs` writes. Add one `writeEdf` — which is what CONTRIBUTING invites, "a
+new failing case is usually a dozen lines there" — and all five are wrong at once, in the
+direction nobody notices: the sweeps go on printing the true count into a page that states the
+old one three lines above it.
+
+Counted off the directory now, which `npm test` has just filled. Three other counts of
+recordings on that page are left alone by value, and the reason is written beside the check: 75
+is the cross-check's own corpus, 300 is `mutate.DEFAULT_FILES` and has its own check, and 49 is
+how many recordings a seed happened to scatter across the batch sweep's folder trees — which is
+nobody's business to pin.
+
 ## 0.10.8
 
 ### the third time this sitemap's list of what a page is made of was short

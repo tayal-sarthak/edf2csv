@@ -1488,6 +1488,35 @@ describe('documentation and source agree on their lists', () => {
     assert.match(perPage[1], /template/u,
       `a documentation page is dated by ${perPage[1].trim()}, which leaves the renderer out`);
 
+    /*
+      And the size of the fixture set, which the correctness page states six times.
+
+      Every sweep but the cross-check reads its inputs out of one directory, and the page
+      quotes each of their results with the number of recordings behind it — "601 predictions
+      over 50 recordings", "50 recordings crossed with eight option sets", "305 streams over
+      50 recordings", and the fixture table calls them "the fifty". One `writeEdf` added to
+      `generate.mjs` makes six sentences wrong at once, and the sweeps would go on printing
+      the true count into a page that states the old one beside it.
+
+      Counted off the directory the generator writes, which `npm test` has just filled. Three
+      other counts of recordings on this page are excluded by value because they come from
+      somewhere else: 75 is the cross-check's own generated corpus, 300 is `mutate.DEFAULT_FILES`
+      (pinned by its own check), and 49 is how many recordings a seed happened to scatter across
+      the batch sweep's folder trees, which is nobody's business to pin.
+    */
+    const fixtures = (await readdir(path.join(ROOT, 'test/fixtures/generated')))
+      .filter((name) => /\.(?:edf|bdf)$/iu.test(name));
+    assert.ok(fixtures.length > 20, `only ${fixtures.length} fixtures were generated`);
+    const correctness = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
+    const counts = [...correctness.matchAll(/(\d+) recordings(?! this ships| it)/gu)]
+      .map((m) => Number(m[1]))
+      .filter((stated) => stated !== 75 && stated !== 300 && stated !== 49);
+    assert.ok(counts.length >= 3,
+      `only ${counts.length} statements of the fixture count were found on the page`);
+    const stale = [...new Set(counts)].filter((stated) => stated !== fixtures.length);
+    assert.deepEqual(stale, [],
+      `the generator writes ${fixtures.length} fixtures and the page says ${stale.join(', ')}`);
+
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
     const listed = runs[1].split(',').map((value) => value.trim());
