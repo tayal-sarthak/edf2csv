@@ -1013,6 +1013,59 @@ describe('documentation and source agree on their lists', () => {
     await stat(path.join(ROOT, 'website/package-lock.json'));
   });
 
+  it('tells a crawler what package.json says it is', async () => {
+    /*
+      The prerenderer publishes this project's identity twice over, in JSON-LD a search engine
+      reads and in tags a social card is built from: the repository URL, the registry URL, the
+      site's own address, the author, the licence, the Node version it needs, the language it
+      is written in. Every one of those is a fact with a source in this repository, and every
+      one of them was typed out again here as a literal.
+
+      Nothing compared them. Change the licence and the structured data goes on telling Google
+      MIT; move the repository and `codeRepository`, `sameAs` and `installUrl` point at the old
+      one — and wrong structured data is worse than none, because it is the version a crawler
+      believes over the page.
+
+      Held against `package.json` and the licence file, which are where each of these is
+      actually decided.
+    */
+    const prerender = await read('website/scripts/prerender.mjs');
+    const manifest = JSON.parse(await read('package.json'));
+    const licence = await read('LICENSE');
+
+    const repo = manifest.repository.url.replace(/^git\+/u, '').replace(/\.git$/u, '');
+    for (const [what, wanted] of [
+      ['REPO', repo],
+      ['NPM', `https://www.npmjs.com/package/${manifest.name}`],
+      ['SITE_URL fallback', manifest.homepage],
+    ]) {
+      assert.ok(
+        prerender.includes(`'${wanted}'`),
+        `the prerenderer's ${what} is not ${wanted}, which is what package.json says`,
+      );
+    }
+    assert.ok(prerender.includes(`name: '${manifest.author}'`),
+      `the structured data's author is not "${manifest.author}"`);
+
+    // The licence, as a URL in the markup and as a word in the file that grants it.
+    assert.equal(manifest.license, 'MIT');
+    assert.match(licence, /MIT License/u, 'the licence file is no longer the one package.json names');
+    const licences = [...prerender.matchAll(/license: '([^']+)'/gu)].map((m) => m[1]);
+    assert.ok(licences.length >= 2, `expected the licence to be published, found ${licences.length}`);
+    const wrong = [...new Set(licences)].filter(
+      (url) => url !== `https://opensource.org/licenses/${manifest.license}`,
+    );
+    assert.deepEqual(wrong, [], `published as ${wrong.join(', ')} while package.json says ${manifest.license}`);
+
+    // And what it says a reader needs, which `engines` decides.
+    const major = /^>=\s*(\d+)/u.exec(manifest.engines.node);
+    assert.ok(major, `engines.node is "${manifest.engines.node}", which has no floor in it`);
+    assert.ok(
+      prerender.includes(`softwareRequirements: 'Node.js ${major[1]} or newer'`),
+      `the structured data does not require Node ${major[1]}, which engines.node does`,
+    );
+  });
+
   it('runs every example the API reference prints', async () => {
     /*
       api.md is the library's documentation, and its examples are what a reader copies. Eleven

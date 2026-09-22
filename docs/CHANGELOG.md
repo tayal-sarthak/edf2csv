@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.9.90
+
+### an identity published twice and compared to nothing
+
+The prerenderer publishes this project's identity twice over — once as JSON-LD a search engine
+reads, once as tags a social card is built from. The repository URL, the registry URL, the site's
+own address, the author, the licence, the Node version it needs, the language it is written in.
+Every one of those is a fact with a source in this repository, and every one of them was typed
+out again in `prerender.mjs` as a literal:
+
+    const REPO = 'https://github.com/tayal-sarthak/edf2csv';
+    const NPM = 'https://www.npmjs.com/package/edf2csv';
+    ...
+    license: 'https://opensource.org/licenses/MIT',
+    softwareRequirements: 'Node.js 20 or newer',
+
+Nothing compared any of them to `package.json`, and wrong structured data is worse than none:
+it is the version a crawler believes over the page it came with. Relicense and Google is still
+told MIT. Move the repository and `codeRepository`, `sameAs` and `installUrl` all point at the
+old one, and the three URLs stop resolving to one entity, which is the entire reason `sameAs` is
+there. Raise `engines.node` and the site goes on telling readers Node 20 is enough.
+
+They are diffed now against `package.json` — `repository`, `name`, `homepage`, `author`,
+`license`, `engines.node` — and the licence file against the word `package.json` uses for it.
+Nothing was wrong today; any of those six moving now fails before it can ship.
+
 ## 0.9.89
 
 ### one theme key spelled five times, one colour six
