@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.14
+
+### the links a reader follows from GitHub, resolved by nothing
+
+Every link between the documentation pages is resolved against the pages and their headings,
+using the site's own slugify — page, anchor and all. That walk reads `website/content`, and three
+documents that link into the site are not in it.
+
+README.md, SECURITY.md and CONTRIBUTING.md live at the repository root, so they link to the site
+the only way they can, by absolute URL. Those are the links somebody follows from GitHub, before
+they have seen the site at all, and nothing resolved any of them.
+
+SECURITY.md has two, and one carries an anchor. It tells a person deciding whether they have found
+a vulnerability to go and read a named heading:
+
+    [`FORMULA_LABEL`](https://edf2csv.vercel.app/docs/warnings-and-errors#formula_label)
+
+Rename that heading and the security policy sends a reporter to the top of a page and no further,
+in the sentence explaining why the tool warns rather than rewrites — which is precisely the
+judgement they are being asked to check.
+
+They go through the same page and anchor sets the walk already builds, so both halves of the
+check agree about what a heading is called. Three links, one of them anchored, all resolving.
+
 ## 0.10.13
 
 ### four sentences transcribed by hand, kept in step by memory

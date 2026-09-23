@@ -2218,6 +2218,42 @@ ${script}`,
     }
     assert.deepEqual(broken, [], broken.join('\n'));
     assert.ok(sameFile >= 8, `expected the pages to link within themselves, found ${sameFile}`);
+
+    /*
+      And the links out of the repository's own documents, which point at the same pages by
+      absolute URL and were resolved by nothing.
+
+      The walk above reads `website/content` and follows relative hrefs. README.md, SECURITY.md
+      and CONTRIBUTING.md are not part of the site, so they link into it the only way they can —
+      `https://edf2csv.vercel.app/docs/...` — and those are the links a reader follows from
+      GitHub, before they have seen the site at all. SECURITY.md has two, one of them carrying
+      the anchor of a heading: it tells somebody deciding whether they have found a
+      vulnerability to go and read `#formula_label`. Rename that heading and the security
+      policy sends a reporter to the top of a page and no further.
+
+      Resolved against the same page and anchor sets the walk above built, with the site's own
+      slugify, so the two halves of this check agree about what a heading is called.
+    */
+    const outward = [];
+    let absolute = 0;
+    for (const where of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md']) {
+      const text = await read(where);
+      for (const [, href] of text.matchAll(/\(https:\/\/edf2csv\.vercel\.app([^)]*)\)/gu)) {
+        absolute++;
+        if (href === '' || href === '/') continue;
+        const [route, fragment] = href.split('#');
+        const slug = route.replace(/^\/docs\//u, '').replace(/\/$/u, '');
+        if (!route.startsWith('/docs/')) {
+          outward.push(`${where}: ${href} is not under /docs/`);
+        } else if (!anchors.has(slug)) {
+          outward.push(`${where}: ${href} names no page`);
+        } else if (fragment && !anchors.get(slug).has(fragment)) {
+          outward.push(`${where}: ${href} names no heading on that page`);
+        }
+      }
+    }
+    assert.deepEqual(outward, [], outward.join('\n'));
+    assert.ok(absolute >= 3, `only ${absolute} links into the site were found outside it`);
   });
 
   it('cites the version being released', async () => {
