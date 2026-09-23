@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.15
+
+### a stray the check could only ever report after it shipped
+
+0.10.14 shipped a file called `arnings-and-errors#formula-label#` at the top of this repository —
+88 bytes of SECURITY.md, written there by a `sed` whose `#` delimiters made the rest of the
+expression into filenames. CI caught it on Node 20, after the tag was cut and pushed. This
+removes it and closes the gap it came through.
+
+The check that found it has been here since 0.5.30 committed a directory called `undefined` that
+sat in the repository for eighty versions, and it reads `git ls-files`. That is the list of what
+is *tracked*, so a stray is invisible to it until something stages the file — and the thing that
+stages it is `git add -A` in the release script, one line before the commit. The suite has
+already run by then. The check could only ever report a stray that was already released.
+
+So the same list of permitted top-level entries is now also held against what is untracked and
+not ignored, under the same pathspec the release script uses. That is exactly the set `-A` is
+about to add, which makes it the check running before the commit instead of after it. Dropping
+any file in the repository root now fails locally, in the run that precedes the tag.
+
+The stray itself was moved out rather than deleted, and `v0.10.14` is left as it was cut: its
+tree fails its own suite on this one test, so it is published with the exclusion `publish.yml`
+documents for a tag that cannot be corrected without rewriting the commit under it. Nothing was
+force-pushed.
+
 ## 0.10.14
 
 ### the links a reader follows from GitHub, resolved by nothing

@@ -5996,6 +5996,35 @@ ${script}`,
     const top = [...new Set(tracked.map((file) => file.split('/')[0]))].sort();
     const strays = top.filter((entry) => !expected.has(entry));
     assert.deepEqual(strays, [], `committed by accident, or new and not listed here: ${strays}`);
+
+    /*
+      And the ones that are about to be, which is the state this check could never see.
+
+      `git ls-files` lists what is tracked, so a stray is invisible here until something stages
+      it — and the thing that stages it is `git add -A` in the release script, one line before
+      the commit. The suite has already run by then. That is not a hypothetical ordering: a
+      malformed `sed` in a probe wrote an 88-byte fragment of SECURITY.md into a file called
+      `arnings-and-errors#formula-label#` at the top of this repository, the local suite passed
+      over it because nothing had staged it, the release swept it in, and CI was the first thing
+      to say so — after the tag was cut and pushed. 0.5.30 committed a directory called
+      `undefined` the same way and it sat here for eighty versions.
+
+      So the same list is held against what is untracked and not ignored. `--others
+      --exclude-standard` is what the release script's `-A` is about to add, which makes this
+      the check running before the commit rather than after it — under the same pathspec the
+      script uses, since it excludes `.claude` and that exclusion is why the directory has
+      never needed a line in `.gitignore`.
+    */
+    const { stdout: loose } = await run(
+      'git',
+      ['ls-files', '-z', '--others', '--exclude-standard', '--', '.', ':!.claude'],
+      { cwd: ROOT },
+    );
+    const arriving = [...new Set(loose.split('\0').filter(Boolean).map((f) => f.split('/')[0]))]
+      .filter((entry) => !expected.has(entry))
+      .sort();
+    assert.deepEqual(arriving, [],
+      `not ignored and not listed here, so the next \`git add -A\` commits it: ${arriving}`);
   });
 
   it('ships source maps that resolve to something', async () => {
