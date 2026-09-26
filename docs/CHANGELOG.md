@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.16
+
+### a promise to readers who cannot take the motion, held by nothing
+
+`website/README.md` ends its design note with a promise: "Everything collapses to static under
+`prefers-reduced-motion: reduce`." The site means it twice over. A global CSS rule flattens every
+animation and transition, including markup it has never seen; and each animated component asks
+`useReducedMotion()` for the things CSS cannot reach — a canvas painting frames, a spring
+animating a transform in JavaScript.
+
+Nothing checked either half.
+
+The stylesheet's rule is one `@media` block that could be edited out in a refactor. The
+components' half has to be written one component at a time, five times so far, and a sixth that
+imports `motion/react` and forgets to ask is the whole promise broken for the readers it was made
+for. It breaks silently in the worst way: it looks correct to everyone who is not affected, which
+is everyone who reviews it.
+
+Both are held now. The rule has to be in the stylesheet, and every component reaching for motion
+has to reach for the preference too — found by the import rather than by a list, so a new
+component is covered the day it is added rather than the day somebody remembers to add it here.
+
+Five components animate today and five ask. Removing the question from `Waveform.jsx` fails with
+"these animate and never ask whether the reader wants it: Waveform.jsx".
+
+Also in this release: `.claude/` is gitignored. It has never been part of a release, but that
+was arranged by excluding it from the commit by hand — so it sat in `git status` as an untracked
+entry forever, and 0.10.15's stray-entry guard had to carry the same exclusion to agree with the
+release script about which files a commit includes. Ignoring it is where that belongs, and both
+copies of the exclusion are gone: one source of truth for what a release leaves out.
+
 ## 0.10.15
 
 ### a stray the check could only ever report after it shipped

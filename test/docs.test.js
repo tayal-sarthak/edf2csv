@@ -1546,6 +1546,43 @@ describe('documentation and source agree on their lists', () => {
     }
     assert.equal(crossed, 2, 'both crossed sweeps have to be accounted for');
 
+    /*
+      And the promise the site makes to a reader who cannot take the motion.
+
+      `website/README.md` ends its design note with "Everything collapses to static under
+      `prefers-reduced-motion: reduce`", and means it twice over: a global CSS rule that
+      flattens every animation and transition, and each animated component asking
+      `useReducedMotion()` for the things CSS cannot reach — a canvas that paints frames, a
+      spring that animates a transform in JavaScript. The stylesheet's half covers markup it
+      has never seen; the components' half has to be written one component at a time.
+
+      Nothing checked either. A new component that imports `motion/react` and forgets to ask
+      is the whole claim broken for the readers it was made to, and it breaks silently: it
+      looks right to everyone who is not affected, which is everyone reviewing it.
+
+      Held both ways — the rule has to be in the stylesheet, and every component that reaches
+      for motion has to reach for the preference too.
+    */
+    const design = (await read('website/README.md')).replace(/\s+/gu, ' ');
+    assert.match(design, /collapses to static under `prefers-reduced-motion: reduce`/u,
+      'website/README.md no longer promises the motion collapses');
+    assert.match(await read('website/src/styles.css'),
+      /@media \(prefers-reduced-motion: reduce\)/u,
+      'the stylesheet has no reduced-motion rule, and the README promises one');
+
+    const ignoring = [];
+    let animated = 0;
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      if (!name.endsWith('.jsx')) continue;
+      const source = await read(path.join('website/src/components', name));
+      if (!/from 'motion\/react'/u.test(source)) continue;
+      animated++;
+      if (!/useReducedMotion/u.test(source)) ignoring.push(name);
+    }
+    assert.ok(animated >= 4, `only ${animated} components were read for motion`);
+    assert.deepEqual(ignoring, [],
+      `these animate and never ask whether the reader wants it: ${ignoring.join(', ')}`);
+
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
     const listed = runs[1].split(',').map((value) => value.trim());
@@ -6010,14 +6047,15 @@ ${script}`,
       `undefined` the same way and it sat here for eighty versions.
 
       So the same list is held against what is untracked and not ignored. `--others
-      --exclude-standard` is what the release script's `-A` is about to add, which makes this
-      the check running before the commit rather than after it — under the same pathspec the
-      script uses, since it excludes `.claude` and that exclusion is why the directory has
-      never needed a line in `.gitignore`.
+      --exclude-standard` is what a `git add -A` is about to add, which makes this the check
+      running before the commit rather than after it. The agent scratch directory used to be
+      kept out of that set by a pathspec in the release script; it is in `.gitignore` now, so
+      `--exclude-standard` covers it and the two halves cannot disagree about which files a
+      release includes.
     */
     const { stdout: loose } = await run(
       'git',
-      ['ls-files', '-z', '--others', '--exclude-standard', '--', '.', ':!.claude'],
+      ['ls-files', '-z', '--others', '--exclude-standard'],
       { cwd: ROOT },
     );
     const arriving = [...new Set(loose.split('\0').filter(Boolean).map((f) => f.split('/')[0]))]

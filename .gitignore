@@ -13,3 +13,9 @@ test/crossvalidate/generated/
 
 # Anything removed from the tree is preserved here rather than destroyed.
 deleted/
+
+# Editor and agent scratch for this checkout: launch configuration, working notes. It has never
+# been part of a release, and until now that was arranged by excluding it from the commit by
+# hand. Ignoring it is where that belongs, and it keeps `git status` honest about what is
+# actually untracked.
+.claude/
