@@ -69,8 +69,9 @@ The build refuses to emit a page that is quietly wrong — one that rendered wit
 text, an internal link pointing at a file the build did not write, an id used twice, an
 `href="#..."` matching no element, or a `url(#...)` matching no element, which is how an SVG
 reaches a gradient or a mask. It also refuses no documentation at all, a page that rendered to
-an empty string, a link or anchor check that looked at too little to have checked anything, and
-a size README.md argues from that the build does not write.
+an empty string, a link or anchor check that looked at too little to have checked anything,
+a size README.md argues from that the build does not write, and a sitemap in which every page is undated inside a
+checkout.
 See `website/README.md` for why each of those exists.
 
 ## Changes that are welcome

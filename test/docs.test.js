@@ -4689,6 +4689,7 @@ ${script}`,
       'links were checked': ['looked at too little to have checked anything'],
       'README.md no longer says how large': ['size README.md argues from that the build does not write'],
       'README.md describes': ['size README.md argues from that the build does not write'],
+      'not one <lastmod> came back': ['sitemap in which every page is undated'],
       // Not a page it would ship: vite has not run, so nothing was emitted to be wrong about.
       'could not find the built stylesheet': [],
     };

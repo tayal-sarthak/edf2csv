@@ -85,6 +85,11 @@ Each of these exists because the failure it catches is invisible in a browser:
   Both find what they check with a regular expression over rendered HTML and then report an
   absence, so a template that quoted its attributes differently would leave them matching
   nothing and reporting that no link is broken.
+- A sitemap in which every page is undated. `<lastmod>` is read from git, and a
+  missing one is deliberate — no git, no date, rather than an invented one. All of them missing
+  at once inside a checkout is the other thing that looks like: git answered nothing for any
+  path it was asked, and the sitemap that ships tells every crawler nothing about when anything
+  changed.
 - A size README.md argues from that the build does not write. The paragraph
   below argues for `X-Robots-Tag: noindex` on the grounds that `llms-full.txt` is a copy of the
   site and `llms.txt` is an index of it, and it states both sizes. Those are measurements of

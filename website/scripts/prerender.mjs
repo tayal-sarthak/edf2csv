@@ -47,9 +47,37 @@ function lastModified(relativePath) {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
+    if (out) dated++;
     return out || null;
   } catch {
     return null;
+  }
+}
+
+/*
+  Whether any date came back at all, which nothing asked.
+
+  Returning `null` is right where there is no git: the sitemap omits `<lastmod>` rather than
+  inventing one, and an extracted tarball is a place this is meant to build. It is also what
+  comes back when git *is* here and the call failed — a broken index, a path git will not take,
+  a repository in a state it refuses to answer about. Those are the same `null`, and the build
+  prints the same line either way.
+
+  `<lastmod>` is the one field of a sitemap Google reads, and 0.10.8 was spent making it name
+  the right inputs. Losing all of it in silence is a larger version of the bug that release
+  fixed. So: in a checkout, at least one date has to come back.
+*/
+let dated = 0;
+
+function isCheckout() {
+  try {
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd: ROOT,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -975,6 +1003,13 @@ async function main() {
   ];
   assertLinksResolve(finished, emitted);
   assertAnchorsResolve(finished);
+
+  if (dated === 0 && isCheckout()) {
+    throw new Error(
+      'prerender: this is a git checkout and not one <lastmod> came back, so every page in ' +
+        'the sitemap is undated. git answered nothing for any path it was asked about.',
+    );
+  }
 
   console.log(
     `prerender: ${docs.length} pages + ${docs.length} markdown mirrors, ` +

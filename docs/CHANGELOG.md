@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.17
+
+### no date at all, which is what no git and broken git both look like
+
+0.10.8 was spent making `<lastmod>` name the right inputs — the renderer belongs in every page's
+date, because it writes everything on a documentation page except the prose. This is the larger
+version of the same bug, one release later.
+
+Every date comes from `lastModified()`, which asks git and answers `null` if the call throws:
+
+    } catch {
+      return null;
+    }
+
+Answering `null` is right where there is no git. The sitemap omits `<lastmod>` rather than
+inventing one, and an extracted tarball is a place this is meant to build — absence beats
+invention, which the sitemap's own comments argue at length. It is also the answer when git *is*
+present and the call failed: a broken index, a path it will not take, a repository in a state it
+refuses to answer about. Those are the same `null`, and the build prints the same line either
+way.
+
+So every page's date can vanish at once and nothing says so. `<lastmod>` is the one field of a
+sitemap Google reads, and losing all of it in silence is worse than the stale dates 0.10.8 fixed:
+a stale date tells a crawler the wrong thing, and no date tells it nothing at all, about eleven
+pages.
+
+The build refuses it now, but only where the distinction can be made: inside a git checkout, at
+least one date has to come back. Outside one — the tarball, a deployment from an archive — every
+date is absent for a reason the build can state, and nothing changes.
+
+That makes the tenth thing this build refuses to ship, and the list on both pages says so. The
+check that keeps those lists honest named this refusal as unaccounted for the moment it was
+added, which is twice now it has done its job on a refusal it had never seen.
+
 ## 0.10.16
 
 ### a promise to readers who cannot take the motion, held by nothing
