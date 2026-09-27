@@ -90,7 +90,14 @@ export default function Waveform() {
       const value = channels[c]?.values[index] ?? 0;
       if (node) node.textContent = value.toFixed(3);
     }
-    if (timeRef.current) timeRef.current.textContent = (progress * 60).toFixed(5);
+    /*
+      Eight decimals, because the header above says 256 Hz and that is what `time_s` holds at
+      256 Hz: the sample interval is 1/256 = 0.00390625, and the column carries the exact
+      expansion rather than a rounding of it. This printed five, which is not a width any
+      conversion writes — the samples beside it were right and the time was not, on the one
+      column that has a rate to derive it from.
+    */
+    if (timeRef.current) timeRef.current.textContent = (progress * 60).toFixed(8);
   };
 
   // With motion reduced there is one frame to draw, so draw it once rather than
@@ -231,7 +238,7 @@ export default function Waveform() {
           ))}
         </div>
         <div className="scope__readout-row">
-          <span ref={timeRef}>0.00000</span>
+          <span ref={timeRef}>0.00000000</span>
           {channels.map((channel, row) => (
             <span
               key={channel.label}

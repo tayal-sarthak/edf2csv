@@ -8,6 +8,41 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.18
+
+### a time column five decimals wide, on a panel that names its own rate
+
+The hero is the first thing on the site: four traces scrolling under a sampling line, with the
+values at that line printed beneath it. Its own comment says what that readout is for —
+
+> the readout reads its numbers from the same array that draws the path. Nothing here is a
+> screenshot of anything.
+
+— and what it claims to be: "the values at that line printed **as they would appear in
+signals.csv**". The panel heads its first column `time_s`, the real column name, and captions
+itself "4 of 23 channels · 256 Hz".
+
+That is enough to check, and it was wrong. At 256 Hz a sample interval is 1/256 = 0.00390625,
+and `time_s` carries the exact expansion rather than a rounding of it, so the column is eight
+decimals wide:
+
+    time_s,EEG Fpz-Cz
+    0.00000000,0.061
+    0.00390625,9.096
+
+The hero printed five. Not a rounding of what a conversion writes — a width no conversion
+writes at any rate, since the widths come from exact binary fractions. The sample columns beside
+it were right at three, which is what this recording's cells really are. The one column with a
+declared rate to derive it from was the one that was invented.
+
+Eight now, and derived rather than asserted: the check reads the rate out of the panel's own
+caption, converts the fixture that has a group at that rate, and holds both the time format and
+the cell format to the widths that file actually uses. Changing the caption to 128 Hz fails it,
+because 1/128 is seven decimals and not eight.
+
+Small thing, top of the page, and the argument the whole site makes is that this tool does not
+invent numbers.
+
 ## 0.10.17
 
 ### no date at all, which is what no git and broken git both look like

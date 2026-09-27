@@ -2620,6 +2620,44 @@ ${script}`,
         anchored++;
       }
       assert.ok(anchored >= 1, 'no file description states the row count of its own table');
+
+      /*
+        And the hero above all of it, which claims the same thing and declares its own rate.
+
+        `Waveform.jsx` says its readout prints "the values at that line ... as they would appear
+        in signals.csv", heads the first column `time_s`, and captions the panel "4 of 23
+        channels · 256 Hz". That is enough to check: at 256 Hz a sample interval is
+        1/256 = 0.00390625, and `time_s` carries the exact expansion, so the column is eight
+        decimals wide. The hero printed five — a width no conversion writes. The sample columns
+        beside it were right at three, which is the width this recording's cells really are, so
+        the one column with a rate to derive it from was the one that was wrong.
+
+        Taken from a conversion rather than from the arithmetic: the fixture set has a 256 Hz
+        group, and what it writes is the answer.
+      */
+      const hero = await read('website/src/components/Waveform.jsx');
+      const declared = /(\d+) Hz<\/span>|· (\d+) Hz/u.exec(hero);
+      assert.ok(declared, 'the hero no longer says what rate it is showing');
+      const hz = declared[1] ?? declared[2];
+      const rates = path.join(work, 'rates');
+      await run(process.execPath,
+        [CLI, path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf'), '--out', rates, '--quiet']);
+      const table = (await readFile(path.join(rates, `signals_${hz}hz.csv`), 'utf8')).split('\n');
+      const [when, cell] = table[1].split(',');
+      const widthOf = (text) => (text.split('.')[1] ?? '').length;
+
+      assert.ok(
+        new RegExp(`\\.toFixed\\(${widthOf(when)}\\)`, 'u').test(hero),
+        `signals_${hz}hz.csv writes time_s as "${when}" and the hero formats it another way`,
+      );
+      assert.ok(
+        hero.includes(`>0.${'0'.repeat(widthOf(when))}<`),
+        `the hero's time_s starts at a width other than ${widthOf(when)} decimals`,
+      );
+      assert.ok(
+        new RegExp(`value\\.toFixed\\(${widthOf(cell)}\\)`, 'u').test(hero),
+        `signals_${hz}hz.csv writes a cell as "${cell}" and the hero formats it another way`,
+      );
     } finally {
       await rm(work, { recursive: true, force: true });
     }
