@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.20
+
+### three frontmatter lines, each with a fallback that hides its absence
+
+`readDocs` turns three frontmatter lines into everything this site knows about a page, and all
+three have a fallback that hides their own absence:
+
+    title: meta.title ?? slug,
+    description: meta.description ?? '',
+    order: Number(meta.order ?? 999),
+
+`website/README.md` tells a contributor that adding a page is "a matter of dropping a new `.md`
+file in `content/` with that frontmatter ... Nothing else needs editing." Drop one without it
+and nothing stops you.
+
+A missing `order` sorts the page last, behind a 999 nobody wrote. A **duplicate** sorts those
+two by title instead — silently rearranging the sidebar, the card grid, the 404's list and the
+previous/next links at the foot of every page, all four of which read this one sequence. A
+non-numeric one is `NaN`, and `NaN || …` is falsy, so the comparator falls straight through to
+the title for that page against every other.
+
+A missing `description` costs more per line, because six surfaces are built from it: the meta
+description, the og:description, the structured data, the visible lede under the heading, the
+page's entry in `llms.txt` and its header in `llms-full.txt`. All six come out empty and none of
+them says so.
+
+Every page now has to declare all three, the order has to be a number, and no two pages may
+claim the same one. Read straight out of the files rather than through `readDocs`, which needs
+`marked` — `slug.js` exists for exactly that reason, and 0.5.1 through 0.5.12 failed to publish
+for forgetting it.
+
 ## 0.10.19
 
 ### the one function every code block passes through, untested

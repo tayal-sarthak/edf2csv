@@ -1428,6 +1428,64 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('gives every page the frontmatter the site reads off it', async () => {
+    /*
+      `readDocs` turns three frontmatter lines into everything the site knows about a page,
+      and every one of them has a fallback that hides its own absence:
+
+          title: meta.title ?? slug,
+          description: meta.description ?? '',
+          order: Number(meta.order ?? 999),
+
+      `website/README.md` tells a contributor that adding a page is "a matter of dropping a new
+      `.md` file in `content/` with that frontmatter ... Nothing else needs editing." Drop one
+      without the frontmatter and nothing stops you.
+
+      A missing `order` sorts the page last behind a 999 nobody wrote. A duplicate sorts two
+      pages by title instead, silently rearranging the sidebar, the card grid, the 404's list
+      and the previous/next links at the foot of every page — all four read this one sequence.
+      A non-numeric one is `NaN`, and `NaN || …` is falsy, so the comparator quietly falls
+      through to the title for that page against every other.
+
+      A missing `description` is worse per line: it is the meta description, the og:description,
+      the structured data's description, the visible lede under the heading, the page's entry in
+      `llms.txt` and its header in `llms-full.txt` — six surfaces, all of them empty, none of
+      them complaining.
+
+      Read straight out of the files rather than through `readDocs`, which needs `marked`:
+      `slug.js` exists because this suite cannot afford that dependency, and 0.5.1 to 0.5.12
+      failed to publish for forgetting it.
+    */
+    const names = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((name) => name.endsWith('.md'))
+      .sort();
+    assert.ok(names.length >= 10, `only ${names.length} pages were read`);
+
+    const orders = new Map();
+    for (const name of names) {
+      const front = /^---\r?\n([\s\S]*?)\r?\n---/u.exec(await read(`website/content/${name}`));
+      assert.ok(front, `${name} has no frontmatter, so the site reads nothing off it`);
+      const field = (key) => {
+        const found = new RegExp(`^${key}:\\s*(.+)$`, 'mu').exec(front[1]);
+        return found === null ? null : found[1].trim().replace(/^["'](.*)["']$/u, '$1');
+      };
+
+      for (const key of ['title', 'description']) {
+        const value = field(key);
+        assert.ok(value, `${name} declares no ${key}, and the site substitutes one silently`);
+      }
+
+      const order = field('order');
+      assert.ok(order, `${name} declares no order, so it sorts last behind a 999 nobody wrote`);
+      assert.match(order, /^\d+$/u, `${name}'s order is "${order}", which is not a number`);
+      const already = orders.get(Number(order));
+      assert.equal(already, undefined,
+        `${name} and ${already} both claim order ${order}, so their sequence is their titles`);
+      orders.set(Number(order), name);
+    }
+    assert.equal(orders.size, names.length, 'every page needs an order of its own');
+  });
+
   it('escapes every code block it prints, which is every code block on the site', async () => {
     /*
       One hand-written function renders every fenced block on these eleven pages. Its own
