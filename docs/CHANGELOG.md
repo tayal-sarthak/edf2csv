@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.19
+
+### the one function every code block passes through, untested
+
+Every fenced block on these eleven pages is rendered by one hand-written function, and nothing
+tested it. Its own docstring states the contract:
+
+> It takes source text and returns escaped HTML, so the caller hands it the unescaped original
+> and there is no double-escaping to get wrong.
+
+What passes through it is not benign-looking text. api.md's type blocks are made of
+`Promise<EdfFile>`, `AsyncGenerator<RecordBatch>`, `(number | null)[]`; the CSV samples carry
+`&` and quotes. Had the escaping regressed, a signature would not have *looked* wrong — the
+angle-bracketed half would have become an unknown element and disappeared, which is the API
+reference quietly losing its types. A fenced `<script>` would have stopped being a quotation.
+
+Checked over the real corpus rather than invented input: every fenced block on every page,
+through the highlighter with the language its fence declares — 100-odd blocks and several
+hundred characters that need escaping. The output may contain nothing but the spans the
+highlighter itself emits, and every `&`, `<` and `>` in the source has to come out as its entity,
+the same number of times.
+
+Then one specimen with a known answer, in all four languages it knows and one it does not,
+because what the sweep asserts is an absence and an absence is also what a matcher that read
+nothing reports: `<script>alert("x" & 1)</script>` has to come back inert, escaped, and not
+double-escaped.
+
+Removing either `escapeHtml` call — the one around a token, the one around the text between
+tokens — fails it, naming the page and the language.
+
 ## 0.10.18
 
 ### a time column five decimals wide, on a panel that names its own rate

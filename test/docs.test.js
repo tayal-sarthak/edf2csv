@@ -1428,6 +1428,64 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('escapes every code block it prints, which is every code block on the site', async () => {
+    /*
+      One hand-written function renders every fenced block on these eleven pages. Its own
+      docstring states the contract — "It takes source text and returns escaped HTML, so the
+      caller hands it the unescaped original and there is no double-escaping to get wrong" —
+      and nothing tested it, at all.
+
+      What goes through it is not benign-looking text. api.md's type blocks are full of
+      `Promise<EdfFile>`, `AsyncGenerator<RecordBatch>`, `(number | null)[]`; the CSV samples
+      carry `&` and quotes. If the escaping regressed, a signature would not look wrong — the
+      angle-bracketed half would become an unknown element and vanish from the page, which is
+      the reference losing its types silently. And a fenced `<script>` would stop being a
+      quotation.
+
+      Run over the real corpus rather than invented input: every fenced block on every page,
+      through the highlighter with the language the fence declares. Then one specimen with a
+      known answer, because what the sweep asserts is an absence and an absence is also what a
+      matcher that read nothing reports.
+    */
+    const { highlight } = await import(path.join(ROOT, 'website/src/lib/highlight.js'));
+    const names = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((name) => name.endsWith('.md'));
+
+    let blocks = 0;
+    let dangerous = 0;
+    for (const name of names) {
+      const page = await read(`website/content/${name}`);
+      for (const [, language, body] of page.matchAll(/```([\w-]*)\n([\s\S]*?)```/gu)) {
+        blocks++;
+        const out = highlight(body, language || 'text');
+        // Nothing the highlighter did not put there: its own spans, and nothing else.
+        const bare = out.replace(/<span class="tok-[a-z]+">/gu, '').replaceAll('</span>', '');
+        assert.ok(!/[<>]/u.test(bare),
+          `a ${language || 'text'} block in ${name} came out with raw markup in it`);
+        // Every one of these in the source has to survive as an entity, not as itself.
+        for (const [character, entity] of [['&', '&amp;'], ['<', '&lt;'], ['>', '&gt;']]) {
+          const had = body.split(character).length - 1;
+          if (had === 0) continue;
+          dangerous += had;
+          assert.equal(out.split(entity).length - 1, had,
+            `${name}: a ${language || 'text'} block has ${had} "${character}" and the ` +
+              `rendering has a different number of ${entity}`);
+        }
+      }
+    }
+    assert.ok(blocks >= 100, `only ${blocks} fenced blocks were read across the pages`);
+    assert.ok(dangerous >= 50, `only ${dangerous} characters needing escape were found`);
+
+    // The specimen, in every language the highlighter knows and in one it does not.
+    for (const language of ['bash', 'javascript', 'python', 'json', 'text']) {
+      const out = highlight('<script>alert("x" & 1)</script>', language);
+      assert.ok(!/<script/u.test(out), `a <script> survived as markup in a ${language} block`);
+      assert.match(out, /&lt;script&gt;/u, `the ${language} rendering did not escape it`);
+      assert.ok(!/&amp;(?:lt|gt|amp|quot);/u.test(out),
+        `the ${language} rendering double-escaped it`);
+    }
+  });
+
   it('is importable the two ways the API reference says it is', async () => {
     /*
       api.md makes a precise, load-bearing claim about how this package loads, and nothing ran
