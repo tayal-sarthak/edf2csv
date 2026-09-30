@@ -1150,6 +1150,41 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(manifest.license, 'MIT');
     assert.match(licence, /MIT License/u, 'the licence file is no longer the one package.json names');
     /*
+      The footer, which is on every page of the site and is written twice.
+
+      `prerender.mjs` builds one from the constants above — `${REPO}`, `${NPM}`,
+      `${CHANGELOG}` — and its comment argues the case: "One string rather than two copies: the
+      404 had no footer at all, which is how it would drift back out of step the next time the
+      footer changes." The landing page is React, so `App.jsx` carries the same footer again
+      with all three URLs typed out, which is the two copies that comment is about.
+
+      Every identity check since 0.9.90 walked past it. The prerenderer's copies were tied to
+      `package.json`, then CITATION.cff, then the README's badge — each time by reading a list
+      of files written by hand, and this one was never on the list. It is the most-rendered
+      copy there is.
+    */
+    const app = await read('website/src/App.jsx');
+    const footer = /<footer className="footer">([\s\S]*?)<\/footer>/u.exec(app);
+    assert.ok(footer, 'the landing page no longer has a footer');
+    for (const [what, url] of [
+      ['the repository', repo],
+      ['the registry', `https://www.npmjs.com/package/${manifest.name}`],
+    ]) {
+      assert.ok(footer[1].includes(`"${url}"`),
+        `the landing page's footer does not link ${what} at ${url}`);
+    }
+    // The changelog, which the prerenderer derives from the same constant and this does not.
+    const log = /const CHANGELOG = `\$\{REPO\}([^`]+)`/u.exec(prerender);
+    assert.ok(log, 'the prerenderer no longer builds a changelog link from the repository');
+    assert.ok(footer[1].includes(`"${repo}${log[1]}"`),
+      `the landing page's footer links a changelog other than ${repo}${log[1]}`);
+    // And the sentence, which is the prerendered footer's word for word.
+    const said = /<span>(edf2csv is [^<]+)<\/span>/u.exec(prerender);
+    assert.ok(said, 'the prerendered footer no longer says what it says');
+    assert.ok(footer[1].replace(/\s+/gu, ' ').includes(said[1].replace(/\s+/gu, ' ')),
+      `the two footers do not say the same thing:\n  prerendered: ${said[1]}`);
+
+    /*
       The word itself, wherever the prose uses it. README.md, getting-started.md and llms.txt
       each end a sentence with "MIT licensed", and CITATION.cff and the licence file carry it
       too — five statements of one field, which is the field a reader checks before they are

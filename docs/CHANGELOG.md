@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.21
+
+### the footer on every page, written twice and checked in one
+
+The footer is on every page of this site, and it is written twice.
+
+`prerender.mjs` builds one from the constants 0.9.90 tied to `package.json` — `${REPO}`,
+`${NPM}`, `${CHANGELOG}` — and the comment above it makes the case itself:
+
+> One string rather than two copies: the 404 had no footer at all, which is how it would drift
+> back out of step the next time the footer changes.
+
+The landing page is React, so `App.jsx` carries the same footer again with all three URLs typed
+out and the same sentence spelled out beside them. Those are the two copies that comment is
+about, and they were there while it was being written.
+
+Every identity release since 0.9.90 walked past it. The prerenderer's URLs were tied to
+`package.json`, then CITATION.cff at 0.9.96, then the README's badge at 0.10.3; "MIT licensed"
+in prose was tied across four documents at 0.10.4. Each of those read a list of files I had
+written by hand, and this file was on none of them — while being the single most-rendered copy
+of any of it.
+
+All four now come from the one place: the repository URL and the registry URL from
+`package.json`, the changelog link from the same `${REPO}` the prerenderer builds it out of, and
+the sentence from the prerendered footer word for word. Changing the branch in the changelog
+link to `master` fails, as does shortening the sentence or dropping `www` from the registry.
+
+The fourth time this sequence has run — 0.9.45, 0.9.85, 0.9.92, and here. A guard written from
+the copies you happened to open is a guard against the drift you already found.
+
 ## 0.10.20
 
 ### three frontmatter lines, each with a fallback that hides its absence
