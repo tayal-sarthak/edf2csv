@@ -2422,6 +2422,49 @@ ${script}`,
       Resolved against the same page and anchor sets the walk above built, with the site's own
       slugify, so the two halves of this check agree about what a heading is called.
     */
+    /*
+      And the links that go the other way, back into the repository by branch and by path.
+
+      0.10.14 resolved the absolute links into the *site*. These are the other kind: four
+      places link a file in this repository through GitHub, and every one of them spells out
+      a branch and a path —
+
+          https://github.com/tayal-sarthak/edf2csv/blob/main/SECURITY.md
+          https://github.com/tayal-sarthak/edf2csv/blob/main/docs/CHANGELOG.md
+
+      — in README.md, in warnings-and-errors.md, in the landing page's footer and in the
+      prerenderer's changelog constant. 0.10.21 made the two footers agree with each other;
+      agreeing with each other is not the same as being right.
+
+      Rename the default branch and all four 404. Move either file and the link that names it
+      does, including the one in the warnings page that sends a reader to the security policy
+      for what to do about a field a spreadsheet will execute.
+
+      Both halves are answerable here: the branch against the one CI watches, which is this
+      repository's own statement of which branch is the branch, and the path against the files
+      git is actually tracking.
+    */
+    const watched = /branches: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
+    assert.ok(watched, 'ci.yml no longer says which branch it watches');
+    const branch = watched[1].split(',')[0].trim();
+    const inRepo = [];
+    let linked = 0;
+    for (const where of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md',
+      'website/content/warnings-and-errors.md', 'website/src/App.jsx',
+      'website/scripts/prerender.mjs']) {
+      const text = await read(where);
+      for (const [, named, file] of [...text.matchAll(
+        /github\.com\/[\w-]+\/[\w-]+\/(?:blob|tree|raw)\/([\w.-]+)\/([^)"'`\s]+)/gu,
+      )]) {
+        linked++;
+        if (named !== branch) inRepo.push(`${where}: links branch "${named}", not "${branch}"`);
+        const here = await stat(path.join(ROOT, file)).then(() => true, () => false);
+        if (!here) inRepo.push(`${where}: links ${file}, which this repository does not have`);
+      }
+    }
+    assert.deepEqual(inRepo, [], inRepo.join('\n'));
+    assert.ok(linked >= 4, `only ${linked} links back into this repository were found`);
+
     const outward = [];
     let absolute = 0;
     for (const where of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md']) {

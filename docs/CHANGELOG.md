@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.22
+
+### four links back into this repository, by a branch and a path nothing resolved
+
+0.10.14 resolved the absolute links that go *into* the site. These are the other kind: four
+places link a file in this repository through GitHub, and each spells out a branch and a path.
+
+    https://github.com/tayal-sarthak/edf2csv/blob/main/SECURITY.md
+    https://github.com/tayal-sarthak/edf2csv/blob/main/docs/CHANGELOG.md
+
+README.md has both, warnings-and-errors.md has the first, the landing page's footer and the
+prerenderer's changelog constant have the second. 0.10.21 made the two footers agree with each
+other; agreeing with each other is not the same as being right, and nothing had looked at either
+half of what they name.
+
+Rename the default branch and all four go to a 404. Move either file and the link that names it
+does — including the one on the warnings page, which sends a reader to the security policy for
+what to do about a field a spreadsheet will execute rather than display.
+
+Both halves are answerable without leaving the checkout. The branch is held to the one CI
+watches, which is this repository's own statement of which branch is the branch; the path is
+held to a file that is actually here. Renaming `SECURITY.md` fails with "links SECURITY-POLICY.md,
+which this repository does not have"; changing CI's branch to `trunk` fails with "links branch
+\"main\", not \"trunk\"".
+
+What is left unchecked, and deliberately: that the *repository* in those URLs is this one. Three
+releases already hold that against `package.json` — 0.9.90, 0.9.96, 0.10.3 — and adding a fourth
+copy of the same assertion here would be the thing those releases were about.
+
 ## 0.10.21
 
 ### the footer on every page, written twice and checked in one
