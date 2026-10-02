@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.25
+
+### a directory drawn in prose, and the one setting that paragraph explains
+
+`website/README.md` opens by drawing the directory for a newcomer, and the drawing is a list
+nobody diffed:
+
+    website/
+    ├── content/          the documentation, as Markdown
+    ├── public/
+    │   ├── fonts/        Space Grotesk and JetBrains Mono, self-hosted and subset
+    │   ├── og.png        the 1200x630 social-preview card
+    │   ├── favicon.svg   and apple-touch-icon.png
+    │   └── site.webmanifest
+    ├── scripts/          docs-index.mjs and prerender.mjs, which build the static pages
+    ...
+
+Two different kinds of claim in there. The files under `public/` are copied verbatim into the
+deploy, so a rename leaves the tree drawing something that does not exist. And `scripts/` is
+*exhaustive*: it says the site is built by two scripts, so a third added there is a build step
+the page says is not happening.
+
+The paragraph underneath is load-bearing in a sharper way. "The base path is absolute
+(`base: '/'` in `vite.config.js`) because the documentation is prerendered into `/docs/<slug>/`
+... Served from a subpath — a GitHub Pages project site at `/edf2csv/`, say — every asset
+reference 404s and the page renders blank." A setting, quoted by value and by file, with the
+consequence of changing it written out, and nothing comparing it to the config.
+
+All three are held now: every file the tree draws has to exist, every script in `scripts/` has
+to be mentioned, and the base path quoted has to be the base path set. Changing the config to
+`/edf2csv/` fails, adding a third script fails, renaming `og.png` in the tree fails.
+
 ## 0.10.24
 
 ### a table checked against itself, and the file that is not in it

@@ -1714,6 +1714,49 @@ describe('documentation and source agree on their lists', () => {
       Held both ways — the rule has to be in the stylesheet, and every component that reaches
       for motion has to reach for the preference too.
     */
+    /*
+      The layout tree that README opens with, and the base path it spends a paragraph on.
+
+      `website/README.md` draws the directory for a newcomer: `content/` is the documentation,
+      `public/` holds the fonts and the four files named under it, `scripts/` is
+      "docs-index.mjs and prerender.mjs, which build the static pages". That last one is an
+      exhaustive claim about a directory — a third script added there is a build step the page
+      says does not exist — and the `public/` entries are files a build step copies verbatim.
+
+      The paragraph below it is load-bearing in a different way: "The base path is absolute
+      (`base: '/'` in `vite.config.js`) because the documentation is prerendered into
+      `/docs/<slug>/`... Served from a subpath ... every asset reference 404s and the page
+      renders blank." That is a setting, quoted, with its failure spelled out, and nothing
+      compared it to the file.
+    */
+    const tree = /```text\n([\s\S]*?)```/u.exec(await read('website/README.md'));
+    assert.ok(tree, 'website/README.md no longer draws its layout');
+    const named = [...tree[0].matchAll(/([\w.-]+\.(?:png|svg|webmanifest|mjs|js))/gu)]
+      .map((m) => m[1]);
+    assert.ok(named.length >= 6, `the layout tree names ${named.length} files`);
+    const onDisk = new Set([
+      ...(await readdir(path.join(ROOT, 'website/public'))),
+      ...(await readdir(path.join(ROOT, 'website/scripts'))),
+    ]);
+    const invented = [...new Set(named)].filter((name) => !onDisk.has(name));
+    assert.deepEqual(invented, [], `the layout tree draws files the site has not: ${invented}`);
+    // And the other way for `scripts/`, which the tree claims to list in full.
+    const scripts = (await readdir(path.join(ROOT, 'website/scripts'))).sort();
+    for (const script of scripts) {
+      assert.ok(tree[0].includes(script) || (await read('website/README.md')).includes(script),
+        `website/scripts holds ${script} and the README does not mention it`);
+    }
+
+    const vite = await read('website/vite.config.js');
+    const quoted = /\(`base: '([^']*)'` in `([\w.]+)`\)/u.exec(await read('website/README.md'));
+    assert.ok(quoted, 'website/README.md no longer quotes the base path it explains');
+    assert.ok(
+      (await stat(path.join(ROOT, 'website', quoted[2]))).isFile(),
+      `the README cites ${quoted[2]}, which the site does not have`,
+    );
+    assert.match(vite, new RegExp(`base: '${quoted[1]}'`, 'u'),
+      `the README says the base is '${quoted[1]}' and the config says otherwise`);
+
     const design = (await read('website/README.md')).replace(/\s+/gu, ' ');
     assert.match(design, /collapses to static under `prefers-reduced-motion: reduce`/u,
       'website/README.md no longer promises the motion collapses');
