@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.24
+
+### a table checked against itself, and the file that is not in it
+
+`states a test count the suite can produce` holds the correctness page's figures to the test
+files: each row of the per-file table, the summary total, the suite count, the prose total and
+the sentence naming how many files there are. Five assertions, and every one of them derived
+from the rows the page happens to have.
+
+So the page was being checked against itself. Add a seventh test file and never touch the page:
+`npm test` runs it, because the script globs `test/*.test.js`; the table still lists six, each
+with the right count; the total still matches the table's own sum; the suite count still matches;
+"runs the six test files" still matches the six rows. Every assertion passes, and the page states
+a test count lower than the suite produces — on the page whose subject is numbers a reader can
+reproduce.
+
+The comment above it says "a count that drifts from the runner's would be caught by the summary
+in the same table". The summary is compared to the table's own sum.
+
+Demonstrated rather than argued: removing `large.test.js`'s row **and** its six tests from the
+total **and** its four suites from the suite count **and** changing "six" to "five" — a fully
+self-consistent omission, which is what forgetting the page actually looks like — passes the old
+check and fails the new one.
+
+The table now has to name exactly the files `npm test` runs. One `deepEqual` against the
+directory, which is the one thing in this check that was not coming from the page.
+
 ## 0.10.23
 
 ### the lesson written down one release, and not applied the next

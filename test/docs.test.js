@@ -2292,6 +2292,27 @@ ${script}`,
     );
     assert.ok(claimed.size >= 3, `the per-file table is gone: found ${claimed.size} rows`);
 
+    /*
+      Every file, not every row — which is what everything below was counting.
+
+      The total, the suite count, the prose and the "six test files" sentence are all derived
+      from `claimed`, and `claimed` is the rows the page happens to have. A seventh test file
+      runs in `npm test` — the script globs `test/*.test.js` — and, left out of the table, is
+      left out of all four: the page states a count lower than the suite produces, and every
+      assertion here agrees with it, because each is checking the table against itself.
+
+      The comment above says "a count that drifts from the runner's would be caught by the
+      summary in the same table". The summary is compared to the table's own sum.
+    */
+    const files = (await readdir(path.join(ROOT, 'test')))
+      .filter((name) => name.endsWith('.test.js'))
+      .sort();
+    assert.deepEqual(
+      [...claimed.keys()].sort(),
+      files,
+      'the per-file table and the files `npm test` runs are not the same set',
+    );
+
     let total = 0;
     for (const [file, count] of claimed) {
       const source = await read(path.join('test', file));
