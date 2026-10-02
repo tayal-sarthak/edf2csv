@@ -2447,11 +2447,35 @@ ${script}`,
     const watched = /branches: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(watched, 'ci.yml no longer says which branch it watches');
     const branch = watched[1].split(',')[0].trim();
+    /*
+      Walked rather than listed, which the release that added this got wrong.
+
+      0.10.22 scanned six files named by hand — the six that happened to carry such a link
+      when I went looking. One release earlier, 0.10.21's own entry had ended: "a guard written
+      from the copies you happened to open is a guard against the drift you already found." Ten
+      of the eleven documentation pages were off the list, as was every other component.
+
+      So: every Markdown file at the root, every documentation page, and every source file of
+      the site. A `blob/main/...` added to any of them is covered the day it is written.
+    */
+    const places = ['README.md', 'SECURITY.md', 'CONTRIBUTING.md'];
+    for (const [dir, suffix] of [
+      ['website/content', '.md'],
+      ['website/scripts', '.mjs'],
+      ['website/src', '.jsx'],
+      ['website/src/components', '.jsx'],
+      ['website/src/lib', '.js'],
+    ]) {
+      for (const name of await readdir(path.join(ROOT, dir))) {
+        if (name.endsWith(suffix)) places.push(`${dir}/${name}`);
+      }
+    }
+    places.push('website/README.md');
+    assert.ok(places.length >= 25, `only ${places.length} files were walked for repository links`);
+
     const inRepo = [];
     let linked = 0;
-    for (const where of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md',
-      'website/content/warnings-and-errors.md', 'website/src/App.jsx',
-      'website/scripts/prerender.mjs']) {
+    for (const where of places) {
       const text = await read(where);
       for (const [, named, file] of [...text.matchAll(
         /github\.com\/[\w-]+\/[\w-]+\/(?:blob|tree|raw)\/([\w.-]+)\/([^)"'`\s]+)/gu,

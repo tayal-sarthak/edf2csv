@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.23
+
+### the lesson written down one release, and not applied the next
+
+0.10.22 resolved the links that point back into this repository — the branch they name and the
+file they name. It found them by reading six files I had listed by hand: the six that happened
+to carry such a link when I went looking.
+
+0.10.21's entry, one release earlier, ends:
+
+> A guard written from the copies you happened to open is a guard against the drift you already
+> found.
+
+Ten of the eleven documentation pages were off that list. So was every component, every library
+file, the website's own README, and both build scripts bar one. A `blob/main/...` written into
+any of them was a link nothing resolved — which is the state the check was added to end.
+
+It walks now: every Markdown file at the root, every documentation page, both build scripts,
+the app and all of its components and library files. Adding a changelog link to `faq.md` with
+the filename misspelled fails by name, and so does a comment in `Nav.jsx` naming a branch that
+is not the one CI watches.
+
+Fifth time this exact sequence has run — 0.9.45, 0.9.85, 0.9.92, 0.10.21 and here — and the
+first time the gap was in a check written the release before. Writing the lesson down in a
+changelog is not the same as applying it.
+
 ## 0.10.22
 
 ### four links back into this repository, by a branch and a path nothing resolved
