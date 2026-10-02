@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.26
+
+### a file that names its own silent corruption and never checked for it
+
+`.gitattributes` decides what a checkout of this repository looks like. It normalises everything
+to LF — `* text=auto eol=lf` — and says why: this project claims Windows support, Git for
+Windows turns `core.autocrlf` on by default, and the suite is largely a comparison between text
+it generates, which is always LF, and text read back out of committed files.
+
+Its second rule exists for the consequence of the first, and names the failure itself:
+
+> Binary, so git neither normalises them nor tries to diff them as text. ... a checked-in sample
+> would be silently corrupted by the rule above.
+
+**Silently.** A `.png` or a `.woff2` committed without a `binary` attribute is rewritten on
+checkout by whoever clones it, and the first sign is an image that will not decode on somebody
+else's machine — not on the machine that committed it, where the file was never rewritten. Four
+binaries are committed today, all four are covered, and nothing checked that. Nothing would have
+checked the fifth.
+
+Every committed file with a binary extension is now held to having that attribute set, asked of
+git rather than inferred from the rules — `git check-attr` is the thing that actually decides,
+and a rule can be present and not match.
+
+And the sentence in the same paragraph that cites another file: "which is also what tsconfig's
+`"newLine": "lf"` already asks of the compiler's output." That is a claim about a setting two
+files away, and it is read now too. Deleting the `*.png` rule fails by naming both images;
+flipping tsconfig to `crlf` fails on the citation.
+
 ## 0.10.25
 
 ### a directory drawn in prose, and the one setting that paragraph explains

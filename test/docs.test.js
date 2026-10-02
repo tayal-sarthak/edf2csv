@@ -6346,6 +6346,41 @@ ${script}`,
     }
     assert.ok(tracked.length > 20, `not a checkout, or git said nothing: ${tracked.length} files`);
 
+    /*
+      And the file that decides what a checkout looks like, which names its own failure.
+
+      `.gitattributes` normalises everything to LF — `* text=auto eol=lf` — and says why: this
+      project claims Windows support, Git for Windows turns `core.autocrlf` on by default, and
+      the suite is largely a comparison between text it generates (always LF) and text read
+      back out of committed files. Its second rule exists for the consequence: "Binary, so git
+      neither normalises them nor tries to diff them as text ... a checked-in sample would be
+      silently corrupted by the rule above."
+
+      Silently is the word. A `.png` or a `.woff2` committed without a `binary` attribute is
+      rewritten on checkout by whoever clones it, and the first sign is an image that will not
+      decode on somebody else's machine. Four binaries are committed today and all four are
+      covered; nothing checked that, and nothing checked the next one.
+
+      The same paragraph cites tsconfig as agreeing with it — "which is also what tsconfig's
+      `"newLine": "lf"` already asks of the compiler's output" — so that is read too.
+    */
+    const binaries = tracked.filter((file) => /\.(?:png|jpe?g|gif|ico|woff2?|ttf|otf|pdf|zip|gz|edf|bdf)$/iu.test(file));
+    assert.ok(binaries.length >= 3, `only ${binaries.length} committed binaries were found`);
+    const unguarded = [];
+    for (const file of binaries) {
+      const { stdout: attr } = await run('git', ['check-attr', 'binary', '--', file], { cwd: ROOT });
+      if (!attr.trim().endsWith(': set')) unguarded.push(file);
+    }
+    assert.deepEqual(unguarded, [],
+      `committed and not marked binary, so a checkout rewrites them: ${unguarded.join(', ')}`);
+
+    const attributes = await read('.gitattributes');
+    assert.match(attributes, /\* text=auto eol=lf/u, '.gitattributes no longer normalises to LF');
+    const cited = /tsconfig's `"newLine": "([a-z]+)"`/u.exec(attributes);
+    assert.ok(cited, '.gitattributes no longer cites tsconfig for the same rule');
+    assert.match(await read('tsconfig.json'), new RegExp(`"newLine":\\s*"${cited[1]}"`, 'u'),
+      `.gitattributes says tsconfig asks for ${cited[1]} output and it does not`);
+
     const expected = new Set([
       '.gitattributes', '.github', '.gitignore', 'CITATION.cff', 'CONTRIBUTING.md', 'LICENSE',
       'README.md', 'SECURITY.md', 'docs', 'package-lock.json', 'package.json', 'src', 'test',
