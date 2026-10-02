@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.27
+
+### twenty seconds that are two minutes, and the file doing the second-most of it
+
+The correctness page describes its own test suite, and the description had gone stale in both
+halves:
+
+> It takes about twenty seconds on a laptop, almost all of it in three places: `cli.test.js` …
+> `large.test.js` … and `stdout-audit.test.js` …
+
+Measured on this laptop, twice, with nothing else running: **126 and 158 seconds**. Six to eight
+times the figure given, on the page whose whole subject is numbers a reader can reproduce.
+
+The attribution was wrong too, and more interestingly. Per file: `cli.test.js` 103s,
+**`docs.test.js` 77s**, `stdout-audit.test.js` 15s, `large.test.js` 15s, `convert` 5s, `edf`
+0.2s. The second-largest consumer is not named at all — and it is the documentation test itself,
+which has spent this entire line of releases learning to convert recordings, run every example
+api.md prints, rebuild the sleep study and exercise the published build. The page describing
+where the time goes was made wrong by the work of making the page true.
+
+Corrected to two minutes and four places, with `docs.test.js` named.
+
+What is checked is deliberately modest, and the comment says so: wall time is not portably
+checkable, so the figure is stated with its basis the way the eleven machine-dependent numbers
+below it are. What is held is the half that rots silently — the sentence has to name as many
+files as it claims, and every file it blames has to be one its own table accounts for. Changing
+"four" back to "three" fails; blaming a file that does not exist fails.
+
 ## 0.10.26
 
 ### a file that names its own silent corruption and never checked for it

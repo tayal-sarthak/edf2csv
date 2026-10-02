@@ -2391,7 +2391,33 @@ ${script}`,
       because that is how the sentence reads, and a number the reader can count against the
       table directly below it.
     */
+    /*
+      And the sentence above the table, which says where the time goes.
+
+      It read "about twenty seconds on a laptop, almost all of it in three places" and named
+      `cli.test.js`, `large.test.js` and `stdout-audit.test.js`. Measured on this laptop the
+      run is 126 to 158 seconds, and the order is `cli` at 103s, **`docs` at 77s**, then
+      `stdout-audit` and `large` at 15s each. Both halves had gone stale: the figure by six or
+      eight times, and the attribution by missing the second-largest consumer entirely —
+      `docs.test.js`, which has spent this whole line of releases learning to convert
+      recordings and run the examples these pages print.
+
+      Wall time is not portably checkable and this does not pretend otherwise; the number is
+      stated with its basis, the way the eleven machine-dependent numbers below are. What is
+      checked is cheap and is the half that rots silently: the files the sentence blames have
+      to be files that exist and that the table accounts for, and it has to name as many as it
+      says it does.
+    */
+    const howMany = /almost all of it in (\w+) places:([\s\S]*?)—/u.exec(page);
+    assert.ok(howMany, 'the page no longer says where the time goes');
+    const blamed = [...howMany[2].matchAll(/`([a-z-]+\.test\.js)`/gu)].map((m) => m[1]);
     const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    assert.equal(blamed.length, words.indexOf(howMany[1]),
+      `the page blames ${howMany[1]} places and names ${blamed.length}`);
+    for (const file of blamed) {
+      assert.ok(claimed.has(file), `the page blames ${file}, which its own table does not list`);
+    }
+
     assert.match(
       page,
       new RegExp(`runs the ${words[claimed.size]} test files`, 'u'),
