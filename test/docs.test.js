@@ -2028,6 +2028,43 @@ ${script}`,
     assert.ok(jobs >= 7, `only ${jobs} jobs were found across ${workflows.length} workflows`);
     assert.deepEqual(timeouts, [],
       `these jobs have no timeout, so GitHub gives them six hours:\n  ${timeouts.join('\n  ')}`);
+
+    /*
+      And the pinning that `publish.yml` says its provenance rests on.
+
+      "Actions are pinned by commit SHA rather than by tag, and it matters most here. This job
+      publishes with npm provenance — an attestation that the tarball was built by this
+      workflow, from this repository, at this commit. A tag is a mutable pointer: `@v4` is
+      whatever `v4` names on the day it runs, so the workflow being attested to could change
+      under the attestation."
+
+      Every `uses:` in every workflow is a forty-character SHA today, with the readable version
+      in a trailing comment. One written `@v4` instead would not fail anything: the workflow
+      runs, the publish succeeds, the attestation is still produced — and it now attests to a
+      build whose steps someone else can change without touching this repository. That is the
+      failure the paragraph describes, and it is the one kind this project cannot detect after
+      the fact.
+
+      The comment is checked too. `# v4` beside a SHA is the only thing that makes the pin
+      readable, and a pin with nothing beside it is a forty-character string nobody will ever
+      update on purpose.
+    */
+    const pins = [];
+    let actions = 0;
+    for (const file of workflows) {
+      for (const [, ref, trailing] of (await read(path.join('.github/workflows', file)))
+        .matchAll(/uses:\s*([^\s#]+)([^\n]*)/gu)) {
+        actions++;
+        const [, at] = /@(.+)$/u.exec(ref) ?? [];
+        if (!/^[0-9a-f]{40}$/u.test(at ?? '')) {
+          pins.push(`${file}: ${ref} is pinned by name, not by commit`);
+        } else if (!/#\s*\S/u.test(trailing)) {
+          pins.push(`${file}: ${ref.split('@')[0]} is pinned by SHA with nothing saying which version`);
+        }
+      }
+    }
+    assert.ok(actions >= 5, `only ${actions} actions were found across the workflows`);
+    assert.deepEqual(pins, [], pins.join('\n'));
     assert.deepEqual(
       injected,
       [],

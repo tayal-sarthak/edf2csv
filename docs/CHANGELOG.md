@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.30
+
+### the pin an attestation rests on, and nothing holding it
+
+`publish.yml` explains why its actions are pinned the way they are, and the explanation is the
+strongest one in the repository:
+
+> Actions are pinned by commit SHA rather than by tag, and it matters most here. This job
+> publishes with npm provenance — an attestation that the tarball was built by this workflow,
+> from this repository, at this commit. A tag is a mutable pointer: `@v4` is whatever `v4`
+> names on the day it runs, so the workflow being attested to could change under the
+> attestation.
+
+Nothing checked it. Every `uses:` across the four workflows is a forty-character SHA today, and
+one written `@v4` instead would not fail anything: the workflow runs, the publish succeeds, the
+attestation is still produced — and it now attests to a build whose steps somebody outside this
+repository can change. Of all the things here that can go wrong quietly, it is the one that
+cannot be detected afterwards, because the artifact and the signature both look right.
+
+Every action is now held to a SHA, and to the comment beside it. `# v4` is the only thing that
+makes a forty-character string readable, and a pin with nothing next to it is one nobody will
+ever update deliberately — which is how a pin becomes permanent rather than current.
+Downgrading `setup-node` to `@v4` fails; stripping the comment off `checkout` fails.
+
+Written with a `#` as the sed delimiter while probing this, which is how 0.10.14 put a stray
+file in a commit. It failed loudly this time and left nothing behind.
+
 ## 0.10.29
 
 ### every job carries a timeout, said in one file about four
