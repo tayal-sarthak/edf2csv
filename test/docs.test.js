@@ -2755,6 +2755,41 @@ ${script}`,
     assert.ok(sameFile >= 8, `expected the pages to link within themselves, found ${sameFile}`);
 
     /*
+      And the links the site writes in its own source, which are not Markdown and so were not
+      in the walk above.
+
+      The header is three of them — Docs, CLI, Correctness — and it is on every page the site
+      serves. They are spelled out as literals twice over, once in `prerender.mjs` for the
+      HTML that ships and once in `Nav.jsx` for the app that takes over, which is the same
+      doubling 0.10.21 found in the footer. The landing page has a fourth.
+
+      Rename a page and every one of those 404s on every page at once, while the walk above
+      stays green: it reads `[label](/docs/...)` out of `website/content`, and a header is not
+      written in Markdown and does not live there. The most-rendered link on the site was the
+      one nothing resolved — which is the lesson of 0.10.21 and 0.10.23 in a third place.
+
+      Only literal slugs. `/docs/${doc.slug}` is the renderer iterating the pages it just read
+      and cannot name one that is not there.
+    */
+    const typed = [];
+    let literal = 0;
+    const sources = ['website/scripts/prerender.mjs', 'website/scripts/docs-index.mjs',
+      'website/src/App.jsx'];
+    for (const dir of ['website/src/components', 'website/src/lib']) {
+      for (const name of await readdir(path.join(ROOT, dir))) {
+        if (/\.(?:jsx|js)$/u.test(name)) sources.push(`${dir}/${name}`);
+      }
+    }
+    for (const where of sources) {
+      for (const [, , slug] of (await read(where)).matchAll(/(["'`])\/docs\/([a-z][a-z0-9-]*)/gu)) {
+        literal++;
+        if (!anchors.has(slug)) typed.push(`${where}: links /docs/${slug}, which is not a page`);
+      }
+    }
+    assert.ok(literal >= 6, `only ${literal} spelled-out docs links were found in the site's source`);
+    assert.deepEqual(typed, [], typed.join('\n'));
+
+    /*
       And the links out of the repository's own documents, which point at the same pages by
       absolute URL and were resolved by nothing.
 

@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.35
+
+### the header is on every page and resolved by nothing
+
+Every documentation link inside a documentation page has been resolved for a long time: the walk
+reads `[label](/docs/...)` out of `website/content`, checks the page exists and checks the
+heading the fragment names.
+
+The header is not written in Markdown and does not live there.
+
+It is three links — Docs, CLI, Correctness — and it is on every page the site serves. They are
+spelled out as literals twice over: once in `prerender.mjs`, for the HTML that ships, and once in
+`Nav.jsx`, for the app that takes over from it. The landing page has a fourth. Seven in all, and
+nothing resolved any of them.
+
+Rename a page and all of them 404 on every page at once, while the suite stays green — because
+the one check that knows which pages exist only ever looked at Markdown.
+
+This is the same lesson as 0.10.21 and 0.10.23 in a third place: the copy that drifts is the one
+written somewhere the check does not look, and the most-rendered copy is the likeliest to be it.
+
+Only literal slugs are read. `/docs/${doc.slug}` is the renderer iterating the pages it has just
+loaded and cannot name one that is not there; it needs no guard and gets none.
+
 ## 0.10.34
 
 ### a bug report's privacy instruction, one field short
