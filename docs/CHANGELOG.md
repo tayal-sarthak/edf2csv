@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.32
+
+### the file that says what is watched, wrong about the workflows twice
+
+`dependabot.yml` is the only place this repository's dependency coverage is written down. Its
+comments are the whole explanation: which ecosystems are watched, where they live, and why the
+schedule is weekly and grouped. Someone adding a workflow reads them to decide whether it is
+already accounted for.
+
+Two of those sentences were wrong, and the file contradicted itself.
+
+The opening paragraph lists the surface — React, motion and marked on the site, TypeScript and
+`@types/node` at the root — and ends "every workflow pins actions by major tag". They are pinned
+by commit SHA. The comment forty lines below it says so, in the same file, and 0.10.30 made the
+suite prove it. Anyone rewriting a pin from that first paragraph would have reintroduced exactly
+the moving tag that release was about.
+
+The second said "checkout, setup-node and setup-python, in three workflows". There are four, and
+checkout and setup-node are in all of them.
+
+Neither is load-bearing by itself: the `github-actions` entry watches the repository whatever its
+comment claims. What they decide is what the next person believes, and a count written while
+there were three workflows stays believable forever.
+
+Held to the workflows now rather than to a list, because a list is the thing that drifted: every
+action a workflow actually uses has to be named in the file, and the number of workflows it is
+spread across has to be the number that use one. The actions are read from the same scan that
+checks their pinning, so there is one source for both.
+
+Renaming `setup-python` to something the file does not name fails. So does adding a fifth
+workflow with an action in it.
+
 ## 0.10.31
 
 ### fifty sentences about fifty recordings, written beside the generator

@@ -2113,11 +2113,15 @@ ${script}`,
       update on purpose.
     */
     const pins = [];
+    const kinds = new Set();
+    const usingActions = new Set();
     let actions = 0;
     for (const file of workflows) {
       for (const [, ref, trailing] of (await read(path.join('.github/workflows', file)))
         .matchAll(/uses:\s*([^\s#]+)([^\n]*)/gu)) {
         actions++;
+        kinds.add(ref.split('@')[0].split('/').at(-1));
+        usingActions.add(file);
         const [, at] = /@(.+)$/u.exec(ref) ?? [];
         if (!/^[0-9a-f]{40}$/u.test(at ?? '')) {
           pins.push(`${file}: ${ref} is pinned by name, not by commit`);
@@ -2128,6 +2132,34 @@ ${script}`,
     }
     assert.ok(actions >= 5, `only ${actions} actions were found across the workflows`);
     assert.deepEqual(pins, [], pins.join('\n'));
+
+    /*
+      And `dependabot.yml`'s inventory of what it is watching, which is the only place the
+      coverage is written down and the thing anyone reads to decide whether a new workflow is
+      already accounted for.
+
+      It is wrong twice, and it disagrees with itself. Its opening paragraph lists the surface
+      and ends "every workflow pins actions by major tag" — they are pinned by commit SHA, as
+      the comment forty lines below it says and the check above proves. Its last comment names
+      "checkout, setup-node and setup-python, in three workflows"; there are four, and both
+      checkout and setup-node are in all of them.
+
+      Neither sentence is load-bearing on its own — the `github-actions` entry watches the
+      whole repository whatever the comment says. What they decide is whether the next person
+      adding a workflow believes it is already covered, and whether anyone rewriting the pins
+      believes a tag is the form this repository uses.
+
+      Held to the workflows rather than to a list: every action actually used has to be named,
+      and the count has to be the number of workflows that use one.
+    */
+    const bot = await read('.github/dependabot.yml');
+    const unnamed = [...kinds].filter((kind) => !bot.includes(kind)).sort();
+    assert.deepEqual(unnamed, [],
+      `dependabot.yml says which actions it watches and does not name ${unnamed.join(', ')}`);
+    const spread = /across (\w+) workflows/u.exec(bot);
+    assert.equal(spread?.[1], ['', 'one', 'two', 'three', 'four', 'five', 'six'][usingActions.size],
+      `dependabot.yml puts those actions across "${spread?.[1]}" workflows, and ` +
+        `${usingActions.size} of them use one`);
     assert.deepEqual(
       injected,
       [],

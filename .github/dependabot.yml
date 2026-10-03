@@ -2,7 +2,7 @@
 #
 # The package itself has none at runtime, which is the point of it and is checked by the suite.
 # That is not the whole surface: the website ships React, motion and marked to readers and builds
-# with Vite, the root has TypeScript and @types/node, and every workflow pins actions by major tag.
+# with Vite, the root has TypeScript and @types/node, and every workflow runs actions it does not own.
 # An advisory against any of those would have sat unnoticed until someone happened to run `npm
 # audit`, and nobody was going to.
 #
@@ -36,7 +36,7 @@ updates:
         patterns: ['*']
         update-types: [minor, patch]
 
-  # checkout, setup-node and setup-python, in three workflows. Pinned by commit SHA with the
+  # checkout, setup-node and setup-python, across four workflows. Pinned by commit SHA with the
   # version in a trailing comment, which is the form dependabot reads and rewrites — so an
   # update arrives as a diff naming the new commit rather than silently under a moving tag.
   - package-ecosystem: github-actions
