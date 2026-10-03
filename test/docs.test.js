@@ -1129,6 +1129,20 @@ describe('documentation and source agree on their lists', () => {
       `the structured data's author is not "${manifest.author}"`);
 
     /*
+      And `bugs`, which is the sixth place the repository is named and the one 0.9.90 missed.
+
+      npm renders it as the "Report an issue" link on the package page, and `npm bugs` opens
+      it. It is derived from the same repository as everything else and was written out
+      separately, so it is the copy that keeps pointing at the old project after a move —
+      from the registry page, which is where somebody who installed this goes to complain.
+
+      Held to `repository` rather than to a literal, since the issues URL of a GitHub
+      repository is a fact about that repository.
+    */
+    assert.equal(manifest.bugs?.url, `${repo}/issues`,
+      `package.json reports bugs at ${manifest.bugs?.url}, which is not this repository`);
+
+    /*
       And the one on the README, which is a URL a third party renders.
 
       The downloads badge is two copies of the package's name — once in the shields.io URL that

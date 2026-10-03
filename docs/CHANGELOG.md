@@ -8,6 +8,28 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.28
+
+### the sixth place this repository is named
+
+`bugs.url` is the sixth place this repository is named, and 0.9.90 did not tie it.
+
+    "bugs": { "url": "https://github.com/tayal-sarthak/edf2csv/issues" }
+
+npm renders it as the "Report an issue" link on the package page, and `npm bugs` opens it from
+a terminal. It is derived from the same repository as `repository`, `homepage` and the registry
+URL — all of which are now held to one source — and it was written out separately, so it is the
+copy that keeps pointing at the old project after a move. From the registry page, which is
+exactly where somebody who installed this and hit a problem goes.
+
+Held to `repository` rather than to a literal, because the issues URL of a GitHub repository is
+a fact about that repository and not an independent address.
+
+Six copies of one name, found over five releases: the prerenderer's constants at 0.9.90,
+CITATION.cff at 0.9.96, the README's badge at 0.10.3, the landing page's footer at 0.10.21, the
+`blob/main` links at 0.10.22 and 0.10.23, and this. Each time the previous check had read a
+list of files rather than the repository.
+
 ## 0.10.27
 
 ### twenty seconds that are two minutes, and the file doing the second-most of it
