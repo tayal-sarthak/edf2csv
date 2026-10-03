@@ -2304,7 +2304,8 @@ ${script}`,
     assert.deepEqual(unrun, [], `named as evidence but no workflow runs ${unrun.join(', ')}`);
 
     // And the count the workflow states about itself.
-    const words = { six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+    const words = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+      ten: 10, eleven: 11, twelve: 12 };
     const stated = /names (\w+) sweeps as how this project knows/u.exec(yaml);
     assert.ok(stated, 'the sweeps comment is gone or reworded');
     assert.equal(
@@ -2380,6 +2381,36 @@ ${script}`,
       runOnPush.length,
       `the workflow says ${runsHere[1]} run here; the sweeps job runs ${runOnPush.length}`,
     );
+
+    /*
+      And the other number in that sentence, which has been sitting beside a checked one.
+
+      "three Node versions of the suite plus eight sweeps" — the eight has been held to the
+      job since 0.7.87, and the comment above this check ends "every count of the sweeps in
+      this file is read now". That was true and it was half the sentence. The three is the
+      matrix, said again twenty lines down in the timeout comment: "the matrix below is three
+      of them at once", which is the whole reason a hung job there is three runners and not
+      one.
+
+      Add a Node version — the thing that actually happens to this file, four times so far —
+      and both sentences understate what a superseded run is burning and what the timeout is
+      reasoning about, in the one file whose numbers this test exists to keep honest.
+
+      The matrix's membership is checked twice elsewhere, against `engines` for its floor and
+      against api.md for its contents. Neither reads how many there are.
+    */
+    const matrix = /node-version: \[([^\]]+)\]/u.exec(yaml);
+    assert.ok(matrix, 'ci.yml no longer lists the Node versions it runs');
+    const running = matrix[1].split(',').length;
+    for (const [what, pattern] of [
+      ['the concurrency comment', /(\w+) Node versions of the suite/u],
+      ['the timeout comment', /the matrix below is (\w+) of them/u],
+    ]) {
+      const says = pattern.exec(yaml);
+      assert.ok(says, `${what} no longer says how many Node versions the matrix runs`);
+      assert.equal(words[says[1].toLowerCase()], running,
+        `${what} says ${says[1]} Node versions; the matrix runs ${running}`);
+    }
   });
 
   it('crosses the estimate sweep with every option that changes what is written', async () => {

@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.36
+
+### the half of the sentence that was never counted
+
+ci.yml's concurrency comment explains what a superseded run is burning:
+
+> three Node versions of the suite plus eight sweeps, all proving things about a commit nobody
+> will merge
+
+The eight has been held to the sweeps job since 0.7.87. The comment on the test that holds it
+ends "every count of the sweeps in this file is read now" — which was true, and which was half
+the sentence.
+
+The three is the matrix, and it is said again twenty lines further down, in the paragraph about
+timeouts: "the matrix below is three of them at once". That clause is the whole reason a hung
+job there costs three runners rather than one, so it is the number the six-hour argument rests
+on.
+
+The matrix is already checked twice, in two other tests — its lowest entry against `engines`,
+its membership against the sentence in api.md naming where `require()` is verified. Neither
+reads how many entries it has. Adding a Node version is the ordinary thing that happens to this
+file, and both sentences would have gone on saying three.
+
+Both are now read off the matrix, in the test whose job is keeping this file's numbers honest.
+
 ## 0.10.35
 
 ### the header is on every page and resolved by nothing
