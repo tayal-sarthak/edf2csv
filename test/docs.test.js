@@ -1477,6 +1477,69 @@ describe('documentation and source agree on their lists', () => {
     }
   });
 
+  it('describes each fixture as the recording it generated', async () => {
+    /*
+      The correctness page lists all fifty fixtures with a sentence each saying what the file
+      is: "A single channel at 1024 Hz", "Header declares 10 records, only 4 were written",
+      "Three samples in a 1e-15 s record — 3e15 Hz". The names have been diffed against the
+      directory since the table once held fifteen of the fifty under a heading promising every
+      one. The sentences never were.
+
+      They are the only description of the test corpus anybody reads, and they are written by
+      hand next to a generator that can say what it built. A fixture retuned in
+      `generate.mjs` — a rate changed to reach a new case, a record added — leaves its row
+      describing the recording it used to be, and the row is what a reader checks the claim
+      against.
+
+      Rates and record counts are what these sentences state in a form worth holding. Taken
+      from `--info --json`, which is the recording as the tool reads it.
+
+      Two things the first version of this got wrong, and the comments are here because both
+      are easy to repeat. Scientific notation: `([\d.]+) Hz` matches the exponent of "3e15 Hz"
+      and reports 15, so the whole token is taken. And a row may state two record counts on
+      purpose — "Header declares 10 records, only 4 were written" is `truncated.edf`'s entire
+      subject — so a row naming the declared count as well is held to both.
+    */
+    const page = await read('website/content/correctness.md');
+    const rows = [...page.matchAll(/^\| `([a-z0-9][a-z0-9-]*\.(?:edf|bdf))`[^|]*\| ([^|]*)\|/gmu)];
+    assert.ok(rows.length >= 40, `the fixture table has ${rows.length} rows`);
+
+    let claims = 0;
+    for (const [, name, description] of rows) {
+      const file = path.join(ROOT, 'test/fixtures/generated', name);
+      const read1 = await run(process.execPath, [CLI, file, '--info', '--json'])
+        .then((ok) => JSON.parse(ok.stdout), () => null);
+      // Several fixtures are deliberately unreadable; their rows say so and there is nothing
+      // to compare against.
+      if (read1 === null) continue;
+
+      const rates = new Set(read1.channels.map((channel) => String(channel.sampling_rate_hz)));
+      for (const [, stated] of description.matchAll(/(\d[\d.]*(?:e[-+]?\d+)?)\s*Hz/gu)) {
+        claims++;
+        assert.ok(
+          rates.has(stated) || rates.has(String(Number(stated))),
+          `${name}: the table says ${stated} Hz and the file has ${[...rates].join(', ')}`,
+        );
+      }
+
+      const declared = /[Hh]eader declares (\d+) records?/u.exec(description);
+      const written = /only (\d+) (?:were )?written/u.exec(description);
+      if (declared && written) {
+        claims += 2;
+        assert.equal(Number(written[1]), read1.data_records,
+          `${name}: the table says ${written[1]} records were written`);
+      } else {
+        const plain = /\b(\d+) records?\b/u.exec(description);
+        if (plain) {
+          claims++;
+          assert.equal(Number(plain[1]), read1.data_records,
+            `${name}: the table says ${plain[1]} records and the file has ${read1.data_records}`);
+        }
+      }
+    }
+    assert.ok(claims >= 12, `only ${claims} numeric claims in the table were checkable`);
+  });
+
   it('gives every page the frontmatter the site reads off it', async () => {
     /*
       `readDocs` turns three frontmatter lines into everything the site knows about a page,

@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.31
+
+### fifty sentences about fifty recordings, written beside the generator
+
+The correctness page lists all fifty fixtures with a sentence each saying what the recording is.
+"A single channel at 1024 Hz." "Header declares 10 records, only 4 were written." "Three samples
+in a 1e-15 s record — 3e15 Hz."
+
+The *names* have been diffed against the directory since the table once held fifteen of the
+fifty under a heading promising every one. The sentences never were.
+
+They are the only description of this test corpus anybody reads, and they sit beside a generator
+that can say exactly what it built. Retune a fixture in `generate.mjs` — a rate changed to reach
+a new case, a record added — and its row goes on describing the recording it used to be, while
+being the thing a reader checks the claim against.
+
+Every rate and every record count the table states is now taken from `--info --json`, which is
+the recording as the tool reads it. Nothing was wrong: twenty-odd claims across the fifty rows
+all hold. Changing `biosemi-rate.edf` to 512 Hz fails, and so does saying four records were six.
+
+Two notes in the check, because both tripped the first version and both are easy to repeat.
+`([\d.]+) Hz` matches the **exponent** of "3e15 Hz" and reports fifteen, so the whole token has
+to be taken — twice I thought I had found a defect and had found my own regex. And a row may
+state two record counts deliberately: "Header declares 10 records, only 4 were written" is
+`truncated.edf`'s entire reason for existing, so a row naming the declared count is read for
+both numbers rather than the first one it finds.
+
 ## 0.10.30
 
 ### the pin an attestation rests on, and nothing holding it
