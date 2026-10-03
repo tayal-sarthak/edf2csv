@@ -2176,6 +2176,80 @@ ${script}`,
     assert.match(specimen, /^\s*run:\s/u, 'nor the line that opens one');
   });
 
+  it('names every field of a bug report that can carry a person', async () => {
+    /*
+      The bug template asks for `--info --json`, because a header is what almost every
+      question here turns on and the recording itself usually cannot be shared — EDF keeps
+      patient identifiers in the header in plain text. So it tells the reporter what to
+      scrub, and then tells them when they are done:
+
+          It also carries `patient_id` and `recording_id`, which often hold a name and a
+          date of birth. Replace them before posting; nothing else in the document
+          identifies anyone.
+
+      The document carries a third one. `path` is the argument as it was typed, and a
+      recording is very often reached by a path that names the person
+      — `/data/patients/SMITH_J/night-01.edf` — or, on any laptop, by one that names the
+      operator: `C:\Users\jane.doe\...`. A reporter who scrubs the two fields the sentence
+      names and posts has been told, by the project, that what is left is safe.
+
+      So this plants a name in the three places a recording can carry one — the file's path,
+      `patient_id` and `recording_id` — and requires the template to name every field it
+      comes back out of. Driven by a specimen rather than a list: a field added later that
+      echoes header text is caught the day it is added, which is the only way a sentence
+      ending "nothing else" can stay true.
+
+      Labels are deliberately not planted. A channel label is free text and reaches the CSV
+      verbatim, but it is a montage position rather than a person, and demanding the template
+      name it would be asking a privacy notice to list every string in the file.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const PLANTED = 'Wilhelmina-Fairweather';
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-report-'));
+    let carrying;
+    try {
+      const recording = path.join(base, `${PLANTED}.edf`);
+      writeEdf({
+        path: recording,
+        patient: PLANTED,
+        recording: `Startdate 01-JAN-1985 ${PLANTED} X X`,
+        numRecords: 1,
+        recordDuration: 1,
+        signals: [{
+          label: 'ch1', dimension: 'uV',
+          physMin: -1, physMax: 1, digMin: -1, digMax: 1,
+          samplesPerRecord: 1, gen: () => 0,
+        }],
+      });
+      const doc = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--info', '--json'])).stdout,
+      );
+      const found = new Set();
+      const walk = (node, key) => {
+        if (typeof node === 'string') {
+          if (node.includes(PLANTED)) found.add(key);
+        } else if (Array.isArray(node)) for (const item of node) walk(item, key);
+        else if (node && typeof node === 'object') {
+          for (const [name, value] of Object.entries(node)) walk(value, name);
+        }
+      };
+      walk(doc);
+      carrying = [...found].sort();
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+
+    assert.ok(carrying.includes('patient_id') && carrying.includes('recording_id'),
+      `the planted name did not reach the header fields: ${carrying.join(', ')}`);
+    const template = await read('.github/ISSUE_TEMPLATE/bug.yml');
+    const unnamed = carrying.filter((field) => !template.includes(`\`${field}\``));
+    assert.deepEqual(unnamed, [],
+      'the bug template tells a reporter what to replace and says nothing else in the ' +
+        `document identifies anyone, and these also carry one: ${unnamed.join(', ')}`);
+  });
+
   it('runs every sweep it offers as evidence', async () => {
     /*
       A sweep nobody runs is a claim nobody checks. `npm test` covers the suite and not the

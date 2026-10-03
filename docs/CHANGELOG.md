@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.34
+
+### a bug report's privacy instruction, one field short
+
+The bug report template asks for `--info --json` first, and it explains why: a recording usually
+cannot be shared, because EDF keeps patient identifiers in the header in plain text. So the
+template tells the reporter what to scrub — and then tells them when they are done.
+
+> It also carries `patient_id` and `recording_id`, which often hold a name and a date of birth.
+> Replace them before posting; nothing else in the document identifies anyone.
+
+The document carries a third one. `path` is the argument as it was typed, and a recording is
+very often reached by a path that names the person — `/data/patients/SMITH_J/night-01.edf` — or,
+on any laptop, by one that names the operator. Somebody who scrubbed the two fields the sentence
+named and posted had been told by this project that what was left was safe.
+
+The same path is in the next field down, which asks for the command and what it printed, and the
+command is the path by construction.
+
+Both are said now, and a check plants a name in the three places a recording can carry one — the
+file's path, `patient_id`, `recording_id` — runs `--info --json`, and requires the template to
+name every field the name comes back out of. A specimen rather than a list, so a field added
+later that echoes header text is caught the day it is added. That is the only way a sentence
+ending "nothing else" stays true.
+
+Channel labels are deliberately not planted. A label is free text and reaches the CSV verbatim,
+but it is a montage position rather than a person, and asking a privacy notice to list every
+string in the file would make it unreadable and no safer.
+
 ## 0.10.33
 
 ### nine jq programs reading fields nothing checked existed

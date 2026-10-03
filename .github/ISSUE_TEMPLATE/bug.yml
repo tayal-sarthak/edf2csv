@@ -22,7 +22,9 @@ body:
         raised — which is most of what any answer here depends on.
 
         It also carries `patient_id` and `recording_id`, which often hold a name and a date of
-        birth. Replace them before posting; nothing else in the document identifies anyone.
+        birth, and `path`, which is the recording as you named it — the folder a file sits in
+        is as likely to carry a name as the header is. Replace all three before posting, here
+        and in the command below; nothing else in the document identifies anyone.
       render: json
     validations:
       required: true
