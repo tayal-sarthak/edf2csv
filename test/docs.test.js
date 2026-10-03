@@ -1991,6 +1991,43 @@ ${script}`,
       });
     }
     assert.ok(steps >= 10, `expected several run: steps to read, found ${steps}`);
+
+    /*
+      And the claim ci.yml makes about all four of them.
+
+      "Every job carries a `timeout-minutes`, here and in the other three workflows. GitHub's
+      default is 360, so anything that hangs — an `npm ci` waiting on a registry that stopped
+      answering, a sweep that loops on an input it cannot finish — holds a runner for six
+      hours before anyone is told, and the matrix below is three of them at once."
+
+      That is an exhaustive statement about four files, written in one of them. A job added
+      without the line does not fail, does not warn, and is indistinguishable from a job that
+      is merely slow until six hours have gone. Every one has it today and nothing said so.
+
+      Read as text, like the injection check above, because there is no YAML parser here: a
+      job is a key indented two spaces under `jobs:`, and its `timeout-minutes` is a key
+      indented four within it.
+    */
+    const timeouts = [];
+    let jobs = 0;
+    for (const file of workflows) {
+      const lines = (await read(path.join('.github/workflows', file))).split('\n');
+      const start = lines.findIndex((line) => /^jobs:\s*$/u.test(line));
+      assert.notEqual(start, -1, `${file} declares no jobs`);
+      for (let i = start + 1; i < lines.length; i++) {
+        const name = /^ {2}([A-Za-z][\w-]*):\s*$/u.exec(lines[i]);
+        if (!name) continue;
+        jobs++;
+        const body = [];
+        for (let j = i + 1; j < lines.length && !/^ {2}[A-Za-z]/u.test(lines[j]); j++) body.push(lines[j]);
+        if (!body.some((line) => /^ {4}timeout-minutes:\s*\d+/u.test(line))) {
+          timeouts.push(`${file}: job "${name[1]}"`);
+        }
+      }
+    }
+    assert.ok(jobs >= 7, `only ${jobs} jobs were found across ${workflows.length} workflows`);
+    assert.deepEqual(timeouts, [],
+      `these jobs have no timeout, so GitHub gives them six hours:\n  ${timeouts.join('\n  ')}`);
     assert.deepEqual(
       injected,
       [],

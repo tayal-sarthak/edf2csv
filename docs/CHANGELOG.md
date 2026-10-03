@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.29
+
+### every job carries a timeout, said in one file about four
+
+`ci.yml` carries a paragraph about all four workflows:
+
+> Every job carries a `timeout-minutes`, here and in the other three workflows. GitHub's
+> default is 360, so anything that hangs — an `npm ci` waiting on a registry that stopped
+> answering, a sweep that loops on an input it cannot finish — holds a runner for six hours
+> before anyone is told, and the matrix below is three of them at once.
+
+An exhaustive claim about four files, written in one of them, and checked by nobody. Eight jobs
+carry the line today. The ninth would not have.
+
+A job added without it does not fail and does not warn. It is indistinguishable from a job that
+is merely slow, until six hours have gone — and on the `core` matrix that is three runners at
+once, on a repository whose publish workflow is gated behind the same CI.
+
+Every job in every workflow is now held to having one. Read as text rather than as YAML, the
+same way the input-injection check beside it is, because there is no parser here: a job is a key
+two spaces under `jobs:`, and its timeout is a key four spaces inside it. Appending an
+ordinary-looking `lint` job to `ci.yml` fails by name.
+
 ## 0.10.28
 
 ### the sixth place this repository is named
