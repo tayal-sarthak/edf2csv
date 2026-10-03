@@ -6741,6 +6741,93 @@ ${script}`,
     );
   });
 
+  it('reads fields that exist in the shell recipes it prints', async () => {
+    /*
+      Nine `jq` programs across cli-reference and recipes pull values out of this tool's own
+      JSON by name: `.output_dir`, `.files[].rows`, `.estimate.rows`, `.source.sha256`,
+      `[.warnings[].code]`. They are the documented way to use `--json` for anything — count
+      the rows written, turn a folder into a table, fail a build on a particular warning.
+
+      Nothing read any of them, and the way jq fails is the reason that matters. A path that
+      does not exist is not an error: jq emits `null` and carries on. Rename a field and the
+      survey recipe keeps printing one line per recording with a column of nulls in it, and
+      the two guard recipes — `index("RECORD_COUNT_MISMATCH")`, `index("DISCONTINUOUS") | not`
+      — stop matching anything and start passing every recording, which is the direction a
+      CI gate must never fail in.
+
+      Each program is resolved against the document it is actually piped from, decided by the
+      command it sits in rather than the block: one block in cli-reference writes `--info` to
+      a file and then feeds `--json` to jq, so reading the block would check the second
+      program against the wrong document.
+
+      Names rather than whole paths. jq rebinds `.` inside `map`, `select` and `\(...)`, so
+      `.sampling_rate_hz` in `map(.sampling_rate_hz)` is a channel's field and not the root's;
+      following that properly means interpreting jq. A field that exists nowhere in the
+      document is the drift worth catching, and it is caught either way.
+
+      `mixed-rates.edf` because all three documents have to be populated: it raises
+      MIXED_SAMPLING_RATES under `--info` and under conversion, and leaves a note in
+      `metadata.json`, so `.warnings[].code` and `.notes[].code` have an element to be a
+      field of. An empty array cannot say what its entries look like.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-jq-'));
+    let docs;
+    try {
+      const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+      const out = path.join(base, 'out');
+      const info = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--info', '--json'])).stdout,
+      );
+      const summary = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--out', out, '--json', '--quiet'])).stdout,
+      );
+      const metadata = JSON.parse(await readFile(path.join(out, 'metadata.json'), 'utf8'));
+      assert.ok(info.warnings.length && summary.warnings.length && metadata.notes.length,
+        'the recording these are read from no longer populates every list the recipes index');
+      const keysOf = (node, into = new Set()) => {
+        if (Array.isArray(node)) for (const item of node) keysOf(item, into);
+        else if (node && typeof node === 'object') {
+          for (const [key, value] of Object.entries(node)) {
+            into.add(key);
+            keysOf(value, into);
+          }
+        }
+        return into;
+      };
+      docs = { info: keysOf(info), summary: keysOf(summary), metadata: keysOf(metadata) };
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+
+    const invented = [];
+    let programs = 0;
+    let fields = 0;
+    for (const page of ['cli-reference.md', 'recipes.md']) {
+      const text = await read(path.join('website/content', page));
+      for (const [, block] of text.matchAll(/```bash\n([\s\S]*?)```/gu)) {
+        for (const hit of block.matchAll(/\bjq\b[^'\n]*'([\s\S]*?)'/gu)) {
+          const before = block.lastIndexOf('\n\n', hit.index);
+          const after = block.indexOf('\n\n', hit.index);
+          const command = block.slice(before + 1, after === -1 ? block.length : after);
+          const kind = /metadata\.json/u.test(command) ? 'metadata'
+            : /--info/u.test(command) ? 'info' : 'summary';
+          programs++;
+          for (const [, name] of hit[1].matchAll(/\.([a-z_][a-z0-9_]*)/gu)) {
+            fields++;
+            if (docs[kind].has(name)) continue;
+            invented.push(`${page}: a jq recipe reads .${name} out of the ${kind} document, ` +
+              'which has no field by that name');
+          }
+        }
+      }
+    }
+    assert.ok(programs >= 8, `only ${programs} jq recipes were found to check`);
+    assert.ok(fields >= 35, `only ${fields} field reads were resolved`);
+    assert.deepEqual(invented, [], invented.join('\n'));
+  });
+
   it('batches the recording it describes the way it says it does', async () => {
     /*
       "The final batch is usually short — the 18.7 MB recording this page reads gives two 8 MB

@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.33
+
+### nine jq programs reading fields nothing checked existed
+
+Nine `jq` programs are printed across the CLI reference and the recipes page, and they are the
+documented way to do anything with `--json`: count the rows a conversion wrote, turn a folder of
+recordings into a one-line-per-file table, pull the checksum out of `metadata.json`, fail a build
+when a particular warning is raised.
+
+Every one of them reads this tool's own fields by name — `.output_dir`, `.files[].rows`,
+`.estimate.rows`, `.source.sha256`, `[.warnings[].code]`. Forty-one field reads in total, and
+nothing checked that any of them exists.
+
+What makes that worth a release is how jq fails. A path that is not there is not an error. jq
+emits `null` and carries on, so renaming a field leaves the survey recipe printing a tidy table
+with a column of nulls in it, and leaves both guard recipes — `index("RECORD_COUNT_MISMATCH")`,
+`index("DISCONTINUOUS") | not` — matching nothing and therefore passing every recording. A CI
+gate that silently stops gating is the wrong direction for this to fail in.
+
+Each program is now resolved against the document it is actually piped from. Which document that
+is comes from the command the program sits in, not from the block around it: one block in the CLI
+reference writes `--info` to a file and then pipes `--json` to jq, so reading the block checks the
+second program against the wrong shape.
+
+Names, not whole paths. jq rebinds `.` inside `map`, `select` and `\(...)`, so the
+`.sampling_rate_hz` in `map(.sampling_rate_hz)` belongs to a channel rather than to the root, and
+following that honestly would mean interpreting jq. A field that exists nowhere in the document
+is the drift that happens, and it is caught either way.
+
+`mixed-rates.edf` is what the three documents are built from, because all three have to be
+populated: it raises `MIXED_SAMPLING_RATES` under `--info` and under conversion and leaves a note
+in `metadata.json`, so `.warnings[].code` and `.notes[].code` have an element to be a field of.
+An empty array cannot say what its entries look like.
+
+Nothing was wrong. Renaming `output_dir` in `src/cli/report.ts` fails two pages at once.
+
 ## 0.10.32
 
 ### the file that says what is watched, wrong about the workflows twice
