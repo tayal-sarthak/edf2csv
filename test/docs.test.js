@@ -2411,6 +2411,52 @@ ${script}`,
       assert.equal(words[says[1].toLowerCase()], running,
         `${what} says ${says[1]} Node versions; the matrix runs ${running}`);
     }
+
+    /*
+      And the weekly job, whose entire justification is a number it spells out.
+
+      `fuzz.yml` exists because the sweeps in CI run at a fixed seed: "`npm run fuzz` corrupts
+      the same 300 recordings on every push, so once it has passed it can only fail again if
+      the code changes under it." Three hundred is `DEFAULT_FILES` in `mutate.mjs`, written
+      out again here — and 0.10.11 is the release that went and replaced the *other* literal
+      300 in that same sweep with the constant. It did not look in the workflow the constant
+      is the premise of.
+
+      Three things, all of which go quiet rather than fail:
+
+      - the corpus size, against the constant the sweep actually defaults to;
+      - "at several times the size", against what the steps pass — a job that stopped being
+        bigger than the push would be a weekly run that finds nothing new, and would still be
+        green every Tuesday;
+      - the count in "`npm run fuzz -- <seed> 2000` runs exactly the same files on anybody's
+        machine", against the count the step runs. That sentence is the whole reproduction
+        path for a failure this job reports, and a reproduction that quietly runs a different
+        corpus is worse than none: the bug does not come back and the report is closed.
+    */
+    const fuzzYaml = await read('.github/workflows/fuzz.yml');
+    const corpus = /corrupts the same ([\d,]+) recordings/u.exec(fuzzYaml);
+    assert.ok(corpus, 'fuzz.yml no longer says how big the corpus on every push is');
+    const defaults = {};
+    const bigger = [];
+    for (const [, script, count] of fuzzYaml.matchAll(/node (test\/fuzz\/[\w.]+\.mjs) "\$SEED" (\d+)/gu)) {
+      const fallback = /export const DEFAULT_\w+ = (\d+);/u.exec(await read(script));
+      assert.ok(fallback, `${script} no longer exports the size it defaults to`);
+      defaults[script] = Number(fallback[1]);
+      if (Number(count) <= defaults[script]) {
+        bigger.push(`${script}: the weekly job runs ${count}, which is not more than its ` +
+          `default of ${defaults[script]}`);
+      }
+    }
+    assert.equal(Object.keys(defaults).length, 2,
+      'the weekly job no longer runs the two sweeps that generate their own inputs');
+    assert.deepEqual(bigger, [], bigger.join('\n'));
+    assert.equal(Number(corpus[1].replaceAll(',', '')), defaults['test/fuzz/mutate.mjs'],
+      `fuzz.yml says a push corrupts ${corpus[1]} recordings`);
+    const reproduce = /npm run fuzz -- <seed> (\d+)/u.exec(fuzzYaml);
+    assert.ok(reproduce, 'fuzz.yml no longer says how to reproduce a failure it reports');
+    const ran = /node test\/fuzz\/mutate\.mjs "\$SEED" (\d+)/u.exec(fuzzYaml);
+    assert.equal(reproduce[1], ran[1],
+      `fuzz.yml reports ${ran[1]} recordings and tells you to reproduce with ${reproduce[1]}`);
   });
 
   it('crosses the estimate sweep with every option that changes what is written', async () => {

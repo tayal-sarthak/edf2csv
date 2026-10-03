@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.37
+
+### the number a weekly job exists because of
+
+`fuzz.yml` exists because of a number, and it writes the number out:
+
+> `npm run fuzz` corrupts the same 300 recordings on every push, so once it has passed it can
+> only fail again if the code changes under it.
+
+That is the whole argument for a weekly job with a seed taken from the date. Three hundred is
+`DEFAULT_FILES` in `mutate.mjs` — and 0.10.11 is the release that replaced the *other* literal
+300 in that same sweep with the constant, having not looked in the workflow the constant is the
+premise of.
+
+Three things were unread here, and each of them goes quiet rather than failing.
+
+The corpus size, now taken from the constant the sweep actually defaults to.
+
+"At several times the size", now taken from what the steps pass: 2,000 against a default of 300,
+40 folder trees against 12. A weekly job that stopped being larger than the one on every push
+would be finding nothing new, and would go on reporting green every Tuesday.
+
+And the count in "`npm run fuzz -- <seed> 2000` runs exactly the same files on anybody's
+machine". That sentence is the entire reproduction path for a failure this job reports — it
+prints a seed and tells you what to do with it. A reproduction instruction that quietly runs a
+different corpus is worse than none, because the bug does not come back and the report gets
+closed.
+
 ## 0.10.36
 
 ### the half of the sentence that was never counted
