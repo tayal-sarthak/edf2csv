@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.40
+
+### a size checked on one page and stated on two
+
+The round-trip sweep's size has been held to the sweep for a while: 20,160 cells over 1,260
+calibrations, both derived from the arrays `roundtrip.mjs` exports rather than taken on trust.
+
+The check read one file, and matched one word.
+
+`correctness.md` says "20,160 cells over 1,260 **calibrations**". The FAQ says "20,160 cells over
+1,260 **combinations** of digital and physical bounds" — same two numbers, different noun,
+different page, and the page in question is the one where a reader is mid-recipe, working out
+whether the codes they are about to recover are guaranteed.
+
+Widen the sweep's parameter space, which is the ordinary way it grows and how it grew when the
+magnetometer pair and the inverted ranges were added, and correctness.md gets corrected while the
+FAQ goes on quoting the old size to somebody who is acting on it.
+
+This is the failure 0.10.21, 0.10.23 and 0.10.35 were each about, a fourth time: a guard written
+from the copies you happened to open. The cross-validation figures two tests below this one
+already read their page, the README and the landing page. This one read a single file.
+
+Walked now over the documentation, the README and CONTRIBUTING, accepting either noun — both are
+in use and both are accurate — so a fourth statement of the size is covered the day it is
+written. Adding one physical pair to the sweep fails both pages at once.
+
 ## 0.10.39
 
 ### the qualifier that carries a number nothing measured

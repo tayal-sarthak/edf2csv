@@ -4093,13 +4093,48 @@ ${script}`,
     ).length;
     // Every digital pair against every physical pair, once as EDF and once as BDF.
     const calibrations = digitalPairs * sweep.PHYSICAL_PAIRS.length * 2;
-    const roundTrip = /([\d,]+) cells over ([\d,]+) calibrations/u.exec(page);
-    assert.ok(roundTrip, 'the page no longer states the round-trip sweep size');
-    assert.equal(Number(roundTrip[2].replaceAll(',', '')), calibrations);
-    assert.equal(
-      Number(roundTrip[1].replaceAll(',', '')),
-      calibrations * sweep.SAMPLES_PER_CALIBRATION,
-    );
+    /*
+      Everywhere it is stated, rather than on the page this test happened to have open.
+
+      This read `page` — correctness.md — and matched the word "calibrations". The FAQ states
+      the same two figures in the section where a reader is actually doing the arithmetic:
+      "20,160 cells over 1,260 combinations of digital and physical bounds". Different noun,
+      different page, same numbers, and nothing had ever opened it. Widen the sweep's
+      parameter space — the ordinary way it grows, and the way it grew when the magnetometer
+      pair and the inverted ranges were added — and correctness.md would have been corrected
+      while the FAQ went on quoting the old size to somebody mid-recipe.
+
+      That is the failure 0.10.21, 0.10.23 and 0.10.35 were each about: a guard written from
+      the copies you happened to open. The crossvalidate figures two tests down already read
+      their page, the README and the landing page; this one read one file.
+
+      Walked over the documentation, the README and CONTRIBUTING, so a fourth statement of
+      the size is covered the day somebody writes it, and accepting either noun because both
+      are in use and both are accurate.
+    */
+    const sized = [];
+    for (const where of ['README.md', 'CONTRIBUTING.md',
+      ...(await readdir(path.join(ROOT, 'website/content')))
+        .filter((name) => name.endsWith('.md'))
+        .map((name) => `website/content/${name}`)]) {
+      const text = await read(where);
+      for (const [, cells, over] of text.matchAll(
+        /([\d,]+)\s+cells\s+over\s+([\d,]+)\s+(?:calibrations|combinations)/gu,
+      )) {
+        sized.push({ where, cells, over });
+      }
+    }
+    assert.ok(sized.length >= 2,
+      `the round-trip sweep's size is stated ${sized.length} times, which is fewer than the ` +
+        'pages that quote it');
+    for (const { where, cells, over } of sized) {
+      assert.equal(Number(over.replaceAll(',', '')), calibrations,
+        `${where} says ${over} calibrations; the sweep builds ${calibrations}`);
+      assert.equal(Number(cells.replaceAll(',', '')),
+        calibrations * sweep.SAMPLES_PER_CALIBRATION,
+        `${where} says ${cells} cells; the sweep reads ` +
+          `${calibrations * sweep.SAMPLES_PER_CALIBRATION}`);
+    }
   });
 
   it('measures the damage the decimals qualifier describes', async () => {
