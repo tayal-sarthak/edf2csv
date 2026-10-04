@@ -4102,6 +4102,100 @@ ${script}`,
     );
   });
 
+  it('measures the damage the decimals qualifier describes', async () => {
+    /*
+      Claim 6 is the only promise on the correctness page that carries a condition in its own
+      title — "at the precision edf2csv derives" — and the page says plainly that the
+      condition is the claim: "`--decimals` replaces that precision with one you chose, and a
+      coarser one stops the codes being recoverable."
+
+      Then it puts a number on how badly: "`--decimals 0` on a 256 Hz EEG channel gets 645 of
+      768 samples wrong", repeated in the FAQ beside the recipe a reader is about to run.
+
+      The promise itself is swept over 20,160 cells. The sentence that says when it stops
+      holding was measured by nothing, in either place. It is also the half a reader acts on
+      — someone reaching for `--decimals` to make a file smaller is deciding whether 645 of
+      768 is a price worth paying, and a figure nobody checks is one that quietly becomes a
+      different price.
+
+      Measured rather than asserted, and against the file rather than against the other CSV:
+      the digital codes come out of the recording through the API, and the cells come out of a
+      `--decimals 0` conversion, recovered with the arithmetic the FAQ prints —
+      `round(value / gain - offset)`, gain and offset from `channels.csv`. Comparing the two
+      conversions instead would lean on claim 6 to check claim 6's own qualifier.
+
+      Floors at both ends, because this figure is only interesting strictly between them: a
+      count of zero would mean the qualifier is describing damage that does not happen, and a
+      count of everything would mean the sentence could say so and stop quoting a ratio.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+
+    const correctness = await read('website/content/correctness.md');
+    const faq = await read('website/content/faq.md');
+    // Whitespace-flexible: the FAQ wraps this sentence, so "EEG channel" spans two lines there.
+    const sentence =
+      /`--decimals 0`\s+on\s+a\s+(\d+)\s+Hz\s+EEG\s+channel\s+gets\s+([\d,]+)\s+of\s+([\d,]+)\s+samples\s+wrong/u;
+    const said = sentence.exec(correctness);
+    assert.ok(said, 'the correctness page no longer says what a coarser --decimals costs');
+    const alsoSaid = sentence.exec(faq);
+    assert.ok(alsoSaid, 'the FAQ no longer says it beside the recipe');
+    assert.deepEqual(alsoSaid.slice(1), said.slice(1), 'the two pages state different figures');
+    const [, hz, claimedWrong, claimedOf] = said;
+
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-decimals-'));
+    try {
+      const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+      const out = path.join(base, 'out');
+      await run(process.execPath, [CLI, recording, '--out', out, '--decimals', '0', '--quiet']);
+
+      // The calibration, read the way the FAQ's recipe reads it.
+      const channels = (await readFile(path.join(out, 'channels.csv'), 'utf8')).trimEnd().split('\n');
+      const columns = channels[0].split(',');
+      const row = channels.slice(1).map((line) => line.split(','))
+        .find((values) => values[columns.indexOf('sampling_rate_hz')] === hz);
+      assert.ok(row, `no channel of this recording is at ${hz} Hz`);
+      const field = (name) => Number(row[columns.indexOf(name)]);
+      const gain = (field('physical_max') - field('physical_min'))
+        / (field('digital_max') - field('digital_min'));
+      const offset = field('physical_max') / gain - field('digital_max');
+
+      const column = row[columns.indexOf('column')];
+      const table = (await readFile(path.join(out, row[columns.indexOf('output_file')]), 'utf8'))
+        .trimEnd().split('\n');
+      const at = table[0].split(',').indexOf(column);
+      const cells = table.slice(1).map((line) => line.split(',')[at]);
+
+      const edf = await EdfFile.open(recording);
+      const signal = edf.dataSignals.find((s) => s.label === column);
+      assert.ok(signal, `the recording has no channel called ${column}`);
+      // `sampleAt` takes a record offset within the batch and a sample index within that
+      // record, so a batch of three records is three passes rather than one long one.
+      const held = [];
+      for await (const batch of edf.readRecords()) {
+        for (let record = 0; record < batch.recordCount; record++) {
+          for (let i = 0; i < signal.samplesPerRecord; i++) {
+            held.push(edf.sampleAt(batch, record, signal, i));
+          }
+        }
+      }
+      await edf.close();
+
+      assert.equal(cells.length, held.length, 'the table and the recording disagree on how many samples there are');
+      const wrong = cells.filter((cell, i) => Math.round(Number(cell) / gain - offset) !== held[i]).length;
+
+      assert.equal(Number(claimedOf.replaceAll(',', '')), cells.length,
+        `the pages say ${claimedOf} samples; the ${hz} Hz table has ${cells.length}`);
+      assert.equal(Number(claimedWrong.replaceAll(',', '')), wrong,
+        `the pages say --decimals 0 gets ${claimedWrong} of them wrong; it gets ${wrong}`);
+      assert.ok(wrong > 0 && wrong < cells.length,
+        `a qualifier quoting a ratio needs one: ${wrong} of ${cells.length}`);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+
   it('states the accuracy figures the cross-check\'s own recordings contain', async () => {
     /*
       "Across the 75 generated recordings, 16,943 sample values were bit-for-bit identical"

@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.39
+
+### the qualifier that carries a number nothing measured
+
+Claim 6 on the correctness page is the only promise there that carries a condition in its own
+title — "at the precision edf2csv derives" — and the page says plainly that the condition is the
+claim: "`--decimals` replaces that precision with one you chose, and a coarser one stops the codes
+being recoverable."
+
+Then it puts a number on how badly: **"`--decimals 0` on a 256 Hz EEG channel gets 645 of 768
+samples wrong"**, repeated in the FAQ beside the recipe a reader is about to run.
+
+The promise itself is swept over 20,160 cells. The sentence saying when it stops holding was
+measured by nothing, in either place.
+
+It is also the half a reader acts on. Someone reaching for `--decimals` to make a file smaller is
+deciding whether 645 of 768 is a price worth paying, and a figure nobody checks is one that
+quietly becomes a different price.
+
+Measured now, and against the recording rather than against the other CSV: the digital codes come
+out of the file through the API, the cells come out of a real `--decimals 0` conversion, and they
+are recovered with the arithmetic the FAQ prints — `round(value / gain - offset)`, with gain and
+offset read from `channels.csv` exactly as the recipe reads them. Comparing the two conversions
+instead would lean on claim 6 to check claim 6's own qualifier.
+
+Floors at both ends, because the figure is only interesting strictly between them. Zero would
+mean the qualifier describes damage that does not happen; everything would mean the sentence
+could say so and stop quoting a ratio.
+
+Both pages have to state it, and state the same thing. It is 645 of 768.
+
 ## 0.10.38
 
 ### the argument drawn to scale, against the recording it is drawn from
