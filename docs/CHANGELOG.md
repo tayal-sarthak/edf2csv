@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.38
+
+### the argument drawn to scale, against the recording it is drawn from
+
+`RateComparison.jsx` is the landing page's centrepiece, and it is this project's whole case in
+one picture: three dots for what a 1 Hz sensor recorded over three seconds, then 768 for what a
+resampling reader reports, with the 765 it invented animating in one at a time so the reader
+watches them arrive out of nowhere.
+
+Those numbers are not decoration. They are the argument — and they are properties of a recording
+that ships in this repository. `mixed-rates.edf` is in the fixture table on the correctness page
+with the same figures: "Three seconds gives 768, 384 and 3 rows in three files. The slow channel
+keeps its three genuine readings."
+
+Nothing read the component. Not one line of it, in any test.
+
+Retune that fixture — a rate changed to reach a new case, a record added, which is exactly what
+happens to fixtures — and the page goes on drawing 3 against 768 for a recording that is neither,
+under a sentence promising edf2csv writes exactly these three rows to a file whose name now has a
+different number in it. That is not a broken link. It is the argument being made with figures
+that stopped being true, on the page that exists to make it.
+
+Held to a conversion rather than to the header, because the claim is about rows written: the slow
+channel's file must have `REAL` rows, the fastest channel's must have `REAL + FABRICATED`, the two
+counts printed beside the dots must be those, and the file named in the prose must be the one the
+slow channel is actually written to.
+
 ## 0.10.37
 
 ### the number a weekly job exists because of

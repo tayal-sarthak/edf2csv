@@ -3340,6 +3340,81 @@ ${script}`,
     }
   });
 
+  it('draws the argument the whole tool exists to make to scale', async () => {
+    /*
+      `RateComparison.jsx` is the landing page's centrepiece and the project's whole case in
+      one picture: three dots for what a 1 Hz sensor recorded over three seconds, then 768
+      for what a resampling reader reports, with the 765 it invented animating in one at a
+      time so a reader watches them arrive out of nowhere.
+
+      Those are not decoration. They are the argument, and they are the properties of a
+      recording in this repository — `mixed-rates.edf`, which correctness.md describes in the
+      fixture table with the same figures: "Three seconds gives 768, 384 and 3 rows in three
+      files. The slow channel keeps its three genuine readings."
+
+      The component was read by nothing. Retune that fixture — a rate changed to reach a new
+      case, a record added — and the page goes on drawing 3 against 768 for a recording that
+      is neither, while the sentence under it says edf2csv writes exactly these three rows to
+      a file that now has a different number in its name. A wrong count here is not a broken
+      link; it is the argument being made with numbers that are no longer true, on the page
+      that exists to make it.
+
+      Held to the conversion rather than to the header, since the claim is about rows written:
+      the slow channel's file has to have `REAL` rows and the fast channel's `REAL +
+      FABRICATED`, and the file named in the prose has to be the one the slow channel goes to.
+    */
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const jsx = await read('website/src/components/RateComparison.jsx');
+    const constant = (name) => {
+      const found = new RegExp(`const ${name} = (\\d+);`, 'u').exec(jsx);
+      assert.ok(found, `RateComparison no longer declares ${name}`);
+      return Number(found[1]);
+    };
+    const real = constant('REAL');
+    const fabricated = constant('FABRICATED');
+
+    const base = await mkdtemp(path.join(tmpdir(), 'edf2csv-rates-'));
+    try {
+      const recording = path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf');
+      const out = path.join(base, 'out');
+      const info = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--info', '--json'])).stdout,
+      );
+      const summary = JSON.parse(
+        (await run(process.execPath, [CLI, recording, '--out', out, '--json', '--quiet'])).stdout,
+      );
+      const rows = new Map(summary.files.map((file) => [file.name, file.rows]));
+      const rates = info.channels.map((channel) => channel.sampling_rate_hz);
+      const slow = info.channels.find((c) => c.sampling_rate_hz === Math.min(...rates));
+      const fast = info.channels.find((c) => c.sampling_rate_hz === Math.max(...rates));
+
+      assert.equal(rows.get(slow.output_file), real,
+        `the page draws ${real} recorded samples; ${slow.output_file} has ` +
+          `${rows.get(slow.output_file)} rows`);
+      assert.equal(rows.get(fast.output_file), real + fabricated,
+        `the page draws ${real + fabricated} values a resampler reports; the fastest channel ` +
+          `is written to ${fast.output_file} with ${rows.get(fast.output_file)} rows`);
+
+      // And the figures printed beside the dots, which are typed out rather than interpolated.
+      for (const [shown, want, what] of [
+        [/<b>(\d+)<\/b> samples · (\d+) Hz · (\d+) seconds/u,
+          [real, slow.sampling_rate_hz, info.duration_seconds], 'the recorded row'],
+        [/<b>(\d+)<\/b> values · (\d+) of them interpolated/u,
+          [real + fabricated, fabricated], 'the resampled row'],
+      ]) {
+        const says = shown.exec(jsx);
+        assert.ok(says, `${what} of the comparison is gone or reworded`);
+        assert.deepEqual(says.slice(1).map(Number), want, `${what} states something else`);
+      }
+
+      assert.ok(jsx.includes(`<code>${slow.output_file}</code>`),
+        `the note names a file the slow channel is not written to; it goes to ${slow.output_file}`);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+
   it('mentions the long layout wherever it says a mixed-rate file needs several files', async () => {
     /*
       0.5.0 added --layout long, which is the answer to the question these passages are
