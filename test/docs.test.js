@@ -2976,6 +2976,55 @@ ${script}`,
     assert.deepEqual(typed, [], typed.join('\n'));
 
     /*
+      And how many pages the site's own source believes there are, which is written out in
+      words eight times and read by nothing.
+
+      `prerender.mjs`: "shipping React to eleven static pages", "eleven near-identical title
+      cards would say less than one good one", "a list of eleven section titles, none of which
+      is the thing they came to look up", "the sidebar lists eleven titles". `styles.css`: an
+      "eleven-item sidebar" twice — once justifying the skip link, once the print stylesheet —
+      and "eleven sidebar links, 448px of them" for the phone layout.
+
+      Every one of those is a design decision with the count as its premise: whether a skip
+      link is needed, whether cards beat a list, what a print sheet is spent on, whether a
+      collapsed sidebar swamps a phone screen. Add a twelfth documentation page — the ordinary
+      thing that happens to a documentation site — and all eight understate the problem they
+      exist to describe, with nothing failing.
+
+      The phone comment also had it slightly wrong in the other direction: "eleven links to
+      other pages" when one of the eleven is the page being read. It says so now, and the
+      sentence above it, "the list of the other ten", is checked as the complement.
+
+      The noun list is the weak part of this and the floor is what protects it: a rewording
+      that escaped every phrasing below would leave fewer than seven matches and fail, rather
+      than passing with nothing checked.
+    */
+    const COUNTS = { nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+      fifteen: 15, sixteen: 16 };
+    const NOUN = '(?:static\\s+pages?|title\\s+cards?|section\\s+titles?|titles?' +
+      '|item\\s+sidebar|sidebar\\s+links?)';
+    const counted = new RegExp(
+      `\\b(${Object.keys(COUNTS).join('|')})\\b[\\s-]+(?:[a-z]+[\\s-]+){0,2}?${NOUN}`, 'giu');
+    const believed = [];
+    for (const where of ['website/scripts/prerender.mjs', 'website/src/styles.css']) {
+      const text = await read(where);
+      for (const [phrase, word] of text.matchAll(counted)) {
+        believed.push({ where, phrase: phrase.replace(/\s+/gu, ' '), n: COUNTS[word.toLowerCase()] });
+      }
+    }
+    assert.ok(believed.length >= 7,
+      `the site's source states how many pages it has ${believed.length} times, which is ` +
+        'fewer than the places that say it');
+    for (const { where, phrase, n } of believed) {
+      assert.equal(n, anchors.size, `${where} says "${phrase}" and the site has ${anchors.size}`);
+    }
+
+    const complement = /the list of the other (\w+)/u.exec(await read('website/src/styles.css'));
+    assert.ok(complement, 'the phone-layout comment no longer counts the pages beside this one');
+    assert.equal(COUNTS[complement[1].toLowerCase()], anchors.size - 1,
+      `the stylesheet calls them "the other ${complement[1]}" of ${anchors.size} pages`);
+
+    /*
       And the links out of the repository's own documents, which point at the same pages by
       absolute URL and were resolved by nothing.
 

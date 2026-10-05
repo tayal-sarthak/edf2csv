@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.45
+
+### eleven pages, said eight times and read none
+
+The site's own source writes out how many documentation pages there are, in words, eight times —
+and nothing read any of them.
+
+`prerender.mjs`: "shipping React to eleven static pages", "eleven near-identical title cards
+would say less than one good one", "a list of eleven section titles, none of which is the thing
+they came to look up", "the sidebar lists eleven titles".
+
+`styles.css`: an "eleven-item sidebar" twice, once justifying the skip link and once the print
+stylesheet, and "eleven links, 448px of them" for the phone layout.
+
+Every one is a design decision with the count as its premise: whether a skip link is needed,
+whether cards beat a list, what a printed first sheet gets spent on, whether a collapsed sidebar
+swamps a phone screen. Add a twelfth page — the ordinary thing that happens to a documentation
+site — and all eight understate the problem they exist to describe, with nothing failing and no
+way to find them except by reading both files.
+
+The phone comment had it slightly wrong in the other direction too: "eleven links to other
+pages", when one of the eleven is the page being read. It says so now, and the sentence above
+it — "the list of the other ten" — is checked as the complement rather than as another eleven.
+
+The noun list is the weak part of this and the floor is what protects it: a rewording that
+escaped every phrasing would leave fewer than seven matches and fail, rather than passing with
+nothing checked.
+
 ## 0.10.44
 
 ### twelve lines of script, counted
