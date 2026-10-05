@@ -2216,6 +2216,60 @@ ${script}`,
     assert.equal(spread?.[1], ['', 'one', 'two', 'three', 'four', 'five', 'six'][usingActions.size],
       `dependabot.yml puts those actions across "${spread?.[1]}" workflows, and ` +
         `${usingActions.size} of them use one`);
+
+    /*
+      And how often the two scheduled jobs actually run, which four files state and none read.
+
+      `crossvalidate.yml`: "Weekly rather than per-push, because what it guards against is
+      drift in the arithmetic or in pyEDFlib itself, neither of which moves at the speed of a
+      commit." `fuzz.yml`: "Weekly and on its own." `ci.yml`: "`crossvalidate` is the exception
+      and has its own weekly workflow." CONTRIBUTING.md: "A weekly job runs the two that
+      generate their own inputs."
+
+      Two cron expressions underneath all four, and one character between weekly and daily.
+      Turn `0 7 * * 2` into `0 7 * * *` and a sixty-minute fuzz job runs every morning — the
+      failure mode dependabot.yml's own comment is written about, "a pull request every morning
+      until it gets turned off" — while every one of those four sentences still reads weekly.
+      It fails in the quiet direction too: a schedule narrowed to a day of the month would run
+      monthly under four statements promising a week.
+
+      Read off the cron rather than asserted: whatever cadence the expression describes is the
+      word the file has to use. `dependabot.yml` is excluded because its schedule is a
+      `package-ecosystem` key with its own `interval:`, not a cron, and it says `weekly` there
+      in the only words that field accepts.
+    */
+    const cadenceOf = (expr) => {
+      const [, , dayOfMonth, month, dayOfWeek] = expr.trim().split(/\s+/u);
+      if (dayOfMonth !== '*' || month !== '*') return null;
+      if (/^[0-6]$/u.test(dayOfWeek)) return 'weekly';
+      return dayOfWeek === '*' ? 'daily' : null;
+    };
+    const cadences = new Set();
+    for (const file of workflows) {
+      const text = await read(path.join('.github/workflows', file));
+      const cron = /-\s*cron:\s*'([^']+)'/u.exec(text);
+      if (!cron) continue;
+      const cadence = cadenceOf(cron[1]);
+      assert.ok(cadence,
+        `${file} runs on "${cron[1]}", which is neither weekly nor daily, and its comment ` +
+          'describes a cadence');
+      assert.match(text, new RegExp(cadence, 'iu'),
+        `${file} is scheduled ${cadence} and does not say so`);
+      cadences.add(cadence);
+    }
+    assert.equal(cadences.size, 1,
+      `the scheduled workflows run at ${cadences.size} different cadences, so the files that ` +
+        'describe them in one word cannot all be right');
+    const [cadence] = [...cadences];
+    for (const [where, text] of [
+      ['ci.yml', await read('.github/workflows/ci.yml')],
+      ['CONTRIBUTING.md', await read('CONTRIBUTING.md')],
+    ]) {
+      // `[\s#]+`, not `\s+`: ci.yml wraps this sentence, and a wrapped YAML comment puts a
+      // `#` between the two words.
+      assert.match(text, new RegExp(`${cadence}[\\s#]+(?:job|workflow)`, 'iu'),
+        `${where} describes the scheduled sweeps and does not call them ${cadence}`);
+    }
     assert.deepEqual(
       injected,
       [],

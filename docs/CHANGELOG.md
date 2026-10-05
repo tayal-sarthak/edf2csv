@@ -8,6 +8,32 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.47
+
+### four files saying weekly about two crons
+
+Four files say the two scheduled sweeps run weekly, and nothing read either cron.
+
+`crossvalidate.yml`: "Weekly rather than per-push, because what it guards against is drift in the
+arithmetic or in pyEDFlib itself, neither of which moves at the speed of a commit."
+`fuzz.yml`: "Weekly and on its own." `ci.yml`: "`crossvalidate` is the exception and has its own
+weekly workflow." `CONTRIBUTING.md`: "A weekly job runs the two that generate their own inputs."
+
+Two cron expressions underneath all four, and one character between weekly and daily. Turn
+`0 7 * * 2` into `0 7 * * *` and a sixty-minute fuzz job runs every morning — which is the exact
+failure `dependabot.yml`'s own comment is written about, "a pull request every morning until it
+gets turned off" — while all four sentences still read weekly.
+
+It fails quietly in the other direction too. A schedule narrowed to a day of the month would run
+monthly, under four statements promising a week, and the only symptom would be a sweep that
+stopped finding things.
+
+Read off the cron rather than asserted: whatever cadence the expression describes is the word the
+file has to use, so a deliberate move to daily passes once the comment says daily.
+
+`dependabot.yml` is excluded. Its schedule is a `package-ecosystem` key with its own `interval:`
+rather than a cron, and it already says `weekly` there in the only words that field accepts.
+
 ## 0.10.46
 
 ### one identifier between the bundle and the whole corpus
