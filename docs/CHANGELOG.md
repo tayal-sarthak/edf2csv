@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.43
+
+### the build emits five files and said three
+
+`prerender.mjs` opens by saying what a build leaves behind, and that comment is the only
+description of it anywhere:
+
+> It also emits sitemap.xml, robots.txt, and llms.txt.
+
+It emits five. `llms-full.txt` and `404.html` were not mentioned.
+
+Neither omission is incidental. `llms-full.txt` is the whole documentation corpus in one file —
+the thing README argues a size about, and the reason there are two llms files rather than one.
+`404.html` is the not-found page, which carries its own list of every documentation page and so
+goes stale the same way the sidebar does. Anyone reading this script, or reviewing a change to
+it, had no reason to know either was produced here.
+
+One direction of this was already checked: `vercel.json` may not give headers to a file nothing
+produces. The other direction — a file produced by nothing that says it produces it — was not.
+Both halves are read now, in the same test.
+
+`index.html` is exempt, and only it. The paragraphs above that sentence are entirely about the
+landing page and the per-page HTML, so listing it among the extras would have the sentence
+restating its own subject.
+
+Adding a sixth output without mentioning it fails.
+
 ## 0.10.42
 
 ### two scripts arguing from a word count that doubled

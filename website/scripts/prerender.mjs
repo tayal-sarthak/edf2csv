@@ -7,7 +7,7 @@
   page here gets its own address, its own title and description, its own canonical
   link, and its full text present in the initial HTML with no JavaScript required.
 
-  It also emits sitemap.xml, robots.txt, and llms.txt.
+  It also emits 404.html, sitemap.xml, robots.txt, llms.txt and llms-full.txt.
 */
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';

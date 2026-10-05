@@ -878,6 +878,36 @@ describe('documentation and source agree on their lists', () => {
     );
     assert.deepEqual(missing, [], `vercel.json gives headers to files nothing produces: ${missing.join(', ')}`);
 
+    /*
+      And the other direction: files the prerenderer writes that its own docstring never says
+      it writes.
+
+      The check above asks whether something named has a producer. This asks whether every
+      producer is named — and the script's opening comment, which is the one description of
+      what a build leaves behind, said "It also emits sitemap.xml, robots.txt, and llms.txt"
+      while emitting five: `llms-full.txt` and `404.html` as well.
+
+      Neither omission is incidental. `llms-full.txt` is the entire documentation corpus in one
+      file, the thing README argues a size about and the reason the two llms files exist at
+      all; `404.html` is the not-found page, which carries its own list of every documentation
+      page. A reader of this script — or of a review of it — would have had no reason to know
+      either was produced here.
+
+      `index.html` is exempt, and only it: the paragraphs above that sentence are entirely
+      about the landing page and the per-page HTML, so naming it again in the list of extras
+      would be the sentence restating its own subject.
+    */
+    const docstring = prerender.slice(0, prerender.indexOf('*/'));
+    assert.ok(docstring.length > 200, 'the prerenderer no longer opens by saying what it does');
+    const emitted = [...new Set(
+      [...prerender.matchAll(/path\.join\(DIST, '([^']+)'\)/gu)].map(([, name]) => name),
+    )].filter((name) => name.includes('.') && name !== 'index.html');
+    assert.ok(emitted.length >= 4,
+      `found ${emitted.length} top-level files written by the build, which is too few`);
+    const unsaid = emitted.filter((name) => !docstring.includes(name)).sort();
+    assert.deepEqual(unsaid, [],
+      `the prerenderer writes these and its docstring does not say so: ${unsaid.join(', ')}`);
+
     for (const redirect of config.redirects ?? []) {
       const slug = /^\/docs\/([a-z0-9-]+)$/u.exec(redirect.destination);
       assert.ok(slug, `vercel.json redirects to ${redirect.destination}, which is not a docs page`);
