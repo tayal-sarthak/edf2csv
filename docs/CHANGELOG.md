@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.48
+
+### a build script reaching two files away for a dependency it does not have
+
+0.10.46's new check runs `docs-index.mjs`. That script imported `splitFrontmatter` from
+`markdown.js`, and `markdown.js` imports `marked` — a dependency of the **website**, not of the
+package. CI's `core` job runs `npm ci` at the root only, so the script resolved on a laptop and
+failed on the runner with `Cannot find package 'marked'`.
+
+That is the same failure that stopped 0.5.1 through 0.5.12 publishing, and the reason `slug.js`
+exists as its own module. `frontmatter.js` is now the second such module: a dozen lines of regex
+that need nothing, which a build script was dragging the whole Markdown renderer in to get.
+`markdown.js` re-exports it, the way it already re-exports `slugify`, so every other importer is
+unchanged and the website build is byte-identical.
+
+The guard is the part worth having. Before the test runs that script it follows the script's
+imports through every relative hop and requires each bare specifier to be a package the root
+`package.json` actually declares. The import that broke this was two files away, which is why it
+is walked rather than assumed.
+
+`prerender.mjs` is deliberately exempt. It drives Vite and renders React, so it belongs to the
+website job and could never run under the root install. The rule is for the scripts this suite
+executes, and there is one of those.
+
+Restoring the old import reproduces the runner's failure locally, in full: "website/src/lib/
+markdown.js reaches 'marked', which the root install does not have".
+
 ## 0.10.47
 
 ### four files saying weekly about two crons

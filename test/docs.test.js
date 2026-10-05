@@ -5834,6 +5834,47 @@ ${script}`,
       The other half is the import graph: one module may reach for the index, and nothing under
       `website/src` may reach for the content directory or a Markdown file at all.
     */
+    /*
+      Before running it: nothing this script reaches may be a package the root install does
+      not have.
+
+      This test ran `docs-index.mjs`, which imported `splitFrontmatter` from `markdown.js`,
+      which imports `marked` — a dependency of the *website*. CI's `core` job runs `npm ci` at
+      the root only, so the script resolved here and failed there with
+      `Cannot find package 'marked'`. That is the same failure that stopped 0.5.1 through
+      0.5.12 publishing and the reason `slug.js` is its own module; `frontmatter.js` is now the
+      second such module, and `markdown.js` re-exports it so nothing else changed.
+
+      Walked rather than assumed, because the import that broke it was two files away and
+      added for twelve lines of regex. `prerender.mjs` is deliberately not held to this — it
+      drives Vite and renders React, so it belongs to the website job and could never run
+      here. The rule is for the scripts this suite executes, and this is the one.
+    */
+    const manifest = JSON.parse(await read('package.json'));
+    const rootHas = new Set([
+      ...Object.keys(manifest.dependencies ?? {}),
+      ...Object.keys(manifest.devDependencies ?? {}),
+    ]);
+    const reached = new Set();
+    const outside = [];
+    const follow = async (file) => {
+      if (reached.has(file)) return;
+      reached.add(file);
+      for (const [, from] of (await read(file))
+        .matchAll(/^\s*(?:import|export)[^\n]*?from\s*['"]([^'"\n]+)['"]/gmu)) {
+        if (from.startsWith('node:')) continue;
+        if (from.startsWith('.')) {
+          await follow(path.join(path.dirname(file), from));
+        } else if (!rootHas.has(from.split('/')[0])) {
+          outside.push(`${file} reaches "${from}", which the root install does not have`);
+        }
+      }
+    };
+    await follow('website/scripts/docs-index.mjs');
+    assert.ok(reached.size >= 2,
+      `followed ${reached.size} files out of the index generator, which cannot be right`);
+    assert.deepEqual(outside, [], outside.join('\n'));
+
     await run(process.execPath, [path.join(ROOT, 'website/scripts/docs-index.mjs')]);
     const index = await read('website/src/generated/docs-index.json');
     const entries = JSON.parse(index);

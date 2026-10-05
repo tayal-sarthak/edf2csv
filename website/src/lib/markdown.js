@@ -8,24 +8,15 @@
 import { marked } from 'marked';
 import { highlight } from './highlight.js';
 import { slugify } from './slug.js';
+import { splitFrontmatter } from './frontmatter.js';
 
 export { slugify };
 
 marked.setOptions({ gfm: true, breaks: false });
 
-/** Pull the leading frontmatter block off a Markdown file. */
-export function splitFrontmatter(raw) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(raw);
-  if (!match) return { meta: {}, body: raw };
-
-  const meta = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const pair = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
-    if (!pair) continue;
-    meta[pair[1]] = pair[2].trim().replace(/^["'](.*)["']$/, '$1');
-  }
-  return { meta, body: raw.slice(match[0].length) };
-}
+// Re-exported from frontmatter.js, which needs nothing, so a build script can have it
+// without `marked`. See the comment there.
+export { splitFrontmatter };
 
 
 

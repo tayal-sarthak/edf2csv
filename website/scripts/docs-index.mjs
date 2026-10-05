@@ -9,7 +9,7 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { splitFrontmatter } from '../src/lib/markdown.js';
+import { splitFrontmatter } from '../src/lib/frontmatter.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = path.join(here, '..', 'content');
