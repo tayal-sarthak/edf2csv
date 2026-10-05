@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.41
+
+### the one page describing the check said it exits agreed
+
+The correctness page states the convention this repository holds every sweep to:
+
+> where that is unavailable it says it checked nothing and exits 2, which since 0.9.57 is the
+> answer every sweep here gives to "did not run" — a status meaning that must not be the status
+> meaning "agreed".
+
+Eleven lines below it, about the cross-check:
+
+> Without pyEDFlib installed it says so and exits **0** rather than pretending to have checked
+> anything.
+
+Zero is the status meaning agreed. The sentence promised the opposite of what it described, on
+the page a reader consults to decide what a green run means.
+
+`compare.py` is right — it raises `SystemExit(2)` — and the whole reason `crossvalidate.yml` runs
+on its own schedule is that it must: "a check whose entire value is that it compares against an
+independent implementation must not skip itself when that implementation fails to install: a
+green tick meaning 'pip was unhappy' is worse than no tick." So the one document describing that
+arrangement was the one saying it produces the green tick.
+
+Measured rather than read. The import is forced to fail with a stub package ahead of the real one
+on `PYTHONPATH`, so this answers the same on a machine with pyEDFlib installed and on one
+without — and then every statement the page makes about a sweep that could not run is held to the
+number the convention sentence itself names, rather than to a 2 written into the test.
+
+Changing `SystemExit(2)` to `SystemExit(0)` fails. So does the page saying 0 again.
+
 ## 0.10.40
 
 ### a size checked on one page and stated on two

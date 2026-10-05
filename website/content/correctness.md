@@ -43,7 +43,7 @@ Compared 16,943 sample values bit for bit, 120 annotations and 750 header fields
 Every value agreed.
 ```
 
-Without pyEDFlib installed it says so and exits 0 rather than pretending to have checked anything.
+Without pyEDFlib installed it says so and exits 2 rather than pretending to have checked anything.
 
 A quarter of the recordings are BDF rather than EDF, where a sample is three bytes instead of two. The 24-bit path is where a reader is most likely to be quietly wrong: the sign has to be extended by hand, and a value that comes out unsigned is not obviously wrong to look at — it is a large positive number where a large negative one belongs. Half of them carry EDF+ or BDF+ events, so the annotation reader is compared too, including an event with no duration and one whose duration is zero. Half of those carry the annotation channel ahead of the signal rather than after it, which EDF+ leaves open and real files do both ways: a comparison that addresses a channel by where it sits in the file is right only while nothing sits in front of that channel. On that one point the two disagree by design: pyEDFlib reports a missing duration as `-1.0`, edf2csv leaves the cell empty, on the grounds that a duration nobody recorded is not a duration of minus one second.
 

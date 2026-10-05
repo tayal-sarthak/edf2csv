@@ -19,7 +19,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { cp, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -2281,6 +2281,59 @@ ${script}`,
       /pty` module; where that is unavailable it says it checked nothing and exits 2/u,
       'the page describes what the terminal sweep does without python3 differently',
     );
+
+    /*
+      And the other sweep that can decline to run, which the same page got backwards.
+
+      The sentence above states the convention: 2 "is the answer every sweep here gives to
+      'did not run' — a status meaning that must not be the status meaning 'agreed'". Eleven
+      lines below it, about the cross-check: "Without pyEDFlib installed it says so and exits
+      0 rather than pretending to have checked anything."
+
+      Zero *is* the status meaning agreed. `compare.py` raises `SystemExit(2)`, and
+      `crossvalidate.yml` exists because of it — "a check whose entire value is that it
+      compares against an independent implementation must not skip itself when that
+      implementation fails to install: a green tick meaning 'pip was unhappy' is worse than no
+      tick." The page describing that check told a reader the opposite, on the page they
+      consult to decide what a green run means.
+
+      Measured, not read: the import is forced to fail with a stub package ahead of the real
+      one on `PYTHONPATH`, so this answers the same on a machine with pyEDFlib installed and
+      on one without. Then every statement the page makes about a sweep that could not run has
+      to be the number the convention sentence itself names.
+    */
+    const blocked = await mkdtemp(path.join(tmpdir(), 'edf2csv-nopyedflib-'));
+    try {
+      await mkdir(path.join(blocked, 'pyedflib'));
+      await writeFile(path.join(blocked, 'pyedflib/__init__.py'),
+        "raise ImportError('blocked, to check what the cross-check does without it')\n");
+      const declined = await run('python3', [path.join(ROOT, 'test/crossvalidate/compare.py')], {
+        cwd: blocked,
+        env: { ...process.env, PYTHONPATH: blocked },
+      }).catch((error) => error);
+      assert.match(declined.stdout ?? '', /did not run/u,
+        'the cross-check no longer says it did not run when pyEDFlib is missing');
+
+      const convention = /exits (\d), which since [\d.]+ is the answer every sweep here gives/u
+        .exec(page);
+      assert.ok(convention, 'the page no longer states the convention for "did not run"');
+      assert.equal(String(declined.code ?? 0), convention[1],
+        `the cross-check exits ${declined.code ?? 0} without pyEDFlib and the page's ` +
+          `convention is ${convention[1]}`);
+
+      for (const pattern of [
+        /Without pyEDFlib installed it says so and exits (\d)/u,
+        /A sweep that cannot run at all exits (\d)/u,
+      ]) {
+        const says = pattern.exec(page);
+        assert.ok(says, `the page no longer says ${pattern.source}`);
+        assert.equal(says[1], convention[1],
+          `the page says a sweep that did not run exits ${says[1]}, and its own convention ` +
+            `is ${convention[1]}`);
+      }
+    } finally {
+      await rm(blocked, { recursive: true, force: true });
+    }
 
     const workflows = await readdir(path.join(ROOT, '.github/workflows'));
     let yaml = '';
