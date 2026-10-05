@@ -2,7 +2,7 @@
   Writes a small index of the documentation for the landing page to import.
 
   The documentation pages themselves are prerendered to static HTML, so the browser
-  bundle has no reason to carry 37,000 words of Markdown. It needs the titles and
+  bundle has no reason to carry about 78,000 words of Markdown. It needs the titles and
   descriptions for the sidebar and the card grid, and nothing else.
 */
 

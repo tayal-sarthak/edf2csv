@@ -2,7 +2,7 @@
   Turns every documentation page into real static HTML at build time.
 
   A client-rendered app behind hash routes has exactly one URL as far as a crawler is
-  concerned, so 37,000 words of documentation would be invisible to search engines and
+  concerned, so about 78,000 words of documentation would be invisible to search engines and
   to the AI crawlers that answer questions like "how do I convert EDF to CSV". Each
   page here gets its own address, its own title and description, its own canonical
   link, and its full text present in the initial HTML with no JavaScript required.

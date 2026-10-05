@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.42
+
+### two scripts arguing from a word count that doubled
+
+Two build scripts open by justifying themselves with the same figure, and it was wrong by a
+factor of two.
+
+`prerender.mjs`: "a client-rendered app behind hash routes has exactly one URL as far as a
+crawler is concerned, so **37,000 words** of documentation would be invisible to search engines
+and to the AI crawlers that answer questions like 'how do I convert EDF to CSV'."
+
+`docs-index.mjs`: "the browser bundle has no reason to carry **37,000 words** of Markdown."
+
+`website/content` holds about 78,000.
+
+The figure was true once and the documentation doubled underneath it, which is the ordinary fate
+of a number written into a comment beside the thing it measures. Both arguments are stronger than
+they were claiming — a prerenderer and a trimmed bundle are easier to justify at 78,000 words than
+at 37,000 — but the premise each rests on had stopped being a fact about this repository.
+
+Checked to a tenth rather than exactly, and the prose now says "about", because what either
+sentence needs is an order of magnitude: the argument holds at 78,000 and at 86,000, and a guard
+that failed every time a paragraph was added would be deleted inside a month. A tenth still
+catches what happened here, several times over.
+
 ## 0.10.41
 
 ### the one page describing the check said it exits agreed

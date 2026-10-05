@@ -5609,6 +5609,48 @@ ${script}`,
       'CONTRIBUTING does not say what estimate takes');
   });
 
+  it('sizes the documentation the way the two build scripts argue from', async () => {
+    /*
+      Two build scripts open by justifying themselves with the same figure, and it was wrong
+      by a factor of two.
+
+      `prerender.mjs`: "a client-rendered app behind hash routes has exactly one URL as far as
+      a crawler is concerned, so 37,000 words of documentation would be invisible to search
+      engines". `docs-index.mjs`: "the browser bundle has no reason to carry 37,000 words of
+      Markdown."
+
+      `website/content` holds about 78,000. The figure was true once and the documentation
+      doubled under it — which is the ordinary fate of a number written into a comment beside
+      the thing it measures, and the reason both arguments are stronger than they claim.
+
+      Checked to a tenth rather than exactly, and written as "about", because what either
+      sentence needs is an order of magnitude: a prerenderer is worth having at 78,000 words
+      and at 86,000, and a guard that failed on every paragraph added would be deleted inside
+      a month. A tenth still catches the drift that happened here several times over.
+    */
+    let words = 0;
+    const pages = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((name) => name.endsWith('.md'));
+    for (const name of pages) {
+      words += (await read(path.join('website/content', name))).split(/\s+/u).filter(Boolean).length;
+    }
+    assert.ok(words > 10_000, `the documentation came to ${words} words, which cannot be right`);
+
+    const sized = [];
+    for (const where of ['website/scripts/prerender.mjs', 'website/scripts/docs-index.mjs']) {
+      for (const [, stated] of (await read(where)).matchAll(/about ([\d,]+) words/gu)) {
+        sized.push({ where, stated: Number(stated.replaceAll(',', '')) });
+      }
+    }
+    assert.equal(sized.length, 2,
+      `both build scripts argue from the size of the documentation; found ${sized.length}`);
+    for (const { where, stated } of sized) {
+      assert.ok(Math.abs(stated - words) <= words / 10,
+        `${where} argues from ${stated.toLocaleString()} words and the documentation is ` +
+          `${words.toLocaleString()}`);
+    }
+  });
+
   it('lists every failure the site build refuses to ship', async () => {
     /*
       `website/README.md` heads a section "What the build refuses to ship" and explains that
