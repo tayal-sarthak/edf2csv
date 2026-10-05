@@ -5756,6 +5756,68 @@ ${script}`,
     }
   });
 
+  it('keeps the documentation out of the browser bundle, as the bundle says it does', async () => {
+    /*
+      `website/src/lib/content.js` is eleven lines and the whole of its comment is a claim
+      about the build: "Only the documentation index reaches the browser bundle. The pages
+      themselves are prerendered to static HTML at build time."
+
+      What makes that true is four words in `docs-index.mjs`. `readDocs()` returns every page
+      with its `body`, because the prerenderer needs the prose; `main()` then maps each entry
+      down to `{slug, title, description, order}` before writing the file the bundle imports.
+      Write `found` where it writes `docs` — one identifier — and all of the documentation goes
+      into the JavaScript every visitor downloads.
+
+      Nothing about that fails. The site builds, every page renders, every link resolves, the
+      prerenderer still writes its static HTML, and the only symptom is a bundle grown by the
+      size of the documentation. It is the same shape as the 50 kB of ghost dots the landing
+      page used to ship in its markup: invisible to everyone who was not measuring.
+
+      Checked by regenerating the index and looking for the pages' own prose in it, rather than
+      by naming the keys `main()` is supposed to drop — a renamed field would pass that and
+      this does not care what the field is called.
+
+      The other half is the import graph: one module may reach for the index, and nothing under
+      `website/src` may reach for the content directory or a Markdown file at all.
+    */
+    await run(process.execPath, [path.join(ROOT, 'website/scripts/docs-index.mjs')]);
+    const index = await read('website/src/generated/docs-index.json');
+    const entries = JSON.parse(index);
+    assert.ok(entries.length >= 10, `the index carries ${entries.length} pages`);
+
+    let probed = 0;
+    for (const name of (await readdir(path.join(ROOT, 'website/content')))
+      .filter((page) => page.endsWith('.md'))) {
+      const text = await read(path.join('website/content', name));
+      const body = text.slice(text.indexOf('\n---\n') + 5);
+      // A long line of this page's prose, which the index has no business containing.
+      const line = body.split('\n').find((one) => one.length >= 90 && !one.startsWith('|'));
+      assert.ok(line, `${name} has no long line of prose to look for`);
+      const sentence = line.slice(20, 80);
+      assert.ok(!index.includes(sentence),
+        `the browser bundle's index carries prose from ${name}: "${sentence}"`);
+      probed++;
+    }
+    assert.ok(probed >= 10, `only ${probed} pages were looked for in the index`);
+
+    const reaching = [];
+    for (const dir of ['website/src', 'website/src/lib', 'website/src/components']) {
+      for (const name of await readdir(path.join(ROOT, dir))) {
+        if (!/\.(?:jsx?|mjs)$/u.test(name)) continue;
+        const text = await read(path.join(dir, name));
+        // Import specifiers only. A link to `blob/main/docs/CHANGELOG.md` in the footer is a
+        // URL, not a module, and matching bare strings reported App.jsx for having one.
+        const specifiers = [...text.matchAll(/^\s*import[^\n]*?['"]([^'"\n]+)['"]/gmu)]
+          .map(([, from]) => from);
+        if (specifiers.some((from) => /docs-index\.json$|\/content\/|\.md$/u.test(from))) {
+          reaching.push(`${dir}/${name}`);
+        }
+      }
+    }
+    assert.deepEqual(reaching, ['website/src/lib/content.js'],
+      `only content.js may reach the documentation from the bundle; these do: ${reaching.join(', ')}`);
+  });
+
   it('lists every failure the site build refuses to ship', async () => {
     /*
       `website/README.md` heads a section "What the build refuses to ship" and explains that

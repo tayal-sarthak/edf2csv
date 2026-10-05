@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.46
+
+### one identifier between the bundle and the whole corpus
+
+`website/src/lib/content.js` is eleven lines, and the whole of its comment is a claim about the
+build: "Only the documentation index reaches the browser bundle. The pages themselves are
+prerendered to static HTML at build time."
+
+What makes that true is one identifier in `docs-index.mjs`. `readDocs()` returns every page with
+its `body`, because the prerenderer needs the prose. `main()` then maps each entry down to
+`{slug, title, description, order}` before writing the file the bundle imports. Write `found`
+where it writes `docs` and the whole documentation goes into the JavaScript every visitor
+downloads.
+
+Nothing about that fails. The site builds, every page renders, every link resolves, the
+prerenderer still writes its static HTML, and the only symptom is a bundle grown by the size of
+the documentation. It is the same shape as the 50 kB of ghost dots the landing page used to ship
+in its markup, which is written up in `RateComparison.jsx` as the reason that component draws
+its dots in the browser: invisible to everyone who was not measuring.
+
+Checked by regenerating the index and looking for the pages' own prose in it, rather than by
+naming the fields `main()` is supposed to drop — a renamed field would pass that, and this does
+not care what the field is called. Making the mutation reports the page it found the prose in.
+
+The other half is the import graph: one module may reach for the index, and nothing under
+`website/src` may import from the content directory or a Markdown file. Import specifiers only,
+since the footer links `blob/main/docs/CHANGELOG.md` and a check reading bare strings reported
+`App.jsx` for having a URL.
+
 ## 0.10.45
 
 ### eleven pages, said eight times and read none
