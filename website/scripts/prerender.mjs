@@ -136,7 +136,7 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  * most people arrive at documentation — had to find their way to the homepage to switch,
  * and back again.
  *
- * Twelve lines of inline script rather than shipping React to eleven static pages. It
+ * Thirteen lines of inline script rather than shipping React to eleven static pages. It
  * cycles the same three states in the same order and writes the same storage key, so the
  * two controls are the same control.
  */

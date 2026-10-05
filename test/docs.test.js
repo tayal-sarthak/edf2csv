@@ -996,6 +996,32 @@ describe('documentation and source agree on their lists', () => {
         `${where} spells the theme key ${spelt} times, not ${wanted} — a copy was added or moved`);
     }
 
+    /*
+      And how long that inlined script is, which is the reason it exists.
+
+      The comment above it weighs one thing against another: "Twelve lines of inline script
+      rather than shipping React to eleven static pages." That is the justification for a
+      hand-written control duplicating a React one — small enough to inline, cheap enough to
+      prefer over hydrating eleven pages for a button — and the number is the whole of the
+      argument. It is thirteen.
+
+      Off by one is not the interesting case. A script that drifted to forty lines would still
+      read "twelve" to a reviewer deciding whether the duplication is still worth it, which is
+      the one question this comment exists to answer, and the answer changes with the length.
+
+      Counted off the template literal rather than off a line range, so adding a line to the
+      script is what fails rather than moving it.
+    */
+    const COUNTS = { ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+      sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20 };
+    const inlined = /const THEME_TOGGLE_SCRIPT = `([\s\S]*?)`;/u.exec(prerender);
+    assert.ok(inlined, 'the prerenderer no longer inlines a theme script');
+    const long = inlined[1].trim().split('\n').length;
+    const weighed = /(\w+) lines of inline script/u.exec(prerender);
+    assert.ok(weighed, 'the comment weighing that script against React is gone or reworded');
+    assert.equal(COUNTS[weighed[1].toLowerCase()], long,
+      `the comment calls it ${weighed[1]} lines of inline script and it is ${long}`);
+
     const painted = (theme) => {
       const block = theme === 'dark'
         ? styles.slice(0, styles.indexOf("[data-theme='light']"))

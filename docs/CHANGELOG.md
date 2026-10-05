@@ -8,6 +8,26 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.44
+
+### twelve lines of script, counted
+
+The theme toggle on the documentation pages is hand-written rather than React, and the comment
+above it is the justification:
+
+> **Twelve lines** of inline script rather than shipping React to eleven static pages.
+
+It is thirteen.
+
+Off by one is not what makes this worth a version. That sentence is the whole argument for a
+control that duplicates a React one — small enough to inline, cheap enough to prefer over
+hydrating eleven pages for a button — and it is the one thing a reviewer reads when deciding
+whether the duplication still pays. A script that had drifted to forty lines would still have
+read "twelve" to them, and the answer to that question changes with the length.
+
+Counted off the template literal rather than off a line range, so adding a line to the script is
+what fails, not moving it.
+
 ## 0.10.43
 
 ### the build emits five files and said three
