@@ -908,6 +908,52 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(unsaid, [],
       `the prerenderer writes these and its docstring does not say so: ${unsaid.join(', ')}`);
 
+    /*
+      And the fonts, which are two files named by hand in eight places.
+
+      `public/fonts/` holds `SpaceGrotesk.woff2` and `JetBrainsMono.woff2`. The stylesheet
+      names both in `@font-face` srcs; `index.html` preloads both; the prerenderer preloads
+      both twice over, once in the documentation head and once in the 404's. Nothing resolved
+      any of them.
+
+      The failure is quiet in both directions. A `@font-face` src that 404s renders the whole
+      site in a system fallback, which looks like a styling choice rather than a missing file;
+      a preload that 404s wastes a request on every page and tells nobody. Neither throws,
+      neither fails a build, and `vercel.json` caches `/fonts/` for a year as `immutable`, so
+      a name that stops matching is a name that stops matching for a long time.
+
+      Both directions: every `/fonts/...` reference has to name a file that is there, and every
+      file that is there has to be referenced — a shipped font nothing asks for is weight in the
+      deploy and a rename half-done.
+    */
+    const fonts = new Set(await readdir(path.join(ROOT, 'website/public/fonts')));
+    assert.ok(fonts.size >= 2, `public/fonts holds ${fonts.size} files`);
+    const asked = new Map();
+    for (const where of ['website/index.html', 'website/src/styles.css',
+      'website/scripts/prerender.mjs']) {
+      for (const [, file] of (await read(where)).matchAll(/\/fonts\/([\w.-]+)/gu)) {
+        asked.set(file, [...(asked.get(file) ?? []), where]);
+      }
+    }
+    assert.ok([...asked.values()].flat().length >= 6,
+      `the site names a font ${[...asked.values()].flat().length} times, which is too few`);
+    const absent = [...asked].filter(([file]) => !fonts.has(file))
+      .map(([file, where]) => `${[...new Set(where)].join(', ')} loads /fonts/${file}, which public/fonts has not`);
+    assert.deepEqual(absent, [], absent.join('\n'));
+    const unasked = [...fonts].filter((file) => !asked.has(file));
+    assert.deepEqual(unasked, [],
+      `public/fonts ships these and nothing loads them: ${unasked.join(', ')}`);
+
+    // And every face the stylesheet declares is preloaded, which is the whole point of
+    // shipping them: a face discovered only when the CSS parses is a face that arrives late.
+    const faced = [...(await read('website/src/styles.css'))
+      .matchAll(/@font-face\s*\{[^}]*\/fonts\/([\w.-]+)/gu)].map(([, file]) => file);
+    assert.ok(faced.length >= 2, `the stylesheet declares ${faced.length} faces`);
+    for (const file of faced) {
+      assert.ok((asked.get(file) ?? []).includes('website/index.html'),
+        `the stylesheet declares /fonts/${file} and index.html does not preload it`);
+    }
+
     for (const redirect of config.redirects ?? []) {
       const slug = /^\/docs\/([a-z0-9-]+)$/u.exec(redirect.destination);
       assert.ok(slug, `vercel.json redirects to ${redirect.destination}, which is not a docs page`);

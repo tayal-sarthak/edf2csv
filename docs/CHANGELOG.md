@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.49
+
+### two fonts named eight times and resolved nowhere
+
+The site ships two fonts and names them by hand in eight places.
+
+`public/fonts/` holds `SpaceGrotesk.woff2` and `JetBrainsMono.woff2`. The stylesheet names both
+in `@font-face` srcs. `index.html` preloads both. The prerenderer preloads both twice over — once
+in the documentation head, once in the 404's. Nothing resolved any of them.
+
+The failure is quiet in both directions. A `@font-face` src that 404s renders the whole site in a
+system fallback, which reads as a styling choice rather than a missing file. A preload that 404s
+spends a request on every page and tells nobody. Neither throws, neither fails a build, and
+`vercel.json` caches `/fonts/` for a year as `immutable`, so a name that stops matching stops
+matching for a long time.
+
+Both directions are read now. Every `/fonts/...` reference has to name a file that is there, and
+every file that is there has to be referenced — a shipped font nothing asks for is weight in the
+deploy and a rename half-finished.
+
+And every face the stylesheet declares has to be preloaded, which is the reason for self-hosting
+them at all: a face discovered only when the CSS parses is a face that arrives after the text it
+is for.
+
 ## 0.10.48
 
 ### a build script reaching two files away for a dependency it does not have
