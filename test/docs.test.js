@@ -2968,6 +2968,71 @@ ${script}`,
     );
   });
 
+  it('offsets an in-page jump once, as the stylesheet says it must', async () => {
+    /*
+      `styles.css` carries an instruction not to do something again, and nothing enforced it.
+
+      "`scroll-padding-top` here and `scroll-margin-top` on the headings were both 6rem, and
+      the two add: a contents entry left its heading 192px down the viewport instead of 96,
+      which is 124px clear of a 68px header. `scroll-padding-top` is the one kept because it
+      belongs to the scroller and so covers every target, including the skip link's `#main` and
+      any anchor added later; the pair on h2 and h3 covered exactly those two elements."
+
+      Re-adding `scroll-margin-top` to a heading is a one-line edit that looks like a fix. It
+      brings the bug straight back, and the symptom is a jump that lands a bit low — not broken,
+      just wrong, on every contents entry on every page, with the paragraph explaining why it
+      must not exist sitting ten lines above it.
+
+      So the absence is asserted, not just the value. Then the three figures, which are the
+      whole of the argument: the offset the scroller keeps, the header it is clearing, and the
+      arithmetic between them.
+
+      The arithmetic rests on `1rem` being 16px, which holds only while nothing sets a root
+      font-size. That is asserted too, because the comment would otherwise be quietly wrong
+      about a number it never states.
+    */
+    const sheet = await read('website/src/styles.css');
+    const comment = sheet.slice(sheet.indexOf('One offset for an in-page jump'));
+    const explanation = comment.slice(0, comment.indexOf('*/'));
+    assert.ok(explanation.length > 300, 'the one-offset explanation is gone from the stylesheet');
+
+    assert.doesNotMatch(sheet, /^\s*scroll-margin-top\s*:/mu,
+      'scroll-margin-top is back in the stylesheet, and it adds to scroll-padding-top — the ' +
+        'bug the comment above it is about');
+
+    const declared = /\n\s*scroll-padding-top:\s*([\d.]+)rem;/u.exec(sheet);
+    assert.ok(declared, 'the scroller no longer pads for the header at all');
+    const said = /were both ([\d.]+)rem/u.exec(explanation);
+    assert.ok(said, 'the explanation no longer says what the two offsets were');
+    assert.equal(said[1], declared[1],
+      `the scroller pads ${declared[1]}rem and the comment calls it ${said[1]}rem`);
+
+    // No root font-size, so a rem is the browser's 16px and the pixel figures below mean
+    // what they say.
+    assert.doesNotMatch(sheet, /\bhtml\s*\{[^}]*font-size\s*:/u,
+      'a root font-size makes every pixel figure in that comment something else');
+    const rem = 16;
+    const offset = Number(declared[1]) * rem;
+
+    const header = /\n\s*height:\s*(\d+)px;/u.exec(sheet.slice(sheet.indexOf('.nav {')));
+    assert.ok(header, 'the header no longer declares a height');
+    // `\s+` between every word: the comment wraps mid-figure, between "124px" and "clear".
+    const doubled = /(\d+)px\s+down\s+the\s+viewport/u.exec(explanation);
+    assert.ok(doubled, 'the comment no longer says how far down the doubled offset put a heading');
+    assert.equal(Number(doubled[1]), offset * 2,
+      `two ${declared[1]}rem offsets add to ${offset * 2}px and the comment says ${doubled[1]}`);
+
+    const clear = /(\d+)px\s+clear\s+of\s+a\s+(\d+)px\s+header/u.exec(explanation);
+    assert.ok(clear, 'the comment no longer says what that left clear of the header');
+    assert.equal(Number(clear[2]), Number(header[1]),
+      `the header is ${header[1]}px and the comment calls it ${clear[2]}px`);
+    assert.equal(Number(clear[1]), offset * 2 - Number(header[1]),
+      `${offset * 2}px above a ${header[1]}px header leaves ` +
+        `${offset * 2 - Number(header[1])}px clear, and the comment says ${clear[1]}`);
+    assert.ok(explanation.includes(` instead of ${offset}`),
+      `the comment no longer says a single offset puts a heading ${offset}px down`);
+  });
+
   it('links to pages the site actually serves', async () => {
     /*
       The site serves its pages under /docs/, and a link written without that prefix is a 404

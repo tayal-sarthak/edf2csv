@@ -8,6 +8,31 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.50
+
+### a comment saying do not add this back, and nothing stopping it
+
+`styles.css` carries an instruction not to do something again, and nothing enforced it.
+
+> `scroll-padding-top` here and `scroll-margin-top` on the headings were both 6rem, and the two
+> add: a contents entry left its heading 192px down the viewport instead of 96, which is 124px
+> clear of a 68px header. `scroll-padding-top` is the one kept because it belongs to the scroller
+> and so covers every target, including the skip link's `#main` and any anchor added later; the
+> pair on h2 and h3 covered exactly those two elements.
+
+Re-adding `scroll-margin-top` to a heading is a one-line edit that looks like a fix. It brings the
+bug straight back, and the symptom is a jump that lands a bit low — not broken, just wrong, on
+every contents entry on every page, with the paragraph explaining why it must not exist sitting
+ten lines above it.
+
+So the absence is asserted now, not only the value. Then the three figures, which are the whole of
+the argument: the offset the scroller keeps, the height of the header it is clearing, and the
+arithmetic between them.
+
+The arithmetic rests on `1rem` being 16px, which holds only while nothing sets a root font-size.
+That is asserted too — otherwise the comment would be quietly wrong about a number it never
+states, which is the kind of dependency a figure in a comment never admits to having.
+
 ## 0.10.49
 
 ### two fonts named eight times and resolved nowhere
