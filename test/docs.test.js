@@ -1068,6 +1068,48 @@ describe('documentation and source agree on their lists', () => {
     assert.equal(COUNTS[weighed[1].toLowerCase()], long,
       `the comment calls it ${weighed[1]} lines of inline script and it is ${long}`);
 
+    /*
+      And the analytics tag, which `index.html` explains the absence of and nothing checked.
+
+      "The analytics tag is added by scripts/prerender.mjs, which adds it to every other page
+      too. It is not here because Vite tries to resolve a root-absolute script src at build
+      time, and this one is served by Vercel at request time and exists in no build."
+
+      Two claims, and the interesting one is "every other page". The prerenderer writes three
+      kinds of document — the documentation pages, the 404, and the landing page it enriches
+      after Vite has built it — and each gets the tag from a different place: two template
+      literals and one `replace('</head>', …)`. A fourth kind added without it, or one of the
+      three losing it in a refactor, means analytics quietly stops covering part of the site.
+      Nothing renders differently and nothing fails.
+
+      Counted rather than matched per site: every head the prerenderer composes has to be
+      matched by one use of the tag. That is the claim — every page, not most of them — and it
+      survives the three being written three different ways.
+
+      Counting `</head>` is the wrong basis and was the first thing tried: the landing page's
+      line is `replace('</head>', ` + '`…</head>`' + `)`, which holds the string twice, as the
+      needle and in the replacement. The head *openings* are two, since the landing page's head
+      comes from the file Vite built. So a composition site is a `<head>` written here or a
+      `</head>` rewritten here, which is three.
+
+      The other half is the absence here, which is load-bearing in the opposite direction: put
+      the tag back into index.html and Vite fails the build trying to resolve it.
+    */
+    const heads = [...prerender.matchAll(/<head>|replace\('<\/head>'/gu)].length;
+    assert.ok(heads >= 3, `the prerenderer composes ${heads} document heads, which is too few`);
+    const tagged = [...prerender.matchAll(/\$\{ANALYTICS\}|^\s*ANALYTICS,$/gmu)].length;
+    assert.equal(tagged, heads,
+      `the prerenderer writes ${heads} heads and puts the analytics tag in ${tagged} of them`);
+
+    const analytics = /const ANALYTICS = `([^`]*)`;/u.exec(prerender);
+    assert.ok(analytics, 'the prerenderer no longer declares an analytics tag');
+    const src = /src="([^"]+)"/u.exec(analytics[1]);
+    assert.ok(src, 'the analytics tag no longer loads a script');
+    assert.ok(!index.includes(src[1]),
+      `index.html carries ${src[1]}, which Vite resolves at build time and no build writes`);
+    assert.match(index, /analytics tag is added by scripts\/prerender\.mjs/u,
+      'index.html no longer says where the analytics tag comes from');
+
     const painted = (theme) => {
       const block = theme === 'dark'
         ? styles.slice(0, styles.indexOf("[data-theme='light']"))

@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.51
+
+### a tag on every page, counted on none
+
+`website/index.html` explains why something is not in it, and nothing checked either half of the
+explanation:
+
+> The analytics tag is added by scripts/prerender.mjs, which adds it to every other page too. It
+> is not here because Vite tries to resolve a root-absolute script src at build time, and this one
+> is served by Vercel at request time and exists in no build.
+
+"Every other page" is the interesting claim. The prerenderer writes three kinds of document — the
+documentation pages, the 404, and the landing page it enriches after Vite has built it — and each
+takes the tag from a different place: two template literals and one `replace('</head>', …)`. A
+fourth kind added without it, or one of the three losing it in a refactor, means analytics quietly
+stops covering part of the site. Nothing renders differently and nothing fails.
+
+So it is counted: every head the prerenderer composes has to be matched by one use of the tag.
+
+Counting `</head>` is the wrong basis and was the first thing I tried. The landing page's line
+holds that string twice — once as the needle, once in the replacement — so the count came out one
+too high and reported a defect that was not there. Head *openings* are two, since the landing
+page's head comes from the file Vite built. A composition site is a `<head>` written here or a
+`</head>` rewritten here, which is three.
+
+The other half is the absence, which is load-bearing in the opposite direction: put the tag back
+into index.html and Vite fails the build trying to resolve a path no build writes.
+
 ## 0.10.50
 
 ### a comment saying do not add this back, and nothing stopping it
