@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.52
+
+### a decorative canvas held to the mechanism it describes
+
+`PhosphorScope.jsx` is 304 lines and no test had read one of them. It is decorative and
+aria-hidden, which is why it was left — and also why nothing about it fails loudly. It paints a
+canvas behind the hero, and a canvas that paints the wrong thing looks like a different
+decoration rather than like a bug.
+
+Its docstring is unusually specific about the mechanism, and one of those sentences is a standing
+instruction:
+
+> Each frame subtracts a little alpha from the whole canvas rather than clearing it, so the beam
+> leaves a decaying tail. Subtracting alpha (rather than painting the background colour over the
+> top) keeps the canvas transparent, so the page shows through and the theme can change
+> underneath it.
+
+Painting the background colour is the obvious way to fade a trail, and it is what somebody
+reaching for this would try. It works perfectly in whichever theme they are looking at, and
+leaves an opaque slab over the hero in the other one. So the composite operation that makes the
+fade a subtraction is asserted, not merely the presence of a fade.
+
+Then the figure. "The base ratios (2:5 horizontally, 3:7 vertically) are what give the figure its
+structure", and "detuned by a couple of hundredths, it never closes". Those are four
+frequencies, and the structure is the pair of ratios they round to. Nudge one onto an exact
+integer ratio and the curve closes into a single thin loop that retraces itself forever — the one
+outcome that paragraph exists to prevent, and the mutation that proves this check works.
+
+And the timing it quotes: "a full precession takes about 2π/0.02 ≈ 314 radians of beam travel,
+which is roughly eight seconds", which is true only at the beam rate declared ten lines below it.
+
+Nothing was wrong. All four frequencies, the detuning, the eight seconds and both stop conditions
+hold.
+
 ## 0.10.51
 
 ### a tag on every page, counted on none

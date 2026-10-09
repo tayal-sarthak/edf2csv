@@ -3705,6 +3705,91 @@ ${script}`,
     }
   });
 
+  it('traces the figure its own docstring describes', async () => {
+    /*
+      `PhosphorScope.jsx` is 304 lines and no test had read one of them. It is decorative and
+      aria-hidden, which is why it was left, and also why nothing about it fails loudly: it
+      paints a canvas behind the hero, and a canvas that paints the wrong thing looks like a
+      different decoration rather than like a bug.
+
+      Its docstring is unusually specific about the mechanism, and one of those sentences is a
+      standing instruction:
+
+          Each frame subtracts a little alpha from the whole canvas rather than clearing it, so
+          the beam leaves a decaying tail. Subtracting alpha (rather than painting the
+          background colour over the top) keeps the canvas transparent, so the page shows
+          through and the theme can change underneath it.
+
+      Painting the background colour is the obvious way to fade a trail and it is what someone
+      reaching for this would try. It works perfectly in whichever theme they are looking at,
+      and leaves an opaque slab over the hero in the other one. So the composite operation that
+      makes it a subtraction is asserted, not just the presence of a fade.
+
+      Then the figure itself. "The base ratios (2:5 horizontally, 3:7 vertically) are what give
+      the figure its structure", and "detuned by a couple of hundredths, it never closes". Those
+      are four frequencies, and the structure is the pair of ratios they round to: nudge one to
+      an exact integer ratio and the curve closes into a single thin loop that retraces itself
+      forever, which is the one outcome the paragraph exists to prevent.
+
+      And the timing it quotes: "a full precession takes about 2π/0.02 ≈ 314 radians of beam
+      travel, which is roughly eight seconds" — true only at the beam rate declared below it.
+    */
+    const scope = await read('website/src/components/PhosphorScope.jsx');
+    // Everything the file says about itself before it declares the oscillators: there are two
+    // comment blocks up there, and the ratios are in the second one.
+    const docstring = scope.slice(0, scope.indexOf('const OSC'));
+    assert.ok(docstring.includes('subtracts a little alpha'),
+      'the docstring no longer explains how the trail decays');
+    assert.match(scope, /globalCompositeOperation\s*=\s*'destination-out'/u,
+      'the trail is no longer faded by subtracting alpha, which is what keeps the canvas ' +
+        'transparent and the theme changeable underneath it');
+
+    const block = /const OSC = \[([\s\S]*?)\n\];/u.exec(scope);
+    assert.ok(block, 'PhosphorScope no longer declares its oscillators');
+    const frequencies = [...block[1].matchAll(/\bf:\s*([\d.]+)/gu)].map(([, f]) => Number(f));
+    assert.equal(frequencies.length, 4,
+      `the docstring says two oscillators per axis; there are ${frequencies.length} in all`);
+
+    // "2:5 horizontally, 3:7 vertically" — the first pair drives x, the second y.
+    const ratios = [...docstring.matchAll(/\((\d):(\d) horizontally, (\d):(\d) vertically\)/gu)];
+    assert.equal(ratios.length, 1, 'the docstring no longer states the base ratios');
+    const stated = ratios[0].slice(1).map(Number);
+    assert.deepEqual(frequencies.map((f) => Math.round(f)), stated,
+      `the oscillators run at ${frequencies.join(', ')} and the docstring says ${stated.join(':')}`);
+
+    /*
+      And that none of them is exactly on its ratio. An exact one closes the curve, which the
+      docstring calls out as the failure: "a single thin loop that never fills".
+    */
+    const detuned = frequencies.filter((f) => Math.abs(f - Math.round(f)) > 1e-9);
+    assert.ok(detuned.length >= 3,
+      `${frequencies.length - detuned.length} oscillators sit exactly on their ratio, and the ` +
+        'curve closes');
+    for (const f of detuned) {
+      assert.ok(Math.abs(f - Math.round(f)) <= 0.05,
+        `${f} is detuned by more than a couple of hundredths, which the docstring claims`);
+    }
+
+    const rate = /const BEAM_RATE = ([\d.]+);/u.exec(scope);
+    assert.ok(rate, 'PhosphorScope no longer declares a beam rate');
+    const seconds = (2 * Math.PI / 0.02) / (Number(rate[1]) * 60);
+    const claimed = /roughly (\w+) seconds/u.exec(docstring);
+    assert.ok(claimed, 'the docstring no longer says how long a precession takes');
+    const words = { six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+    assert.ok(Math.abs(words[claimed[1]] - seconds) < 1,
+      `a precession takes ${seconds.toFixed(1)}s at ${rate[1]} radians a frame, and the ` +
+        `docstring calls it roughly ${claimed[1]} seconds`);
+
+    // "it stops painting entirely when the hero scrolls out of view or the tab is hidden".
+    for (const [what, pattern] of [
+      ['scrolls out of view', /new IntersectionObserver/u],
+      ['the tab is hidden', /'visibilitychange'/u],
+    ]) {
+      assert.match(scope, pattern,
+        `the docstring says it stops painting when ${what}, and nothing watches for it`);
+    }
+  });
+
   it('draws the argument the whole tool exists to make to scale', async () => {
     /*
       `RateComparison.jsx` is the landing page's centrepiece and the project's whole case in
