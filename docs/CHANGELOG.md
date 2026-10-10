@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.53
+
+### a compiler check declined for a reason that had stopped existing
+
+`tsconfig.json` turns on seven checks beyond `strict`, and declined an eighth with a reason:
+
+> Not `noUnusedParameters`: the codebase names a deliberately unused argument `unused` rather
+> than `_unused`, which that check does not accept, and renaming twenty callbacks to satisfy it
+> would be the tail wagging the dog.
+
+Neither half was true. There is exactly **one** deliberately unused argument in `src` — in
+`editDistance` — and it is already spelled `_unused`, which is the spelling the check does
+accept. Not twenty callbacks; one, already conforming. The reason for the omission had stopped
+existing, and nothing was going to notice, because a reason written into a comment is never
+re-read once it has been accepted.
+
+Turning it on found two dead parameters. `estimateOutput` still took `recordDuration` and
+`recordStarts` after `rowsInRange` was lifted out of it and the caller began passing them there
+instead — the comment above `rowsInRange` describes exactly that move. `noUnusedLocals`, which
+has been on for a long time, cannot see a parameter, so the two sat in the signature being read
+off the input and handed over for nothing on every conversion.
+
+Both are gone and the check is on, which makes the compiler the guard rather than a test.
+
+**This is the first change to `src/` in a long run of releases** — 0.9.75 onwards had not touched
+it. It is dead parameters rather than behaviour: `npm run estimate` reports the same 601
+predictions, the same 16% average and the same 1.73x worst case as before, which is what makes
+them dead rather than merely unread.
+
 ## 0.10.52
 
 ### a decorative canvas held to the mechanism it describes

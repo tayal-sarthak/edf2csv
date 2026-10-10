@@ -270,14 +270,7 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
   for (const group of groups) {
     group.rows = rowsInRange(group, range, input.recordDuration, input.recordStarts);
   }
-  const estimate = estimateOutput(
-    groups,
-    range,
-    input.recordDuration,
-    input.recordStarts,
-    options.bom === true,
-    layout,
-  );
+  const estimate = estimateOutput(groups, range, options.bom === true, layout);
 
   /*
     The mixed-rate warning describes what this conversion does, not what the file holds.
@@ -905,8 +898,6 @@ function rowsInRange(
 function estimateOutput(
   groups: readonly RateGroup[],
   range: ResolvedRange,
-  recordDuration: number,
-  recordStarts: Float64Array | null | undefined,
   bom: boolean,
   layout: 'wide' | 'long',
 ): OutputEstimate {

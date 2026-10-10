@@ -15,11 +15,18 @@
       `pipeline` and `node:events`, left behind when the checksum machinery moved into the
       reader — along with a `rowsIn` helper that had a doc comment and no callers.
 
-      Not `noUnusedParameters`: the codebase names a deliberately unused argument `unused`
-      rather than `_unused`, which that check does not accept, and renaming twenty callbacks
-      to satisfy it would be the tail wagging the dog.
+      `noUnusedParameters` was declined here for years on the grounds that "the codebase names
+      a deliberately unused argument `unused` rather than `_unused`, which that check does not
+      accept, and renaming twenty callbacks to satisfy it would be the tail wagging the dog".
+      Neither half was true. There is exactly one such argument in `src`, in `editDistance`,
+      and it is already spelled `_unused` — the spelling the check does accept. So the reason
+      not to turn it on had stopped existing, and turning it on found two: `estimateOutput`
+      kept taking `recordDuration` and `recordStarts` after `rowsInRange` was lifted out of it
+      and the caller started passing them there instead. `noUnusedLocals` cannot see a
+      parameter, so they sat in the signature being computed and handed over for nothing.
     */
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
