@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.58
+
+### a worked example wrong by a factor of seventy-eight
+
+`makeScaler`'s argument check is explained with a worked example, and the example is the whole
+argument:
+
+```
+const scale = makeScaler(signal);   // +/-250 uV over a 12-bit range
+scale(42)      // 5.1892551892551895
+scale('42')    // 0.06617826617826618   offset 0.5, so 0.5 + '42' is '0.542'
+```
+
+> Every one of them is a physical value this channel could really have recorded: in range, in
+> the right unit, printed to the right precision, and **wrong by a factor of seventy-eight**.
+
+That factor is why the check exists — a string argument did not throw, it returned a plausible
+microvolt reading — and it is the ratio of those two figures. None of the three was computed
+anywhere.
+
+The live half is `scale(42)`: what this calibration really produces, and the figure a reader
+holds their own output against. The `scale('42')` line is what it used to do, so it is held only
+as the arithmetic it describes — `0.5 + '42'` is `'0.542'` — together with an assertion that a
+string is refused now, so the docstring cannot quietly drift back into describing current
+behaviour.
+
+The calibration comes from a fixture rather than from numbers written into the test, so this is
+the channel the docstring is about.
+
 ## 0.10.57
 
 ### twenty names, eleven short ones, ninety-five typos

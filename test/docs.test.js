@@ -5015,6 +5015,80 @@ ${script}`,
       'the comment says the first TAL of a record carries that record\'s start time');
   });
 
+  it('scales the sample its own docstring works through', async () => {
+    /*
+      `makeScaler`'s argument check is explained with a worked example, and the example is
+      the argument:
+
+          const scale = makeScaler(signal);   // +/-250 uV over a 12-bit range
+          scale(42)      // 5.1892551892551895
+          scale('42')    // 0.06617826617826618   offset 0.5, so 0.5 + '42' is '0.542'
+
+          Every one of them is a physical value this channel could really have recorded: in
+          range, in the right unit, printed to the right precision, and wrong by a factor of
+          seventy-eight.
+
+      "Wrong by a factor of seventy-eight" is why the check exists — a string argument did not
+      throw, it returned a plausible microvolt reading — and the factor is the ratio of those
+      two figures. None of the three was computed anywhere.
+
+      The live half is `scale(42)`: the value this calibration really produces, and the one a
+      reader checks their own output against. The `scale('42')` line is what it used to do and
+      is held only as the arithmetic it describes — `0.5 + '42'` is `'0.542'`, and the scaler
+      refuses a string outright since 0.8.99, which is asserted below so the docstring cannot
+      quietly become a description of current behaviour again.
+
+      The calibration is taken from a fixture rather than written here: `uv` in the fixture
+      generator is this channel, and `tiny.edf`'s neighbour `mixed-rates.edf` carries it.
+    */
+    const { EdfFile, makeScaler } = await import(path.join(ROOT, 'dist/index.js'));
+    const source = await read('src/edf/scale.ts');
+    const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/mixed-rates.edf'));
+    let scale;
+    let offset;
+    try {
+      const signal = file.dataSignals.find(
+        (s) => s.physicalMin === -250 && s.physicalMax === 250
+          && s.digitalMin === -2048 && s.digitalMax === 2047,
+      );
+      assert.ok(signal, 'no fixture channel is the +/-250 uV twelve-bit one the docstring uses');
+      const gain = (signal.physicalMax - signal.physicalMin)
+        / (signal.digitalMax - signal.digitalMin);
+      offset = signal.physicalMax / gain - signal.digitalMax;
+      scale = makeScaler(signal);
+    } finally {
+      await file.close();
+    }
+
+    const worked = /scale\((\d+)\)\s+\/\/\s+([\d.]+)/u.exec(source);
+    assert.ok(worked, 'the worked example is gone from makeScaler');
+    assert.equal(String(scale(Number(worked[1]))), worked[2],
+      `scale(${worked[1]}) on this channel is ${scale(Number(worked[1]))}`);
+
+    const stated = /offset ([\d.]+), so \1 \+ '(\d+)' is '([\d.]+)'/u.exec(source);
+    assert.ok(stated, 'the docstring no longer shows how a string was pasted onto the offset');
+    assert.equal(Number(stated[1]), offset,
+      `this channel's offset is ${offset} and the docstring says ${stated[1]}`);
+    assert.equal(`${stated[1]}${stated[2]}`, stated[3],
+      'the concatenation the docstring prints is not what those two strings make');
+
+    // And the factor, which is the sentence's whole point.
+    const broken = /scale\('(\d+)'\)\s+\/\/\s+([\d.]+)/u.exec(source);
+    assert.ok(broken, 'the docstring no longer shows what a string argument returned');
+    const factor = scale(Number(broken[1])) / Number(broken[2]);
+    const words = { seventy: 70, 'seventy-seven': 77, 'seventy-eight': 78, 'seventy-nine': 79,
+      eighty: 80 };
+    const said = /wrong by a factor of ([\w-]+)/u.exec(source);
+    assert.ok(said, 'the docstring no longer says how wrong it was');
+    assert.equal(Math.round(factor), words[said[1]],
+      `the two figures differ by a factor of ${factor.toFixed(2)} and the docstring says ` +
+        `${said[1]}`);
+
+    // And that a string is refused now, so the example stays a description of the past.
+    assert.throws(() => scale('42'),
+      'a string argument no longer throws, and the docstring describes it as a defect');
+  });
+
   it('reaches every typo its own suggester claims to reach', async () => {
     /*
       `cli.ts` explains why `editDistance` counts a transposition as one edit rather than two,
