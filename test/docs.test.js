@@ -3705,6 +3705,82 @@ ${script}`,
     }
   });
 
+  it('keeps the buffer budget the conversion says it keeps', async () => {
+    /*
+      `run.ts` opens the writer setup with a paragraph of arithmetic and nothing read any of it.
+
+          One buffer's worth of memory for the conversion, not one per table. [...] Split evenly
+          with a floor, so the single-rate case, which is nearly every recording, keeps exactly
+          the buffer it always had, and forty tables cost one megabyte between them rather than
+          forty. The floor is what the sum is bounded by rather than the split: past 128 groups
+          every table takes the 8 KiB minimum, so the total grows again from there.
+
+      That is the fix for a real crash — a 6.5 MB recording with 40 sampling rates died with a
+      V8 out-of-memory under a cap the site advertises — and every figure in it is a relation
+      between two constants: `DEFAULT_FLUSH_THRESHOLD` in csv.ts and the floor declared here.
+
+      128 is the one that matters, because it is nobody's choice. It is the quotient, and it
+      moves whenever either constant does: halve the floor and the total stays bounded twice as
+      far out, double it and the bound starts growing at 64 while the paragraph still says 128.
+      Nothing about that fails. The conversion works, the memory is a little different, and the
+      only record of what the bound is supposed to be is a sentence that has stopped describing
+      it.
+
+      Recomputed from the constants rather than restated: the split is read out of the source so
+      the test is checking the code's arithmetic rather than its own.
+    */
+    const { DEFAULT_FLUSH_THRESHOLD } = await import(path.join(ROOT, 'dist/format/csv.js'));
+    const source = await read('src/convert/run.ts');
+    const budget = source.slice(source.indexOf("One buffer's worth of memory"));
+    const explanation = budget.slice(0, budget.indexOf('*/'));
+    assert.ok(explanation.length > 400, 'the buffer-budget paragraph is gone from run.ts');
+
+    const floor = /const MIN_FLUSH_THRESHOLD = (\d+) \* 1024;/u.exec(budget);
+    assert.ok(floor, 'run.ts no longer declares a floor for the split');
+    const minimum = Number(floor[1]) * 1024;
+    const split = (groups) =>
+      Math.max(minimum, Math.floor(DEFAULT_FLUSH_THRESHOLD / Math.max(1, groups)));
+
+    // "the single-rate case ... keeps exactly the buffer it always had".
+    assert.equal(split(1), DEFAULT_FLUSH_THRESHOLD,
+      'a single-rate conversion no longer gets the whole buffer');
+
+    // "forty tables cost one megabyte between them rather than forty".
+    // `\s+` between every word: this paragraph wraps, and it wraps mid-figure.
+    const together =
+      /([a-z]+)\s+tables\s+cost\s+([a-z]+)\s+megabytes?\s+between\s+them/u.exec(explanation);
+    assert.ok(together, 'the paragraph no longer says what a fan-out costs between them');
+    const words = { one: 1, two: 2, forty: 40, sixty: 60, eighty: 80 };
+    const tables = words[together[1]];
+    assert.ok(tables, `"${together[1]} tables" is not a count this check knows`);
+    assert.equal(words[together[2]] * 1024 * 1024, DEFAULT_FLUSH_THRESHOLD,
+      `the budget is ${DEFAULT_FLUSH_THRESHOLD} bytes and the paragraph calls it ` +
+        `${together[2]} megabyte`);
+    assert.ok(tables * split(tables) <= DEFAULT_FLUSH_THRESHOLD,
+      `${tables} tables take ${tables * split(tables)} bytes between them, over the budget`);
+
+    /*
+      And the quotient, which is the figure neither constant states.
+
+      `past N groups every table takes the M KiB minimum` — N has to be the number of floors
+      that fit in the budget, the split has to reach the floor exactly at N, and the floor has
+      to bind past it. All three or the sentence is describing a different pair of constants.
+    */
+    const bound =
+      /past\s+(\d+)\s+groups\s+every\s+table\s+takes\s+the\s+(\d+)\s+KiB\s+minimum/u
+        .exec(explanation);
+    assert.ok(bound, 'the paragraph no longer says where the total starts growing again');
+    assert.equal(Number(bound[2]) * 1024, minimum,
+      `the floor is ${minimum} bytes and the paragraph calls it ${bound[2]} KiB`);
+    assert.equal(Number(bound[1]), DEFAULT_FLUSH_THRESHOLD / minimum,
+      `${DEFAULT_FLUSH_THRESHOLD} over a ${minimum}-byte floor is ` +
+        `${DEFAULT_FLUSH_THRESHOLD / minimum} groups, and the paragraph says ${bound[1]}`);
+    assert.equal(split(Number(bound[1])), minimum,
+      `at ${bound[1]} groups the even split should land exactly on the floor`);
+    assert.equal(split(Number(bound[1]) + 1), minimum,
+      `past ${bound[1]} groups the floor should be what every table gets`);
+  });
+
   it('traces the figure its own docstring describes', async () => {
     /*
       `PhosphorScope.jsx` is 304 lines and no test had read one of them. It is decorative and

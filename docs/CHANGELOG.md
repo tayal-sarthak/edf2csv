@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.54
+
+### a memory bound that is a quotient nobody chose
+
+`run.ts` opens its writer setup with a paragraph of arithmetic, and nothing read any of it.
+
+> One buffer's worth of memory for the conversion, not one per table. […] Split evenly with a
+> floor, so the single-rate case, which is nearly every recording, keeps exactly the buffer it
+> always had, and forty tables cost one megabyte between them rather than forty. The floor is
+> what the sum is bounded by rather than the split: past 128 groups every table takes the 8 KiB
+> minimum, so the total grows again from there.
+
+That is the fix for a real crash — a 6.5 MB recording with 40 sampling rates died with a V8
+out-of-memory under a cap the site advertises — and every figure in it is a relation between two
+constants: `DEFAULT_FLUSH_THRESHOLD` in csv.ts and the floor declared in run.ts.
+
+**128 is the figure that matters, because it is nobody's choice.** It is the quotient of the two,
+and it moves whenever either does: halve the floor and the total stays bounded twice as far out;
+double it and the bound starts growing at 64 while the paragraph still says 128. Nothing about
+that fails. The conversion works, the memory is a little different, and the only record of what
+the bound is supposed to be is a sentence that has stopped describing it.
+
+Recomputed from the constants rather than restated, so the test checks the code's arithmetic
+rather than its own: the split is rebuilt from the budget and the floor read out of the source,
+and then the single-rate case, the forty-table total, the quotient, and the floor binding past it
+all have to agree with the paragraph.
+
+Doubling the floor fails. So does halving the budget.
+
 ## 0.10.53
 
 ### a compiler check declined for a reason that had stopped existing
