@@ -5015,6 +5015,89 @@ ${script}`,
       'the comment says the first TAL of a record carries that record\'s start time');
   });
 
+  it('reaches every typo its own suggester claims to reach', async () => {
+    /*
+      `cli.ts` explains why `editDistance` counts a transposition as one edit rather than two,
+      and the justification is three figures over the option list:
+
+          "A couple" is the bound for a long name; for the eleven flags shorter than six
+          characters `Math.floor(length / 3)` is 1, so those admit a single edit. [...]
+          `editDistance` counts a swap of two adjacent characters as one edit for that reason,
+          which names all 95 single transpositions of these twenty names and still declines
+          `--st`, `--joc`, `--abc` and `--xyzzy`.
+
+      Twenty, eleven and ninety-five are not chosen numbers. They are the length of `OPTIONS`,
+      how many of its names are short enough for the tight allowance, and the count of distinct
+      adjacent swaps across all of them — ninety-seven swap positions, less the two that change
+      nothing because `channels` and `annotations-only` each contain a doubled letter.
+
+      Add an option and all three move. Add a long one and 95 goes up while the sentence still
+      says 95; add a short one and so does 11, which is the figure that decides whether a name
+      gets one edit of slack or two. Nothing fails either way: the suggester keeps working, and
+      the paragraph justifying its shape is describing a different set of flags.
+
+      The behaviour too, which is the half that matters: every one of those transpositions has
+      to come back within the allowance of the name it was made from, and the four the sentence
+      names as out of reach have to stay out of reach. Done against `editDistance` directly
+      rather than through ninety-five subprocesses.
+    */
+    const { editDistance } = await import(path.join(ROOT, 'dist/format/distance.js'));
+    const source = await read('src/cli.ts');
+    const block = /const OPTIONS = \{([\s\S]*?)\n\} as const;/u.exec(source);
+    assert.ok(block, 'cli.ts no longer declares its option table');
+    const names = [...block[1].matchAll(/^ {2}'?([a-z][\w-]*)'?:\s*\{/gmu)].map(([, n]) => n);
+    assert.ok(names.length > 10, `found ${names.length} options, which cannot be the whole table`);
+
+    const WORDS = { ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+      sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, 'twenty-one': 21 };
+    const claim = /for the ([\w-]+) flags shorter than six characters/u.exec(source);
+    assert.ok(claim, 'cli.ts no longer says how many flags take the tight allowance');
+    const short = names.filter((name) => name.length < 6);
+    assert.equal(WORDS[claim[1]], short.length,
+      `${short.length} options are shorter than six characters and cli.ts says ${claim[1]}`);
+    for (const name of short) {
+      assert.equal(Math.floor(name.length / 3), 1,
+        `the paragraph says Math.floor(length / 3) is 1 for these, and ${name} gives ` +
+          `${Math.floor(name.length / 3)}`);
+    }
+
+    // Every distinct adjacent swap, paired with the name it came from.
+    const swaps = new Map();
+    for (const name of names) {
+      for (let i = 0; i < name.length - 1; i++) {
+        const typo = name.slice(0, i) + name[i + 1] + name[i] + name.slice(i + 2);
+        if (typo !== name) swaps.set(typo, name);
+      }
+    }
+    const counted =
+      /names all (\d+) single transpositions of these ([\w-]+) names/u.exec(source);
+    assert.ok(counted, 'cli.ts no longer counts the typos its suggester reaches');
+    assert.equal(Number(counted[1]), swaps.size,
+      `there are ${swaps.size} distinct single transpositions and cli.ts says ${counted[1]}`);
+    assert.equal(WORDS[counted[2]], names.length,
+      `the table holds ${names.length} options and cli.ts says ${counted[2]}`);
+
+    // And that each is reachable: one edit, inside the allowance its own name gets.
+    const unreachable = [];
+    for (const [typo, name] of swaps) {
+      const allowance = Math.max(1, Math.floor(name.length / 3));
+      if (editDistance(typo, name) > allowance) unreachable.push(`--${typo} -> --${name}`);
+    }
+    assert.deepEqual(unreachable, [],
+      `these transpositions are past the allowance of the name they came from:\n  ${
+        unreachable.join('\n  ')}`);
+
+    // And the four the sentence says stay out of reach, against every name.
+    for (const typo of ['st', 'joc', 'abc', 'xyzzy']) {
+      assert.ok(source.includes(`\`--${typo}\``),
+        `cli.ts no longer names --${typo} as one it declines`);
+      const reached = names.filter(
+        (name) => editDistance(typo, name) <= Math.max(1, Math.floor(name.length / 3)),
+      );
+      assert.deepEqual(reached, [], `--${typo} now suggests ${reached.join(', ')}`);
+    }
+  });
+
   it('lays the header out the way the parser reads it', async () => {
     /*
       `edf-format.md` prints the byte layout twice — a table for the fixed header and a fence

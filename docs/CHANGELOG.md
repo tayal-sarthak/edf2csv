@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.57
+
+### twenty names, eleven short ones, ninety-five typos
+
+`cli.ts` explains why `editDistance` counts a transposition as one edit rather than two, and the
+justification is three figures over the option list:
+
+> "A couple" is the bound for a long name; for the **eleven** flags shorter than six characters
+> `Math.floor(length / 3)` is 1, so those admit a single edit. […] `editDistance` counts a swap
+> of two adjacent characters as one edit for that reason, which names all **95** single
+> transpositions of these **twenty** names and still declines `--st`, `--joc`, `--abc` and
+> `--xyzzy`.
+
+None of those three is a chosen number. Twenty is the length of `OPTIONS`; eleven is how many of
+its names are short enough for the tight allowance; ninety-five is the count of distinct adjacent
+swaps across all of them — ninety-seven swap positions, less the two that change nothing, because
+`channels` and `annotations-only` each contain a doubled letter.
+
+Add an option and all three move. Add a long one and 95 goes up while the sentence still says 95.
+Add a short one and so does 11, which is the figure deciding whether a name gets one edit of
+slack or two. Nothing fails either way: the suggester keeps working and the paragraph justifying
+its shape is describing a different set of flags.
+
+The behaviour is the half that matters, and it is checked too: every one of those transpositions
+has to come back within the allowance of the name it was made from, and the four the sentence
+names as out of reach have to stay out of reach against every name in the table. Against
+`editDistance` directly rather than through ninety-five subprocesses.
+
+Adding one long option fails on the count; adding one short option fails on the allowance.
+
 ## 0.10.56
 
 ### the half of the accuracy argument nobody computed
