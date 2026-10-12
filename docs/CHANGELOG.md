@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.55
+
+### a TAL drawn in a comment, decoded
+
+The fixed header's byte table has been held to the parser for a while. `annotations.ts` opens
+with the same kind of diagram for the other half of the format, and nothing read it:
+
+```
++<onset>[<0x15><duration>]<0x14><text><0x14>...<0x00>
+
++1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
+```
+
+Three byte values in a picture, three constants declared below it. Renumber one and the diagram
+becomes an instruction for writing a TAL this parser will not read — which is what it is for:
+somebody checking a file by hand, or hand-writing a TAL to reproduce a bug, reads the picture and
+not the constants.
+
+Both directions, like the header table. Every `<0xNN>` drawn has to be a separator the parser
+declares, and every separator it declares has to be drawn.
+
+Then the worked example, assembled from the comment as written and handed to the decoder. The
+fields are split out of the example textually, on the byte markers; the decoder splits the bytes.
+The two have to agree on the onset, the duration and the text, and on the record start, since the
+comment says the first TAL of every record carries it.
+
+Taken from the comment rather than written into the test on purpose: rewording the example
+changes what runs. The direction that catches a regression is the decoder — stopping it from
+reading durations fails this immediately.
+
 ## 0.10.54
 
 ### a memory bound that is a quotient nobody chose

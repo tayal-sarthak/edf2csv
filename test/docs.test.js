@@ -4834,6 +4834,83 @@ ${script}`,
     }
   });
 
+  it('decodes the annotation example its own header comment prints', async () => {
+    /*
+      The header byte table has been held to the parser since 0.10.x. `annotations.ts` opens
+      with the same kind of diagram for the other half of the format, and nothing read it:
+
+          +<onset>[<0x15><duration>]<0x14><text><0x14>...<0x00>
+
+          +1.25<0x15>0.5<0x14>Seizure onset<0x14><0x00>
+
+      Three byte values in a picture, and three constants declared under it. Renumber one and
+      the diagram is an instruction to write a TAL that this parser will not read — which is
+      what it is for: somebody checking a file by hand, or writing a TAL to reproduce a bug,
+      reads the picture rather than the constants.
+
+      Both directions, like the header table: every `<0xNN>` in the diagram has to be a
+      separator the parser declares, and every separator it declares has to be in the diagram.
+
+      Then the worked example, assembled from the comment as written and handed to the
+      decoder. The fields are split out of the example textually — on the byte markers — and
+      the decoder splits the bytes; the two have to agree on the onset, the duration and the
+      text. Rewording the example changes what this runs, which is the point of taking it from
+      the comment instead of writing 1.25 into the test.
+    */
+    const { decodeRecordAnnotations } = await import(path.join(ROOT, 'dist/index.js'));
+    const source = await read('src/edf/annotations.ts');
+    const docstring = source.slice(0, source.indexOf("import "));
+
+    const declared = Object.fromEntries(
+      [...source.matchAll(/^const (SEP_TEXT|SEP_DURATION|TAL_END) = (0x[\da-f]{2});/gmu)]
+        .map(([, name, value]) => [name, value]),
+    );
+    assert.equal(Object.keys(declared).length, 3,
+      `the parser declares ${Object.keys(declared).length} of the three TAL separators`);
+
+    const drawn = new Set([...docstring.matchAll(/<(0x[\da-f]{2})>/gu)].map(([, b]) => b));
+    const invented = [...drawn].filter((b) => !Object.values(declared).includes(b));
+    assert.deepEqual(invented, [],
+      `the diagram draws ${invented.join(', ')}, which the parser does not treat as a separator`);
+    const undrawn = Object.entries(declared).filter(([, b]) => !drawn.has(b));
+    assert.deepEqual(undrawn.map(([name]) => name), [],
+      `the parser declares these and the diagram never draws them: ${undrawn.map(([n]) => n).join(', ')}`);
+
+    /*
+      The example is the line with text in it; the one above is the shape, with `<onset>` and
+      `<text>` as placeholders rather than values.
+    */
+    // The leading `*` goes first: this is a JSDoc block, and its continuation marker sits
+    // between the indent and the TAL.
+    const example = docstring.split('\n')
+      .map((line) => line.trim().replace(/^\*\s*/u, ''))
+      .find((line) => /^\+[\d.]+<0x/u.test(line) && !line.includes('<text>'));
+    assert.ok(example, 'the worked TAL is gone from the comment');
+
+    const bytes = Uint8Array.from(
+      example.split(/(<0x[\da-f]{2}>)/u).flatMap((part) => {
+        const marker = /^<(0x[\da-f]{2})>$/u.exec(part);
+        return marker ? [Number(marker[1])] : [...Buffer.from(part, 'utf8')];
+      }),
+    );
+    // What the example says, read off it textually rather than by decoding it.
+    const [onset, rest] = example.slice(1).split(`<${declared.SEP_DURATION}>`);
+    const [duration, text] = rest.split(`<${declared.SEP_TEXT}>`);
+
+    const decoded = decodeRecordAnnotations(bytes, 0, true);
+    assert.equal(decoded.annotations.length, 1,
+      `the example holds one event and the parser found ${decoded.annotations.length}`);
+    assert.equal(decoded.malformed, 0, 'the parser calls its own example malformed');
+    assert.equal(decoded.annotations[0].onset, Number(onset),
+      `the example says the onset is ${onset}`);
+    assert.equal(decoded.annotations[0].duration, Number(duration),
+      `the example says the duration is ${duration}`);
+    assert.equal(decoded.annotations[0].text, text,
+      `the example says the text is "${text}"`);
+    assert.equal(decoded.recordStart, Number(onset),
+      'the comment says the first TAL of a record carries that record\'s start time');
+  });
+
   it('lays the header out the way the parser reads it', async () => {
     /*
       `edf-format.md` prints the byte layout twice — a table for the fixed header and a fence
