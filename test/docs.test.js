@@ -4834,6 +4834,110 @@ ${script}`,
     }
   });
 
+  it('computes the figure the accuracy argument is made of', async () => {
+    /*
+      The project's central arithmetic claim is a contrast, and only one side of it was ever
+      computed.
+
+      `scale.ts` explains why the conversion is arranged EDFlib's way rather than the
+      specification's: "a channel spanning +/-800 uV computes a value near 800 and then
+      subtracts 800, and the cancellation throws away low-order bits: digital 0 yields
+      0.19536019536019467 when the exact value is 0.19536019536019536."
+
+      That `...467` is what makes the argument. It is the number the obvious ordering produces,
+      it is why the suite can assert exact equality against pyEDFlib instead of a tolerance,
+      and it is written out in five places — scale.ts, api.md, faq.md and twice on the
+      correctness page, once in a table and once in a block of printed output. The `...536` is
+      asserted against the tool in edf.test.js. The `...467` was asserted nowhere, which means
+      the half of the sentence doing the persuading was the half nobody checked.
+
+      A mistyped digit in it would be invisible — seventeen significant figures, five copies,
+      and no reader is going to notice that the one they are being shown is not what their own
+      tool would print. Worse, the figures are a pair: if the two ever became equal there would
+      be no argument left and five pages would still be making it.
+
+      Computed from a recording rather than from numbers in the test. `quirky-labels.edf` is the
+      channel the prose describes and the one edf.test.js uses; its calibration is asserted
+      first, so the arithmetic below is the arithmetic the pages are about.
+    */
+    const { EdfFile, makeScaler } = await import(path.join(ROOT, 'dist/index.js'));
+    const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/quirky-labels.edf'));
+    let naive;
+    let scaled;
+    let offset;
+    try {
+      const signal = file.dataSignals[0];
+      assert.deepEqual(
+        [signal.physicalMin, signal.physicalMax, signal.digitalMin, signal.digitalMax],
+        [-800, 800, -2048, 2047],
+        'this is no longer the +/-800 uV twelve-bit channel the pages reason about',
+      );
+      const gain = (signal.physicalMax - signal.physicalMin)
+        / (signal.digitalMax - signal.digitalMin);
+      // The two orderings, as the pages write them.
+      naive = (0 - signal.digitalMin) * gain + signal.physicalMin;
+      offset = signal.physicalMax / gain - signal.digitalMax;
+      scaled = makeScaler(signal)(0);
+    } finally {
+      await file.close();
+    }
+
+    assert.equal(scaled, 800 / 4095, 'the page calls the exact value 800/4095');
+    assert.notEqual(naive, scaled,
+      'the two orderings now agree at digital 0, so five pages are arguing about nothing');
+    assert.equal(offset, 0.5,
+      `scale.ts says the intermediate stays small — "offset + digital = 0.5 here" — and it is ${offset}`);
+
+    const places = ['src/edf/scale.ts', 'README.md',
+      ...(await readdir(path.join(ROOT, 'website/content')))
+        .filter((name) => name.endsWith('.md'))
+        .map((name) => `website/content/${name}`)];
+    /*
+      Compared as strings, not as numbers, and that is not fussiness.
+
+      At seventeen significant figures the decimal literal is already past what a double can
+      distinguish: `0.19536019536019467` and `...468` parse to the same value, so a mistyped
+      last digit passes a numeric comparison. What a reader does with these figures is hold
+      them against what their own tool printed, so the text has to be the text a runtime
+      produces — `String(x)`, the shortest form that round-trips.
+    */
+    /*
+      Two renderings are allowed per value, and both are checked by being allowed.
+
+      The pages print these in the shortest round-tripping form in prose, and the correctness
+      page also prints both at twenty decimals, because that is where it says the two orderings
+      "part company": "Forcing the maximum `--decimals` accepts, 20, is where the two forms part
+      company". Those expansions are four more figures nothing computed, so they go in the same
+      set rather than being excused from it.
+    */
+    const expected = new Map([
+      [String(naive), 'losing'],
+      [naive.toFixed(20), 'losing'],
+      [String(scaled), 'correct'],
+      [scaled.toFixed(20), 'correct'],
+    ]);
+    const ceiling = /maximum `--decimals` accepts,\s*(\d+),/u.exec(
+      await read('website/content/correctness.md'),
+    );
+    assert.ok(ceiling, 'the correctness page no longer says where the two forms part company');
+    assert.equal(Number(ceiling[1]), 20,
+      `the page expands these to ${ceiling[1]} decimals and this check builds 20`);
+    let losing = 0;
+    let correct = 0;
+    for (const where of places) {
+      for (const [, value] of (await read(where)).matchAll(/\b(0\.1953601953601\d+)\b/gu)) {
+        const which = expected.get(value);
+        assert.ok(which,
+          `${where} prints ${value}; the two orderings print ${[...expected.keys()].join(' and ')}`);
+        if (which === 'losing') losing++;
+        else correct++;
+      }
+    }
+    assert.ok(losing >= 4,
+      `the figure the argument rests on is stated ${losing} times, fewer than the places that make it`);
+    assert.ok(correct >= 4, `the correctly rounded value is stated ${correct} times`);
+  });
+
   it('decodes the annotation example its own header comment prints', async () => {
     /*
       The header byte table has been held to the parser since 0.10.x. `annotations.ts` opens

@@ -8,6 +8,40 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.56
+
+### the half of the accuracy argument nobody computed
+
+This project's central arithmetic claim is a contrast, and only one side of it was ever computed.
+
+`scale.ts` explains why the conversion is arranged EDFlib's way rather than the specification's:
+"a channel spanning +/-800 uV computes a value near 800 and then subtracts 800, and the
+cancellation throws away low-order bits: digital 0 yields **0.19536019536019467** when the exact
+value is 0.19536019536019536."
+
+The `...467` is what makes the argument. It is why the suite can assert exact equality against
+pyEDFlib rather than settling for a tolerance, and it is written out in five places — scale.ts,
+api.md, faq.md, and twice on the correctness page. The `...536` has been asserted against the
+tool for a long time. The `...467` was asserted nowhere, so the half of the sentence doing the
+persuading was the half nobody checked.
+
+The pair is what matters: if the two figures ever became equal there would be no argument left,
+and five pages would go on making it.
+
+**Compared as text rather than as numbers**, which is not fussiness. At seventeen significant
+figures the literal is already past what a double distinguishes — `...467` and `...468` parse to
+the same value, so a mistyped last digit passes a numeric comparison. I wrote it that way first
+and the typo went straight through. What a reader does with these figures is hold them against
+what their own tool printed, so the text has to be the text a runtime produces.
+
+Both renderings are held. The prose uses the shortest round-tripping form; the correctness page
+also prints both at twenty decimals, where it says the two orderings "part company". Those
+expansions are four more figures nothing computed, and the ceiling they rest on — "the maximum
+`--decimals` accepts, 20" — is read off the page rather than assumed.
+
+Computed from `quirky-labels.edf`, whose calibration is asserted first, so the arithmetic is the
+arithmetic the pages are about.
+
 ## 0.10.55
 
 ### a TAL drawn in a comment, decoded
