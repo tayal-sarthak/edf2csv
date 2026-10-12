@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.59
+
+### the doubles two comments rest their case on
+
+Two comments in the conversion are about floating-point artifacts, and each quotes the exact
+double that caused the defect. Neither had ever been evaluated.
+
+`run.ts`, on ordering rows that share a time:
+
+> a 0.3 s record holding 12 and 4 samples makes 40 Hz and 13.333… Hz, and 9/40 is
+> `0.22500000000000000555` while 3/13.333… is `0.22499999999999997780`. Equality missed that,
+> so those two rows fell out in numeric order — `slow` before `fast`, once, in the middle of a
+> file that was otherwise right.
+
+`timing.ts`, on deciding whether records are contiguous:
+
+> a recording of 0.1s records sitting at 0.1, 0.2, 0.3 ... is contiguous by construction, and
+> `0.1 + 2 * 0.1` is `0.30000000000000004`. Two of its eight records were reported as
+> contradicting continuity, on an ordinary file — and under `--strict` that was a failed run.
+
+Those figures are the evidence. Each comment says "do not compare these for equality, here is
+what they actually are", and anyone deciding whether the tolerance underneath it is still earning
+its place has nothing but the number to go on. A digit wrong in either makes a true argument
+unverifiable, and these are exactly the literals nobody retypes carefully.
+
+Evaluated as written: the sample counts and the record length are read out of the sentence, the
+two instants are computed from them, and they have to print the expansions the comment prints —
+and still differ. The same for the stepping expression, which is evaluated rather than matched,
+so changing `2 *` to `3 *` fails even though the printed value is untouched.
+
+At twenty decimals, as 0.10.56's figures are: the shortest round-tripping form of the first is
+just `0.225`, which shows none of what the paragraph is about.
+
 ## 0.10.58
 
 ### a worked example wrong by a factor of seventy-eight

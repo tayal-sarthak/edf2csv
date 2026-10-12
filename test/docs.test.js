@@ -5015,6 +5015,68 @@ ${script}`,
       'the comment says the first TAL of a record carries that record\'s start time');
   });
 
+  it('shows the two doubles that made one instant into two', async () => {
+    /*
+      Two comments in the conversion are about floating-point artifacts, and each quotes the
+      exact double that caused the defect. Neither had ever been evaluated.
+
+      `run.ts`, on ordering rows that share a time: "a 0.3 s record holding 12 and 4 samples
+      makes 40 Hz and 13.333… Hz, and 9/40 is 0.22500000000000000555 while 3/13.333… is
+      0.22499999999999997780. Equality missed that, so those two rows fell out in numeric
+      order — `slow` before `fast`, once, in the middle of a file that was otherwise right."
+
+      `timing.ts`, on deciding whether records are contiguous: "a recording of 0.1s records
+      sitting at 0.1, 0.2, 0.3 ... is contiguous by construction, and 0.1 + 2 * 0.1 is
+      0.30000000000000004. Two of its eight records were reported as contradicting continuity,
+      on an ordinary file — and under --strict that was a failed run."
+
+      These figures are the evidence. Each is a comment saying "do not compare these for
+      equality, here is what they actually are", and a reader deciding whether the tolerance
+      below it is still needed has nothing but the number to go on. A digit wrong in either
+      makes a true argument unverifiable, and both are the kind of literal nobody retypes
+      carefully.
+
+      Evaluated as written: the expressions the comments give are computed and have to print
+      the expansions the comments print, and the inequality each rests on has to still hold.
+    */
+    const run = await read('src/convert/run.ts');
+    const timing = await read('src/convert/timing.ts');
+
+    /*
+      The 0.3 s record. The comment names the sample counts and the record length, so the two
+      rates come from it rather than from here.
+    */
+    const shared =
+      /a\s+([\d.]+)\s+s\s+record\s+holding\s+(\d+)\s+and\s+(\d+)\s+samples\s+makes/u.exec(run);
+    assert.ok(shared, 'run.ts no longer explains how two channels can share an instant');
+    const [, length, fast, slow] = shared.map(Number);
+    const expansions = [...run.matchAll(/\b(0\.2[25]\d{15,})\b/gu)].map(([, v]) => v);
+    assert.equal(expansions.length, 2,
+      `run.ts prints ${expansions.length} expansions for this instant, not two`);
+    const first = (fast - 3) / (fast / length);
+    const second = 3 / (slow / length);
+    // Printed at twenty decimals, as 0.10.56's figures are: the shortest round-tripping form
+    // of the first is just "0.225", which shows none of what the paragraph is about.
+    assert.deepEqual(expansions, [first.toFixed(20), second.toFixed(20)],
+      `those two channels put the instant at ${first.toFixed(20)} and ${second.toFixed(20)}`);
+    assert.notEqual(first, second,
+      'the two doubles are equal now, so the paragraph is describing a problem that is gone');
+
+    /*
+      And the contiguous-records one, which is the textbook artifact: the comment writes the
+      expression out, so it is evaluated rather than matched.
+    */
+    const drift =
+      /([\d.]+)\s+\+\s+(\d+)\s+\*\s+([\d.]+)\s+is\s+(0\.3\d+)/u.exec(timing);
+    assert.ok(drift, 'timing.ts no longer shows what stepping by a tenth comes to');
+    assert.equal(String(Number(drift[1]) + Number(drift[2]) * Number(drift[3])), drift[4],
+      `${drift[1]} + ${drift[2]} * ${drift[3]} is ` +
+        `${Number(drift[1]) + Number(drift[2]) * Number(drift[3])}`);
+    assert.notEqual(Number(drift[1]) + Number(drift[2]) * Number(drift[3]),
+      Number(drift[2] + 1) * Number(drift[3]),
+      'the sum is exact now, so the tolerance below this comment has nothing to absorb');
+  });
+
   it('scales the sample its own docstring works through', async () => {
     /*
       `makeScaler`'s argument check is explained with a worked example, and the example is
