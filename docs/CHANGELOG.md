@@ -8,6 +8,29 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.61
+
+### the average beside the worst case, enforced by nothing
+
+`LOOSEST`'s docstring says "the worst this sweep produces is 1.73x and **the average is 1.16x**".
+The correctness page says "sizes reading **16% high on average**, which is the direction a size
+estimate has to err in".
+
+The worst case has been enforced since the release that discovered it was unmeasured — the sweep
+refuses a run that beats `WORST_SEEN` and names the fixture that did it. The average sat in the
+same sentence, written in two places and in two forms, and was checked in neither.
+
+It is the figure that says the estimate is *useful* rather than merely safe. A bound three times
+the truth is honest and worthless; 16% is what makes "roughly N" worth printing at all. Drift to
+60% and nothing breaks: every prediction still passes under the wall, the sweep still reports
+success, and two documents go on claiming an accuracy it stopped producing.
+
+So the sweep holds itself to it, to two decimals, and says to update the constant and the page
+together when a corpus change moves it. The suite holds both renderings to the same constant,
+since the percentage and the multiple are a conversion nobody was checking either — the
+docstring could have said 1.20x while the page said 16% and neither would have been wrong about
+the other.
+
 ## 0.10.60
 
 ### five figures a sweep printed and a page remembered

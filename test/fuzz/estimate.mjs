@@ -116,6 +116,25 @@ export const LOOSEST = 3;
  */
 export const WORST_SEEN = 1.73;
 
+/**
+ * The average ratio, which is the other half of the same sentence and was enforced by nothing.
+ *
+ * `LOOSEST`'s own docstring says "the worst this sweep produces is 1.73x and the average is
+ * 1.16x", and the correctness page says "sizes reading 16% high on average, which is the
+ * direction a size estimate has to err in". The worst case has been enforced since the release
+ * that discovered it was unmeasured. The average sat beside it in the same sentence, written
+ * in two places and in two forms, and checked in neither.
+ *
+ * It is the figure that says the estimate is *useful* rather than merely safe: a bound three
+ * times the truth is honest and worthless, and 16% is the number that makes "roughly N" worth
+ * printing. Drifting to 60% breaks nothing, passes the wall, and leaves two documents claiming
+ * an accuracy the sweep stopped producing.
+ *
+ * To two decimals, because the page quotes it to the nearest percent and a corpus change that
+ * moves it further than that is one both should be told about.
+ */
+export const AVERAGE_SEEN = 1.16;
+
 /** Rows and bytes actually written to the signal files in a directory. */
 function written(directory) {
   let rows = 0;
@@ -290,6 +309,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
   const margin = sized > 0 ? overBy / sized : 1;
+  if (Math.abs(margin - AVERAGE_SEEN) >= 0.005) {
+    process.stdout.write(
+      `Sizes read ${margin.toFixed(3)}x on average and AVERAGE_SEEN says ` +
+        `${AVERAGE_SEEN}. Update it here and the percentage in claim 5 on the correctness ` +
+        'page together.\n',
+    );
+    process.exit(1);
+  }
   process.stdout.write(
     `Every row count exact, and every byte count between the truth and ${LOOSEST}x it ` +
       `(sizes read ${((margin - 1) * 100).toFixed(0)}% high on average, worst ` +

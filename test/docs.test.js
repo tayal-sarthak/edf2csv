@@ -4613,6 +4613,35 @@ ${script}`,
       'the wall has to stand above the worst the sweep has seen',
     );
 
+    /*
+      And the average, which sits in the same sentence as the worst and was enforced by
+      nothing.
+
+      `LOOSEST`'s docstring: "the worst this sweep produces is 1.73x and the average is
+      1.16x". The page: "sizes reading 16% high on average, which is the direction a size
+      estimate has to err in". The worst case has been enforced since the release that found
+      it unmeasured; the average sat beside it, in two places and in two forms, checked in
+      neither.
+
+      It is the figure that says the estimate is useful rather than merely safe — a bound
+      three times the truth is honest and worthless — so a drift to 60% breaks nothing,
+      passes under the wall, and leaves two documents claiming an accuracy the sweep stopped
+      producing. The sweep refuses that now; this holds both renderings to the same constant,
+      since the percentage and the multiple are a conversion nobody was checking either.
+    */
+    const average = estimateSweep.AVERAGE_SEEN;
+    assert.ok(typeof average === 'number', 'estimate.mjs no longer exports its average');
+    assert.ok(average < estimateSweep.WORST_SEEN,
+      'the average cannot be worse than the worst case');
+    const asPercent = /sizes reading ([\d.]+)% high on average/u.exec(page);
+    assert.ok(asPercent, 'the page no longer says how high the sizes read on average');
+    assert.equal(Number(asPercent[1]), Math.round((average - 1) * 100),
+      `the page says ${asPercent[1]}% and the sweep holds itself to ${average}x`);
+    const asRatio = /the average is ([\d.]+)x/u.exec(await read('test/fuzz/estimate.mjs'));
+    assert.ok(asRatio, 'estimate.mjs no longer states its average in prose');
+    assert.equal(Number(asRatio[1]), average,
+      `the docstring says ${asRatio[1]}x and the constant is ${average}`);
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),
