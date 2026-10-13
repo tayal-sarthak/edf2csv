@@ -7065,6 +7065,49 @@ ${script}`,
         `the sweep counts "${name}" and item 8 does not mention it (${named[name]})`,
       );
     }
+
+    /*
+      And what each of them came to, which is the half this test never asked.
+
+      Item 8 quotes all five: "106 single-channel selections and 253 windows over 50
+      recordings", "54 more single-channel selections" in the long layout, "174 pairs" of
+      windows meeting at a bound, "41 more pairs" compared as annotations. They were printed
+      by the sweep and copied onto the page by hand, and nothing has ever put the two side by
+      side — `npm test` cannot run this sweep, which takes a minute and a half, and the sweep
+      had no idea what the page said.
+
+      So the expectation now lives in the sweep, the way `estimate.mjs` keeps `WORST_SEEN`:
+      it refuses a run that measures something else, and this holds the page to it. Between
+      them the figure is checked at both ends — against the corpus wherever the sweep runs,
+      and against the page on every `npm test`.
+
+      Read out of the source rather than imported. This module is a script with its body at
+      the top level, so importing it to read a constant runs the whole sweep; `MIN_FLUSH_
+      THRESHOLD` is read the same way for the same kind of reason.
+    */
+    const block = /export const EXPECTED = \{([\s\S]*?)\n\};/u.exec(sweep);
+    assert.ok(block, 'narrowing.mjs no longer says what it expects to measure');
+    const expected = Object.fromEntries(
+      [...block[1].matchAll(/^\s*(\w+):\s*([\d_]+),/gmu)]
+        .map(([, name, value]) => [name, Number(value.replaceAll('_', ''))]),
+    );
+    assert.deepEqual(Object.keys(expected).sort(), [...reported].sort(),
+      'the sweep expects a different set of measurements than it reports');
+
+    /* Each figure against the phrasing the page gives it. */
+    const quoted = {
+      columns: /(\d[\d,]*)\s+single-channel\s+selections\s+and/u,
+      windows: /and\s+(\d[\d,]*)\s+windows\s+over/u,
+      longs: /(\d[\d,]*)\s+more\s+single-channel\s+selections/u,
+      partitions: /(\d[\d,]*)\s+pairs\s+of\s+windows\s+meeting/u,
+      annotationCuts: /(\d[\d,]*)\s+more\s+pairs/u,
+    };
+    for (const [name, pattern] of Object.entries(quoted)) {
+      const says = pattern.exec(page);
+      assert.ok(says, `the page no longer quotes the sweep's "${name}" count`);
+      assert.equal(Number(says[1].replaceAll(',', '')), expected[name],
+        `the page says ${says[1]} for ${name} and the sweep expects ${expected[name]}`);
+    }
   });
 
   it('holds the three summary fields metadata.json carries under other names', async () => {

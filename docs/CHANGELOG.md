@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.60
+
+### five figures a sweep printed and a page remembered
+
+Claim 8 on the correctness page quotes five figures from `npm run narrowing`: "106
+single-channel selections and 253 windows over 50 recordings", "54 more single-channel
+selections" in the long layout, "174 pairs" of windows meeting at a bound, and "41 more pairs"
+compared as annotations.
+
+The sweep printed them. Somebody copied them onto the page. Nothing has ever put the two side by
+side — `npm test` cannot run this sweep, which takes a minute and a half, and the sweep had no
+idea what the page said about it.
+
+An existing check held the page to the sweep's *counter names*, so a sixth measurement could not
+be added without the page accounting for it. What each one came to was never asked.
+
+The expectation now lives in the sweep, the way `estimate.mjs` keeps `WORST_SEEN`: it refuses a
+run that measures something else, naming which counter moved and saying to update both. The
+suite holds the page to the same constants, read out of the source — this module is a script
+with its body at the top level, so importing it to read a constant runs the whole sweep, which
+is how I found that out.
+
+Between them the figures are checked at both ends: against the corpus wherever the sweep runs,
+and against the page on every `npm test`. Adding a fixture moves them, which is the point — the
+page has to move too, and now something says so instead of the figures quietly describing a
+smaller corpus than the one that ran.
+
 ## 0.10.59
 
 ### the doubles two comments rest their case on

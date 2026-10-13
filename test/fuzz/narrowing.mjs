@@ -340,9 +340,41 @@ for (const name of names) {
 // A conversion that failed for a reason that is not a refusal; see `convert`.
 if (refusals.length > 0) problems.push(...refusals);
 const counted = { columns, windows, longs, partitions, annotationCuts };
+
+/*
+  What this sweep is expected to measure, so the figures on the correctness page are a
+  property of a run rather than a memory of one.
+
+  Claim 8 quotes all five: "106 single-channel selections and 253 windows over 50
+  recordings", "54 more single-channel selections" in the long layout, "174 pairs" of windows
+  meeting at a bound and "41 more pairs" compared as annotations. They were printed here and
+  copied there by hand, and nothing has ever put the two side by side — `npm test` cannot run
+  this sweep (it takes a minute and a half), and the sweep had no idea what the page said.
+
+  So the expectation lives here, the way `estimate.mjs` keeps `WORST_SEEN`: the sweep refuses
+  a run that measures something else, and the suite holds the page to these. Adding a fixture
+  moves them, which is the point — the page has to move too, and now something says so rather
+  than the figures quietly describing a smaller corpus.
+*/
+export const EXPECTED = {
+  columns: 106,
+  windows: 253,
+  longs: 54,
+  partitions: 174,
+  annotationCuts: 41,
+};
 const nothing = Object.entries(counted).filter(([, n]) => n === 0).map(([name]) => name);
+const drifted = Object.entries(EXPECTED)
+  .filter(([name, n]) => counted[name] !== n)
+  .map(([name, n]) => `${name}: measured ${counted[name]}, EXPECTED says ${n}`);
 if (nothing.length > 0) {
   console.error(`Nothing was compared in: ${nothing.join(', ')}.`);
+  process.exitCode = 1;
+} else if (drifted.length > 0) {
+  console.error(
+    `This sweep measured something other than it expects:\n  ${drifted.join('\n  ')}\n` +
+      'Update EXPECTED here and the figures in claim 8 on the correctness page together.',
+  );
   process.exitCode = 1;
 } else if (problems.length > 0) {
   console.error(problems.slice(0, 20).join('\n'));
