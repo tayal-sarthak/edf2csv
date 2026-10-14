@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.62
+
+### three hundred and five streams, and the forty-five that were refused
+
+The last of the sweep sizes the correctness page quotes without the sweep knowing about it.
+
+Claim 11: "**305 streams over 50 recordings**, crossed with the modes that change what reaches
+one." Seven modes over fifty recordings is 350 attempts; forty-five are refused, because a
+mixed-rate recording has more than one table and there is only one stdout. 305 is what is left.
+
+The refusals are the half worth holding. They are counted on purpose rather than being failures,
+so a change that made `--stdout` refuse more would lower the comparisons and raise the refusals
+while the sweep went on reporting success — over a smaller corpus, with the page still claiming
+the larger one. Both are fixed in the sweep now, and it refuses a run that produces anything
+else.
+
+The suite checks the page against the comparisons, and separately that the two halves still sum
+to the modes times the recordings. That sum is what says no attempt went missing altogether,
+rather than quietly moving from one column to the other.
+
+Together with 0.10.60 and 0.10.61 this closes the pattern: every figure the correctness page
+quotes from a sweep is now either derived from a constant the sweep exports or enforced by the
+sweep itself.
+
 ## 0.10.61
 
 ### the average beside the worst case, enforced by nothing

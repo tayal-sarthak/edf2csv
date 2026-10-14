@@ -38,6 +38,22 @@ const GEN = path.join(ROOT, 'test/fixtures/generated');
  * long` or a selection narrow enough to leave one rate. Both are here for that reason as
  * much as for their own.
  */
+/**
+ * What this sweep is expected to compare, so claim 11's figure is a property of a run.
+ *
+ * The page says "305 streams over 50 recordings, crossed with the modes that change what
+ * reaches one". Seven modes over fifty recordings is 350 attempts; forty-five of them are
+ * refused by `--stdout`, because a mixed-rate recording has more than one table and there is
+ * only one stdout. 305 is what is left, and it was printed here and copied there by hand.
+ *
+ * The refusals are the half worth holding. They are not failures — the sweep counts them on
+ * purpose — so a change that made `--stdout` refuse more would lower the comparisons and
+ * raise the refusals while the sweep went on reporting success over a smaller corpus, with
+ * the page still claiming the larger one. `narrowing.mjs` keeps its counts the same way.
+ */
+export const EXPECTED_STREAMS = 305;
+export const EXPECTED_REFUSALS = 45;
+
 export const MODES = [
   [],
   ['--layout', 'long'],
@@ -142,6 +158,13 @@ if (compared === 0) {
 } else if (problems.length > 0) {
   console.error(problems.slice(0, 20).join('\n'));
   if (problems.length > 20) console.error(`... and ${problems.length - 20} more`);
+  process.exitCode = 1;
+} else if (compared !== EXPECTED_STREAMS || refused !== EXPECTED_REFUSALS) {
+  console.error(
+    `This sweep compared ${compared} streams and refused ${refused}; it expects ` +
+      `${EXPECTED_STREAMS} and ${EXPECTED_REFUSALS}. Update them here and the figure in ` +
+      'claim 11 on the correctness page together.',
+  );
   process.exitCode = 1;
 } else {
   console.log(

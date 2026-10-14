@@ -4642,6 +4642,43 @@ ${script}`,
     assert.equal(Number(asRatio[1]), average,
       `the docstring says ${asRatio[1]}x and the constant is ${average}`);
 
+    /*
+      And claim 11's figure, which is the last of the sweep sizes the page quotes and the
+      sweep did not know about.
+
+      "305 streams over 50 recordings, crossed with the modes that change what reaches one."
+      Seven modes over fifty recordings is 350 attempts; forty-five are refused, because a
+      mixed-rate recording has more than one table and there is only one stdout. 305 is what
+      is left.
+
+      The refusals are the half worth holding. They are counted on purpose rather than being
+      failures, so a change that made `--stdout` refuse more would lower the comparisons and
+      raise the refusals while the sweep reported success over a smaller corpus and the page
+      went on claiming the larger one. Both are fixed in the sweep now, and the sum has to be
+      the modes times the recordings — which is what says no attempt went missing entirely.
+
+      Read as text: this sweep is a script whose body runs on import.
+    */
+    const streamSource = await read('test/fuzz/stream.mjs');
+    const streams = /export const EXPECTED_STREAMS = (\d+);/u.exec(streamSource);
+    const refusals = /export const EXPECTED_REFUSALS = (\d+);/u.exec(streamSource);
+    assert.ok(streams && refusals, 'stream.mjs no longer says what it expects to compare');
+    const recordings = (await readdir(path.join(ROOT, 'test/fixtures/generated')))
+      .filter((name) => /\.(?:edf|bdf)$/u.test(name)).length;
+    assert.ok(recordings > 10, `the fixture set holds ${recordings} recordings`);
+    const modes = [...(/export const MODES = \[([\s\S]*?)\n\];/u.exec(streamSource)?.[1] ?? '')
+      .matchAll(/^ {2}\[/gmu)].length;
+    assert.ok(modes >= 5, `stream.mjs crosses ${modes} modes, which is too few to be right`);
+    assert.equal(Number(streams[1]) + Number(refusals[1]), modes * recordings,
+      `${modes} modes over ${recordings} recordings is ${modes * recordings} ` +
+        `attempts, and the sweep accounts for ${Number(streams[1]) + Number(refusals[1])}`);
+    const streamed = /(\d[\d,]*)\s+streams\s+over\s+(\d[\d,]*)\s+recordings/u.exec(page);
+    assert.ok(streamed, 'the page no longer says how many streams were compared');
+    assert.equal(Number(streamed[1].replaceAll(',', '')), Number(streams[1]),
+      `the page says ${streamed[1]} streams and the sweep expects ${streams[1]}`);
+    assert.equal(Number(streamed[2].replaceAll(',', '')), recordings,
+      `the page says ${streamed[2]} recordings and there are ${recordings}`);
+
     const sweep = await import(path.join(ROOT, 'test/fuzz/roundtrip.mjs'));
     const digitalPairs = sweep.DIGITAL_MINS.flatMap((min) =>
       sweep.DIGITAL_MAXES.filter((max) => max > min),
