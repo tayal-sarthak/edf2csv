@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.63
+
+### a layout promise resting on one declaration and a display type
+
+`styles.css` makes a promise about the phone layout and implements it in one declaration:
+
+> On a phone the page you asked for comes first, and the list of the other ten comes after it.
+> […] eleven sidebar links […] filling the whole first screen of a 375x812 phone. On the CLI
+> reference the title landed at y=624, at the very bottom edge, and the first sentence of the
+> page at y=1333 — a screen and a half of navigation before the thing a search result had just
+> promised.
+
+Measured in a browser at 375x812, it works today: the article sits at y=68 and the nav below the
+whole of it. Two things hold that up, and nothing checked either.
+
+The first is the declaration — `order: 2` on the collapsed sidebar inside the max-width block.
+Drop it and a reader arriving from a search result gets the navigation first again, which is
+invisible to whoever changed it: the two-column layout above the breakpoint is unaffected, so the
+page looks right on the laptop they are working on.
+
+The second is quieter. **`order` does nothing outside a flex or grid container.** `.docs` is
+`display: grid` today; change it to `display: block` for any reason and the declaration stays in
+the file, reads as though it is doing its job, and has no effect at all. The comment two blocks
+further down already describes this shape of failure on the 404 — "`order` did nothing there, the
+border did" — so it is the known way for this rule to stop working.
+
+Held statically, because `npm test` has no browser: the breakpoint the comment names, the order
+being behind the article's default of 0, and the container still being one of the two display
+types that make `order` mean anything. Removing either support fails.
+
 ## 0.10.62
 
 ### three hundred and five streams, and the forty-five that were refused

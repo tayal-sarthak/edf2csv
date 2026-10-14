@@ -3010,6 +3010,63 @@ ${script}`,
     );
   });
 
+  it('puts the page before the list of the other pages on a phone', async () => {
+    /*
+      `styles.css` makes a promise about the phone layout and implements it in one
+      declaration:
+
+          On a phone the page you asked for comes first, and the list of the other ten comes
+          after it. [...] eleven sidebar links [...] filling the whole first screen of a
+          375x812 phone. On the CLI reference the title landed at y=624, at the very bottom
+          edge, and the first sentence of the page at y=1333 — a screen and a half of
+          navigation before the thing a search result had just promised.
+
+      The fix is `order: 2` on the collapsed sidebar inside the max-width block. Measured in a
+      browser at 375x812 it works: the article sits at y=68 and the nav below the whole of it.
+
+      Two things hold it up and nothing checked either.
+
+      The first is the declaration. Drop it and a reader arriving from a search result gets the
+      navigation first again, which is invisible to anyone looking at a laptop — the two-column
+      layout above the breakpoint is unaffected, so the page looks right to whoever changed it.
+
+      The second is quieter: **`order` does nothing outside a flex or grid container.** `.docs`
+      is `display: grid` today. Change it to `display: block` for any reason and the
+      declaration stays in the file, reads as though it is doing its job, and does nothing at
+      all. The comment two blocks down already describes this shape of failure on the 404 —
+      "`order` did nothing there, the border did" — so it is the known way for this rule to
+      stop working.
+
+      Held statically, because `npm test` has no browser: the breakpoint the comment names, the
+      order being behind the article's default of 0, and the container still being one of the
+      two display types that make `order` mean anything.
+    */
+    const sheet = await read('website/src/styles.css');
+    const promise = sheet.slice(sheet.indexOf('On a phone the page you asked for comes first'));
+    assert.ok(promise.length > 200, 'the phone-layout promise is gone from the stylesheet');
+    const breakpoint = /collapses to one at (\d+)px/u.exec(promise);
+    assert.ok(breakpoint, 'the comment no longer says where the two columns collapse');
+
+    const container = /\n\.docs \{([^}]*)\}/u.exec(sheet);
+    assert.ok(container, 'the documentation layout no longer has a container rule');
+    const display = /display:\s*(\w+);/u.exec(container[1]);
+    assert.ok(display && ['grid', 'flex'].includes(display[1]),
+      `.docs is display:${display?.[1]}, and \`order\` does nothing outside grid or flex`);
+
+    const collapsed = new RegExp(
+      `@media \\(max-width: ${breakpoint[1]}px\\) \\{\\s*\\.docs__nav:not\\(\\.docs__nav--static\\) \\{([^}]*)\\}`,
+      'u',
+    ).exec(sheet);
+    assert.ok(collapsed,
+      `nothing restyles the collapsed sidebar at ${breakpoint[1]}px, which is where the ` +
+        'comment says the columns become one');
+    const order = /order:\s*(\d+);/u.exec(collapsed[1]);
+    assert.ok(order, 'the collapsed sidebar no longer declares an order, so it comes first again');
+    assert.ok(Number(order[1]) > 0,
+      `the sidebar's order is ${order[1]}, which does not put it after an article at the ` +
+        'default of 0');
+  });
+
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
     /*
       `styles.css` carries an instruction not to do something again, and nothing enforced it.
