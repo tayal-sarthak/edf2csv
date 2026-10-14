@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.65
+
+### fifty-three headings on a page that has fifty-seven
+
+Two rules in `styles.css` justify themselves with the size of the longest page, and both had the
+wrong number.
+
+The contents box: "The reference pages have long contents lists; the box scrolls rather than
+pushing […] so a list of **53** entries still reads as a structure rather than a wall."
+
+The permalink: "The anchor is `tabindex="-1"` and `aria-hidden="true"` — deliberately, since
+announcing **fifty-three** 'link, permalink' stops on the warnings page would cost more than it
+gives."
+
+The warnings page has **57** headings — eleven `##` and forty-six `###`. Both figures were four
+short, in two places and in two spellings, and neither is decoration: one says a scrolling box is
+needed rather than a list that pushes the page down, the other says a screen reader should not be
+made to announce every one of them. Both arguments got stronger as the page grew and neither
+sentence noticed.
+
+Derived from the Markdown, skipping fenced blocks so a `###` inside a code sample is not counted
+as a heading — and the warnings page is checked for still *being* the longest, because "on the
+warnings page" is the other half of the claim. If another page overtook it, both sentences would
+be reasoning about the wrong worst case.
+
+The permalink's mechanism goes with it, since it is what makes the count an argument: it has to
+stay `aria-hidden` and out of the tab order, and the comment records that a `:focus` rule was
+removed because it could never fire — so there has to not be one.
+
 ## 0.10.64
 
 ### fifteen tab stops, and the one hiding style that would remove the escape

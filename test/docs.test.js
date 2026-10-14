@@ -3010,6 +3010,77 @@ ${script}`,
     );
   });
 
+  it('sizes the longest contents list the way two rules reason about it', async () => {
+    /*
+      Two rules in `styles.css` justify themselves with the size of the longest page, and both
+      had the wrong number.
+
+      The contents box: "The reference pages have long contents lists; the box scrolls rather
+      than pushing [...] so a list of 53 entries still reads as a structure rather than a
+      wall." The permalink: "The anchor is `tabindex="-1"` and `aria-hidden="true"` —
+      deliberately, since announcing fifty-three 'link, permalink' stops on the warnings page
+      would cost more than it gives."
+
+      The warnings page has **57** headings — eleven `##` and forty-six `###` — and has had
+      for a while. Both figures were four short, in two places and in two spellings, and both
+      are the premise of a decision rather than decoration: one says a scrolling box is needed
+      instead of a list that pushes the page down, the other says a screen reader should not
+      be made to announce every one of them.
+
+      Derived from the Markdown, skipping fenced blocks so a `###` inside a code sample is not
+      a heading. And the page is checked for still being the longest, because "on the warnings
+      page" is the other half of the claim — if some other page overtook it, both sentences
+      would be reasoning about the wrong worst case.
+
+      The permalink's own mechanism goes with it. It is `aria-hidden` and out of the tab order
+      on purpose, which is what makes the count an argument at all, and the comment records
+      that a `:focus` rule was removed because it could never fire — so there has to not be
+      one.
+    */
+    const headingsIn = (text) => {
+      let fenced = false;
+      let count = 0;
+      for (const line of text.split('\n')) {
+        if (line.startsWith('```')) { fenced = !fenced; continue; }
+        if (!fenced && /^#{2,3} /u.test(line)) count++;
+      }
+      return count;
+    };
+    const counts = new Map();
+    for (const name of (await readdir(path.join(ROOT, 'website/content')))
+      .filter((page) => page.endsWith('.md'))) {
+      counts.set(name, headingsIn(await read(path.join('website/content', name))));
+    }
+    const [longest, most] = [...counts].sort((a, b) => b[1] - a[1])[0];
+    assert.equal(longest, 'warnings-and-errors.md',
+      `${longest} has ${most} headings, more than the warnings page the rules name`);
+
+    const sheet = await read('website/src/styles.css');
+    const WORDS = { 'fifty-one': 51, 'fifty-two': 52, 'fifty-three': 53, 'fifty-four': 54,
+      'fifty-five': 55, 'fifty-six': 56, 'fifty-seven': 57, 'fifty-eight': 58,
+      'fifty-nine': 59, sixty: 60 };
+    const asDigits = /a\s+list\s+of\s+(\d+)\s+entries/u.exec(sheet);
+    assert.ok(asDigits, 'the contents box no longer says how long a list it is sized for');
+    assert.equal(Number(asDigits[1]), most,
+      `the contents rule is sized for ${asDigits[1]} entries and the longest page has ${most}`);
+    const asWords = /announcing\s+([\w-]+)\s+"link, permalink"\s+stops/u.exec(sheet);
+    assert.ok(asWords, 'the permalink rule no longer says how many stops it is sparing');
+    assert.equal(WORDS[asWords[1]], most,
+      `the permalink rule counts ${asWords[1]} stops and the longest page has ${most}`);
+
+    // And the mechanism the count is an argument for.
+    // Emitted by the renderer, not the prerenderer: markdown.js builds the heading.
+    const renderer = await read('website/src/lib/markdown.js');
+    const permalink = /class="prose__anchor"[^>]*>/u.exec(renderer);
+    assert.ok(permalink, 'the renderer no longer puts a permalink in the markup');
+    for (const attribute of ['tabindex="-1"', 'aria-hidden="true"']) {
+      assert.ok(permalink[0].includes(attribute),
+        `the permalink is missing ${attribute}, which is what keeps it out of the tab order`);
+    }
+    assert.doesNotMatch(sheet, /\.prose__anchor:focus\b/u,
+      'a :focus rule is back on the permalink, which is out of the tab order and cannot fire');
+  });
+
   it('keeps the skip link worth having, and counts what it skips', async () => {
     /*
       The skip link's rule opens with the reason it is written the way it is:

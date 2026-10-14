@@ -935,7 +935,7 @@ a {
 }
 
 /* Subheadings are indented under the section they belong to, and set slightly smaller,
-   so a list of 53 entries still reads as a structure rather than a wall. */
+   so a list of 57 entries still reads as a structure rather than a wall. */
 .docs__toc a[data-level='3'] {
   padding-left: 0.9rem;
   font-size: 0.86rem;
@@ -1018,7 +1018,7 @@ a {
 
   It used to claim "or it is itself focused", and carried a `:focus` rule to match. The
   anchor is `tabindex="-1"` and `aria-hidden="true"` — deliberately, since announcing
-  fifty-three "link, permalink" stops on the warnings page would cost more than it gives —
+  fifty-seven "link, permalink" stops on the warnings page would cost more than it gives —
   so it is not in the tab order, this browser does not focus it on click either, and
   nothing on the site calls `.focus()` on one. The rule could not fire, and the sentence
   above it described a way of reaching the permalink that does not exist.
