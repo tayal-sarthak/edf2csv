@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.64
+
+### fifteen tab stops, and the one hiding style that would remove the escape
+
+The skip link's rule opens with the reason it is written the way it is:
+
+> Off-screen until focused, rather than `display:none`, which would take it out of the tab order
+> and defeat the point. A documentation page opens with the header and an eleven-item sidebar, so
+> reaching the prose by keyboard meant **fifteen tab stops** on every page.
+
+Both halves were unchecked, and the first is a trap the comment lays out itself. `display: none`
+is the obvious way to hide something, it looks right in every screenshot, and it removes the
+element from the tab order — so the one control that exists to be reached by keyboard becomes
+unreachable by keyboard. Nothing changes for anyone who is not tabbing through the page, which
+is everyone reviewing it.
+
+The second is a count, and measured in a browser at 375x812 it is exactly fifteen: the brand,
+Docs, GitHub and the theme toggle — `CLI` and `Correctness` carry `nav__hide-sm` and are gone at
+that width — then the eleven sidebar links.
+
+So it is the header's surviving controls plus one link per documentation page, and it moves
+whenever either does. Derived from both now rather than written down: a twelfth page makes it
+sixteen, and so does un-hiding one header link on phones. Both fail.
+
+The off-screen mechanism is held too — absolute, parked above the viewport, and brought back by
+a `:focus` rule that has to put it at or below zero.
+
 ## 0.10.63
 
 ### a layout promise resting on one declaration and a display type

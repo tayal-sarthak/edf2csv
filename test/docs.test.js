@@ -3010,6 +3010,64 @@ ${script}`,
     );
   });
 
+  it('keeps the skip link worth having, and counts what it skips', async () => {
+    /*
+      The skip link's rule opens with the reason it is written the way it is:
+
+          Off-screen until focused, rather than display:none, which would take it out of the
+          tab order and defeat the point. A documentation page opens with the header and an
+          eleven-item sidebar, so reaching the prose by keyboard meant fifteen tab stops on
+          every page.
+
+      Both halves were unchecked, and the first is a trap laid out in the comment itself.
+      `display: none` is the obvious way to hide something, it looks correct in every
+      screenshot, and it removes the element from the tab order — so the one control that
+      exists to be reached by keyboard becomes unreachable by keyboard. Nothing about the page
+      changes for anyone who is not tabbing through it.
+
+      The second is a count. Measured in a browser at 375x812 it is exactly fifteen: the brand,
+      Docs, GitHub and the theme toggle — `CLI` and `Correctness` carry `nav__hide-sm` and are
+      gone at that width — followed by the eleven sidebar links. So it is the header's
+      surviving controls plus one link per documentation page, and it moves whenever either
+      does. Derived from both here rather than written down.
+    */
+    const sheet = await read('website/src/styles.css');
+    const rule = /\n\.skip \{([^}]*)\}/u.exec(sheet);
+    assert.ok(rule, 'the skip link has no rule of its own any more');
+    assert.doesNotMatch(rule[1], /display:\s*none/u,
+      'the skip link is display:none, which takes it out of the tab order it exists to serve');
+    assert.match(rule[1], /position:\s*absolute/u,
+      'the skip link is no longer positioned off-screen');
+    const parked = /top:\s*(-[\d.]+)rem;/u.exec(rule[1]);
+    assert.ok(parked, 'the skip link no longer sits above the viewport until it is focused');
+    const focused = /\n\.skip:focus \{([^}]*)\}/u.exec(sheet);
+    assert.ok(focused, 'nothing brings the skip link back on screen when it is focused');
+    const shown = /top:\s*([\d.]+)rem;/u.exec(focused[1]);
+    assert.ok(shown && Number(shown[1]) >= 0,
+      `focusing the skip link moves it to ${shown?.[1]}rem, which is still off-screen`);
+
+    /* And the count, from the nav it is skipping and the pages it is skipping past. */
+    const nav = /<nav class="nav"[\s\S]*?<\/nav>`;/u.exec(await read('website/scripts/prerender.mjs'));
+    assert.ok(nav, 'the prerendered header is gone or reshaped');
+    /*
+      Three kinds of control in that template: the `headerLink()` calls, the plain anchors
+      (the brand and GitHub), and the interpolated toggle. Counting `<a href=` alone misses
+      the brand, which carries a class first.
+    */
+    const controls = [...nav[0].matchAll(/headerLink\(|<a |\$\{THEME_TOGGLE\}/gu)].length;
+    const hiddenOnPhones = [...nav[0].matchAll(/nav__hide-sm/gu)].length;
+    const pages = (await readdir(path.join(ROOT, 'website/content')))
+      .filter((name) => name.endsWith('.md')).length;
+    const stops = controls - hiddenOnPhones + pages;
+    const words = { thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+      eighteen: 18 };
+    const claimed = /meant\s+([\w-]+)\s+tab\s+stops/u.exec(sheet);
+    assert.ok(claimed, 'the comment no longer says how many tab stops the link saves');
+    assert.equal(words[claimed[1]], stops,
+      `the header keeps ${controls - hiddenOnPhones} controls on a phone and there are ` +
+        `${pages} pages, which is ${stops} tab stops, not ${claimed[1]}`);
+  });
+
   it('puts the page before the list of the other pages on a phone', async () => {
     /*
       `styles.css` makes a promise about the phone layout and implements it in one
