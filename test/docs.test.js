@@ -3010,6 +3010,61 @@ ${script}`,
     );
   });
 
+  it('overrides every colour for the light theme, once', async () => {
+    /*
+      The light palette is written twice and nothing had ever compared the copies.
+
+      `:root[data-theme='light']` is what a reader gets from the toggle;
+      `@media (prefers-color-scheme: light) :root:not([data-theme])` is what a reader gets
+      whose system is set to light and who has never touched the toggle. Thirteen tokens in
+      each, identical today, with nothing saying they have to be.
+
+      Tune one and the site has two light themes. Both look finished, because nobody opens the
+      same page twice with the toggle in different states to compare them, and the theme test
+      this repository already has checks the storage key rather than the colours.
+
+      The other half is completeness. The dark root declares twenty tokens and light overrides
+      thirteen of them; the seven it inherits are fonts, radii, the shell width, the gutter and
+      the easing — nothing with a colour in it. Add a colour to the dark root and forget the
+      override and light mode silently paints with a value chosen against a near-black
+      background, which is the classic theming bug and is invisible until somebody switches.
+
+      So: every colour in the dark root has an override in both light blocks, nothing that is
+      not a colour does, and the two blocks say the same thing.
+    */
+    const sheet = await read('website/src/styles.css');
+    const tokensOf = (pattern) => {
+      const block = pattern.exec(sheet);
+      assert.ok(block, `the palette block ${pattern.source} is gone`);
+      return new Map([...block[1].matchAll(/(--[\w-]+):\s*([^;]+);/gu)]
+        .map(([, name, value]) => [name, value.trim()]));
+    };
+    const dark = tokensOf(/\n:root \{([^}]*)\}/u);
+    const chosen = tokensOf(/\n:root\[data-theme='light'\] \{([^}]*)\}/u);
+    const systemLight = tokensOf(/:root:not\(\[data-theme\]\) \{([^}]*)\}/u);
+    assert.ok(dark.size >= 15, `the dark palette declares ${dark.size} tokens`);
+
+    /* The two light copies, token for token. */
+    assert.deepEqual([...chosen.keys()].sort(), [...systemLight.keys()].sort(),
+      'the toggle\'s light theme and the system light theme define different tokens');
+    const disagree = [...chosen]
+      .filter(([name, value]) => systemLight.get(name) !== value)
+      .map(([name, value]) => `${name}: toggle says ${value}, system says ${systemLight.get(name)}`);
+    assert.deepEqual(disagree, [],
+      `the two light palettes disagree:\n  ${disagree.join('\n  ')}`);
+
+    /* And that light overrides exactly the colours. */
+    const isColour = (value) => /^#[\da-f]{3,8}$/iu.test(value) || /^rgb/iu.test(value);
+    const missing = [...dark]
+      .filter(([name, value]) => isColour(value) && !chosen.has(name))
+      .map(([name]) => name);
+    assert.deepEqual(missing, [],
+      `light mode inherits these colours from the dark palette: ${missing.join(', ')}`);
+    const structural = [...chosen.keys()].filter((name) => !isColour(dark.get(name) ?? '#000'));
+    assert.deepEqual(structural, [],
+      `light mode overrides these, which are not colours: ${structural.join(', ')}`);
+  });
+
   it('holds the dim text to the contrast its own comment claims for it', async () => {
     /*
       The palette carries an accessibility argument with two numbers in it, and nothing had

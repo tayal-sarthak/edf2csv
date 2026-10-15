@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.68
+
+### two light themes that nothing compared
+
+The light palette is written twice, and nothing had ever compared the copies.
+
+`:root[data-theme='light']` is what a reader gets from the toggle.
+`@media (prefers-color-scheme: light) :root:not([data-theme])` is what a reader gets whose
+system is set to light and who has never touched it. Thirteen tokens in each, identical today,
+with nothing saying they have to be.
+
+Tune one and the site has two light themes. Both look finished, because nobody opens the same
+page twice with the toggle in different states to compare them — and the theme test this
+repository already has checks the storage key, not the colours.
+
+The other half is completeness. The dark root declares twenty tokens and light overrides
+thirteen; the seven it inherits are the two font stacks, two radii, the shell width, the gutter
+and the easing curve — nothing with a colour in it. Add a colour to the dark root, forget the
+override, and light mode paints with a value chosen against a near-black background. That is the
+ordinary theming bug, and it is invisible until somebody switches.
+
+Three things now hold. Every colour in the dark root has an override in both light blocks.
+Nothing that is not a colour has one. And the two blocks say the same thing, token for token.
+
+Tuning one copy fails; adding a `--warning` to the dark root without a light override fails,
+naming the token.
+
 ## 0.10.67
 
 ### the theme with no comment arguing for its contrast
