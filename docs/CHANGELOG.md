@@ -8,6 +8,36 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.69
+
+### a page that says it does not animate, and nothing holding it to that
+
+`website/README.md` makes a negative claim about motion, which is the kind that rots without
+anyone noticing:
+
+> Motion is used where it explains something: the hero trace animates because the tool turns a
+> continuous signal into rows of numbers, and the sampling-rate comparison animates because
+> watching 765 values appear out of nowhere makes the point faster than a sentence does. **The
+> rest of the page does not fade in on scroll** — it used to, and a page where every heading
+> rises into place is indistinguishable from every other page where every heading rises into
+> place.
+
+Nothing enforced it. Adding a scroll-triggered fade to a section is a pleasant afternoon's work,
+it reads as an improvement, and the sentence saying the page deliberately does not do that is in
+a README nobody rereads. The claim would just quietly become false.
+
+So the components reaching for a scroll trigger have to be the ones that paragraph is about. One
+does today — `RateComparison` — because the hero trace runs continuously rather than on entry. A
+third fails this until somebody decides whether the sentence is still true.
+
+The hero's entrance is the other half: "CSS rather than JavaScript so the prerendered title is
+visible the instant the HTML paints". That holds only while the title's animation is a stylesheet
+rule. A `motion` component with an `initial` would delay it until the bundle arrives — the exact
+thing the prerendering exists to avoid, and indistinguishable from correct on a fast connection.
+
+The `backwards` fill goes with it: without it a line with a delay flashes at full opacity before
+its animation starts.
+
 ## 0.10.68
 
 ### two light themes that nothing compared

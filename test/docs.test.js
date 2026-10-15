@@ -3010,6 +3010,64 @@ ${script}`,
     );
   });
 
+  it('animates only the two visuals that argue something', async () => {
+    /*
+      `website/README.md` makes a negative claim about motion, which is the kind that rots
+      without anyone noticing:
+
+          Motion is used where it explains something: the hero trace animates because the tool
+          turns a continuous signal into rows of numbers, and the sampling-rate comparison
+          animates because watching 765 values appear out of nowhere makes the point faster
+          than a sentence does. The rest of the page does not fade in on scroll — it used to,
+          and a page where every heading rises into place is indistinguishable from every
+          other page where every heading rises into place.
+
+      Nothing enforced it. Adding a scroll-triggered fade to a section is a pleasant afternoon's
+      work, it looks like an improvement, and the sentence saying the page deliberately does not
+      do that is in a README nobody rereads. The claim would simply become false.
+
+      So the components that reach for a scroll trigger have to be the ones the paragraph is
+      about. One does today — `RateComparison`, the sampling-rate comparison — because the hero
+      trace runs continuously rather than on entry. A third fails this until somebody decides
+      whether the sentence is still true.
+
+      The hero's entrance is the other half: "CSS rather than JavaScript so the prerendered
+      title is visible the instant the HTML paints". That only holds while the title's animation
+      is a stylesheet rule — a `motion` component with an `initial` would delay it until the
+      bundle arrives, which is the whole thing the prerendering exists to avoid, and would look
+      identical on a fast connection.
+    */
+    const readme = await read('website/README.md');
+    assert.match(readme, /does\s+not\s+fade\s+in\s+on\s+scroll/u,
+      'the README no longer claims the page is still at rest');
+
+    const scrolled = [];
+    for (const dir of ['website/src', 'website/src/components']) {
+      for (const name of await readdir(path.join(ROOT, dir))) {
+        if (!/\.jsx$/u.test(name)) continue;
+        const source = await read(path.join(dir, name));
+        if (/useInView|whileInView|viewport=\{/u.test(source)) scrolled.push(name);
+      }
+    }
+    assert.deepEqual(scrolled.sort(), ['RateComparison.jsx'],
+      `the README says only the two visuals animate; these enter on scroll: ${scrolled.join(', ')}`);
+
+    /* And the hero entrance, which has to stay in the stylesheet. */
+    const landing = await read('website/src/components/Landing.jsx');
+    const title = /<h1 className="([^"]*)"/u.exec(landing);
+    assert.ok(title, 'the landing page no longer has a title to animate');
+    assert.ok(title[1].split(/\s+/u).includes('rise'),
+      `the hero title carries "${title[1]}" and not the CSS entrance class`);
+    assert.doesNotMatch(landing, /<motion\.h1/u,
+      'the hero title is animated in JavaScript, so it waits for the bundle the prerender ' +
+        'exists to make unnecessary');
+    const entrance = /\n\.rise \{([^}]*)\}/u.exec(await read('website/src/styles.css'));
+    assert.ok(entrance, 'the CSS entrance the hero title asks for is gone');
+    assert.match(entrance[1], /animation:\s*rise\b[^;]*\bbackwards\b/u,
+      'the entrance no longer holds its first frame through the delay, so a delayed line ' +
+        'flashes at full opacity before it starts');
+  });
+
   it('overrides every colour for the light theme, once', async () => {
     /*
       The light palette is written twice and nothing had ever compared the copies.
