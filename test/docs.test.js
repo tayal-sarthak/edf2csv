@@ -3010,6 +3010,63 @@ ${script}`,
     );
   });
 
+  it('prints the prose and none of the navigation', async () => {
+    /*
+      The print stylesheet is the one surface on this site nobody ever looks at. No screenshot
+      shows it, no browser test opens it, and a reader who finds it broken has already wasted
+      the paper.
+
+      Its comment says what it is for: "Reference documentation gets printed and saved beside
+      the recordings it describes, and the page as it stands spends its first sheet on a sticky
+      header, an eleven-item sidebar and a contents list that cannot be clicked on paper. The
+      prose is what is being printed; the navigation is the part that only works on a screen.
+      Colours are forced light because a printer asked for near-black backgrounds obliges."
+
+      Both halves are written as lists of names. Seven classes are hidden; rename any one of
+      them anywhere else on the site and that element comes back on the page, on paper, in
+      silence — the rule still parses, still applies to nothing, and the first sheet goes back
+      to being navigation. The colour half is the same shape in reverse: the override has to
+      actually name the tokens the page is painted with, or a printer is asked for a near-black
+      background again.
+
+      So every class the print block hides has to be one something renders, and the forced
+      palette has to cover the tokens the page paints with.
+    */
+    const sheet = await read('website/src/styles.css');
+    const print = sheet.slice(sheet.indexOf('@media print'));
+    assert.ok(print.length > 400, 'the print stylesheet is gone');
+
+    const hidden = /\n((?:\s*\.[\w-]+,\n)+\s*\.[\w-]+) \{\s*display: none;/u.exec(print);
+    assert.ok(hidden, 'the print stylesheet no longer hides the navigation');
+    const classes = [...hidden[1].matchAll(/\.([\w-]+)/gu)].map(([, name]) => name);
+    assert.ok(classes.length >= 5,
+      `the print stylesheet hides ${classes.length} things, fewer than the navigation it names`);
+
+    let markup = await read('website/scripts/prerender.mjs');
+    for (const dir of ['website/src', 'website/src/components', 'website/src/lib']) {
+      for (const name of await readdir(path.join(ROOT, dir))) {
+        if (/\.(?:jsx|js)$/u.test(name)) markup += await read(path.join(dir, name));
+      }
+    }
+    const unrendered = classes.filter(
+      (name) => !new RegExp(`["'\\s]${name}[\\s"']`, 'u').test(markup),
+    );
+    assert.deepEqual(unrendered, [],
+      `the print stylesheet hides these and nothing renders them: ${unrendered.join(', ')}`);
+
+    /* And the forced palette, against the tokens the page is actually painted with. */
+    const forced = /:root \{([^}]*)\}/u.exec(print);
+    assert.ok(forced, 'the print stylesheet no longer forces a light palette');
+    const overridden = new Set([...forced[1].matchAll(/(--[\w-]+):/gu)].map(([, name]) => name));
+    for (const needed of ['--bg', '--bg-raised', '--bg-sunken', '--text']) {
+      assert.ok(overridden.has(needed),
+        `print does not force ${needed}, so a printer is asked for the screen's colour there`);
+    }
+    const background = /--bg:\s*(#[\da-f]{6});/u.exec(forced[1]);
+    assert.equal(background?.[1], '#ffffff',
+      `print paints the page ${background?.[1]} rather than leaving the paper alone`);
+  });
+
   it('keeps the contents box scrolling, capped and indented', async () => {
     /*
       The contents box is three mechanisms with a comment each, and none of them was checked.

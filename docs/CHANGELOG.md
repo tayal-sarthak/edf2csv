@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.71
+
+### the one stylesheet nobody ever looks at
+
+The print stylesheet is the one surface on this site nobody ever looks at. No screenshot shows
+it, no browser test opens it, and a reader who finds it broken has already wasted the paper.
+
+Its comment says what it is for:
+
+> Reference documentation gets printed and saved beside the recordings it describes, and the
+> page as it stands spends its first sheet on a sticky header, an eleven-item sidebar and a
+> contents list that cannot be clicked on paper. The prose is what is being printed; the
+> navigation is the part that only works on a screen. Colours are forced light because a
+> printer asked for near-black backgrounds obliges.
+
+Both halves are written as lists of names. Seven classes are hidden — `.nav`, `.docs__nav`,
+`.docs__toc`, `.doc-footer`, `.footer`, `.skip`, `.prose__anchor`. Rename any one of them
+anywhere else on the site and that element comes back on the page, on paper, in silence: the
+rule still parses, it just applies to nothing, and the first sheet goes back to being navigation.
+
+The colour half is the same shape in reverse. The override has to actually name the tokens the
+page is painted with, or a printer is asked for a near-black background again — which is the one
+thing the paragraph says it exists to prevent.
+
+So every class the print block hides has to be one something renders, and the forced palette has
+to cover the tokens the page paints with and leave the paper white.
+
+Renaming one hidden class fails, naming it. So does letting the page keep its dark background.
+
 ## 0.10.70
 
 ### a stylesheet keyed to markup it does not own
