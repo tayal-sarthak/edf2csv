@@ -3010,6 +3010,50 @@ ${script}`,
     );
   });
 
+  it('keeps the contents box scrolling, capped and indented', async () => {
+    /*
+      The contents box is three mechanisms with a comment each, and none of them was checked.
+
+      "The reference pages have long contents lists; the box scrolls rather than pushing the
+      prose down the page. See the narrow-viewport cap below, which lowers this." That is
+      `max-height` plus `overflow-y`, and they fail differently: lose the height and the box
+      pushes the prose down — the 480-pixel, 59%-of-the-screen problem the phone comment
+      describes — while losing the overflow clips the list instead, so the last entries simply
+      are not there and nothing scrolls to them.
+
+      "Subheadings are indented under the section they belong to, and set slightly smaller, so
+      a list of 57 entries still reads as a structure rather than a wall." That rule is
+      `a[data-level='3']`, and the attribute it keys on is written by `prerender.mjs`, in
+      another directory. Rename it on either side and every entry sits at the same indent: a
+      flat list of fifty-seven, which reads as a styling choice rather than as a break.
+
+      And the cross-reference, which is a claim about two numbers: the narrow cap has to be
+      lower than the one it is lowering, or the sentence pointing at it is describing nothing.
+    */
+    const sheet = await read('website/src/styles.css');
+    const box = /\n\.docs__toc \{([^}]*)\}/u.exec(sheet);
+    assert.ok(box, 'the contents box has no rule of its own any more');
+    const cap = /max-height:\s*min\([^,]+,\s*([\d.]+)rem\)/u.exec(box[1]);
+    assert.ok(cap, 'the contents box no longer caps its height, so it pushes the prose down');
+    assert.match(box[1], /overflow-y:\s*auto/u,
+      'the capped box no longer scrolls, so its last entries are clipped and unreachable');
+
+    const narrow = [...sheet.matchAll(/\.docs__toc \{[^}]*max-height:\s*([\d.]+)rem;[^}]*\}/gu)]
+      .map(([, value]) => Number(value));
+    assert.ok(narrow.length >= 1,
+      'the narrow-viewport cap the comment points at is gone');
+    assert.ok(Math.min(...narrow) < Number(cap[1]),
+      `the narrow cap is ${Math.min(...narrow)}rem and the one it is said to lower is ` +
+        `${cap[1]}rem`);
+
+    /* The indent, and the attribute it is keyed to. */
+    const indent = /\.docs__toc a\[([\w-]+)='(\d)'\]/u.exec(sheet);
+    assert.ok(indent, 'subheadings are no longer indented under their section');
+    const prerender = await read('website/scripts/prerender.mjs');
+    assert.ok(prerender.includes(`${indent[1]}="\${heading.level}"`),
+      `the stylesheet indents on [${indent[1]}] and the prerenderer does not write it`);
+  });
+
   it('animates only the two visuals that argue something', async () => {
     /*
       `website/README.md` makes a negative claim about motion, which is the kind that rots

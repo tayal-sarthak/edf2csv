@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.70
+
+### a stylesheet keyed to markup it does not own
+
+The contents box is three mechanisms with a comment each, and none of them was checked.
+
+> The reference pages have long contents lists; the box scrolls rather than pushing the prose
+> down the page. See the narrow-viewport cap below, which lowers this.
+
+That is `max-height` plus `overflow-y`, and they fail differently. Lose the height and the box
+pushes the prose down — the 480-pixel, 59%-of-the-screen problem the phone comment is about.
+Lose the overflow and the list is clipped instead: the last entries are simply not there, and
+nothing scrolls to them.
+
+> Subheadings are indented under the section they belong to, and set slightly smaller, so a list
+> of 57 entries still reads as a structure rather than a wall.
+
+That rule is `a[data-level='3']`, and the attribute it keys on is written by `prerender.mjs`, in
+another directory. Rename it on either side and all fifty-seven entries sit at one indent — a
+flat wall that reads as a styling choice rather than as something broken. A stylesheet keyed to
+markup it does not own is the quietest contract on the site.
+
+And the cross-reference is a claim about two numbers: the narrow cap has to actually be lower
+than the one it is said to lower, or the sentence pointing at it describes nothing.
+
+All three fail when broken, each with its own symptom named.
+
 ## 0.10.69
 
 ### a page that says it does not animate, and nothing holding it to that
