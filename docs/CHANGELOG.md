@@ -8,6 +8,30 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.67
+
+### the theme with no comment arguing for its contrast
+
+0.10.66 computed the two contrast ratios the dark palette states about itself. That paragraph
+argues about one token, in one theme, and it is the only place on the site where the 4.5:1 line
+is written down at all.
+
+The light palette has no comment. It carries the same roles — the footer, the comments inside
+every code sample, the header row of every table — painted on the same surfaces, for a reader
+who picked light in the toggle or whose system is set to it. Nobody tuning those colours has a
+sentence telling them where the line is.
+
+So the threshold the dark comment names is now applied to every pair in both themes: each text
+colour against each background it can sit on, plus `--accent-on` against `--accent`, which is
+button text and sits on nothing else. Twenty-four pairs.
+
+Light's worst turns out to be `--text-faint` on `--bg-sunken` at **4.60:1** — as close to the
+line as dark's 4.58, and holding by nobody's intention, since nothing had ever measured it.
+
+Lightening the light faint step to `#8a8275` drops it to 3.67:1 and fails. Tinting the button
+text to `#ffe9c9` drops it to 4.06:1 and fails. Both are the kind of small warming change that
+looks like an improvement in the editor.
+
 ## 0.10.66
 
 ### two contrast ratios nobody had multiplied out

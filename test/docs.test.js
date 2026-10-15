@@ -3077,6 +3077,52 @@ ${script}`,
       `--text-dim is ${dim.toFixed(2)}:1 on --bg-raised and the comment says ${dimmer[1]}:1`);
     assert.ok(contrast(faint, raised) < dim,
       'the faint step is no longer dimmer than --text-dim, which is the point of having it');
+
+    /*
+      And the same threshold across every pair in both themes, which is the half the comment
+      does not cover.
+
+      That paragraph is in the dark palette and argues about one token. The light palette has
+      no comment at all — and it carries the same roles, painted on the same surfaces, for a
+      reader who picked light or whose system did. Nobody tuning it has a sentence telling
+      them 4.5:1 is the line.
+
+      So every text colour against every background it can sit on, in both themes, has to
+      clear the threshold the dark comment names. Light's worst is `--text-faint` on
+      `--bg-sunken` at 4.60:1, which is as close to the line as dark's 4.58 and was holding by
+      nobody's intention.
+
+      Button text goes in too: `--accent-on` is painted on `--accent` and on nothing else, so
+      it is checked against that rather than against the page.
+    */
+    const palettes = {
+      dark: dark,
+      light: sheet.slice(sheet.indexOf("\n:root[data-theme='light']")),
+    };
+    const colour = (where, name) => {
+      const found = new RegExp(`--${name}:\\s*(#[\\da-f]{6});`, 'u').exec(where);
+      return found?.[1];
+    };
+    let pairs = 0;
+    for (const [theme, block] of Object.entries(palettes)) {
+      for (const ink of ['text', 'text-dim', 'text-faint', 'accent-text', 'danger']) {
+        for (const paper of ['bg', 'bg-raised', 'bg-sunken']) {
+          const [a, b] = [colour(block, ink), colour(block, paper)];
+          if (!a || !b) continue;
+          pairs++;
+          assert.ok(contrast(a, b) >= Number(threshold[1]),
+            `${theme}: --${ink} on --${paper} is ${contrast(a, b).toFixed(2)}:1, under the ` +
+              `${threshold[1]}:1 the palette says this text has to reach`);
+        }
+      }
+      const [on, accent] = [colour(block, 'accent-on'), colour(block, 'accent')];
+      if (on && accent) {
+        pairs++;
+        assert.ok(contrast(on, accent) >= Number(threshold[1]),
+          `${theme}: --accent-on is ${contrast(on, accent).toFixed(2)}:1 on --accent`);
+      }
+    }
+    assert.ok(pairs >= 24, `only ${pairs} colour pairs were checked across the two themes`);
   });
 
   it('sizes the longest contents list the way two rules reason about it', async () => {
