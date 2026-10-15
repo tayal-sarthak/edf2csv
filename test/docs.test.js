@@ -3010,6 +3010,75 @@ ${script}`,
     );
   });
 
+  it('holds the dim text to the contrast its own comment claims for it', async () => {
+    /*
+      The palette carries an accessibility argument with two numbers in it, and nothing had
+      ever done the arithmetic:
+
+          4.58:1 against the raised surface, its worst background, where it used to be 3.10:1.
+          This is not only decorative chrome: the footer, the comments inside every code sample
+          and the header row of every table in the documentation are painted with it, all of
+          them ordinary reading text, and all of them under the 4.5:1 that WCAG AA asks for.
+          It stays clearly dimmer than --text-dim (6.21:1), which is the whole point of having
+          a third step.
+
+      Both ratios are a function of three hex values sitting a few lines apart. Nudge any of
+      them — to warm the palette, to lift a surface, to make the faint step a little more
+      readable — and the comment goes on quoting the ratio the old colour had. The failure is
+      the one this paragraph was written about: text that is legible to the person adjusting
+      it and under the threshold for everyone else, with a comment saying it is fine.
+
+      Three things, because the sentence makes three claims. The ratio itself. That the raised
+      surface really is the worst of the backgrounds, which is what makes one number enough.
+      And that the faint step still clears the threshold the comment names, so a change that
+      keeps the comment honest by editing the number is caught too.
+    */
+    const sheet = await read('website/src/styles.css');
+    const dark = sheet.slice(0, sheet.indexOf('@media (prefers-color-scheme: light)'));
+    const token = (name) => {
+      const found = new RegExp(`--${name}:\\s*(#[\\da-f]{6});`, 'u').exec(dark);
+      assert.ok(found, `the dark palette no longer defines --${name}`);
+      return found[1];
+    };
+    const luminance = (hex) => {
+      const channels = [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+        .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    };
+    const contrast = (a, b) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+
+    const faint = token('text-faint');
+    const raised = token('bg-raised');
+    const backgrounds = ['bg', 'bg-raised', 'bg-sunken'].map((name) => [name, token(name)]);
+    const worst = backgrounds.sort((a, b) => contrast(faint, a[1]) - contrast(faint, b[1]))[0];
+    assert.equal(worst[0], 'bg-raised',
+      `--text-faint reads worst against --${worst[0]}, and the comment calls --bg-raised its ` +
+        'worst background');
+
+    const stated = /([\d.]+):1\s+against\s+the\s+raised\s+surface/u.exec(sheet);
+    assert.ok(stated, 'the palette no longer states the faint step\'s contrast');
+    assert.equal(contrast(faint, raised).toFixed(2), stated[1],
+      `--text-faint is ${contrast(faint, raised).toFixed(2)}:1 on --bg-raised and the comment ` +
+        `says ${stated[1]}:1`);
+
+    const threshold = /under\s+the\s+([\d.]+):1\s+that\s+WCAG\s+AA\s+asks\s+for/u.exec(sheet);
+    assert.ok(threshold, 'the comment no longer names the threshold it is clearing');
+    assert.ok(contrast(faint, raised) >= Number(threshold[1]),
+      `--text-faint is ${contrast(faint, raised).toFixed(2)}:1, under the ${threshold[1]}:1 ` +
+        'the comment says this text has to reach');
+
+    const dimmer = /dimmer\s+than\s+--text-dim\s+\(([\d.]+):1\)/u.exec(sheet);
+    assert.ok(dimmer, 'the comment no longer states --text-dim\'s contrast');
+    const dim = contrast(token('text-dim'), raised);
+    assert.equal(dim.toFixed(2), dimmer[1],
+      `--text-dim is ${dim.toFixed(2)}:1 on --bg-raised and the comment says ${dimmer[1]}:1`);
+    assert.ok(contrast(faint, raised) < dim,
+      'the faint step is no longer dimmer than --text-dim, which is the point of having it');
+  });
+
   it('sizes the longest contents list the way two rules reason about it', async () => {
     /*
       Two rules in `styles.css` justify themselves with the size of the longest page, and both

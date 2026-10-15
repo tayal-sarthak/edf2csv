@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.66
+
+### two contrast ratios nobody had multiplied out
+
+The palette carries an accessibility argument with two numbers in it, and nothing had ever done
+the arithmetic:
+
+> **4.58:1** against the raised surface, its worst background, where it used to be 3.10:1. This
+> is not only decorative chrome: the footer, the comments inside every code sample and the header
+> row of every table in the documentation are painted with it, all of them ordinary reading text,
+> and all of them under the 4.5:1 that WCAG AA asks for. It stays clearly dimmer than
+> `--text-dim` (**6.21:1**), which is the whole point of having a third step.
+
+Both ratios are a function of three hex values sitting a few lines apart. Nudge any of them — to
+warm the palette, to lift a surface, to make the faint step a little more readable — and the
+comment goes on quoting the ratio the old colour had.
+
+The failure is the one that paragraph was written about: text that looks fine to the person
+adjusting it, sits under the threshold for everyone else, and has a comment beside it saying it
+is fine.
+
+Three claims, three checks. The ratio itself, computed with the WCAG formula from the tokens.
+That the raised surface really is the worst of the three backgrounds, which is what makes one
+number enough — it is, at 4.58:1 against 4.84 and 4.98. And that the faint step still clears the
+threshold the comment names, so editing the number to match a worse colour does not get it past.
+
+Darkening the faint step to `#7a7265` gives 3.88:1 and fails. Lifting the raised surface to
+`#1c1a14` gives 4.33:1 and fails.
+
 ## 0.10.65
 
 ### fifty-three headings on a page that has fifty-seven
