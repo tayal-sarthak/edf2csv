@@ -5519,6 +5519,59 @@ ${script}`,
     assert.ok(correct >= 4, `the correctly rounded value is stated ${correct} times`);
   });
 
+  it('writes the same cross-check corpus every time it is asked', async () => {
+    /*
+      `test/crossvalidate/generate.mjs` ends its docstring with a one-line promise: "The seed
+      is fixed, so a mismatch reported on one machine reproduces on another."
+
+      That is the entire reason the cross-check is worth reporting. Claim 1 — "16,943 sample
+      values, 120 annotations and 750 header fields, all in agreement" — is the headline this
+      project leads with, and it is the one check nobody can re-run without pyEDFlib. If the
+      corpus differed between runs, the figure would be about a different set of recordings
+      each time, and a disagreement somebody reported could not be reproduced by anybody else.
+
+      Nothing held it. One `Math.random()` for a calibration, one `Date.now()` in a start
+      time, one `readdir` ordering a loop, and the promise is false while every sweep goes on
+      passing: the recordings are still well-formed, the values still agree with pyEDFlib on
+      whatever was written this time, and the only thing lost is the ability to reproduce a
+      failure — which is exactly the thing nobody notices until they need it.
+
+      Generated twice and hashed, name and bytes together, so an ordering change counts as a
+      difference. And the reason is held alongside the symptom: the generator may not reach
+      for a clock or a random number, since those are the two ways this becomes untrue while
+      a single run still looks fine.
+    */
+    const { createHash } = await import('node:crypto');
+    const sweep = await import(path.join(ROOT, 'test/crossvalidate/generate.mjs'));
+    const fingerprint = async () => {
+      const names = (await readdir(sweep.OUT_DIR)).sort();
+      const digest = createHash('sha256');
+      for (const name of names) {
+        digest.update(name);
+        digest.update(await readFile(path.join(sweep.OUT_DIR, name)));
+      }
+      return { count: names.length, hash: digest.digest('hex') };
+    };
+
+    sweep.generate();
+    const first = await fingerprint();
+    assert.ok(first.count > 10, `the generator wrote ${first.count} recordings`);
+    sweep.generate();
+    const again = await fingerprint();
+    assert.equal(again.count, first.count,
+      `two runs wrote ${first.count} and ${again.count} recordings`);
+    assert.equal(again.hash, first.hash,
+      'two runs of the cross-check generator wrote different bytes, so a mismatch reported ' +
+        'from one of them cannot be reproduced from the other');
+
+    const source = await read('test/crossvalidate/generate.mjs');
+    for (const reached of [/\bMath\.random\b/u, /\bDate\.now\b/u, /new Date\(\)/u]) {
+      assert.doesNotMatch(source, reached,
+        `the generator reaches for ${reached.source}, and its fixed seed is the reason a ` +
+          'reported mismatch is reproducible');
+    }
+  });
+
   it('adds the field-major header up to the block it says it is', async () => {
     /*
       The existing byte-layout check holds the *fixed* header to the parser, and says so: it

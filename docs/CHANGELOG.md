@@ -8,6 +8,34 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.74
+
+### a fixed seed nothing confirmed was fixed
+
+`test/crossvalidate/generate.mjs` ends its docstring with a one-line promise:
+
+> The seed is fixed, so a mismatch reported on one machine reproduces on another.
+
+That is the entire reason the cross-check is worth reporting. Claim 1 — "16,943 sample values,
+120 annotations and 750 header fields, all in agreement" — is the figure this project leads with,
+and it is the one check nobody can re-run without pyEDFlib installed. If the corpus differed
+between runs, that figure would describe a different set of recordings each time, and a
+disagreement somebody reported could not be reproduced by anybody else.
+
+Nothing held it. One `Math.random()` for a calibration, one `Date.now()` in a start time, one
+`readdir` ordering a loop — and the promise is false while every sweep goes on passing. The
+recordings are still well-formed, the values still agree with pyEDFlib about whatever was written
+this time, and the only thing lost is the ability to reproduce a failure, which is exactly the
+thing nobody misses until they need it.
+
+Generated twice and hashed — name and bytes together, so a change in ordering counts as a
+difference. Seventy-five recordings, identical to the byte.
+
+The reason is held alongside the symptom: the generator may not reach for a clock or a random
+number. Those are the two ways this becomes untrue while any single run still looks perfectly
+fine, and a check that only compared two runs in one process could be satisfied by a value that
+is stable within a process and not across machines.
+
 ## 0.10.73
 
 ### the half of the byte layout the other check filters out
