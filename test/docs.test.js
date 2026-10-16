@@ -5519,6 +5519,103 @@ ${script}`,
     assert.ok(correct >= 4, `the correctly rounded value is stated ${correct} times`);
   });
 
+  it('puts each record where the generator says it sits', async () => {
+    /*
+      Four comments in `test/fixtures/generate.mjs` say where a recording's records sit in
+      time, and nothing had read any of them:
+
+          EDF+D: records sit at 0 s, 1 s and 10 s, leaving a nine-second gap.
+          Records sit at 0.1, 0.2, 0.3 ... which is exactly where continuity puts them
+          The same shape, but the records really do jump: 0.5s, 1.5s, then 10.5s under EDF+C.
+          Records sit at 0.5s, 1.5s and 2.5s. Record 0's timekeeping TAL writes its onset with
+          a comma, so it cannot be read
+
+      These are the fixtures the timing code is argued about with, and the positions are the
+      whole of what makes each one the case it is: a nine-second hole, a tenths sequence that
+      is contiguous but does not compare equal, a file that calls itself continuous while
+      jumping, an origin that has to be recovered from a later record. Retune one — move a
+      record, add a fourth — and the comment describes a recording that no longer exists while
+      the test named after it goes on passing against whatever it does hold.
+
+      The correctness page's fixture table was pinned at 0.10.31, but it states rates and
+      record counts. Where the records *sit* is only written here.
+
+      Read back out of the files by decoding each record's timekeeping TAL, which is how an
+      EDF+D file states its own positions. Three readings, because the comments are three
+      shapes: a list ending in `...` has to be a prefix of what the file holds, a plain list
+      has to be all of it, and the one whose comment says a TAL "cannot be read" has to come
+      back unreadable for exactly that record.
+    */
+    const { EdfFile, decodeRecordAnnotations } = await import(path.join(ROOT, 'dist/index.js'));
+    const generator = await read('test/fixtures/generate.mjs');
+    /*
+      Line-based, because the four comments are different lengths and the one for
+      `lost-timekeeping` runs on for five lines about what the defect was. Take the run of
+      `//` lines starting at the claim, then the next fixture the generator opens.
+    */
+    const lines = generator.split('\n');
+    const claims = [];
+    lines.forEach((line, at) => {
+      if (!/\/\/.*(?:records sit at|really do jump)/iu.test(line)) return;
+      let sentence = '';
+      for (let i = at; i < lines.length && /^\s*\/\//u.test(lines[i]); i++) {
+        sentence += ` ${lines[i].replace(/^\s*\/\/ ?/u, '')}`;
+      }
+      const named = /at\('([\w.-]+)'\)/u.exec(lines.slice(at, at + 40).join('\n'));
+      if (named) claims.push({ sentence, file: named[1] });
+    });
+    assert.ok(claims.length >= 4,
+      `found ${claims.length} comments saying where records sit, fewer than the fixtures that have one`);
+
+    for (const { sentence, file } of claims) {
+      /*
+        Only the sentence that states the positions. `lost-timekeeping`'s comment runs on for
+        five lines about the defect — "1.5 - 1x1 = 0.5", "recordStarts[0]" — and every number
+        in that explanation would otherwise read as a record position. Cut at the first full
+        stop that is not inside a decimal.
+      */
+      const first = /^([\s\S]*?[^\d])\.\s/u.exec(sentence);
+      const positions = first ? first[1] : sentence;
+      // `|$`: the last position sits at the end of the cut, and a lookahead needing a
+      // following character backtracked "2.5s" to "2".
+      const said = [...positions.matchAll(/(?<![\w.])(\d+(?:\.\d+)?)\s*s?(?=[,.\s]|$)/gu)]
+        .map(([, value]) => Number(value));
+      const listed = said.slice(0, sentence.includes('...') ? 3 : said.length);
+      assert.ok(listed.length >= 3, `${file}: the comment lists ${listed.length} positions`);
+
+      const recording = await EdfFile.open(
+        path.join(ROOT, 'test/fixtures/generated', file),
+      );
+      const starts = [];
+      try {
+        for await (const batch of recording.readRecords()) {
+          for (let record = 0; record < batch.recordCount; record++) {
+            const bytes = recording.annotationBytes(
+              batch, record, recording.annotationSignals[0],
+            );
+            starts.push(decodeRecordAnnotations(bytes, record, true).recordStart);
+          }
+        }
+      } finally {
+        await recording.close();
+      }
+
+      if (/cannot be read/u.test(sentence)) {
+        assert.equal(starts[0], null,
+          `${file}: the comment says record 0's timekeeping cannot be read, and it reads ` +
+            `${starts[0]}`);
+        assert.deepEqual(starts.slice(1), listed.slice(1),
+          `${file}: the readable records sit at ${starts.slice(1).join(', ')}`);
+      } else if (sentence.includes('...')) {
+        assert.deepEqual(starts.slice(0, listed.length), listed,
+          `${file}: the sequence opens at ${starts.slice(0, listed.length).join(', ')}`);
+      } else {
+        assert.deepEqual(starts, listed,
+          `${file}: the records sit at ${starts.join(', ')}`);
+      }
+    }
+  });
+
   it('decodes the annotation example its own header comment prints', async () => {
     /*
       The header byte table has been held to the parser since 0.10.x. `annotations.ts` opens

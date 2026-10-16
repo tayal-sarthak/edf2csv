@@ -8,6 +8,35 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.72
+
+### where four recordings say their records sit
+
+Four comments in `test/fixtures/generate.mjs` say where a recording's records sit in time, and
+nothing had read any of them:
+
+> EDF+D: records sit at 0 s, 1 s and 10 s, leaving a nine-second gap.
+> Records sit at 0.1, 0.2, 0.3 ... which is exactly where continuity puts them
+> The same shape, but the records really do jump: 0.5s, 1.5s, then 10.5s under EDF+C.
+> Records sit at 0.5s, 1.5s and 2.5s. Record 0's timekeeping TAL writes its onset with a comma,
+> so it cannot be read
+
+These are the recordings the timing code is argued about with, and the positions are the whole of
+what makes each one the case it is: a nine-second hole; a tenths sequence that is contiguous but
+does not compare equal; a file that calls itself continuous while jumping; an origin that has to
+be recovered from a later record. Retune one — move a record, add a fourth — and the comment
+describes a recording that no longer exists, while the test named after it goes on passing
+against whatever the file now holds.
+
+The fixture table on the correctness page was pinned at 0.10.31, but it states rates and record
+counts. Where the records *sit* is written only here.
+
+Read back out of the files by decoding each record's timekeeping TAL, which is how an EDF+D file
+states its own positions. Three readings, because the comments come in three shapes: a list
+ending in `...` has to be a prefix of what the file holds, a plain list has to be all of it, and
+the one whose comment says a TAL "cannot be read" has to come back unreadable for exactly that
+record and correct for the rest.
+
 ## 0.10.71
 
 ### the one stylesheet nobody ever looks at
