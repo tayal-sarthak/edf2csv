@@ -5519,6 +5519,80 @@ ${script}`,
     assert.ok(correct >= 4, `the correctly rounded value is stated ${correct} times`);
   });
 
+  it('adds the field-major header up to the block it says it is', async () => {
+    /*
+      The existing byte-layout check holds the *fixed* header to the parser, and says so: it
+      filters its rows to the ones inside the first 256 bytes, because the section below that
+      "breaks the version field into its own bytes". The per-signal header — the part
+      edf-format.md opens by calling "the part people get wrong" — was left out of both halves
+      and read by nothing.
+
+      It is printed twice. `edf-format.md` draws it with running offsets:
+
+          offset 256          ns * 16 bytes    label
+                 +ns*16       ns * 80 bytes    transducer type
+                 +ns*96       ns *  8 bytes    physical dimension (the unit)
+                 ...
+                 +ns*224      ns * 32 bytes    reserved
+
+      and `header.ts`'s own docstring lists the same ten fields without them.
+
+      Those offsets are a prefix sum of the widths beside them, which makes the table check
+      itself: every offset has to be the total of everything above it, and the widths have to
+      come to the `ns * 256` the paragraph above promises. Get one width wrong and the rest of
+      the column is wrong by the same amount — a reader following it to find a physical
+      minimum lands in the middle of a transducer string, which parses as text and looks like
+      a label.
+
+      The page then works two of these out in prose — "the label of signal `i` is at
+      `256 + i * 16`, and its physical minimum is at `256 + ns * 104 + i * 8`" — and those are
+      checked against the table they are derived from.
+
+      And the two copies have to list the same ten fields, since `header.ts` is where someone
+      changing the parser reads the layout and the page is where everyone else does.
+    */
+    const page = await read('website/content/edf-format.md');
+    const fence = /```\noffset 256([\s\S]*?)```/u.exec(page);
+    assert.ok(fence, 'the field-major table is gone from edf-format.md');
+    const rows = [...`offset 256${fence[1]}`.matchAll(
+      /(?:offset (256)|\+ns\*(\d+))\s+ns \*\s*(\d+) bytes\s+([^\n]+)/gu,
+    )].map(([, first, offset, width, name]) => ({
+      at: first ? 0 : Number(offset),
+      width: Number(width),
+      name: name.trim(),
+    }));
+    assert.equal(rows.length, 10, `the table has ${rows.length} rows, not the ten fields EDF has`);
+
+    let running = 0;
+    for (const row of rows) {
+      assert.equal(row.at, running,
+        `"${row.name}" is drawn at +ns*${row.at} and everything above it comes to ${running}`);
+      running += row.width;
+    }
+    const block = /comes `ns \* (\d+)` more bytes/u.exec(page);
+    assert.ok(block, 'the page no longer says how big the per-signal header is');
+    assert.equal(running, Number(block[1]),
+      `the widths come to ${running} and the page calls the block ns * ${block[1]}`);
+
+    /* The two worked offsets below the table, against the table. */
+    const label = rows.find((row) => row.name === 'label');
+    const minimum = rows.find((row) => row.name.startsWith('physical minimum'));
+    assert.ok(label && minimum, 'the table no longer names a label and a physical minimum');
+    assert.ok(page.includes(`at \`256 + i * ${label.width}\``),
+      `the page works the label out at something other than ${label.width} bytes a signal`);
+    assert.ok(page.includes(`\`256 + ns * ${minimum.at} + i * ${minimum.width}\``),
+      `the page puts the physical minimum somewhere other than ns * ${minimum.at}`);
+
+    /* And the parser's own copy of the list. */
+    const docstring = (await read('src/edf/header.ts')).slice(0, 2000);
+    const listed = [...docstring.matchAll(/^ \* {5}ns \*\s*(\d+)\s+([^\n]+)/gmu)]
+      .map(([, width, name]) => ({ width: Number(width), name: name.trim() }));
+    assert.equal(listed.length, rows.length,
+      `header.ts lists ${listed.length} per-signal fields and the page draws ${rows.length}`);
+    assert.deepEqual(listed.map((row) => row.width), rows.map((row) => row.width),
+      'header.ts and edf-format.md give the per-signal fields different widths');
+  });
+
   it('puts each record where the generator says it sits', async () => {
     /*
       Four comments in `test/fixtures/generate.mjs` say where a recording's records sit in

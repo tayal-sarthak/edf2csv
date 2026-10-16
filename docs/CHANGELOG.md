@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.73
+
+### the half of the byte layout the other check filters out
+
+The existing byte-layout check holds the *fixed* header to the parser, and says so — it filters
+its rows to the ones inside the first 256 bytes. The per-signal header, the part edf-format.md
+opens by calling "the part people get wrong", was left out of both halves and read by nothing.
+
+It is printed twice. The page draws it with running offsets:
+
+```
+offset 256          ns * 16 bytes    label
+       +ns*16       ns * 80 bytes    transducer type
+       +ns*96       ns *  8 bytes    physical dimension (the unit)
+       ...
+       +ns*224      ns * 32 bytes    reserved
+```
+
+and `header.ts`'s docstring lists the same ten fields without them.
+
+Those offsets are a prefix sum of the widths beside them, which makes the table able to check
+itself: every offset has to be the total of everything above it, and the widths have to come to
+the `ns * 256` the paragraph above promises. Get one width wrong and the whole column below it is
+wrong by the same amount — a reader following it to find a physical minimum lands in the middle
+of a transducer string, which parses as text and looks like a label.
+
+The page then works two entries out in prose — "the label of signal `i` is at `256 + i * 16`, and
+its physical minimum is at `256 + ns * 104 + i * 8`" — and those are now checked against the
+table they were derived from.
+
+And the two copies have to list the same ten widths, because `header.ts` is where someone
+changing the parser reads the layout and the page is where everyone else does.
+
+Changing one width fails on the prefix sum, naming the row below it. Drifting a worked offset
+fails. So does letting the docstring disagree.
+
 ## 0.10.72
 
 ### where four recordings say their records sit
