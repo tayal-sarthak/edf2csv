@@ -3,8 +3,9 @@
  *
  * Generating fixtures rather than committing binaries keeps the repository small
  * and, more importantly, makes every edge case explicit and adjustable in code.
- * The files this produces have been checked against pyEDFlib, which reads them
- * without complaint — including the EDF+ annotation records.
+ * Well-formed files from it are read by pyEDFlib without complaint, EDF+
+ * annotation records included; the cross-check depends on that. The malformed
+ * ones `generate.mjs` asks for are another matter: pyEDFlib refuses several.
  */
 
 import { writeFileSync } from 'node:fs';
