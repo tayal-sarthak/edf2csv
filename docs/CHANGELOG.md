@@ -8,6 +8,46 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.75
+
+### a compiler told about a Node the package does not promise
+
+`engines.node` says 20. Six documents say "Node 20 or newer", CI's oldest Node is 20, and the
+suite holds all of them to each other. The compiler was told something else: `@types/node` was
+`^22.10.0`, so `tsc` accepted everything Node 22 added. `import { globSync } from 'node:fs'`
+compiles cleanly against those definitions and is not there on the Node 20 this package says is
+enough — and CI's Node 20 job would notice only if some test happened to reach that line.
+
+The definitions are now Node 20's, and `src` compiles against them unchanged. The suite holds
+their major to `engines.node`, beside the check that holds CI's oldest Node to it.
+
+Dependabot had seen the two disagree and kept proposing to fix it in the wrong direction: a pull
+request moving `@types/node` from 22 to 26, nine times since 16 August, each one replaced by the
+next. Majors of that one package are now ignored; its minors and patches still arrive grouped
+with everything else.
+
+### three compiler checks the source already passed
+
+Each was off, and each catches something the settings that were on let through.
+
+- **`noImplicitReturns`.** Delete the `throw` at the bottom of `optionalLayout` and
+  `--layout banana` stops being an error and quietly becomes the default layout. The function
+  returns `'wide' | 'long' | undefined`, so falling off its end type-checked.
+- **`allowUnreachableCode: false`.** Code after a `return` was a grey squiggle in an editor and
+  nothing at all in `npm run build`.
+- **`noPropertyAccessFromIndexSignature`.** The CLI reads its parsed options as `values['help']`,
+  the spelling that says the key may not be there. `values.help` compiled exactly the same.
+
+### which of the writer's files pyEDFlib reads
+
+`test/fixtures/edf-writer.mjs` said pyEDFlib "reads them without complaint".
+`test/crossvalidate/generate.mjs` says the fixtures built with that same writer include files
+"several of which pyEDFlib refuses to open at all". Both were true, of different files. The
+writer now says which: the well-formed ones, which the weekly cross-check reads, and not the
+malformed fixtures the suite exists to throw at the parser.
+
+Nothing the package ships changed except its version number.
+
 ## 0.10.74
 
 ### a fixed seed nothing confirmed was fixed
