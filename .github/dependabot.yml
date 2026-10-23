@@ -23,6 +23,10 @@ updates:
       dev:
         patterns: ['*']
         update-types: [minor, patch]
+    # @types/node's major is the Node it describes, which engines.node decides; the suite holds them equal.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   # The website, which is where the dependencies actually are.
   - package-ecosystem: npm

@@ -1497,6 +1497,12 @@ describe('documentation and source agree on their lists', () => {
       `CI's oldest Node is ${Math.min(...versions)} and package.json needs ${floor}`,
     );
 
+    // And the Node the compiler is told about: on any other major of @types/node, `tsc` accepts
+    // an API the floor does not have, and nothing but a test that happens to reach it notices.
+    const types = manifest.devDependencies['@types/node'];
+    assert.equal(/^\^?(\d+)/u.exec(types)?.[1], floor,
+      `@types/node is ${types}; engines.node needs ${floor}`);
+
     /*
       And the other half of the same sentence, which five pages and SECURITY.md make.
 
