@@ -8,6 +8,47 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.76
+
+### a stored theme that made React rebuild the landing page
+
+Nothing in `src/` changed. `dist/` compiles to the same JavaScript and declarations byte for
+byte; its source maps carry the same sources and are re-encoded by the newer compiler. Most of
+this release is the website and the machinery around the package.
+
+A reader who had picked a theme came back to a landing page React threw away. `Nav.jsx` read
+the stored choice while hydrating, so its icon and label differed from the prerendered HTML,
+which always says `auto`: three hydration errors (#418), then #423, and the whole root rendered
+again on the client. Reproduced on the live site with a stored `light`. The toggle now hydrates
+as `auto`, as the HTML does, reads storage once hydrated, and does not write back until it has.
+All four stored states — light, dark, auto, none — hydrate clean and keep their theme.
+
+### the vendor chunk held half the vendor
+
+`manualChunks` named `motion`, which catches its main entry and nothing the site imports — every
+component imports `motion/react`. So most of motion rode in the `index` chunk, the one an edit to
+the docs index replaces: 90,125 bytes, about four-fifths of it library code. Matched by path
+instead, `index` is 25,908 bytes with no library code in it, and an edit to `Nav.jsx` leaves the
+vendor chunk's hash where it was. It is also the form Vite 8 requires.
+
+`chunkSizeWarningLimit: 700` was raised on the site's first day for a content chunk the site no
+longer has. The largest chunk is 259 kB against the default 500; the limit is gone, so the
+warning can say something again.
+
+### the rest
+
+- **vite 6.4.5** for the website, closing three high advisories against 6.4.3.
+- **actions/checkout, setup-node and setup-python v7.** Every CI run warned that the pinned v4
+  and v5 run on a deprecated Node 20 runtime and were being forced onto 24.
+- **Node 26 in the CI matrix.** `engines` says 20 or newer, so 26 has been claimed since it
+  shipped and never run; the suite passes on 26.12.1.
+- **TypeScript 7**, in three steps: `"types": ["node"]` in tsconfig, since TypeScript 6 stopped
+  loading `@types/*` by default; `baseUrl` dropped from the two consumer probes, which TypeScript
+  7 removed and whose paths are absolute anyway; then the compiler itself.
+
+Two dependency majors were tried and not taken. React 19 and motion 14 render every page the
+same and add 23 kB and 10 kB gzipped to a first visit, for nothing a reader would notice.
+
 ## 0.10.75
 
 ### a compiler told about a Node the package does not promise
