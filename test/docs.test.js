@@ -3181,6 +3181,29 @@ ${script}`,
         'flashes at full opacity before it starts');
   });
 
+  it('writes each vendor-prefixed declaration before the standard one', async () => {
+    /*
+      Vite 8 minifies with Lightning CSS, which treats `backdrop-filter` and
+      `-webkit-backdrop-filter` as one property and keeps whichever comes last. The nav had the
+      standard one first, so the build kept only the prefix, which Chromium does not read, and
+      the header lost its blur with every check passing. Prefixed first survives either way.
+    */
+    const sheet = await read('website/src/styles.css');
+    const backwards = [];
+    for (const [, selector, body] of sheet.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+      const props = [...body.matchAll(/^\s*(-?[a-z-]+)\s*:/gmu)].map((m) => m[1]);
+      props.forEach((prop, at) => {
+        const plain = /^-(?:webkit|moz|ms)-(.+)$/u.exec(prop)?.[1];
+        if (plain && props.indexOf(plain) !== -1 && props.indexOf(plain) < at) {
+          backwards.push(`${selector.trim().split('\n').at(-1)} { ${plain} before ${prop} }`);
+        }
+      });
+    }
+    assert.deepEqual(backwards, [], `the minifier will drop the standard declaration: ${backwards.join('; ')}`);
+    assert.match(sheet, /-webkit-backdrop-filter:[^;]+;\s*backdrop-filter:/u,
+      'the nav no longer carries the pair this check exists for');
+  });
+
   it('overrides every colour for the light theme, once', async () => {
     /*
       The light palette is written twice and nothing had ever compared the copies.
