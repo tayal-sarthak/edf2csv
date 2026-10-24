@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.77
+
+### three docs pages wider than a phone
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.76's. This release is the
+website, found by loading it rather than by reading it.
+
+At 320px — the width WCAG's reflow criterion is written against — `/docs/api` was 66px wider than
+the screen, `/docs/cli-reference` 32px and `/docs/faq` 6px; `/docs/api` was 11px too wide even at
+375px. Each was one inline code span with nowhere to break, such as
+`defaultOutputDir('/data/recordings/sleep-study.edf')`. `overflow-wrap: break-word` on inline code
+fixes all four and leaves every table's own scrolling width exactly as it was; all thirteen pages
+now measure zero overflow at 320, 375 and 768.
+
+### the rest of what a browser showed
+
+- **The waveform stopped writing while off screen.** Its readout was rewritten 300 times a second
+  whether or not anyone could see it — measured 3,779px above the viewport. It now pauses on an
+  IntersectionObserver, as `PhosphorScope` already did: 0 writes off screen, 300 on.
+- **Vite 8 and plugin-react 6**, before Vite 6 drops to no support at all. Three things came with
+  it, each found by diffing the output against Vite 6's rather than trusting the build:
+  - Its minifier treats `backdrop-filter` and `-webkit-backdrop-filter` as one property and keeps
+    the last, so the nav lost its blur in Chromium. The prefixed one now comes first, and a new
+    test holds every prefixed pair in that order.
+  - Its default targets start at Safari 16.4, and the minifier then rewrote every media query in
+    range syntax, which older Safari cannot parse — an iPhone on iOS 15 would have lost the whole
+    phone layout. `build.target` keeps Vite 6's browsers; every rule now survives, and the only
+    differences from Vite 6's stylesheet are lowerings for Safari 14.
+  - `rollupOptions` and `manualChunks` are both deprecated under it, replaced by `rolldownOptions`
+    and a `codeSplitting` group that produces the same three chunks byte for byte.
+- **The website's `engines`** said Node 20.0 while Vite 8 needs 20.19 or 22.12; it now says what
+  vite says, and the suite holds the two equal, read from the lockfile.
+- **`color-mix` fallbacks** for the three places where losing it costs something on a browser that
+  lacks it: the sticky nav, which went see-through over the page; the hero scrim behind the
+  headline; and the ghost samples in the rate comparison, which fell back to the colour of real
+  ones. Modern browsers compute exactly what they did.
+- **marked 18**, which renders every page byte for byte as 15 did.
+- A comment in `vite.config.js` still described documentation inlined into the bundle; only the
+  landing page loads it now.
+
+Checked and clean, so not here: every internal link and fragment, every asset and manifest icon,
+the W3C HTML validator on all thirteen pages and the CSS validator on the stylesheet, server
+rendering in React's development build, and the packed package on Node 20.0.0 itself — 350
+conversions byte-identical to Node 24's.
+
 ## 0.10.76
 
 ### a stored theme that made React rebuild the landing page
