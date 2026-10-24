@@ -69,6 +69,15 @@ export default function Waveform() {
   const reduced = useReducedMotion();
   const readoutRefs = useRef([]);
   const timeRef = useRef(null);
+  // Off screen nobody reads the numbers, and they were still rewritten 300 times a second.
+  // An observer into a ref, as PhosphorScope does: visibility is not worth a re-render.
+  const scopeRef = useRef(null);
+  const inView = useRef(true);
+  useEffect(() => {
+    const io = new IntersectionObserver(([entry]) => { inView.current = entry.isIntersecting; });
+    io.observe(scopeRef.current);
+    return () => io.disconnect();
+  }, []);
 
   const channels = useMemo(
     () =>
@@ -110,13 +119,13 @@ export default function Waveform() {
   }, [reduced]);
 
   useAnimationFrame((elapsed) => {
-    if (reduced) return;
+    if (reduced || !inView.current) return;
     // 18 seconds for one full pass of the trace.
     paint((elapsed / 18000) % 1);
   });
 
   return (
-    <div className="scope">
+    <div className="scope" ref={scopeRef}>
       <div className="scope__head">
         <span>signals.csv</span>
         <span>4 of 23 channels · 256 Hz</span>
