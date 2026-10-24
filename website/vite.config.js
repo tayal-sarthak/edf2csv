@@ -58,7 +58,7 @@ export default defineConfig({
         // out means a docs edit does not invalidate the vendor bundle in anyone's cache.
         // By path, not by name: naming 'motion' caught its main entry and not `motion/react`,
         // which is what every component imports, so most of it rode in the chunk docs replace.
-        manualChunks: (id) => (/[\\/]node_modules[\\/]/u.test(id) ? 'vendor' : undefined),
+        codeSplitting: { groups: [{ name: 'vendor', test: /[\\/]node_modules[\\/]/u }] },
       },
     },
   },
