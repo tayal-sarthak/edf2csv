@@ -1093,6 +1093,8 @@ a {
 .prose code {
   font-family: var(--font-mono);
   font-size: 0.86em;
+  /* A call with a path in it has no break, and pushed /docs/api 66px wide at 320px. */
+  overflow-wrap: break-word;
   padding: 0.1em 0.36em;
   border-radius: 5px;
   background: var(--bg-sunken);
