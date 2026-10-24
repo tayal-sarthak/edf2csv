@@ -1236,6 +1236,12 @@ describe('documentation and source agree on their lists', () => {
       `vercel.json builds with "${config.buildCommand}", which is not a script website has`);
     assert.match(config.installCommand ?? '', /npm ci\b/u);
     await stat(path.join(ROOT, 'website/package-lock.json'));
+
+    // And the Node it builds on: vite's own floor, read from the lockfile because CI's core job
+    // never installs the site. Vite 8 raised it past the `>=20.0.0` this still said.
+    const builder = JSON.parse(await read('website/package-lock.json')).packages['node_modules/vite'];
+    assert.equal(site.engines?.node, builder.engines.node,
+      `website/package.json needs Node ${site.engines?.node}; vite ${builder.version} needs ${builder.engines.node}`);
   });
 
   it('tells a crawler what package.json says it is', async () => {
