@@ -56,9 +56,9 @@ export default defineConfig({
         // Documentation is inlined rather than fetched, which keeps navigation between
         // pages instant and the deploy a pile of static files. Splitting the libraries
         // out means a docs edit does not invalidate the vendor bundle in anyone's cache.
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'motion'],
-        },
+        // By path, not by name: naming 'motion' caught its main entry and not `motion/react`,
+        // which is what every component imports, so most of it rode in the chunk docs replace.
+        manualChunks: (id) => (/[\\/]node_modules[\\/]/u.test(id) ? 'vendor' : undefined),
       },
     },
     // The content chunk is large by design; the warning is not telling us anything new.
