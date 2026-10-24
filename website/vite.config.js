@@ -61,7 +61,5 @@ export default defineConfig({
         manualChunks: (id) => (/[\\/]node_modules[\\/]/u.test(id) ? 'vendor' : undefined),
       },
     },
-    // The content chunk is large by design; the warning is not telling us anything new.
-    chunkSizeWarningLimit: 700,
   },
 });
