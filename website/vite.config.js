@@ -49,6 +49,9 @@ export default defineConfig({
   // base would make those pages look for /docs/<slug>/assets/... instead.
   base: '/',
   build: {
+    // Vite 6's default, kept: Vite 8's starts at Safari 16.4, and its CSS minifier then writes
+    // media queries in range syntax, so an older iPhone silently lost the whole phone layout.
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     outDir: 'dist',
     assetsInlineLimit: 0,
     rolldownOptions: {
