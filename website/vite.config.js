@@ -51,7 +51,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsInlineLimit: 0,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Documentation is inlined rather than fetched, which keeps navigation between
         // pages instant and the deploy a pile of static files. Splitting the libraries
