@@ -53,8 +53,8 @@ export default defineConfig({
     assetsInlineLimit: 0,
     rolldownOptions: {
       output: {
-        // Documentation is inlined rather than fetched, which keeps navigation between
-        // pages instant and the deploy a pile of static files. Splitting the libraries
+        // Only the landing page loads these scripts; every documentation page is prerendered
+        // HTML that loads none. The landing lists each page's title, so splitting the libraries
         // out means a docs edit does not invalidate the vendor bundle in anyone's cache.
         // By path, not by name: naming 'motion' caught its main entry and not `motion/react`,
         // which is what every component imports, so most of it rode in the chunk docs replace.
