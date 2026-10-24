@@ -334,6 +334,8 @@ a {
   content: '';
   position: absolute;
   inset: 0;
+  /* Without color-mix the gradient below is dropped whole and the copy sits on the beam. */
+  background: linear-gradient(97deg, var(--bg) 0%, var(--bg) 14%, transparent 62%);
   background: linear-gradient(
     97deg,
     var(--bg) 0%,
