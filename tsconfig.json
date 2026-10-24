@@ -2,6 +2,9 @@
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023"],
+    // Named rather than left to whatever @types/* happens to be installed. TypeScript 6 stopped
+    // loading those by default, so this is also the line a newer compiler needs.
+    "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rootDir": "src",
