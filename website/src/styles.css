@@ -204,6 +204,8 @@ a {
   display: flex;
   align-items: center;
   border-bottom: 1px solid transparent;
+  /* Opaque where color-mix is unknown (Safari before 16.2), not see-through over the page. */
+  background: var(--bg);
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   /* Prefixed first: Vite 8's minifier keeps the last of the pair, and Chromium reads only this one. */
   -webkit-backdrop-filter: blur(14px) saturate(140%);
@@ -666,6 +668,8 @@ a {
 .dot--ghost {
   width: 5px;
   height: 5px;
+  /* Without this an older browser falls back to .dot's accent and paints invented samples as real. */
+  background: var(--danger);
   background: color-mix(in srgb, var(--danger) 60%, transparent);
 }
 
