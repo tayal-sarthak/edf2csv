@@ -21,16 +21,22 @@ function Mark() {
 export default function Nav() {
   const reduced = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
-  // Guarded because this also runs during prerendering, where there is no storage.
-  const [theme, setTheme] = useState(
-    () => (typeof localStorage === 'undefined' ? 'auto' : localStorage.getItem(STORAGE_KEY)) ?? 'auto',
-  );
+  // 'auto' first, as the prerendered page has it, and the stored choice read once hydrated.
+  // Reading storage here gave a returning reader a different icon and label from the HTML,
+  // and React threw the server's markup away to rebuild the page.
+  const [theme, setTheme] = useState('auto');
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    setTheme(localStorage.getItem(STORAGE_KEY) ?? 'auto');
+    setLoaded(true);
+  }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+  }, [theme, loaded]);
 
   useEffect(() => {
     // IntersectionObserver on a sentinel rather than a scroll listener, which would
