@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
 
-# A second push to a pull request leaves the first run going: three Node versions of the suite
+# A second push to a pull request leaves the first run going: four Node versions of the suite
 # plus eight sweeps, all proving things about a commit nobody will merge, while the run that
 # matters queues behind them.
 # Keyed by ref, so pushes to a branch supersede each other and main is left alone — a run on
@@ -21,13 +21,13 @@ permissions:
 # Every job carries a `timeout-minutes`, here and in the other three workflows. GitHub's
 # default is 360, so anything that hangs — an `npm ci` waiting on a registry that stopped
 # answering, a sweep that loops on an input it cannot finish — holds a runner for six hours
-# before anyone is told, and the matrix below is three of them at once. The limits are several
+# before anyone is told, and the matrix below is four of them at once. The limits are several
 # times what each job actually takes, so a slow morning is not a failure and a hang is.
 jobs:
   core:
     strategy:
       matrix:
-        node-version: [20, 22, 24]
+        node-version: [20, 22, 24, 26]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
