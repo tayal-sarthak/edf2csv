@@ -205,8 +205,9 @@ a {
   align-items: center;
   border-bottom: 1px solid transparent;
   background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
+  /* Prefixed first: Vite 8's minifier keeps the last of the pair, and Chromium reads only this one. */
   -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   transition: border-color 0.3s var(--ease);
 }
 
