@@ -3409,8 +3409,10 @@ ${script}`,
     assert.ok(flagger, 'inline code no longer holds its flags together, and a phone breaks them after their dashes');
     const held = (code) => code.replace(new RegExp(flagger[1], 'g'), '$1[$2]');
     assert.deepEqual(
-      ['--annotations-only', 'npm run fuzz -- 42 2000', 'ls -l', '--out=out', '(--bom)', 'T8-P8_ch0', '-1e308'].map(held),
-      ['[--annotations-only]', 'npm run fuzz [--] 42 2000', 'ls [-l]', '[--out]=out', '([--bom])', 'T8-P8_ch0', '-1e308']);
+      ['--annotations-only', 'npm run fuzz -- 42 2000', 'ls -l', '--out=out', '(--bom)', 'T8-P8_ch0', '-1e308',
+        'parseTimeSpec(&#39;-5s&#39;, &#39;--duration&#39;)', '&quot;--stdout&quot;'].map(held),
+      ['[--annotations-only]', 'npm run fuzz [--] 42 2000', 'ls [-l]', '[--out]=out', '([--bom])', 'T8-P8_ch0', '-1e308',
+        'parseTimeSpec(&#39;-5s&#39;, &#39;[--duration]&#39;)', '&quot;[--stdout]&quot;']);
     assert.match(await read('website/src/styles.css'), /\.prose code \.flag \{\s*white-space: nowrap;/u,
       'the flags are marked and nothing keeps them on one line');
 

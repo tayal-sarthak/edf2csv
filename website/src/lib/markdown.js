@@ -109,10 +109,12 @@ export function renderMarkdown(body) {
     A flag is one word. A browser may break a line after any hyphen, and in inline code on a
     phone it broke 104 flags at 375px right after their dashes: `--` ending one line and
     `annotations-only` starting the next, or `-` and `-channels` where it fell between the two.
-    Each flag is held together; the code around it still wraps at its spaces.
+    Each flag is held together; the code around it still wraps at its spaces. A quoted one too:
+    marked writes the quote as `&#39;` or `&quot;`, so `parseTimeSpec('-5s', '--duration')` kept
+    its flag apart from the rest until the entity counted as somewhere a flag can start.
   */
   html = html.replace(/<code translate="no">([^<]*)<\/code>/g, (_whole, inner) =>
-    `<code translate="no">${inner.replace(/(^|[\s(=,])(--?[A-Za-z][\w-]*|--(?![\w-]))/g, '$1<span class="flag">$2</span>')}</code>`);
+    `<code translate="no">${inner.replace(/(^|[\s(=,]|&#39;|&quot;)(--?[A-Za-z][\w-]*|--(?![\w-]))/g, '$1<span class="flag">$2</span>')}</code>`);
 
   return html;
 }
