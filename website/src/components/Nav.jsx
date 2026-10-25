@@ -27,7 +27,11 @@ export default function Nav() {
   const [theme, setTheme] = useState('auto');
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    setTheme(localStorage.getItem(STORAGE_KEY) ?? 'auto');
+    // Guarded, as the head script is: with site data blocked, storage throws rather than
+    // returning null, and unguarded that took the whole landing page down to a blank root.
+    try {
+      setTheme(localStorage.getItem(STORAGE_KEY) ?? 'auto');
+    } catch {}
     setLoaded(true);
   }, []);
 
@@ -35,7 +39,9 @@ export default function Nav() {
     if (!loaded) return;
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {}
   }, [theme, loaded]);
 
   useEffect(() => {
