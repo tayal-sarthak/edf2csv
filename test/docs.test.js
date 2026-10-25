@@ -1042,6 +1042,17 @@ describe('documentation and source agree on their lists', () => {
         `${where} spells the theme key ${spelt} times, not ${wanted} — a copy was added or moved`);
     }
 
+    // And every read and write of it inside a try: with site data blocked, storage throws rather
+    // than returning null, and the one unguarded pair, in Nav.jsx, blanked the landing page.
+    for (const [where, text] of [['website/index.html', index], ['the prerenderer', prerender],
+      ['Nav.jsx', nav]]) {
+      for (const call of text.matchAll(/localStorage\.(?:get|set)Item\(/gu)) {
+        const before = text.slice(0, call.index);
+        const opened = Math.max(-1, ...[...before.matchAll(/\btry\s*\{/gu)].map((m) => m.index));
+        assert.ok(opened > before.lastIndexOf('}'), `${where} touches localStorage outside a try`);
+      }
+    }
+
     /*
       And how long that inlined script is, which is the reason it exists.
 
