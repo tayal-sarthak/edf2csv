@@ -141,10 +141,11 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  * most people arrive at documentation — had to find their way to the homepage to switch,
  * and back again.
  *
- * Thirteen lines of inline script rather than shipping React to eleven static pages. It
+ * Fourteen lines of inline script rather than shipping React to eleven static pages. It
  * cycles the same three states in the same order and writes the same storage key, so the
  * two controls are the same control. Like the React one it cycles what it holds, not what it
- * re-reads: with site data blocked every read said 'auto', and the button stuck on light.
+ * re-reads: with site data blocked every read said 'auto', and the button stuck on light. And
+ * it moves the toolbar colour with the theme, as the pre-paint script does on load.
  */
 /*
   All three glyphs ship, and CSS shows the one matching the current theme — see
@@ -165,12 +166,13 @@ var order={auto:'light',light:'dark',dark:'auto'};
 var label={auto:'Match the system theme',light:'Switch to the light theme',dark:'Switch to the dark theme'};
 var t;try{t=localStorage.getItem('edf2csv-theme')||'auto'}catch(e){t='auto'}
 function sync(){var n=order[t]||'light';b.setAttribute('aria-label',label[n]);b.title=label[n];}
+function bar(){document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){var q=m.getAttribute('data-media')||m.getAttribute('media');m.setAttribute('data-media',q);m.setAttribute('media',t==='auto'?q:q.indexOf(t)>-1?'all':'not all');});}
 b.addEventListener('click',function(){
 t=order[t]||'light';
 try{localStorage.setItem('edf2csv-theme',t)}catch(e){}
 if(t==='auto')document.documentElement.removeAttribute('data-theme');
 else document.documentElement.setAttribute('data-theme',t);
-sync();});
+bar();sync();});
 sync();})();`;
 
 function structuredData(doc) {
