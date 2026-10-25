@@ -39,6 +39,12 @@ export default function Nav() {
     if (!loaded) return;
     if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
+    // The toolbar colour follows it, as the pre-paint script set it on load.
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+      const query = meta.getAttribute('data-media') ?? meta.getAttribute('media');
+      meta.setAttribute('data-media', query);
+      meta.setAttribute('media', theme === 'auto' ? query : query.includes(theme) ? 'all' : 'not all');
+    }
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {}
