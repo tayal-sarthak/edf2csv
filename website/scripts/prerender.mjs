@@ -138,7 +138,8 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  *
  * Thirteen lines of inline script rather than shipping React to eleven static pages. It
  * cycles the same three states in the same order and writes the same storage key, so the
- * two controls are the same control.
+ * two controls are the same control. Like the React one it cycles what it holds, not what it
+ * re-reads: with site data blocked every read said 'auto', and the button stuck on light.
  */
 /*
   All three glyphs ship, and CSS shows the one matching the current theme — see
@@ -157,13 +158,13 @@ const THEME_TOGGLE_SCRIPT = `(function(){
 var b=document.getElementById('theme');if(!b)return;
 var order={auto:'light',light:'dark',dark:'auto'};
 var label={auto:'Match the system theme',light:'Switch to the light theme',dark:'Switch to the dark theme'};
-function get(){try{return localStorage.getItem('edf2csv-theme')||'auto'}catch(e){return 'auto'}}
-function sync(){var n=order[get()]||'light';b.setAttribute('aria-label',label[n]);b.title=label[n];}
+var t;try{t=localStorage.getItem('edf2csv-theme')||'auto'}catch(e){t='auto'}
+function sync(){var n=order[t]||'light';b.setAttribute('aria-label',label[n]);b.title=label[n];}
 b.addEventListener('click',function(){
-var n=order[get()]||'light';
-try{localStorage.setItem('edf2csv-theme',n)}catch(e){}
-if(n==='auto')document.documentElement.removeAttribute('data-theme');
-else document.documentElement.setAttribute('data-theme',n);
+t=order[t]||'light';
+try{localStorage.setItem('edf2csv-theme',t)}catch(e){}
+if(t==='auto')document.documentElement.removeAttribute('data-theme');
+else document.documentElement.setAttribute('data-theme',t);
 sync();});
 sync();})();`;
 
