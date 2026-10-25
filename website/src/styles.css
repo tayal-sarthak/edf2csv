@@ -23,6 +23,9 @@
 }
 
 :root {
+  /* Said in each theme block, not left to the meta tag's "dark light": that defers to the
+     system, so a light theme chosen on a dark system kept dark scrollbars and controls. */
+  color-scheme: dark;
   --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
@@ -60,6 +63,7 @@
 }
 
 :root[data-theme='light'] {
+  color-scheme: light;
   --bg: #fcfbf9;
   --bg-raised: #ffffff;
   --bg-sunken: #f2efe9;
@@ -77,6 +81,7 @@
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
+    color-scheme: light;
     --bg: #fcfbf9;
     --bg-raised: #ffffff;
     --bg-sunken: #f2efe9;
