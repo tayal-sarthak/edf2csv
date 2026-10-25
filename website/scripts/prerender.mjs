@@ -124,8 +124,13 @@ function findAssets() {
   return { css: `/${css}` };
 }
 
-/** Restores the reader's theme before first paint, so a dark-mode reader never sees a white flash. */
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme');if(t&&t!=='auto')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+/**
+ * Restores the reader's theme before first paint, so a dark-mode reader never sees a white flash,
+ * and points the browser's toolbar at it: the two theme-color tags follow the system, so a light
+ * page chosen on a dark phone sat under a near-black bar. The query is kept in `data-media` for
+ * the toggle to put back on "auto".
+ */
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme');if(t&&t!=='auto'){document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){var q=m.getAttribute('media');m.setAttribute('data-media',q);m.setAttribute('media',q.indexOf(t)>-1?'all':'not all');});}}catch(e){}})();`;
 
 /**
  * The theme control, for the pages React never runs on.

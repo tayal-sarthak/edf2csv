@@ -19,7 +19,15 @@
       (function () {
         try {
           var t = localStorage.getItem('edf2csv-theme');
-          if (t && t !== 'auto') document.documentElement.setAttribute('data-theme', t);
+          if (t && t !== 'auto') {
+            document.documentElement.setAttribute('data-theme', t);
+            // The theme-color tags follow the system; point the browser's toolbar at the choice.
+            document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+              var q = m.getAttribute('media');
+              m.setAttribute('data-media', q);
+              m.setAttribute('media', q.indexOf(t) > -1 ? 'all' : 'not all');
+            });
+          }
         } catch (e) {}
       })();
     </script>
