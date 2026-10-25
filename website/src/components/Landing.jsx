@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
 import PhosphorScope from './PhosphorScope.jsx';
+import Optional from './Optional.jsx';
 import { pages } from '../lib/content.js';
 import { highlight } from '../lib/highlight.js';
 
@@ -221,7 +222,7 @@ export default function Landing() {
         page for exactly as long as the bundle takes.
       */}
       <section className="hero">
-        <PhosphorScope />
+        <Optional><PhosphorScope /></Optional>
         <div className="shell hero__grid">
           <div>
             <h1 className="hero__title rise">
@@ -267,7 +268,7 @@ export default function Landing() {
           </div>
 
           <div className="rise rise--2">
-            <Waveform />
+            <Optional><Waveform /></Optional>
           </div>
         </div>
       </section>
@@ -299,7 +300,7 @@ export default function Landing() {
             wide table cannot hold both without making the slow channel up, so each rate
             gets its own file instead.
           </p>
-          <RateComparison />
+          <Optional><RateComparison /></Optional>
         </div>
       </section>
 
