@@ -1053,6 +1053,16 @@ describe('documentation and source agree on their lists', () => {
       }
     }
 
+    // And the toolbar with it: wherever a theme is applied the theme-color tags are pointed at it,
+    // or a light page chosen on a dark phone sits under a near-black bar until the next load.
+    for (const [where, text] of [['website/index.html', index], ['the prerenderer', prerender],
+      ['Nav.jsx', nav]]) {
+      const applied = [...text.matchAll(/setAttribute\(\s*'data-theme'/gu)].length;
+      const coloured = [...text.matchAll(/meta\[name="theme-color"\]/gu)].length;
+      assert.ok(applied > 0, `${where} no longer applies a theme`);
+      assert.equal(coloured, applied, `${where} applies a theme ${applied} times and moves the toolbar ${coloured}`);
+    }
+
     /*
       And how long that inlined script is, which is the reason it exists.
 
