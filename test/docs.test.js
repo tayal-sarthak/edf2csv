@@ -3200,6 +3200,21 @@ ${script}`,
     assert.match(entrance[1], /animation:\s*rise\b[^;]*\bbackwards\b/u,
       'the entrance no longer holds its first frame through the delay, so a delayed line ' +
         'flashes at full opacity before it starts');
+
+    /*
+      And every illustration it imports rendered inside `Optional`. React drops the whole root on
+      an uncaught error, prerendered words included, and the theme toggle's unguarded storage
+      showed what that looks like: a blank landing page. Outside the boundary, one failing
+      decoration does that again.
+    */
+    const pictures = [...landing.matchAll(/^import (\w+) from '\.\/(\w+)\.jsx';$/gmu)]
+      .map((m) => m[1]).filter((name) => name !== 'Optional');
+    assert.ok(pictures.length >= 3, `only ${pictures.length} illustrations are imported by the landing page`);
+    for (const name of pictures) {
+      const uses = [...landing.matchAll(new RegExp(`<${name}\\b`, 'gu'))].length;
+      const held = [...landing.matchAll(new RegExp(`<Optional>\\s*<${name}\\b`, 'gu'))].length;
+      assert.equal(held, uses, `${name} is rendered ${uses} times, ${held} of them inside Optional`);
+    }
   });
 
   it('writes each vendor-prefixed declaration before the standard one', async () => {
