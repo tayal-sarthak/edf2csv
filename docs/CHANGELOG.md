@@ -8,6 +8,45 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.78
+
+### a landing page that went blank where site data is blocked
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.77's. This release is the
+website again, and mostly what it does when a browser is not the one it was tried in.
+
+With site data blocked — Safari's "Block All Cookies", or a browser told not to let sites save
+data — reading `localStorage` throws rather than returning null. The theme toggle in `Nav.jsx`
+read it unguarded, the error escaped an effect, and React dropped the whole root: the landing
+page went blank, prerendered words and all. Reproduced by making storage throw before the
+bundle loads. Both reads are guarded now, as the head script's always was, and the suite holds
+every read and write of the stored theme, in all three places it happens, inside a try.
+
+The documentation pages survived that, but their toggle re-read storage on every press, got
+`auto` each time, and so stuck on light with a label still offering light. It now cycles the
+theme it holds, as the React one does, and writes it back when it can.
+
+### the rest
+
+- **An error boundary around the three illustrations.** React drops the whole root on an
+  uncaught error, so one failing decoration took the page with it. Simulated — a browser
+  without `ResizeObserver`, a canvas that refuses a context — the illustration now goes and the
+  headline, the waveform and the rate comparison stay. The suite holds every illustration the
+  landing page imports inside it.
+- **`color-scheme` in each theme block.** The meta tag's `dark light` defers to the system, so a
+  light theme chosen on a dark system kept dark scrollbars and native controls. Read from the
+  `Canvas` system colour, which resolves from the scheme the browser actually uses: it now
+  matches the page in all eight combinations of system and theme.
+- **The browser toolbar follows the chosen theme.** The two `theme-color` tags are switched on
+  `prefers-color-scheme`, so a light page chosen on a dark phone sat under a near-black bar. The
+  pre-paint scripts point the tags at the stored theme before first paint, both toggles move
+  them on every press, and the suite holds every place a theme is applied to moving the toolbar
+  too. The docs toggle is fourteen lines now, and its comment says so.
+
+Checked and clean: no text overlaps on any page between 320 and 1600px, once text clipped by a
+scrolling box is clipped in the check too; nothing is cut off under WCAG 1.4.12's text spacing;
+the hero canvas already handles a missing context, and already stops under reduced motion.
+
 ## 0.10.77
 
 ### three docs pages wider than a phone
