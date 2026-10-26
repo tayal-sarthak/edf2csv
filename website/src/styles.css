@@ -523,6 +523,18 @@ a {
   border-color: var(--line-strong);
 }
 
+/*
+  With scripting off the pages still read in full, being prerendered, but these two buttons are
+  nothing but script: the theme toggle and the copy button would sit there, pressable, doing
+  nothing. A browser that does not know the media feature keeps them, as it always has.
+*/
+@media (scripting: none) {
+  .nav__toggle,
+  .command__copy {
+    display: none;
+  }
+}
+
 /* -------------------------------------------------------------- scope / hero visual */
 
 .scope {
