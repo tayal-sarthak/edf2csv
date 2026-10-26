@@ -8,6 +8,27 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.79
+
+### two buttons that did nothing without JavaScript
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.78's.
+
+With JavaScript off, every page still reads in full — they are prerendered — but two buttons
+are nothing except script: the theme toggle, on every page, and the landing page's copy button.
+Both sat there, pressable, doing nothing. `@media (scripting: none)` now hides them; a browser
+that does not know the media feature keeps them, as it always has. Checked in sandboxed frames,
+where scripts cannot run: both hidden on all three kinds of page, both shown with scripting on.
+
+It lost the first time. `.command__copy`'s own rule came later in the stylesheet at the same
+specificity and put `display` back, so the copy button stayed while the toggle went. The block
+now sits after the button's own rules, and a new test holds it there: it names the two buttons
+it hides, and fails if anything after it gives either a display again.
+
+Checked and clean: the landing page under simulated browser translation — every text node swapped
+for the `<font>` wrappers Google Translate inserts, then the file tree, the theme toggle and the
+copy button pressed — throws nothing and keeps the page.
+
 ## 0.10.78
 
 ### a landing page that went blank where site data is blocked
