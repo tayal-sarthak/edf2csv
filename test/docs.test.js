@@ -3217,6 +3217,27 @@ ${script}`,
     }
   });
 
+  it('hides the buttons only script drives when scripting is off', async () => {
+    /*
+      The theme toggle and the copy button do nothing without JavaScript, so `@media (scripting:
+      none)` hides them. It lost the first time: `.command__copy`'s own rule came later at the same
+      specificity and put `display` back, and the copy button stayed, inert, with every check passing.
+    */
+    const sheet = await read('website/src/styles.css');
+    const block = /@media \(scripting: none\) \{\s*([^{]+)\{\s*display: none;\s*\}\s*\}/u.exec(sheet);
+    assert.ok(block, 'nothing hides the script-only buttons when scripting is off');
+    const hidden = block[1].split(',').map((selector) => selector.trim()).sort();
+    assert.deepEqual(hidden, ['.command__copy', '.nav__toggle']);
+    const after = sheet.slice(block.index + block[0].length);
+    for (const selector of hidden) {
+      const later = [...after.matchAll(/([^{}]+)\{([^{}]*)\}/gu)]
+        .filter(([, list, body]) => list.split(',').some((one) => one.trim() === selector)
+          && /(?:^|[;\s])display\s*:/u.test(body))
+        .map(([, list]) => list.trim().split('\n').at(-1));
+      assert.deepEqual(later, [], `${selector} is given a display after the rule that hides it`);
+    }
+  });
+
   it('writes each vendor-prefixed declaration before the standard one', async () => {
     /*
       Vite 8 minifies with Lightning CSS, which treats `backdrop-filter` and
