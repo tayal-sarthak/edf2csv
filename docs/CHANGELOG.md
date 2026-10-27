@@ -8,6 +8,37 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.87
+
+### boxes that scroll or clip
+
+Nothing in `src/` or the README changed, so the package is 0.10.86's under a new number. Four
+website fixes, all in boxes that scroll or clip, which 0.10.86's check for pages wider than the
+phone could not see: a box that holds its own overflow never makes the page wider.
+
+- **The contents box scrolled sideways.** Its one column was the implicit kind, which sizes
+  itself to the longest word in the list, and with the text enlarged the warnings page's
+  diagnostic codes, `DEGENERATE_PHYSICAL_RANGE` among them, made it wider than the box, by 51px
+  at Large and 124px at Very Large on a 320px phone, the long ones cut off at the edge. The
+  column is the box's width now, and a code breaks when nothing else fits.
+- **A flag in the contents list ran past the box.** 0.10.86 held the list's flags together, and
+  at 320px with the text at Very Large `--annotations-only` no longer fitted. It lets go on a
+  screen that narrow, as a heading's flag does.
+- **The install command was cut off.** The landing page held `npx edf2csv recording.edf` to
+  one line in a box that scrolls, so a 375px phone with the text at Large, or a 320px one at the
+  default size, showed `npx edf2csv recor` and nothing to say there was more. It wraps at its
+  spaces.
+- **The docs cards were cut off.** Their grid had a 250px floor, and on a 280px screen, a
+  folding phone's cover, the grid is 240px wide, so every card lost 12px under its rounded edge.
+  And the arrow beside each title, which 0.10.86 started showing on touch screens, could not
+  take a line of its own and ran 3px past the card at 320px with the text at Very Large.
+
+Checked in headless Chrome: every box on all thirteen pages that scrolls or clips, at 320, 375,
+768 and 1280px with the text at its default, Large and Very Large sizes; nothing scrolls sideways
+but the code blocks, the tables and the hero's readout, which are meant to, and nothing is cut
+off. And all thirteen pages at 280px with the text at its default and Large sizes, none wider
+than the screen. Each new check was run against the code before it and failed.
+
 ## 0.10.86
 
 ### pages wider than the phone
