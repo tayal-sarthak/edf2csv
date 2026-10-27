@@ -1248,10 +1248,13 @@ a {
   `--annotations-only` is about 12.6 times the browser's text size across, and the column is the
   screen less 2.5 of them in gutter, so below 15.5em, which is 360px with the text at Very Large,
   holding it together pushed the page wider than the phone. There it breaks at its hyphens again.
+  The contents list does too: its box is narrower, and at 320px with the text at Very Large the
+  same flag held together ran past the box's edge.
 */
 @media (max-width: 15.5em) {
   .prose h2 .flag,
-  .prose h3 .flag {
+  .prose h3 .flag,
+  .docs__toc .flag {
     white-space: normal;
   }
 }

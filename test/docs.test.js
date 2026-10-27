@@ -3450,8 +3450,8 @@ ${script}`,
     // Let go in a heading on a screen narrower than its longest flag: held together there,
     // `--annotations-only` made a 360px page wider than the phone with the text at Very Large.
     assert.match(await read('website/src/styles.css'),
-      /@media \(max-width: [\d.]+em\) \{\s*\.prose h2 \.flag,\s*\.prose h3 \.flag \{\s*white-space: normal;/u,
-      'a heading holds its flags together on any screen, and one too narrow for them scrolls sideways');
+      /@media \(max-width: [\d.]+em\) \{\s*\.prose h2 \.flag,\s*\.prose h3 \.flag,\s*\.docs__toc \.flag \{\s*white-space: normal;/u,
+      'a heading or a contents entry holds its flags together on any screen, and one too narrow for them overflows');
     // Running text writes a flag as code, quoted messages included, which is what holds it
     // together there: three quotations wrote theirs bare, "Pass --force to overwrite it" among
     // them, beside a quotation in the same sentence that did not, and broke after the dashes.
