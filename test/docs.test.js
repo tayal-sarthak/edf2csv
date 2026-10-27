@@ -4016,6 +4016,10 @@ ${script}`,
       'the footer\'s links no longer wrap, so with Very Large text "Changelog" is off a 320px screen');
     assert.match(/\n\.doc-footer \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
       'a page\'s previous and next links no longer wrap, and two long titles outgrow a phone');
+    // And the contents box's one column, which sized itself to the longest word in the list and
+    // with the text at Large scrolled the warnings page's entries sideways out of the box.
+    assert.match(/\n\.docs__toc \{([^}]*)\}/u.exec(sheet)[1], /grid-template-columns:\s*minmax\(0, 1fr\);/u,
+      'the contents box sizes its column to its longest word again, and scrolls sideways with the text enlarged');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {

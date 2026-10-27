@@ -1026,6 +1026,10 @@ a {
 /* On-page table of contents, prerendered into each documentation page. */
 .docs__toc {
   display: grid;
+  /* minmax(0, 1fr), not the implicit auto column, which sized itself to the longest word in the
+     list: with the text at Large the warnings page's DEGENERATE_PHYSICAL_RANGE made every entry
+     wider than the box, and the box scrolled sideways with each one cut off at its edge. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
   margin: 0 0 2.4rem;
   padding: 1rem 1.1rem;
