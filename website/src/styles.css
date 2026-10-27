@@ -508,8 +508,9 @@ a {
 }
 
 .command__text {
+  /* Wraps at its spaces. Held to one line it scrolled instead, and on a 375px phone with the
+     text at Large the page's one command read "npx edf2csv recor", the rest out of sight. */
   overflow-x: auto;
-  white-space: nowrap;
 }
 
 .command__copy {

@@ -4020,6 +4020,10 @@ ${script}`,
     // with the text at Large scrolled the warnings page's entries sideways out of the box.
     assert.match(/\n\.docs__toc \{([^}]*)\}/u.exec(sheet)[1], /grid-template-columns:\s*minmax\(0, 1fr\);/u,
       'the contents box sizes its column to its longest word again, and scrolls sideways with the text enlarged');
+    // And the landing page's one command, which held to a line scrolled its end out of sight
+    // instead: "npx edf2csv recor" on a 375px phone with the text at Large.
+    assert.doesNotMatch(/\n\.command__text \{([^}]*)\}/u.exec(sheet)[1], /white-space:\s*nowrap/u,
+      'the install command is held to one line again, and a phone shows only the start of it');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
