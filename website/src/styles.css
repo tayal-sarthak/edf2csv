@@ -1514,7 +1514,9 @@ a {
 
 .doc-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  /* At most the grid's width: a 250px floor in a narrower grid, 240px on a 280px screen such as
+     a folding phone's cover, put each card's right 12px past the rounded edge that clips them. */
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);
@@ -1557,6 +1559,9 @@ a {
   letter-spacing: -0.015em;
   margin-bottom: 0.3rem;
   display: flex;
+  /* The arrow takes a line of its own rather than running past the card, which at 320px with
+     the text at Very Large put it 3px over the grid's clipped edge on a phone that shows it. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
 }

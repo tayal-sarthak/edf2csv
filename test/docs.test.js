@@ -4024,6 +4024,13 @@ ${script}`,
     // instead: "npx edf2csv recor" on a 375px phone with the text at Large.
     assert.doesNotMatch(/\n\.command__text \{([^}]*)\}/u.exec(sheet)[1], /white-space:\s*nowrap/u,
       'the install command is held to one line again, and a phone shows only the start of it');
+    // And the docs cards inside the grid that clips them: a 250px floor in a 240px grid cut 12px
+    // off every card on a 280px screen, and a title row that could not wrap put the arrow over
+    // the edge at 320px with the text at Very Large.
+    assert.match(/\n\.doc-cards \{([^}]*)\}/u.exec(sheet)[1], /minmax\(min\([\d.]+px, 100%\), 1fr\)/u,
+      'the docs cards have a floor wider than a narrow screen\'s grid again, and it cuts them off');
+    assert.match(/\n\.doc-card__title \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
+      'a card\'s arrow can no longer take a line of its own, and runs past the card');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
