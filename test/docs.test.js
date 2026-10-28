@@ -3268,12 +3268,12 @@ ${script}`,
     const block = /@media \(scripting: none\) \{\s*([^{]+)\{\s*display: none;\s*\}\s*\}/u.exec(sheet);
     assert.ok(block, 'nothing hides the script-only buttons when scripting is off');
     const hidden = block[1].split(',').map((selector) => selector.trim()).sort();
-    assert.deepEqual(hidden, ['.command__copy', '.nav__toggle']);
+    assert.deepEqual(hidden, ['.command__copy', '.nav__toggle', '.scope__pause']);
     const after = sheet.slice(block.index + block[0].length);
     for (const selector of hidden) {
       const later = [...after.matchAll(/([^{}]+)\{([^{}]*)\}/gu)]
         .filter(([, list, body]) => list.split(',').some((one) => one.trim() === selector)
-          && /(?:^|[;\s])display\s*:/u.test(body))
+          && /(?:^|[;\s])display\s*:(?!\s*none\b)/u.test(body))
         .map(([, list]) => list.trim().split('\n').at(-1));
       assert.deepEqual(later, [], `${selector} is given a display after the rule that hides it`);
     }

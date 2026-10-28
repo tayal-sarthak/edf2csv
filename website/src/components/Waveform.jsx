@@ -65,7 +65,7 @@ function toPath(values, centreY) {
   return d;
 }
 
-export default function Waveform() {
+export default function Waveform({ paused = false, onPause }) {
   const reduced = useReducedMotion();
   const readoutRefs = useRef([]);
   const timeRef = useRef(null);
@@ -121,6 +121,7 @@ export default function Waveform() {
     happens to either.
   */
   const offset = useMotionValue(0);
+  const pass = useRef(null);
   useEffect(() => {
     if (reduced) {
       offset.set(0);
@@ -128,12 +129,18 @@ export default function Waveform() {
       return undefined;
     }
     // 18 seconds for one full pass of the trace.
-    const pass = animate(offset, [0, -WIDTH], { duration: 18, ease: 'linear', repeat: Infinity });
-    return () => pass.stop();
+    pass.current = animate(offset, [0, -WIDTH], { duration: 18, ease: 'linear', repeat: Infinity });
+    return () => pass.current.stop();
   }, [reduced]);
 
+  // Paused where it stands, trace and numbers together, since one value drives both.
+  useEffect(() => {
+    if (paused) pass.current?.pause();
+    else pass.current?.play();
+  }, [paused, reduced]);
+
   useAnimationFrame(() => {
-    if (reduced || !inView.current) return;
+    if (reduced || paused || !inView.current) return;
     paint((-offset.get() / WIDTH) % 1);
   });
 
@@ -141,7 +148,17 @@ export default function Waveform() {
     <div className="scope" ref={scopeRef}>
       <div className="scope__head">
         <span>signals.csv</span>
-        <span>4 of 23 channels · 256 Hz</span>
+        <span className="scope__side">
+          <span>4 of 23 channels · 256 Hz</span>
+          {/*
+            Motion that starts by itself, runs for more than five seconds and sits beside the
+            text has to be stoppable on the page itself (WCAG 2.2.2). The system's reduced-motion
+            setting already stops it, and the stylesheet hides this button there.
+          */}
+          <button type="button" className="scope__pause" onClick={onPause}>
+            {paused ? 'Play' : 'Pause'}
+          </button>
+        </span>
       </div>
 
       <div className="scope__body">

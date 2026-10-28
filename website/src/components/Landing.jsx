@@ -243,6 +243,8 @@ function CommandBar({ command }) {
 export default function Landing() {
   const [selected, setSelected] = useState(FILES[0].name);
   const active = FILES.find((file) => file.name === selected) ?? FILES[0];
+  // One pause for the hero's moving pieces, the waveform and the beam behind the headline.
+  const [paused, setPaused] = useState(false);
 
   return (
     <main id="main">
@@ -299,7 +301,7 @@ export default function Landing() {
           </div>
 
           <div className="rise rise--2">
-            <Optional><Waveform /></Optional>
+            <Optional><Waveform paused={paused} onPause={() => setPaused((was) => !was)} /></Optional>
           </div>
         </div>
       </section>

@@ -535,13 +535,15 @@ a {
 }
 
 /*
-  With scripting off the pages still read in full, being prerendered, but these two buttons are
-  nothing but script: the theme toggle and the copy button would sit there, pressable, doing
-  nothing. A browser that does not know the media feature keeps them, as it always has.
+  With scripting off the pages still read in full, being prerendered, but these buttons are
+  nothing but script: the theme toggle, the copy button and the waveform's pause would sit there,
+  pressable, doing nothing. A browser that does not know the media feature keeps them, as it
+  always has.
 */
 @media (scripting: none) {
   .nav__toggle,
-  .command__copy {
+  .command__copy,
+  .scope__pause {
     display: none;
   }
 }
@@ -567,6 +569,34 @@ a {
   font-size: 0.72rem;
   color: var(--text-faint);
   letter-spacing: 0.02em;
+}
+
+.scope__side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scope__pause {
+  font: inherit;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  cursor: pointer;
+}
+
+.scope__pause:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+/* Nothing moves under reduced motion, so there is nothing to pause. */
+@media (prefers-reduced-motion: reduce) {
+  .scope__pause {
+    display: none;
+  }
 }
 
 .scope__body {
