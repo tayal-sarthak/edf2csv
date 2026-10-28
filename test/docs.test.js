@@ -3150,6 +3150,26 @@ ${script}`,
     const background = /--bg:\s*(#[\da-f]{6});/u.exec(forced[1]);
     assert.equal(background?.[1], '#ffffff',
       `print paints the page ${background?.[1]} rather than leaving the paper alone`);
+
+    // Every token text is painted from, not just the obvious four: code's numbers are mixed from
+    // `--accent`, and left alone it printed them in dark's amber at 3.65:1.
+    const inks = new Set();
+    for (const [, value] of sheet.matchAll(/[;{\s]color:\s*([^;]+);/gu)) {
+      for (const [, name] of value.matchAll(/var\((--[\w-]+)\)/gu)) inks.add(name);
+    }
+    assert.ok(inks.size >= 5, `only ${inks.size} tokens paint text, which is not this stylesheet`);
+    const unforced = [...inks].filter((name) => !overridden.has(name));
+    assert.deepEqual(unforced, [],
+      `text is painted from tokens print leaves at their screen colour: ${unforced.join(', ')}`);
+
+    // A label in `--accent-on` is white on an `--accent` fill, and a print dialog drops fills.
+    const labels = [...sheet.matchAll(/\n(\.[\w-]+) \{[^}]*\scolor: var\(--accent-on\)/gu)];
+    assert.ok(labels.length >= 2, `found ${labels.length} labels painted on the accent`);
+    for (const [, selector] of labels) {
+      assert.ok(classes.includes(selector.slice(1)) ||
+        new RegExp(`\\${selector} \\{[^}]*\\sprint-color-adjust: exact`, 'u').test(print),
+        `${selector} prints its white label without the fill it sits on`);
+    }
   });
 
   it('keeps the contents box scrolling, capped and indented', async () => {
