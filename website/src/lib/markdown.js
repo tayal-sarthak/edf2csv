@@ -84,7 +84,7 @@ export function renderMarkdown(body) {
     (_whole, language, escaped) => {
       const source = decodeEntities(escaped);
       const cls = language ? ` class="language-${language}"` : '';
-      return `<pre><code${cls} data-highlighted="true">${highlight(source, language ?? 'text')}</code></pre>`;
+      return `<pre translate="no"><code${cls} data-highlighted="true">${highlight(source, language ?? 'text')}</code></pre>`;
     },
   );
 
@@ -97,6 +97,13 @@ export function renderMarkdown(body) {
     header row across the top, so the answer is always "the column below".
   */
   html = html.replaceAll('<th>', '<th scope="col">');
+
+  /*
+    Code is not prose to a translator. A reader who has their browser translate a page got the
+    commands, flags and column names translated with it, which then fail when pasted. Block code
+    is marked above; this is the inline code, which marked writes as a bare <code>.
+  */
+  html = html.replaceAll('<code>', '<code translate="no">');
 
   return html;
 }

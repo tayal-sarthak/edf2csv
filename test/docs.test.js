@@ -4547,7 +4547,7 @@ ${script}`,
         assert.deepEqual(says.slice(1).map(Number), want, `${what} states something else`);
       }
 
-      assert.ok(jsx.includes(`<code>${slow.output_file}</code>`),
+      assert.ok(new RegExp(`<code(?: [^>]*)?>${slow.output_file.replaceAll('.', '\\.')}</code>`, 'u').test(jsx),
         `the note names a file the slow channel is not written to; it goes to ${slow.output_file}`);
     } finally {
       await rm(base, { recursive: true, force: true });

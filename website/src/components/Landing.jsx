@@ -165,7 +165,7 @@ function CommandBar({ command }) {
       <span className="command__prompt" aria-hidden="true">
         $
       </span>
-      <span className="command__text" ref={textRef}>
+      <span className="command__text" ref={textRef} translate="no">
         {command}
       </span>
       {/* Said aloud: a focused button's changing label is not reliably announced, and the
@@ -285,11 +285,12 @@ export default function Landing() {
           </h2>
           <p className="section__lede">
             An eight hour sleep study at 100 Hz becomes three million rows. Run it with
-            <code> --info</code> and the tool reads only the header, prints the channel
+            <code translate="no"> --info</code> and the tool reads only the header, prints the channel
             table, estimates the output, and writes nothing.
           </p>
           <pre
             className="code"
+            translate="no"
             dangerouslySetInnerHTML={{ __html: highlight(INFO_OUTPUT, 'bash') }}
           />
         </div>
@@ -317,7 +318,7 @@ export default function Landing() {
           </p>
 
           <div className="panels">
-            <div className="tree">
+            <div className="tree" translate="no">
               <div className="tree__root">sleep-study_csv/</div>
               {/*
                 `aria-current`, not `aria-selected`.
@@ -357,6 +358,7 @@ export default function Landing() {
                   <p>{active.body}</p>
                   <pre
                     className="code"
+                    translate="no"
                     dangerouslySetInnerHTML={{ __html: highlight(active.sample, active.lang) }}
                   />
                 </motion.div>

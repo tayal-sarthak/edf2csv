@@ -62,7 +62,7 @@ export default function RateComparison() {
           ))}
         </div>
         <p className="rate-note">
-          edf2csv writes exactly these three rows to <code>signals_1hz.csv</code>.
+          edf2csv writes exactly these three rows to <code translate="no">signals_1hz.csv</code>.
         </p>
       </div>
 
