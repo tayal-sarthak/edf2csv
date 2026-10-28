@@ -1335,7 +1335,9 @@ a {
   .doc-footer,
   .footer,
   .skip,
-  .prose__anchor {
+  .prose__anchor,
+  .command__copy,
+  .scope__pause {
     display: none;
   }
 
