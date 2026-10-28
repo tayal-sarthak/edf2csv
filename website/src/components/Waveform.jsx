@@ -148,20 +148,19 @@ export default function Waveform({ paused = false, onPause }) {
     <div className="scope" ref={scopeRef}>
       <div className="scope__head">
         <span>signals.csv</span>
-        <span className="scope__side">
-          <span>4 of 23 channels · 256 Hz</span>
-          {/*
-            Motion that starts by itself, runs for more than five seconds and sits beside the
-            text has to be stoppable on the page itself (WCAG 2.2.2). The system's reduced-motion
-            setting already stops it, and the stylesheet hides this button there.
-          */}
-          <button type="button" className="scope__pause" onClick={onPause}>
-            {paused ? 'Play' : 'Pause'}
-          </button>
-        </span>
+        <span>4 of 23 channels · 256 Hz</span>
       </div>
 
       <div className="scope__body">
+        {/*
+          Motion that starts by itself, runs for more than five seconds and sits beside the text
+          has to be stoppable on the page itself (WCAG 2.2.2). The system's reduced-motion setting
+          already stops it, and the stylesheet hides this button there. Over the traces rather
+          than in the header, where it wrapped the channel count onto a second line on a phone.
+        */}
+        <button type="button" className="scope__pause" onClick={onPause}>
+          {paused ? 'Play' : 'Pause'}
+        </button>
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           width="100%"

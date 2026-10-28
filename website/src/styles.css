@@ -571,19 +571,21 @@ a {
   letter-spacing: 0.02em;
 }
 
-.scope__side {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .scope__pause {
-  font: inherit;
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   color: var(--text-dim);
-  background: none;
+  background: var(--bg-sunken);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.1rem 0.6rem;
+  /* 24px tall, the smallest target WCAG 2.5.8 asks of a control. */
+  min-height: 1.5rem;
+  padding: 0.1rem 0.65rem;
   cursor: pointer;
 }
 
