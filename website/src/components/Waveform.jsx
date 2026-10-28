@@ -73,11 +73,6 @@ export default function Waveform({ paused = false, onPause }) {
   // An observer into a ref, as PhosphorScope does: visibility is not worth a re-render.
   const scopeRef = useRef(null);
   const inView = useRef(true);
-  useEffect(() => {
-    const io = new IntersectionObserver(([entry]) => { inView.current = entry.isIntersecting; });
-    io.observe(scopeRef.current);
-    return () => io.disconnect();
-  }, []);
 
   const channels = useMemo(
     () =>
@@ -133,10 +128,17 @@ export default function Waveform({ paused = false, onPause }) {
     return () => pass.current.stop();
   }, [reduced]);
 
-  // Paused where it stands, trace and numbers together, since one value drives both.
+  // Paused where it stands, trace and numbers together, since one value drives both. Off screen
+  // too: the observer stopped only the numbers, and the trace still moved sixty times a second.
   useEffect(() => {
-    if (paused) pass.current?.pause();
-    else pass.current?.play();
+    const sync = () => (paused || !inView.current ? pass.current?.pause() : pass.current?.play());
+    sync();
+    const io = new IntersectionObserver(([entry]) => {
+      inView.current = entry.isIntersecting;
+      sync();
+    });
+    io.observe(scopeRef.current);
+    return () => io.disconnect();
   }, [paused, reduced]);
 
   useAnimationFrame(() => {
