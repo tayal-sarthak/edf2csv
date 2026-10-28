@@ -3221,6 +3221,24 @@ ${script}`,
       const held = [...landing.matchAll(new RegExp(`<Optional>\\s*<${name}\\b`, 'gu'))].length;
       assert.equal(held, uses, `${name} is rendered ${uses} times, ${held} of them inside Optional`);
     }
+
+    /*
+      And no code left for a translator: a page run through browser translation had its commands,
+      flags and file names translated, which then fail when pasted. Every <pre> and <code> the
+      components write says translate="no", and the Markdown renderer marks both for the docs.
+    */
+    const unmarked = [];
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      if (!name.endsWith('.jsx')) continue;
+      for (const [tag] of (await read(path.join('website/src/components', name))).matchAll(/<(?:pre|code)\b[^>]*>/gu)) {
+        if (!/translate="no"/u.test(tag)) unmarked.push(`${name}: ${tag.replace(/\s+/gu, ' ')}`);
+      }
+    }
+    assert.deepEqual(unmarked, [], `a translator would rewrite these: ${unmarked.join('; ')}`);
+    const renderer = await read('website/src/lib/markdown.js');
+    assert.match(renderer, /<pre translate="no">/u, 'the docs\' code blocks are open to translation');
+    assert.match(renderer, /replaceAll\('<code>', '<code translate="no">'\)/u,
+      'the docs\' inline code is open to translation');
   });
 
   it('hides the buttons only script drives when scripting is off', async () => {
