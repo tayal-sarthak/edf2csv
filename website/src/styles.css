@@ -1323,6 +1323,8 @@ a {
     --text-faint: #444444;
     --line: #cccccc;
     --line-strong: #999999;
+    /* The light theme's. Code's numbers are mixed from it; dark's amber printed them at 3.65:1. */
+    --accent: #b4590a;
     --accent-text: #000000;
   }
 
