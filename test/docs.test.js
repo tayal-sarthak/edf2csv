@@ -3138,8 +3138,10 @@ ${script}`,
       `the print stylesheet hides these and nothing renders them: ${unrendered.join(', ')}`);
 
     /* And the forced palette, against the tokens the page is actually painted with. */
-    const forced = /:root \{([^}]*)\}/u.exec(print);
-    assert.ok(forced, 'the print stylesheet no longer forces a light palette');
+    // Under a bare `:root` the palette loses to `:root[data-theme='light']` and to the system
+    // light block, so it forced nothing whenever the page was light.
+    const forced = /:root\[data-theme\],\s*:root:not\(\[data-theme\]\) \{([^}]*)\}/u.exec(print);
+    assert.ok(forced, 'the print palette is not listed under both theme selectors, so a theme outranks it');
     const overridden = new Set([...forced[1].matchAll(/(--[\w-]+):/gu)].map(([, name]) => name));
     for (const needed of ['--bg', '--bg-raised', '--bg-sunken', '--text']) {
       assert.ok(overridden.has(needed),

@@ -1312,7 +1312,9 @@ a {
   the next sheet — a forty-line --help transcript would otherwise leave half a page blank.
 */
 @media print {
-  :root {
+  /* Under both theme selectors, which outrank a bare :root: light kept its screen colours. */
+  :root[data-theme],
+  :root:not([data-theme]) {
     --bg: #ffffff;
     --bg-raised: #ffffff;
     --bg-sunken: #ffffff;
