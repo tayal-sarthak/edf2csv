@@ -168,6 +168,11 @@ function CommandBar({ command }) {
       <span className="command__text" ref={textRef}>
         {command}
       </span>
+      {/* Said aloud: a focused button's changing label is not reliably announced, and the
+          refusal carries the one instruction the reader needs. */}
+      <span className="command__status" role="status">
+        {status === 'idle' ? '' : label}
+      </span>
       <motion.button
         type="button"
         className="command__copy"

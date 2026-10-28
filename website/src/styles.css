@@ -524,6 +524,16 @@ a {
   border-color: var(--line-strong);
 }
 
+/* Heard and not seen: the copy result for a screen reader, beside a button whose icon shows it. */
+.command__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /*
   With scripting off the pages still read in full, being prerendered, but these two buttons are
   nothing but script: the theme toggle and the copy button would sit there, pressable, doing
