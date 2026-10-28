@@ -137,7 +137,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-display);
-  font-size: 17px;
+  /* 17px at the default size, in rem so a reader's own default size reaches the body text too. */
+  font-size: 1.0625rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
