@@ -8,6 +8,49 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.80
+
+### motion beside the text with no way to stop it
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.79's. This release is the
+website, checked against the readers it had not been checked against.
+
+The landing page's hero moves by itself — the waveform scrolling, the beam behind the headline —
+for as long as the page is open, beside the text. WCAG 2.2.2 asks for a way to stop motion like
+that on the page itself; the only way was the system's reduced-motion setting. There is a Pause
+button over the traces now, and it stops both. To stop the trace and its numbers together they
+had to share a clock first: the readout counted elapsed time and agreed with the trace only
+because the two started at once, so it now reads the trace's own position. The button is hidden
+under reduced motion, where nothing moves, and with scripting off. It first sat in the header and
+wrapped the channel count onto a second line on a phone; it floats over the traces instead.
+
+### the rest
+
+- **Body text in rem.** The body alone was `17px`, so a reader who had raised their browser's
+  default font size got larger headings and the same body text. It is `1.0625rem` — 17px at
+  the default — and the suite now refuses a px font size.
+- **The copy button says what it did.** Only its label changed, which a screen reader does not
+  reliably announce, and the refusal carries the one instruction the reader needs. A status
+  region says it now.
+- **Code survives browser translation.** Every `<pre>` and `<code>` the site writes says
+  `translate="no"` — 797 on the CLI reference alone — so a translated page keeps its commands,
+  flags and file names. Held by the suite.
+- **The keyboard reaches what scrolls sideways.** At 1280px eighty-five code blocks across the
+  docs overflowed, 355 at 375px, and none could take focus; Chrome makes such a box focusable
+  itself and Safari does not. They take focus now while they overflow and not otherwise, on the
+  docs pages and the landing page's panels alike. Held by the suite.
+- **Two table columns with no header**, the last thing axe-core found across thirteen pages in
+  both themes and at both widths. Named, and the suite now refuses an empty header cell.
+- **The Markdown mirrors' cache.** vercel.json gave them an hour and the catch-all below it,
+  which excludes the llms files and the sitemap but not them, overrode it with `max-age=0`.
+  Excluded now, and the suite holds every path to one rule deciding how long it is cached.
+- **actions/setup-python 7.1.0** for the cross-check, as dependabot proposed.
+
+Checked and clean: axe-core on every page, both themes, desktop and phone, and on the landing
+page in each interactive state; focus ring contrast in both themes (4.18:1 at the lowest);
+`aria-current` on the current page and labels on all three navs; the content types of every
+text file the site serves.
+
 ## 0.10.79
 
 ### two buttons that did nothing without JavaScript
