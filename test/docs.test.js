@@ -3256,6 +3256,22 @@ ${script}`,
     assert.deepEqual(raw.map(([tag]) => tag), [],
       'a code panel on the landing page is rendered outside Code, so it never takes focus');
     assert.ok(/useFocusWhileOverflowing\(textRef\)/u.test(landing), 'the command line no longer takes focus when it overflows');
+
+    /*
+      And the hero's motion stoppable on the page (WCAG 2.2.2): it starts by itself, runs past
+      five seconds and sits beside the text. One button pauses both moving pieces, so both take
+      the same state, and it is hidden where nothing moves.
+    */
+    for (const piece of ['Waveform', 'PhosphorScope']) {
+      assert.match(landing, new RegExp(`<${piece}\\b[^>]*\\bpaused=\\{paused\\}`, 'u'),
+        `${piece} moves on its own and the pause button does not reach it`);
+    }
+    const scope = await read('website/src/components/Waveform.jsx');
+    assert.match(scope, /<button type="button" className="scope__pause" onClick=\{onPause\}>/u,
+      'the waveform no longer offers a pause button');
+    assert.match(await read('website/src/styles.css'),
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.scope__pause \{\s*display: none;/u,
+      'the pause button shows under reduced motion, where nothing moves');
   });
 
   it('hides the buttons only script drives when scripting is off', async () => {
