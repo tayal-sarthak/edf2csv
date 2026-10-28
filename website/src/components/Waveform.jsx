@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { motion, useAnimationFrame, useReducedMotion } from 'motion/react';
+import { animate, motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'motion/react';
 
 /*
   The hero visual: four biosignal traces scrolling under a fixed sampling line,
@@ -114,14 +114,27 @@ export default function Waveform() {
   // `paint` is left out of the dependencies on purpose: it is rebuilt on every render, so
   // listing it would re-run this effect on every render to redraw the identical frame.
   // Nothing it closes over changes — the channel data is memoised and the refs are stable.
+  /*
+    The readout is read off the trace's own position, not a second clock. It used to count
+    elapsed time and agree with the trace only because the two started together; one value
+    driving both means the numbers under the sampling line are the trace under it, whatever
+    happens to either.
+  */
+  const offset = useMotionValue(0);
   useEffect(() => {
-    if (reduced) paint(0);
+    if (reduced) {
+      offset.set(0);
+      paint(0);
+      return undefined;
+    }
+    // 18 seconds for one full pass of the trace.
+    const pass = animate(offset, [0, -WIDTH], { duration: 18, ease: 'linear', repeat: Infinity });
+    return () => pass.stop();
   }, [reduced]);
 
-  useAnimationFrame((elapsed) => {
+  useAnimationFrame(() => {
     if (reduced || !inView.current) return;
-    // 18 seconds for one full pass of the trace.
-    paint((elapsed / 18000) % 1);
+    paint((-offset.get() / WIDTH) % 1);
   });
 
   return (
@@ -175,11 +188,7 @@ export default function Waveform() {
             825 words. The second copy is not a second trace, it is the same trace one
             width along, which is what <use> says.
           */}
-          <motion.g
-            initial={{ x: 0 }}
-            animate={reduced ? { x: 0 } : { x: -WIDTH }}
-            transition={reduced ? { duration: 0 } : { duration: 18, ease: 'linear', repeat: Infinity }}
-          >
+          <motion.g style={{ x: offset }}>
             {channels.map((channel) => (
               <path
                 key={channel.label}
