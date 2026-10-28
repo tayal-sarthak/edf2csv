@@ -175,6 +175,17 @@ else document.documentElement.setAttribute('data-theme',t);
 bar();sync();});
 sync();})();`;
 
+/*
+  A code block or table wider than its column scrolls sideways, and only a pointer can scroll it
+  unless it can take focus: Chrome makes such a box focusable on its own, Safari does not. At
+  1280px eighty-five blocks across the docs overflowed and none could be reached from the
+  keyboard. This does what Chrome does, and only for the boxes that actually overflow, so a block
+  that fits is not one more tab stop. Measured again after a resize, since that is what changes it.
+*/
+const SCROLLERS_SCRIPT = `(function(){
+function mark(){document.querySelectorAll('.prose pre,.prose table').forEach(function(el){if(el.scrollWidth>el.clientWidth)el.setAttribute('tabindex','0');else el.removeAttribute('tabindex');});}
+var t;mark();addEventListener('resize',function(){clearTimeout(t);t=setTimeout(mark,150);});})();`;
+
 function structuredData(doc) {
   const article = {
     '@context': 'https://schema.org',
@@ -441,6 +452,7 @@ ${doc.html}
 
     ${FOOTER}
     <script>${THEME_TOGGLE_SCRIPT}</script>
+    <script>${SCROLLERS_SCRIPT}</script>
   </body>
 </html>
 `;
