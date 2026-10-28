@@ -65,8 +65,10 @@ function toRgb(value) {
   return [255, 176, 32]; // --accent, dark theme
 }
 
-export default function PhosphorScope() {
+export default function PhosphorScope({ paused = false }) {
   const reduced = useReducedMotion();
+  // Paused from the waveform's button, it holds the still that reduced motion shows.
+  const still = reduced || paused;
   const hostRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -231,10 +233,10 @@ export default function PhosphorScope() {
       gets no animation frames at all, and if the paint were tied to the loop the hero
       would be an empty rectangle until the reader switched to it.
     */
-    const paint = () => (reduced ? drawStill() : seed());
+    const paint = () => (still ? drawStill() : seed());
 
     const start = () => {
-      if (running || reduced) return;
+      if (running || still) return;
       running = true;
       last = 0;
       raf = requestAnimationFrame(frame);
@@ -294,7 +296,7 @@ export default function PhosphorScope() {
       scheme.removeEventListener('change', onTheme);
       document.removeEventListener('visibilitychange', sync);
     };
-  }, [reduced]);
+  }, [still]);
 
   return (
     <div className="hero__backdrop" ref={hostRef} aria-hidden="true">

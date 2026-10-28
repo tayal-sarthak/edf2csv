@@ -255,7 +255,7 @@ export default function Landing() {
         page for exactly as long as the bundle takes.
       */}
       <section className="hero">
-        <Optional><PhosphorScope /></Optional>
+        <Optional><PhosphorScope paused={paused} /></Optional>
         <div className="shell hero__grid">
           <div>
             <h1 className="hero__title rise">
