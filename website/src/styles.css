@@ -1326,6 +1326,7 @@ a {
     /* The light theme's. Code's numbers are mixed from it; dark's amber printed them at 3.65:1. */
     --accent: #b4590a;
     --accent-text: #000000;
+    --accent-on: #ffffff;
   }
 
   .nav,
@@ -1356,6 +1357,12 @@ a {
   .prose h2,
   .prose h3 {
     break-after: avoid;
+  }
+
+  /* Its label is light ink on its fill, and a print dialog drops fills by default. */
+  .btn--primary {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /*
