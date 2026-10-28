@@ -237,7 +237,7 @@ The specification's literal ordering computes `(0 - (-2048)) * gain` first. That
 
 EDFlib's ordering computes `offset` once at setup. Here it works out to exactly `0.5`, and `0.5 + digital` is a small number a double represents exactly. There's then a single multiplication — one inexact operation in the whole computation rather than three, and no cancellation.
 
-| | Value at digital 0 |
+| Computed as | Value at digital 0 |
 | --- | --- |
 | Exact value, 800/4095 | `0.19536019536019536` |
 | `gain * (offset + digital)` | `0.19536019536019536` |

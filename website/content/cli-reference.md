@@ -528,7 +528,7 @@ edf2csv /data/recordings/*.edf --out /data/csv --jobs 4
 
 Eight recordings of 19 MB, each converting to 168 MB of CSV, on an eight-core machine:
 
-| | wall clock |
+| Option | Wall clock |
 | --- | --- |
 | `--jobs 1` | 9.7 s |
 | `--jobs 2` | 5.6 s |
