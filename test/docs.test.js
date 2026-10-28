@@ -954,6 +954,12 @@ describe('documentation and source agree on their lists', () => {
         `the stylesheet declares /fonts/${file} and index.html does not preload it`);
     }
 
+    // And every size set relative to the reader's own default. The body alone said 17px, so a
+    // reader who had raised their browser's font size got larger headings and the same body text.
+    const fixed = [...(await read('website/src/styles.css')).matchAll(/font-size:\s*([\d.]+px)/gu)]
+      .map(([, size]) => size);
+    assert.deepEqual(fixed, [], `these sizes ignore the reader's default font size: ${fixed.join(', ')}`);
+
     for (const redirect of config.redirects ?? []) {
       const slug = /^\/docs\/([a-z0-9-]+)$/u.exec(redirect.destination);
       assert.ok(slug, `vercel.json redirects to ${redirect.destination}, which is not a docs page`);
