@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
@@ -124,10 +124,36 @@ const FACTS = [
   { value: '0', label: 'runtime dependencies, network calls, or telemetry' },
 ];
 
+/*
+  A box that scrolls sideways takes focus while it overflows, so the keyboard can scroll it as
+  on the docs pages: Chrome does that for itself and Safari does not. Watched for size, since a
+  narrower window is what makes a panel overflow, and a new sample is a new panel.
+*/
+function useFocusWhileOverflowing(ref) {
+  useEffect(() => {
+    const box = ref.current;
+    if (!box || typeof ResizeObserver === 'undefined') return undefined;
+    const mark = () => {
+      if (box.scrollWidth > box.clientWidth) box.setAttribute('tabindex', '0');
+      else box.removeAttribute('tabindex');
+    };
+    const observer = new ResizeObserver(mark);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [ref]);
+}
+
+function Code({ html }) {
+  const ref = useRef(null);
+  useFocusWhileOverflowing(ref);
+  return <pre ref={ref} className="code" translate="no" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 function CommandBar({ command }) {
   const [status, setStatus] = useState('idle');
   const reduced = useReducedMotion();
   const textRef = useRef(null);
+  useFocusWhileOverflowing(textRef);
 
   /*
     A browser is allowed to refuse the clipboard, and two of them do: an insecure origin
@@ -288,11 +314,7 @@ export default function Landing() {
             <code translate="no"> --info</code> and the tool reads only the header, prints the channel
             table, estimates the output, and writes nothing.
           </p>
-          <pre
-            className="code"
-            translate="no"
-            dangerouslySetInnerHTML={{ __html: highlight(INFO_OUTPUT, 'bash') }}
-          />
+          <Code html={highlight(INFO_OUTPUT, 'bash')} />
         </div>
       </section>
 
@@ -356,11 +378,7 @@ export default function Landing() {
                 >
                   <h3>{active.title}</h3>
                   <p>{active.body}</p>
-                  <pre
-                    className="code"
-                    translate="no"
-                    dangerouslySetInnerHTML={{ __html: highlight(active.sample, active.lang) }}
-                  />
+                  <Code html={highlight(active.sample, active.lang)} />
                 </motion.div>
               </AnimatePresence>
             </div>
