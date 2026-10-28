@@ -3239,6 +3239,23 @@ ${script}`,
     assert.match(renderer, /<pre translate="no">/u, 'the docs\' code blocks are open to translation');
     assert.match(renderer, /replaceAll\('<code>', '<code translate="no">'\)/u,
       'the docs\' inline code is open to translation');
+
+    /*
+      And every box that scrolls sideways reachable from the keyboard while it overflows. Safari
+      does not make a scrolling box focusable on its own, so eighty-five code blocks across the
+      docs at 1280px, and the landing page's panels on a phone, could be scrolled only by pointer.
+    */
+    const docsTemplate = /<script>\$\{THEME_TOGGLE_SCRIPT\}<\/script>\s*<script>\$\{SCROLLERS_SCRIPT\}<\/script>/u;
+    const pages = await read('website/scripts/prerender.mjs');
+    assert.match(pages, docsTemplate, 'the documentation pages no longer mark their scrolling boxes');
+    const scrollers = /const SCROLLERS_SCRIPT = `([\s\S]*?)`;/u.exec(pages)?.[1] ?? '';
+    for (const box of ['.prose pre', '.prose table']) {
+      assert.ok(scrollers.includes(box), `the scrolling-box script no longer covers ${box}`);
+    }
+    const raw = [...landing.matchAll(/<pre\b[^>]*>/gu)].filter(([tag]) => !/ref=\{ref\}/u.test(tag));
+    assert.deepEqual(raw.map(([tag]) => tag), [],
+      'a code panel on the landing page is rendered outside Code, so it never takes focus');
+    assert.ok(/useFocusWhileOverflowing\(textRef\)/u.test(landing), 'the command line no longer takes focus when it overflows');
   });
 
   it('hides the buttons only script drives when scripting is off', async () => {
