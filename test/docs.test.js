@@ -879,6 +879,43 @@ describe('documentation and source agree on their lists', () => {
     assert.deepEqual(missing, [], `vercel.json gives headers to files nothing produces: ${missing.join(', ')}`);
 
     /*
+      And each path's cache lifetime decided by one rule. Vercel applies every rule whose source
+      matches, the later winning for the same header, so a specific rule above a catch-all is
+      overruled by it unless the catch-all steps aside. The Markdown mirrors were given an hour
+      and served `max-age=0` for exactly that reason: the catch-all excluded the llms files and
+      the sitemap, and not them.
+
+      Sources are path-to-regexp, which as these use it means: `:name(...)` is a group, and a dot
+      outside a group is a literal dot.
+    */
+    const toRegex = (source) => {
+      let out = '';
+      let depth = 0;
+      for (let i = 0; i < source.length; i++) {
+        const ch = source[i];
+        if (ch === ':' && depth === 0) {
+          while (/\w/u.test(source[i + 1])) i++;
+          continue;
+        }
+        if (ch === '\\') {
+          out += ch + source[++i];
+          continue;
+        }
+        if (ch === '(') depth++;
+        if (ch === ')') depth--;
+        out += ch === '.' && depth === 0 ? '\\.' : ch;
+      }
+      return new RegExp(`^${out}$`, 'u');
+    };
+    const caching = config.headers.filter((rule) => rule.headers.some(({ key }) => key === 'Cache-Control'))
+      .map((rule) => ({ source: rule.source, matches: toRegex(rule.source) }));
+    for (const served of ['/', '/docs/faq', '/docs/faq.md', '/404.html', '/llms.txt', '/llms-full.txt',
+      '/sitemap.xml', '/robots.txt', '/assets/index-0.js', '/fonts/SpaceGrotesk.woff2', '/og.png']) {
+      const deciding = caching.filter(({ matches }) => matches.test(served)).map(({ source }) => source);
+      assert.equal(deciding.length, 1, `${served} takes its Cache-Control from ${deciding.length} rules: ${deciding.join(' and ')}`);
+    }
+
+    /*
       And the other direction: files the prerenderer writes that its own docstring never says
       it writes.
 
