@@ -1777,6 +1777,13 @@ describe('documentation and source agree on their lists', () => {
       assert.equal(already, undefined,
         `${name} and ${already} both claim order ${order}, so their sequence is their titles`);
       orders.set(Number(order), name);
+
+      // And no table column without a name: axe flags an empty header cell, and a screen reader
+      // announces every cell under it as belonging to nothing.
+      for (const [header] of (await read(`website/content/${name}`)).matchAll(/^\|.*\|\r?\n(?=\|\s*:?-{3})/gmu)) {
+        const empty = header.trim().slice(1, -1).split('|').filter((cell) => !cell.trim()).length;
+        assert.equal(empty, 0, `${name} has a table column with no header: ${header.trim()}`);
+      }
     }
     assert.equal(orders.size, names.length, 'every page needs an order of its own');
   });
