@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { animate, motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'motion/react';
+import { animate, motion, useAnimationFrame, useMotionValue } from 'motion/react';
+import { useReducedMotion } from '../lib/reduced-motion.js';
 
 /*
   The hero visual: four biosignal traces scrolling under a fixed sampling line,
@@ -119,6 +120,8 @@ export default function Waveform({ paused = false, onPause }) {
   const pass = useRef(null);
   useEffect(() => {
     if (reduced) {
+      // Let go of, now that this can change mid-visit, or the effect below plays it again.
+      pass.current = null;
       offset.set(0);
       paint(0);
       return undefined;

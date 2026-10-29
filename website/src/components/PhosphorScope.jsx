@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useReducedMotion } from 'motion/react';
+import { useReducedMotion } from '../lib/reduced-motion.js';
 
 /*
   Decorative hero backdrop: a CRT oscilloscope in XY mode, tracing a harmonograph.
