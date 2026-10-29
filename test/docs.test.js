@@ -2069,17 +2069,25 @@ describe('documentation and source agree on their lists', () => {
       'the stylesheet has no reduced-motion rule, and the README promises one');
 
     const ignoring = [];
+    const frozen = [];
     let animated = 0;
     for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
       if (!name.endsWith('.jsx')) continue;
       const source = await read(path.join('website/src/components', name));
-      if (!/from 'motion\/react'/u.test(source)) continue;
+      if (!/from 'motion\/react'|requestAnimationFrame/u.test(source)) continue;
       animated++;
       if (!/useReducedMotion/u.test(source)) ignoring.push(name);
+      // And asking the hook that keeps answering. motion's reads the setting once, at mount, so
+      // switched on mid-visit it hid the pause button and left everything it pauses moving.
+      if (/import \{[^}]*\buseReducedMotion\b[^}]*\} from 'motion\/react'/u.test(source)) {
+        frozen.push(name);
+      }
     }
-    assert.ok(animated >= 4, `only ${animated} components were read for motion`);
+    assert.ok(animated >= 5, `only ${animated} components were read for motion`);
     assert.deepEqual(ignoring, [],
       `these animate and never ask whether the reader wants it: ${ignoring.join(', ')}`);
+    assert.deepEqual(frozen, [],
+      `these ask motion, which never hears the setting change: ${frozen.join(', ')}`);
 
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
