@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useReducedMotion } from '../lib/reduced-motion.js';
 import Waveform from './Waveform.jsx';
 import RateComparison from './RateComparison.jsx';
 import PhosphorScope from './PhosphorScope.jsx';
