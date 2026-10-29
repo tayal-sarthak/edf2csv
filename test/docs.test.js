@@ -3180,6 +3180,24 @@ ${script}`,
     const cut = whole.filter((s) => !wraps[1].split(',').map((p) => p.trim()).includes(s));
     assert.deepEqual(cut, [], `these keep their lines whole on paper and lose the end: ${cut}`);
 
+    // Whatever motion holds at nothing until it is scrolled to prints as a blank before that, and
+    // the sampling-rate figure's dots are fills a print dialog drops besides.
+    const unrevealed = new Set();
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      const source = await read(path.join('website/src/components', name));
+      for (const [, held] of source.matchAll(
+        /className="([\w-]+)[^"]*"\s+initial=\{[^\n]*opacity: 0[^\n]*\n\s+animate=\{inView\b/gu)) {
+        unrevealed.add(held);
+      }
+    }
+    assert.ok(unrevealed.size >= 1, 'nothing waits to be scrolled to, so this checks nothing');
+    for (const held of unrevealed) {
+      for (const needed of ['opacity: 1 !important', 'print-color-adjust: exact']) {
+        assert.match(print, new RegExp(`\\n  \\.${held} \\{[^}]*\\s${needed};`, 'u'),
+          `.${held} waits to be scrolled to, and on paper it is missing ${needed}`);
+      }
+    }
+
     // A label in `--accent-on` is white on an `--accent` fill, and a print dialog drops fills.
     const labels = [...sheet.matchAll(/\n(\.[\w-]+) \{[^}]*\scolor: var\(--accent-on\)/gu)];
     assert.ok(labels.length >= 2, `found ${labels.length} labels painted on the accent`);
