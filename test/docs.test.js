@@ -3162,6 +3162,16 @@ ${script}`,
     assert.deepEqual(unforced, [],
       `text is painted from tokens print leaves at their screen colour: ${unforced.join(', ')}`);
 
+    // Paper does not scroll. A box that keeps its lines whole on screen has to wrap them there:
+    // `.prose pre` by the browser's default, and whatever the stylesheet sets to `white-space: pre`.
+    const whole = ['.prose pre',
+      ...[...sheet.matchAll(/\n(\.[\w-]+) \{[^}]*\swhite-space: pre;/gu)].map(([, s]) => s)];
+    assert.ok(whole.length >= 2, `found ${whole.length} boxes that keep their lines whole`);
+    const wraps = /\n((?:\s*[.\w -]+,\n)*\s*[.\w -]+) \{\s*white-space: pre-wrap;/u.exec(print);
+    assert.ok(wraps, 'print no longer wraps code, so a line wider than the sheet is cut off');
+    const cut = whole.filter((s) => !wraps[1].split(',').map((p) => p.trim()).includes(s));
+    assert.deepEqual(cut, [], `these keep their lines whole on paper and lose the end: ${cut}`);
+
     // A label in `--accent-on` is white on an `--accent` fill, and a print dialog drops fills.
     const labels = [...sheet.matchAll(/\n(\.[\w-]+) \{[^}]*\scolor: var\(--accent-on\)/gu)];
     assert.ok(labels.length >= 2, `found ${labels.length} labels painted on the accent`);
