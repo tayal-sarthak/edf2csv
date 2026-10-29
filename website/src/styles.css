@@ -1361,6 +1361,13 @@ a {
     break-after: avoid;
   }
 
+  /* Paper does not scroll, so a line wider than the sheet was cut off at the box's edge. */
+  .prose pre,
+  .code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   /* Its label is light ink on its fill, and a print dialog drops fills by default. */
   .btn--primary {
     -webkit-print-color-adjust: exact;
