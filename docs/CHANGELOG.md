@@ -8,6 +8,43 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.81
+
+### what reaches paper, and a setting changed with the page open
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.80's. This release is the
+website again: what it looks like printed, and what it does when Reduce Motion is switched on
+with the page already open.
+
+The print stylesheet had never been printed. Through Chrome's own print path, with background
+graphics off as the dialog defaults, it cut a line wider than the sheet off at the box's edge in
+127 code blocks across the docs and the landing page, mid-word, and it wraps them now. Its
+forced palette lost to both theme selectors, so a light page printed in its screen colours;
+numbers in code printed in the dark theme's amber at 3.65:1, and print at 8.12:1 now; the
+primary button's white label printed with no fill under it; the sampling-rate figure printed
+empty, its dots being fills the dialog drops and held at nothing by the animation until scrolled
+to; and the copy and pause buttons printed, where neither does anything. The suite now holds
+every token text is painted from to the print palette, every white label to a fill that prints,
+every box that keeps its lines whole to wrapping them, and whatever waits to be scrolled to to
+showing on paper.
+
+### the rest
+
+- **Reduce Motion, switched on mid-visit.** motion's `useReducedMotion` reads the setting once,
+  at mount: its docstring says it responds to changes, and the line under it is a TODO saying it
+  does not. The stylesheet hiding the pause button reacts at once, so a reader who switched the
+  setting on with the page open lost the button and kept the motion — the waveform, its numbers
+  and the beam. The site has its own hook over `matchMedia` now. The hero stops and resumes with
+  the setting, the theme toggle and the copy button stop shrinking under a press, and the
+  figure's dots appear at once; that last one needed `initial` held at its first answer, since
+  changed after mount, motion never drew the dots at all. The suite holds every animated
+  component, the canvas included, to the hook.
+- **The waveform off screen.** 0.10.77 stopped its numbers once it scrolled away and left the
+  trace moving sixty times a second. It holds still now, and resumes where it stopped.
+
+Checked: every documentation page and the landing page printed in both themes, before and after;
+a reader with Reduce Motion set from the start sees exactly what they saw before.
+
 ## 0.10.80
 
 ### motion beside the text with no way to stop it
