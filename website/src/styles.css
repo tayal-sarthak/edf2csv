@@ -1374,6 +1374,14 @@ a {
     print-color-adjust: exact;
   }
 
+  /* The figure is its dots: fills a print dialog drops, and scaled to nothing until scrolled to. */
+  .dot {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
   /*
     A link's destination is invisible on paper unless it is written out.
 
