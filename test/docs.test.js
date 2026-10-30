@@ -3949,6 +3949,8 @@ ${script}`,
     // page's "Documentation", each made a page wider than the phone with the text at Large.
     assert.match(/\nbody \{([^}]*)\}/u.exec(sheet)[1], /overflow-wrap:\s*break-word;/u,
       'a word longer than the screen is wide pushes the page sideways again');
+    assert.match(/\n\.footer__links \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
+      'the footer\'s links no longer wrap, so with Very Large text "Changelog" is off a 320px screen');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {

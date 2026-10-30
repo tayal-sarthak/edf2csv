@@ -1362,7 +1362,9 @@ a {
 
 .footer__links {
   display: flex;
-  gap: 1.4rem;
+  /* "Changelog" went off a 320px screen with the text at Very Large, on every page. */
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
 }
 
 .footer a {
