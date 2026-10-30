@@ -3405,16 +3405,27 @@ ${script}`,
       'the docs\' inline code is open to translation');
     // And each flag in that inline code kept to one line: a phone broke 104 of them right after
     // their dashes, `--` ending one line and the name starting the next. Run on the shapes it meets.
-    const flagger = /inner\.replace\(\/(.+?)\/g, '\$1<span class="flag">\$2<\/span>'\)/u.exec(renderer);
+    const flagger = /^const FLAG = \/(.+?)\/g;$/mu.exec(renderer);
     assert.ok(flagger, 'inline code no longer holds its flags together, and a phone breaks them after their dashes');
+    // In both places a flag is written: inline code, and a heading's plain text ("Time range:
+    // --start, --duration, --end"), which broke after its dashes at 320 to 414px.
+    for (const [where, site] of [['inline code', /`<code translate="no">\$\{inner\.replace\(FLAG, /u],
+      ['a heading', /`<\$\{tag\} id="\$\{id\}">\$\{inner\.replace\(FLAG, /u]]) {
+      assert.match(renderer, site, `${where} no longer holds its flags together`);
+    }
     const held = (code) => code.replace(new RegExp(flagger[1], 'g'), '$1[$2]');
     assert.deepEqual(
       ['--annotations-only', 'npm run fuzz -- 42 2000', 'ls -l', '--out=out', '(--bom)', 'T8-P8_ch0', '-1e308',
         'parseTimeSpec(&#39;-5s&#39;, &#39;--duration&#39;)', '&quot;--stdout&quot;'].map(held),
       ['[--annotations-only]', 'npm run fuzz [--] 42 2000', 'ls [-l]', '[--out]=out', '([--bom])', 'T8-P8_ch0', '-1e308',
         'parseTimeSpec(&#39;-5s&#39;, &#39;[--duration]&#39;)', '&quot;[--stdout]&quot;']);
-    assert.match(await read('website/src/styles.css'), /\.prose code \.flag \{\s*white-space: nowrap;/u,
+    assert.match(await read('website/src/styles.css'), /\.prose \.flag \{\s*white-space: nowrap;/u,
       'the flags are marked and nothing keeps them on one line');
+    // Let go in a heading on a screen narrower than its longest flag: held together there,
+    // `--annotations-only` made a 360px page wider than the phone with the text at Very Large.
+    assert.match(await read('website/src/styles.css'),
+      /@media \(max-width: [\d.]+em\) \{\s*\.prose h2 \.flag,\s*\.prose h3 \.flag \{\s*white-space: normal;/u,
+      'a heading holds its flags together on any screen, and one too narrow for them scrolls sideways');
 
     /*
       And every box that scrolls sideways reachable from the keyboard while it overflows. Safari
