@@ -140,6 +140,11 @@ body {
   /* 17px at the default size, in rem so a reader's own default size reaches the body text too. */
   font-size: 1.0625rem;
   line-height: 1.6;
+  /* A word with no break in it went past the edge with the browser's text at Large: a heading
+     that is a diagnostic code, HEADER_BYTES_MISMATCH and its permalink, pushed the warnings page
+     to 362px on a 320px phone, the bare repository URL in the FAQ did the same at 375px, and the
+     landing page's "Documentation" at 320px with the text at Very Large. */
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

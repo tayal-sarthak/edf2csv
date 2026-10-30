@@ -3945,6 +3945,10 @@ ${script}`,
     const readout = /\n\.scope__readout-row \{([^}]*)\}/u.exec(sheet)[1];
     assert.doesNotMatch(readout, /\d+px/u,
       'the readout is sized in pixels again, and enlarged text overruns its columns');
+    // And a word longer than the line: a diagnostic code as a heading, a bare URL, the landing
+    // page's "Documentation", each made a page wider than the phone with the text at Large.
+    assert.match(/\nbody \{([^}]*)\}/u.exec(sheet)[1], /overflow-wrap:\s*break-word;/u,
+      'a word longer than the screen is wide pushes the page sideways again');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
