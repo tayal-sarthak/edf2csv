@@ -8,6 +8,39 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.82
+
+### the figure, for the readers it was empty for
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.81's. The website again, in
+modes no earlier check had run it in.
+
+The sampling-rate figure is the landing page's whole argument, three real samples against 768
+values, and it was empty for three kinds of reader. With Reduce Motion set from the start, the
+three real samples never appeared in either row: the server writes them hidden for the animation
+to bring in, a reduced-motion device then rendered them with an `initial` of `false`, and motion,
+told there was nothing to animate, left them at the server's hidden style. 0.10.81's own check
+counted 765 of 771 dots there and put the difference down to the measurement; the six were
+exactly the real ones. They start hidden for everyone now and appear at once when the figure is
+on screen. With scripting off nothing brings them in at all, so the no-script stylesheet does.
+And under High Contrast every dot is a fill, which it repaints as the page: they are painted in
+system colours now, the real samples in the text colour and the invented ones in its grey.
+
+### the rest
+
+- **"You are here", under High Contrast.** The current page in the docs sidebar, the current
+  section in the header and the chosen file in the landing page's file picker were each marked
+  by colour and fill alone, and all three vanished. They take the system's selection colours.
+- **Dividing lines under High Contrast.** The facts strip and the documentation cards draw their
+  lines as a 1px gap over the parent's fill, which High Contrast repaints, so the cards ran
+  together. The parent keeps a system-coloured fill and the cells take forced colours back.
+- **Guards.** The suite holds everything said in colour alone to saying it again under High
+  Contrast, whatever the server writes hidden to showing without script, and the reduced-motion
+  answer out of `initial`.
+
+Checked: the figure with motion allowed, with Reduce Motion from the start and switched on
+mid-visit, with scripting off, and under High Contrast in both its light and dark palettes.
+
 ## 0.10.81
 
 ### what reaches paper, and a setting changed with the page open
