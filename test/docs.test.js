@@ -2070,6 +2070,7 @@ describe('documentation and source agree on their lists', () => {
 
     const ignoring = [];
     const frozen = [];
+    const serverBlind = [];
     let animated = 0;
     for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
       if (!name.endsWith('.jsx')) continue;
@@ -2082,12 +2083,17 @@ describe('documentation and source agree on their lists', () => {
       if (/import \{[^}]*\buseReducedMotion\b[^}]*\} from 'motion\/react'/u.test(source)) {
         frozen.push(name);
       }
+      // Nor may the answer decide `initial`, which the server renders without it: on a reduced-motion
+      // device the figure's real samples hydrated at the server's hidden style and stayed there.
+      if (/\binitial=\{[^}]*\breduced\b/u.test(source)) serverBlind.push(name);
     }
     assert.ok(animated >= 5, `only ${animated} components were read for motion`);
     assert.deepEqual(ignoring, [],
       `these animate and never ask whether the reader wants it: ${ignoring.join(', ')}`);
     assert.deepEqual(frozen, [],
       `these ask motion, which never hears the setting change: ${frozen.join(', ')}`);
+    assert.deepEqual(serverBlind, [],
+      `these let the setting decide \`initial\`, which the server writes without it: ${serverBlind}`);
 
     const runs = /node-version: \[([^\]]+)\]/u.exec(await read('.github/workflows/ci.yml'));
     assert.ok(runs, 'the CI matrix no longer lists the Node versions it runs');
@@ -3394,6 +3400,24 @@ ${script}`,
           && /(?:^|[;\s])display\s*:(?!\s*none\b)/u.test(body))
         .map(([, list]) => list.trim().split('\n').at(-1));
       assert.deepEqual(later, [], `${selector} is given a display after the rule that hides it`);
+    }
+
+    // And the other way: what the server writes hidden for script to bring in has to show without
+    // it. The figure's three real samples did not, and their row was empty.
+    const offScript = [...sheet.matchAll(/@media \(scripting: none\) \{([\s\S]*?)\n\}/gu)]
+      .map(([, rules]) => rules).join('\n');
+    const waiting = new Set();
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      const source = await read(path.join('website/src/components', name));
+      for (const [, held] of source.matchAll(
+        /className="([\w-]+)[^"]*"\s+initial=\{[^\n]*opacity: 0[^\n]*\n\s+animate=\{inView\b/gu)) {
+        waiting.add(held);
+      }
+    }
+    assert.ok(waiting.size >= 1, 'nothing waits for script to show it, so this checks nothing');
+    for (const held of waiting) {
+      assert.match(offScript, new RegExp(`\\.${held} \\{[^}]*\\sopacity: 1 !important;`, 'u'),
+        `.${held} is written hidden for script to show, and with scripting off it stays hidden`);
     }
   });
 
