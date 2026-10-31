@@ -3588,6 +3588,25 @@ ${script}`,
       }
     }
     assert.ok(pairs >= 24, `only ${pairs} colour pairs were checked across the two themes`);
+
+    /*
+      And High Contrast, which keeps none of these: it repaints colours and fills in the reader's
+      own palette. Whatever a colour or a fill alone was saying has to say it again there — every
+      "you are here" mark, every grid whose lines are a gap over its parent's fill, and the
+      figure, which is nothing but fills.
+    */
+    const forced = [...sheet.matchAll(/@media \(forced-colors: active\) \{([\s\S]*?)\n\}/gu)]
+      .map(([, block]) => block).join('\n');
+    const saidInColour = new Set(['.dot']);
+    for (const [, marked] of sheet.matchAll(/\n([^{}\n,]*\[aria-current='[a-z]+'\])[ ,\n{]/gu)) {
+      saidInColour.add(marked.trim());
+    }
+    for (const [, grid, body] of sheet.matchAll(/\n(\.[\w-]+) \{([^{}]*)\}/gu)) {
+      if (/\sgap: 1px;/u.test(body) && /background: var\(--line/u.test(body)) saidInColour.add(grid);
+    }
+    assert.ok(saidInColour.size >= 6, `found ${saidInColour.size} things said in colour alone`);
+    const lost = [...saidInColour].filter((selector) => !forced.includes(selector));
+    assert.deepEqual(lost, [], `High Contrast repaints what these say in colour alone: ${lost.join(', ')}`);
   });
 
   it('sizes the longest contents list the way two rules reason about it', async () => {
