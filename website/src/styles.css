@@ -747,6 +747,15 @@ a {
   }
 }
 
+/* The server writes the real samples hidden for the animation to bring in, and with scripting off
+   nothing does: the row the comparison's honest half is drawn in was empty. */
+@media (scripting: none) {
+  .dot {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 .rate-note {
   margin-top: 1rem;
   font-size: 0.9rem;
