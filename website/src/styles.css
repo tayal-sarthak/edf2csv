@@ -1463,6 +1463,25 @@ a {
   background: var(--bg-raised);
 }
 
+/*
+  Both grids draw their dividing lines as a 1px gap over the parent's fill, and High Contrast
+  repaints that fill as the page, so the lines went. The parent keeps a system-coloured fill;
+  the cells take forced colours back, since the setting is inherited.
+*/
+@media (forced-colors: active) {
+  .facts,
+  .doc-cards {
+    forced-color-adjust: none;
+    background: CanvasText;
+    border-color: CanvasText;
+  }
+
+  .fact,
+  .doc-card {
+    forced-color-adjust: auto;
+  }
+}
+
 .doc-card__title {
   font-weight: 500;
   letter-spacing: -0.015em;
