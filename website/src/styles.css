@@ -735,6 +735,18 @@ a {
   background: color-mix(in srgb, var(--danger) 60%, transparent);
 }
 
+/* High Contrast repaints every fill as the page, and the figure is nothing but fills. */
+@media (forced-colors: active) {
+  .dot {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .dot--ghost {
+    background: GrayText;
+  }
+}
+
 .rate-note {
   margin-top: 1rem;
   font-size: 0.9rem;
