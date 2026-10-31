@@ -991,6 +991,17 @@ a {
   background: var(--accent-soft);
 }
 
+/* High Contrast drops colours and fills, which is all the site's three "you are here" marks were. */
+@media (forced-colors: active) {
+  .nav__links a[aria-current='page'],
+  .tree__item[aria-current='true'],
+  .docs__link[aria-current='page'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
 /* On-page table of contents, prerendered into each documentation page. */
 .docs__toc {
   display: grid;
