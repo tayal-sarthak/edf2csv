@@ -17,16 +17,15 @@ import { useReducedMotion } from '../lib/reduced-motion.js';
 
 const REAL = 3;
 const FABRICATED = 765;
-// Under reduced motion the dots are simply there. `initial` covers a reader who had it set at
-// load, and only then: switched on mid-visit, the dots still sprang in and piled up for 1.8s.
+// Under reduced motion the dots appear at once instead of springing in and piling up for 1.8s.
+// They start hidden either way. The three real ones are in the server's HTML, which cannot know
+// the setting, and an `initial` of `false` on a reduced-motion device left them at the hidden style
+// the server wrote: the row of real samples was empty for exactly the readers who asked for less.
 const AT_ONCE = { duration: 0 };
 
 export default function RateComparison() {
   const ref = useRef(null);
   const reduced = useReducedMotion();
-  // `initial` keeps the answer it had at mount: changed after it, motion never animated the dots
-  // in, and the figure stayed empty.
-  const [stillAtLoad] = useState(reduced);
   // amount 0.4 so the count-up starts once the block is properly on screen.
   const inView = useInView(ref, { once: true, amount: 0.4 });
 
@@ -57,7 +56,7 @@ export default function RateComparison() {
             <motion.span
               key={i}
               className="dot"
-              initial={stillAtLoad ? false : { scale: 0, opacity: 0 }}
+              initial={{ scale: 0, opacity: 0 }}
               animate={inView ? { scale: 1, opacity: 1 } : undefined}
               transition={reduced ? AT_ONCE : {
                 type: 'spring',
@@ -85,7 +84,7 @@ export default function RateComparison() {
             <motion.span
               key={`real-${i}`}
               className="dot"
-              initial={stillAtLoad ? false : { scale: 0, opacity: 0 }}
+              initial={{ scale: 0, opacity: 0 }}
               animate={inView ? { scale: 1, opacity: 1 } : undefined}
               transition={reduced ? AT_ONCE : { type: 'spring', stiffness: 320, damping: 22, delay: 0.1 + i * 0.09 }}
             />
@@ -95,7 +94,7 @@ export default function RateComparison() {
               <motion.span
                 key={`ghost-${i}`}
                 className="dot dot--ghost"
-                initial={stillAtLoad ? false : { scale: 0, opacity: 0 }}
+                initial={{ scale: 0, opacity: 0 }}
                 animate={inView ? { scale: 1, opacity: 0.85 } : undefined}
                 // Spread the fill across roughly a second so it reads as accumulation,
                 // not as a grid that was always there.
