@@ -3406,11 +3406,19 @@ ${script}`,
     // it. The figure's three real samples did not, and their row was empty.
     const offScript = [...sheet.matchAll(/@media \(scripting: none\) \{([\s\S]*?)\n\}/gu)]
       .map(([, rules]) => rules).join('\n');
+    // Every entrance that starts invisible, unless an `<AnimatePresence initial={false}>` round it
+    // has the server write where it ends. The file panel had neither and was blank without script.
     const waiting = new Set();
     for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
       const source = await read(path.join('website/src/components', name));
-      for (const [, held] of source.matchAll(
-        /className="([\w-]+)[^"]*"\s+initial=\{[^\n]*opacity: 0[^\n]*\n\s+animate=\{inView\b/gu)) {
+      for (const { index } of source.matchAll(/initial=\{\{[^}]*opacity: 0\b/gu)) {
+        const presence = source.lastIndexOf('<AnimatePresence', index);
+        if (presence >= 0 && source.indexOf('</AnimatePresence>', presence) > index
+          && source.slice(presence, source.indexOf('>', presence)).includes('initial={false}')) continue;
+        const tag = source.slice(source.lastIndexOf('<motion.', index), index);
+        const held = /className="([\w-]+)/u.exec(tag)?.[1];
+        assert.ok(held, `${name}:${source.slice(0, index).split('\n').length} is written hidden for ` +
+          'script to show, and has no class a no-script rule could show it by');
         waiting.add(held);
       }
     }
