@@ -3932,6 +3932,18 @@ ${script}`,
       );
     }
 
+    // A heading ending in ` #` loses the # to Markdown's closing sequence. The page read "Labels
+    // that literally start with" while its contents entry, which reads the line, kept the #.
+    const closed = [];
+    for (const name of names) {
+      let fenced = false;
+      for (const line of (await read(path.join('website/content', name))).split('\n')) {
+        if (/^ {0,3}(```|~~~)/u.test(line)) fenced = !fenced;
+        else if (!fenced && /^#{1,6} .*[ \t]#+[ \t]*$/u.test(line)) closed.push(`${name}: ${line}`);
+      }
+    }
+    assert.deepEqual(closed, [], `the page drops the trailing # of these headings:\n${closed.join('\n')}`);
+
     /*
       Same-page links are matched too, which the pattern here did not do.
 
