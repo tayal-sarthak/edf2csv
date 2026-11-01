@@ -3865,7 +3865,7 @@ ${script}`,
     const rem = 16;
     const offset = Number(declared[1]) * rem;
 
-    const header = /\n\s*height:\s*(\d+)px;/u.exec(sheet.slice(sheet.indexOf('.nav {')));
+    const header = /\n\s*min-height:\s*(\d+)px;/u.exec(sheet.slice(sheet.indexOf('.nav {')));
     assert.ok(header, 'the header no longer declares a height');
     // `\s+` between every word: the comment wraps mid-figure, between "124px" and "clear".
     const doubled = /(\d+)px\s+down\s+the\s+viewport/u.exec(explanation);

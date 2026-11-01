@@ -206,7 +206,8 @@ a {
   position: sticky;
   top: 0;
   z-index: 40;
-  height: 68px;
+  min-height: 68px;
+  padding-block: 0.5rem;
   display: flex;
   align-items: center;
   border-bottom: 1px solid transparent;
@@ -225,8 +226,11 @@ a {
 
 .nav__inner {
   display: flex;
+  /* Onto a second line rather than off the edge, where the theme button went at 375px with
+     the browser's text set to Large. */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 2rem;
+  gap: 0.25rem 1rem;
   width: 100%;
 }
 
