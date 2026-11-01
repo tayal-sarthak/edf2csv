@@ -630,10 +630,11 @@ a {
 .scope__readout-head,
 .scope__readout-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(72px, 1fr));
+  /* In characters, not pixels, so the ten-digit time keeps its column when the text is enlarged. */
+  grid-template-columns: repeat(5, minmax(10ch, 1fr));
   gap: 0.5rem;
   padding: 0.5rem 0.9rem;
-  min-width: 420px;
+  min-width: 59ch;
 }
 
 .scope__readout-head {
