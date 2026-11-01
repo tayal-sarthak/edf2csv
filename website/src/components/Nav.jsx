@@ -30,10 +30,18 @@ export default function Nav() {
   useEffect(() => {
     // Guarded, as the head script is: with site data blocked, storage throws rather than
     // returning null, and unguarded that took the whole landing page down to a blank root.
-    try {
-      setTheme(localStorage.getItem(STORAGE_KEY) ?? 'auto');
-    } catch {}
+    const read = () => {
+      try {
+        setTheme(localStorage.getItem(STORAGE_KEY) ?? 'auto');
+      } catch {}
+    };
+    read();
     setLoaded(true);
+    // Again when the browser restores the page from its back-forward cache, as it was left: Back
+    // from a documentation page where the theme had just been changed showed the old one.
+    const restored = (event) => event.persisted && read();
+    addEventListener('pageshow', restored);
+    return () => removeEventListener('pageshow', restored);
   }, []);
 
   useEffect(() => {
