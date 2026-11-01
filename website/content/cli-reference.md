@@ -350,7 +350,7 @@ A position no channel occupies still gets `No channel at position #N`, with the 
 
 Up to 0.5.122 this was `No channel named "EDF Annotations". Run with --info to list the channels in this file` — untrue of the file, and pointing at a table that does not list the channel either, so following it brought the reader back to the same message. The near spellings went on getting it until 0.8.20. A recording that genuinely has no annotation channel still gets that message, because for that file it is true.
 
-### Labels that literally start with #
+### Labels that literally start with `#`
 
 A channel whose label really is `#5` is reachable. When a term begins with `#`, edf2csv first checks whether any channel carries that exact label; if one does, the label wins and the positional interpretation isn't attempted. The positional form is a fallback, so no channel can be made unreachable by an unusual label.
 
