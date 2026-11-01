@@ -3241,6 +3241,10 @@ ${script}`,
     assert.ok(cap, 'the contents box no longer caps its height, so it pushes the prose down');
     assert.match(box[1], /overflow-y:\s*auto/u,
       'the capped box no longer scrolls, so its last entries are clipped and unreachable');
+    // And says that it does: a layer that scrolls with the list covering one that stays put. The
+    // cap is where an entry ends on most pages, and a phone showed four with no sign of the rest.
+    assert.match(box[1], /background:[^;]*\blocal,[^;]*\bscroll,/u,
+      'the contents box no longer shades its foot while more of it is below, so it looks whole');
 
     const narrow = [...sheet.matchAll(/\.docs__toc \{[^}]*max-height:\s*([\d.]+)rem;[^}]*\}/gu)]
       .map(([, value]) => Number(value));
