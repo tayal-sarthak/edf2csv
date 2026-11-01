@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.83
+
+### the theme Back brings back
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.82's. The website again,
+under more of the settings and habits a reader brings to it.
+
+Back put a page on screen in the theme it was left in. The browser keeps a page it has just left,
+script and all, and restores it exactly as it was, so a reader who switched to dark on the CLI
+reference and pressed Back got the previous page in light, with its toggle a step behind and the
+next press ready to overwrite the choice. Both toggles, the documentation pages' inline one and
+the landing page's, read the stored theme again when the browser restores a page.
+
+### the rest
+
+- **With scripting off, "What lands on disk" had no panel.** The file picker's first panel is in
+  the server's HTML, written at the invisible start of its entrance, and nothing brought it in. It
+  is written where the entrance ends now, and changing file still animates. 0.10.82's guard held
+  only the entrances that wait to be scrolled to; it holds all of them.
+- **Text a reader has enlarged.** At 375px with the browser's text set to Large, the header's
+  links pushed the theme button off the edge; they take a second line now. The hero's readout
+  sized its columns in pixels, so the ten-digit time ran into the first channel's value; they are
+  sized in characters.
+- **A heading that lost its last word.** "Labels that literally start with #" rendered as "Labels
+  that literally start with": Markdown reads a trailing ` #` as an optional closing sequence and
+  drops it, while the contents list, which reads the line, kept it. The `#` is in code now, and
+  the suite refuses a heading that ends that way.
+- **The contents box on a phone.** It shows four entries and scrolls for the rest, and on six of
+  the eleven pages its edge fell between the fourth and the fifth, so the list looked complete. A
+  shadow along its foot says there is more for as long as there is.
+
+Checked: Back after each of the three theme choices, in a browser whose back-forward cache was
+confirmed to be restoring the page; the landing page with scripting off; the header at 320, 375
+and 414px with the browser's text at its default, Large and Very large; the contents box measured
+on all eleven pages at three phone sizes, and looked at in both themes and under High Contrast.
+
 ## 0.10.82
 
 ### the figure, for the readers it was empty for
