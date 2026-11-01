@@ -1055,9 +1055,10 @@ describe('documentation and source agree on their lists', () => {
       And the two facts underneath all of it, each written out by hand in four places.
 
       The theme a reader chooses is kept under one localStorage key, and that key is spelled
-      five times: the script inlined in `index.html`, `Nav.jsx`'s `STORAGE_KEY`, and three
-      strings in the prerenderer — the pre-paint script, and the toggle's own reader and
-      writer, which the documentation pages and the 404 get instead of React. Change it in one
+      six times: the script inlined in `index.html`, `Nav.jsx`'s `STORAGE_KEY`, and four
+      strings in the prerenderer — the pre-paint script, and the toggle's own reader, writer and
+      re-reader for a page the browser restores from its cache, which the documentation pages
+      and the 404 get instead of React. Change it in one
       and a reader's chosen theme survives the landing page and is forgotten on every
       documentation page, with nothing thrown, nothing 404ing and no test that can see it:
       precisely the criterion `website/README.md` gives for what this build refuses to ship.
@@ -1078,7 +1079,7 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(key, 'Nav.jsx no longer names the key the theme is kept under');
     for (const [where, text, wanted] of [
       ['website/index.html', index, 1],
-      ['the prerenderer', prerender, 3],
+      ['the prerenderer', prerender, 4],
     ]) {
       const spelt = [...text.matchAll(new RegExp(`'${key[1]}'`, 'gu'))].length;
       assert.equal(spelt, wanted,
