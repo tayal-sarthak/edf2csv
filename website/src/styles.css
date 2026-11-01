@@ -1015,7 +1015,12 @@ a {
   padding: 1rem 1.1rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--bg-sunken);
+  /* A shadow along the foot while more of the list is below it. The first layer scrolls with
+     the list and covers the shadow once the end is reached. */
+  background:
+    linear-gradient(transparent, var(--bg-sunken) 50%) bottom / 100% 3rem no-repeat local,
+    linear-gradient(transparent, var(--line-strong)) bottom / 100% 1.5rem no-repeat scroll,
+    var(--bg-sunken);
   /* The reference pages have long contents lists; the box scrolls rather than pushing
      the prose down the page. See the narrow-viewport cap below, which lowers this. */
   max-height: min(60vh, 30rem);
@@ -1057,8 +1062,9 @@ a {
   still scrolled, because the pages where the cap engages at all are the two references whose
   lists run to 942 and 1635 pixels. So the reader got most of a screen of index, most of the
   index still hidden inside it, and the page it belongs to below both. 11rem is 22% of that
-  screen and shows four entries with the fifth cut, which says what the list is and that there
-  is more of it — and leaves the opening of the page itself above the fold.
+  screen and shows four entries, which says what the list is, and the shadow says there is more
+  of it: the fifth was meant to show cut, and on six pages the cut fell between entries, so the
+  list looked whole. It leaves the opening of the page itself above the fold.
 */
 @media (max-width: 900px) {
   .docs__toc {
