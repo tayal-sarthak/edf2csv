@@ -371,7 +371,9 @@ export default function Landing() {
             </div>
 
             <div className="panel-detail">
-              <AnimatePresence mode="wait">
+              {/* `initial={false}`: the first panel is in the server's HTML, which wrote it at the
+                  entrance's hidden start, and with scripting off nothing brought it in. */}
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={active.name}
                   initial={{ opacity: 0, y: 8 }}
