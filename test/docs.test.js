@@ -3817,6 +3817,18 @@ ${script}`,
     assert.ok(Number(order[1]) > 0,
       `the sidebar's order is ${order[1]}, which does not put it after an article at the ` +
         'default of 0');
+
+    // Room for text a reader has enlarged. At 375px with the browser's text set to Large the
+    // header's row put the theme button off the edge, and the readout's ten-digit time ran into
+    // the next column, each from a size fixed in pixels around text that grows.
+    const header = /\n\.nav \{([^}]*)\}/u.exec(sheet)[1];
+    assert.doesNotMatch(header, /\n\s*height:/u,
+      'the header has a fixed height again, which a second line of links would spill out of');
+    assert.match(/\n\.nav__inner \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
+      'the header row no longer wraps, so with Large text its theme button sits off the edge');
+    const readout = /\n\.scope__readout-row \{([^}]*)\}/u.exec(sheet)[1];
+    assert.doesNotMatch(readout, /\d+px/u,
+      'the readout is sized in pixels again, and enlarged text overruns its columns');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
