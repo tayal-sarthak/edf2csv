@@ -1309,6 +1309,9 @@ a {
 
 .doc-footer {
   display: flex;
+  /* Two titles side by side outgrew a phone with the text at Very Large, "Programmatic API"
+     beside "Questions and troubleshooting"; the next one takes a line of its own instead. */
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
   margin-top: 4rem;
@@ -1320,6 +1323,12 @@ a {
 .doc-footer a {
   color: var(--text-dim);
   transition: color 0.16s var(--ease);
+}
+
+/* Still on the right when it has a line of its own, which is where "next" is. */
+.doc-footer > :last-child {
+  margin-left: auto;
+  text-align: right;
 }
 
 .doc-source {

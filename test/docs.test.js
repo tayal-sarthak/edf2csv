@@ -3951,6 +3951,8 @@ ${script}`,
       'a word longer than the screen is wide pushes the page sideways again');
     assert.match(/\n\.footer__links \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
       'the footer\'s links no longer wrap, so with Very Large text "Changelog" is off a 320px screen');
+    assert.match(/\n\.doc-footer \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
+      'a page\'s previous and next links no longer wrap, and two long titles outgrow a phone');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
