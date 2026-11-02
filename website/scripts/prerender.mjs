@@ -15,7 +15,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
-import { renderMarkdown, extractHeadings } from '../src/lib/markdown.js';
+import { renderMarkdown, extractHeadings, holdFlags } from '../src/lib/markdown.js';
 import { readDocs } from './docs-index.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -402,8 +402,10 @@ function page(doc, docs, assets) {
             <span class="docs__toc-title">On this page</span>
             ${headings
               .map(
+                // Its flags held together as the heading's are: `Time range: --start, --duration,
+                // --end` broke after the dashes in the contents list on a phone as well.
                 (heading) =>
-                  `<a href="#${heading.id}" data-level="${heading.level}">${escape(heading.text)}</a>`,
+                  `<a href="#${heading.id}" data-level="${heading.level}">${holdFlags(escape(heading.text))}</a>`,
               )
               .join('\n            ')}
           </nav>`

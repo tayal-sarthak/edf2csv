@@ -53,6 +53,9 @@ export function makeSlugger() {
 // Where a flag starts and what it spans, for headings and inline code; see the end of renderMarkdown.
 const FLAG = /(^|[\s(=,]|&#39;|&quot;)(--?[A-Za-z][\w-]*|--(?![\w-]))/g;
 
+/** Escaped text with each flag in it wrapped so that a line cannot break inside it. */
+export const holdFlags = (html) => html.replace(FLAG, '$1<span class="flag">$2</span>');
+
 /**
  * Render Markdown to the HTML the site ships: heading anchors applied and fenced
  * code already tokenised, so no client-side pass is needed to make a page readable.
@@ -81,7 +84,7 @@ export function renderMarkdown(body) {
     const anchor = `<a class="prose__anchor" href="#${id}" aria-hidden="true" tabindex="-1">#</a>`;
     // Its flags held together as inline code's are below: a heading names them in plain text,
     // and `Time range: --start, --duration, --end` broke after the dashes on a phone the same way.
-    return `<${tag} id="${id}">${inner.replace(FLAG, '$1<span class="flag">$2</span>')}${anchor}</${tag}>`;
+    return `<${tag} id="${id}">${holdFlags(inner)}${anchor}</${tag}>`;
   });
 
   html = html.replace(
@@ -119,7 +122,7 @@ export function renderMarkdown(body) {
     its flag apart from the rest until the entity counted as somewhere a flag can start.
   */
   html = html.replace(/<code translate="no">([^<]*)<\/code>/g, (_whole, inner) =>
-    `<code translate="no">${inner.replace(FLAG, '$1<span class="flag">$2</span>')}</code>`);
+    `<code translate="no">${holdFlags(inner)}</code>`);
 
   return html;
 }
