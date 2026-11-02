@@ -3430,6 +3430,20 @@ ${script}`,
     assert.match(await read('website/src/styles.css'),
       /@media \(max-width: [\d.]+em\) \{\s*\.prose h2 \.flag,\s*\.prose h3 \.flag \{\s*white-space: normal;/u,
       'a heading holds its flags together on any screen, and one too narrow for them scrolls sideways');
+    // Running text writes a flag as code, quoted messages included, which is what holds it
+    // together there: three quotations wrote theirs bare, "Pass --force to overwrite it" among
+    // them, beside a quotation in the same sentence that did not, and broke after the dashes.
+    const bare = [];
+    for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+      const prose = (await read(path.join('website/content', name))).replace(/^---\n[\s\S]*?\n---\n/u, '')
+        .replace(/^ *```[\s\S]*?^ *```/gmu, '').split('\n').filter((line) => !/^#{1,6} /u.test(line));
+      for (const line of prose) {
+        for (const [flag] of line.replace(/`[^`]*`/gu, '').replace(/\]\([^)]*\)/gu, ']').matchAll(/(?<![\w-])--[a-z][\w-]*/gu)) {
+          bare.push(`${name}: ${flag}`);
+        }
+      }
+    }
+    assert.deepEqual(bare, [], 'these flags are written in running text outside code, and break after their dashes');
 
     /*
       And every box that scrolls sideways reachable from the keyboard while it overflows. Safari

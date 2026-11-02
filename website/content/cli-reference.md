@@ -159,7 +159,7 @@ error: "/data/csv/sleep-study" already exists.
        to choose a different directory.
 ```
 
-`-f, --force` allows writing into an existing directory. It overwrites files of the same name; it doesn't empty the directory first. The refusal that offers it said otherwise until 0.8.83 — "Pass --force to overwrite it", with the dangling-link hint beside it saying "`--force` replaces a previous output directory" — so the one sentence a reader meets at the moment they decide whether to pass the flag contradicted both this paragraph and the flag list above. That matters when two runs produce different file names. Converting a mixed-rate recording writes `signals_256hz.csv` and `signals_1hz.csv`; converting a single-rate recording into the same directory afterwards writes `signals.csv` and leaves the two older files beside it, both looking current. Nothing is deleted automatically, but you're told:
+`-f, --force` allows writing into an existing directory. It overwrites files of the same name; it doesn't empty the directory first. The refusal that offers it said otherwise until 0.8.83 — "Pass `--force` to overwrite it", with the dangling-link hint beside it saying "`--force` replaces a previous output directory" — so the one sentence a reader meets at the moment they decide whether to pass the flag contradicted both this paragraph and the flag list above. That matters when two runs produce different file names. Converting a mixed-rate recording writes `signals_256hz.csv` and `signals_1hz.csv`; converting a single-rate recording into the same directory afterwards writes `signals.csv` and leaves the two older files beside it, both looking current. Nothing is deleted automatically, but you're told:
 
 ```
 warning: signals_128hz.csv, signals_1hz.csv, signals_256hz.csv are left over from an
@@ -810,7 +810,7 @@ error: --stdout has no signal data to write: this recording has no signal channe
 With `--gzip` the hint names `annotations.csv.gz`, which is what the conversion it describes
 would write; it named the uncompressed file whatever else was on the command line until 0.8.70.
 
-Up to 0.5.14 the wide layout answered that with "--stdout needs exactly one table, but this
+Up to 0.5.14 the wide layout answered that with "`--stdout` needs exactly one table, but this
 recording produces 0, one for each sampling rate its channels use ()" and pointed at
 `--layout long`, which wrote zero bytes, no header row, and exited 0.
 
