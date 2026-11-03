@@ -141,7 +141,7 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  * most people arrive at documentation — had to find their way to the homepage to switch,
  * and back again.
  *
- * Sixteen lines of inline script rather than shipping React to eleven static pages. It
+ * Seventeen lines of inline script rather than shipping React to eleven static pages. It
  * cycles the same three states in the same order and writes the same storage key, so the
  * two controls are the same control. Like the React one it cycles what it holds, not what it
  * re-reads: with site data blocked every read said 'auto', and the button stuck on light. And
@@ -149,7 +149,8 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('edf2csv-theme'
  *
  * It does re-read when the browser brings the page back from its back-forward cache, which
  * restores it as it was left: Back from a page where the theme had just been changed showed
- * the old theme, with the button a step behind, ready to overwrite the new choice.
+ * the old theme, with the button a step behind, ready to overwrite the new choice. And again
+ * when another tab changes it, which left this one in the same state.
  */
 /*
   All three glyphs ship, and CSS shows the one matching the current theme — see
@@ -178,7 +179,8 @@ b.addEventListener('click',function(){
 t=order[t]||'light';
 try{localStorage.setItem('edf2csv-theme',t)}catch(e){}
 apply();});
-addEventListener('pageshow',function(e){if(!e.persisted)return;try{t=localStorage.getItem('edf2csv-theme')||'auto'}catch(x){return}apply();});
+function reread(){try{t=localStorage.getItem('edf2csv-theme')||'auto'}catch(x){return}apply();}
+addEventListener('pageshow',function(e){if(e.persisted)reread();});addEventListener('storage',reread);
 sync();})();`;
 
 /*
