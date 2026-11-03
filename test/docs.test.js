@@ -1123,6 +1123,12 @@ describe('documentation and source agree on their lists', () => {
     const count = (name) => prerender.split(`<script>\${${name}}</script>`).length - 1;
     assert.equal(count(liner[1]), count('THEME_TOGGLE_SCRIPT'),
       `${count('THEME_TOGGLE_SCRIPT')} page templates carry the header and ${count(liner[1])} draw its line`);
+    // And the sidebar, which scrolls itself once it is taller than the window, opens on the entry
+    // for the page it is on, not at its top, where on the last pages that entry was out of sight.
+    const opener = /const (\w+) = `[^`]*\.docs__nav \[aria-current="page"\][^`]*scrollTop/u.exec(prerender);
+    assert.ok(opener, 'the scrolling sidebar opens at its top, wherever the current page is in it');
+    assert.equal(count(opener[1]), 1,
+      `${opener[1]} is on ${count(opener[1])} page templates, not on the documentation page's`);
 
     /*
       And how long that inlined script is, which is the reason it exists.

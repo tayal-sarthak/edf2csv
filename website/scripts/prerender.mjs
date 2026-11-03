@@ -204,6 +204,14 @@ const HEADER_LINE_SCRIPT = `(function(){var n=document.querySelector('.nav');if(
 var s=document.createElement('div');s.style.cssText='position:absolute;top:0;height:1px;width:1px;';document.body.prepend(s);
 new IntersectionObserver(function(e){n.setAttribute('data-scrolled',String(!e[0].isIntersecting));}).observe(s);})();`;
 
+/*
+  The sidebar scrolls itself when it is taller than the window, and it opened at its top: on the
+  last pages, with the browser's text enlarged, the entry saying which page this is sat below the
+  box's edge. It opens with that entry in the middle instead.
+*/
+const SIDEBAR_SCRIPT = `(function(){var a=document.querySelector('.docs__nav [aria-current="page"]');if(!a)return;
+var n=a.parentElement;if(a.offsetTop+a.offsetHeight>n.clientHeight)n.scrollTop=a.offsetTop-(n.clientHeight-a.offsetHeight)/2;})();`;
+
 function structuredData(doc) {
   const article = {
     '@context': 'https://schema.org',
@@ -472,6 +480,7 @@ ${doc.html}
     <script>${THEME_TOGGLE_SCRIPT}</script>
     <script>${SCROLLERS_SCRIPT}</script>
     <script>${HEADER_LINE_SCRIPT}</script>
+    <script>${SIDEBAR_SCRIPT}</script>
   </body>
 </html>
 `;
