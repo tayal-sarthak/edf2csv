@@ -3400,6 +3400,12 @@ ${script}`,
     assert.deepEqual(raw.map(([tag]) => tag), [],
       'a code panel on the landing page is rendered outside Code, so it never takes focus');
     assert.ok(/useFocusWhileOverflowing\(textRef\)/u.test(landing), 'the command line no longer takes focus when it overflows');
+    // And its Copy button's confirmation held for its whole time on a second press: each press
+    // started a timer and none was cleared, so the first one took the second's check mark away.
+    const copyHandler = /const copy = async \(\) => \{([\s\S]*?)\n {2}\};/u.exec(landing);
+    assert.ok(copyHandler && /setTimeout\(/u.test(copyHandler[1]), 'the copy button no longer has a timed handler to check');
+    assert.match(copyHandler[1], /clearTimeout\(/u,
+      'every press of Copy starts a timer and none is cleared, so an earlier one cuts a later one short');
     // And a box hidden from assistive technology kept out of the tab order when it scrolls, since
     // Chrome makes a scrolling box a tab stop of its own: with Large text, Tab landed on the hero's
     // readout, which a screen reader is told is not there.

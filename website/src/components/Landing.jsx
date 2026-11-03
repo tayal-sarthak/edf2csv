@@ -167,15 +167,19 @@ function CommandBar({ command }) {
     finishes the job, and the label says so rather than leaving them to guess why the
     check mark never came.
   */
+  // One timer, restarted on every press: a second press within the first's 1.6s had its check
+  // mark taken away by that first timer 200ms later.
+  const reset = useRef(0);
   const copy = async () => {
+    clearTimeout(reset.current);
     try {
       await navigator.clipboard.writeText(command);
       setStatus('copied');
-      setTimeout(() => setStatus('idle'), 1600);
+      reset.current = setTimeout(() => setStatus('idle'), 1600);
     } catch {
       if (textRef.current) getSelection()?.selectAllChildren(textRef.current);
       setStatus('selected');
-      setTimeout(() => setStatus('idle'), 4000);
+      reset.current = setTimeout(() => setStatus('idle'), 4000);
     }
   };
 
