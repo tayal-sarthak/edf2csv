@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.84
+
+### the sidebar a short window cut off
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.83's. The website again.
+
+The documentation sidebar is stuck under the header while a page scrolls, and it was taller than
+some windows: with the browser's text at Large, a 650px window held its last entry below the
+bottom edge for as long as the sidebar stayed stuck, which is the whole page. It scrolls itself
+now, and opens with the entry for the page it is on in view, which on the last pages had been the
+one out of sight.
+
+### the rest
+
+- **A theme changed in another tab.** An open page kept the old one, with its button a step
+  behind, so the next press there overwrote the choice just made. Both toggles, the
+  documentation pages' and the landing page's, follow the change, as they follow Back since
+  0.10.83.
+- **The header's line on the documentation pages.** The landing page draws a line under the
+  header once it has scrolled; the prerendered header wrote `data-scrolled="false"` and nothing
+  changed it, so on every other page the prose slid under a header with no edge.
+- **Skip to content.** It landed on the element the sidebar comes first inside, so it led
+  through eleven sidebar links before the page. It lands on the page.
+- **The hero's readout, with enlarged text.** 0.10.83 let it scroll rather than overlap, and
+  Chrome makes a box that scrolls a tab stop of its own, so Tab landed on something a screen
+  reader is told is not there. It is out of the tab order, and the suite holds every hidden box
+  that scrolls to that.
+- **Copy, pressed twice.** Each press started a timer and none was cleared, so a second press
+  within the first's 1.6 seconds lost its check mark 200ms later.
+
+Checked: the sidebar at 1280px wide and 600 to 900px tall with the browser's text at its
+default, Large and Very large, on five of the eleven pages, first and last among them, and on
+a phone and the 404, where it does not stick; the theme across two tabs in
+every pairing of landing and documentation page, and Back again in a browser confirmed to be
+restoring from its cache; Skip to content and the tab order with real key presses.
+
 ## 0.10.83
 
 ### the theme Back brings back
