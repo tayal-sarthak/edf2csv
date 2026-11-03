@@ -932,8 +932,17 @@ a {
 .docs__nav {
   position: sticky;
   top: 92px;
+  /* Scrolls itself when it is taller than the window: with the browser's text at Large, a 650px
+     window held its foot under the bottom edge, out of reach for as long as it stayed stuck. */
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
   display: grid;
   gap: 2px;
+}
+
+/* Inside the box, so the scrolling sidebar does not clip it. */
+.docs__nav :focus-visible {
+  outline-offset: -2px;
 }
 
 /*
@@ -959,6 +968,7 @@ a {
 @media (max-width: 900px) {
   .docs__nav:not(.docs__nav--static) {
     position: static;
+    max-height: none;
     order: 2;
     border-top: 1px solid var(--line);
     padding-top: 1.75rem;
@@ -968,6 +978,7 @@ a {
 /* The 404 lists the documentation in the page rather than beside it. */
 .docs__nav--static {
   position: static;
+  max-height: none;
 }
 
 .not-found {

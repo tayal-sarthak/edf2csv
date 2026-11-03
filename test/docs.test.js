@@ -3839,7 +3839,13 @@ ${script}`,
 
     // Room for text a reader has enlarged. At 375px with the browser's text set to Large the
     // header's row put the theme button off the edge, and the readout's ten-digit time ran into
-    // the next column, each from a size fixed in pixels around text that grows.
+    // the next column, each from a size fixed in pixels around text that grows. And the docs
+    // sidebar, stuck under the header, held its last entry below a 650px window's edge.
+    const sidebar = /\n\.docs__nav \{([^}]*)\}/u.exec(sheet)[1];
+    assert.match(sidebar, /max-height:[^;]*100vh[^;]*;[\s\S]*overflow-y:\s*auto;/u,
+      'the sticky sidebar no longer scrolls itself, so a window shorter than it hides its foot');
+    assert.match(collapsed[1], /max-height:\s*none;/u,
+      'the collapsed sidebar keeps the sticky one\'s cap, and scrolls inside a box on a phone');
     const header = /\n\.nav \{([^}]*)\}/u.exec(sheet)[1];
     assert.doesNotMatch(header, /\n\s*height:/u,
       'the header has a fixed height again, which a second line of links would spill out of');
