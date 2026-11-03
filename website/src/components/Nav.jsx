@@ -41,7 +41,13 @@ export default function Nav() {
     // from a documentation page where the theme had just been changed showed the old one.
     const restored = (event) => event.persisted && read();
     addEventListener('pageshow', restored);
-    return () => removeEventListener('pageshow', restored);
+    // And when another tab changes it, which left this one showing the old theme with its button
+    // a step behind, so the next press here overwrote the choice just made there.
+    addEventListener('storage', read);
+    return () => {
+      removeEventListener('pageshow', restored);
+      removeEventListener('storage', read);
+    };
   }, []);
 
   useEffect(() => {

@@ -1107,10 +1107,13 @@ describe('documentation and source agree on their lists', () => {
       assert.equal(coloured, applied, `${where} applies a theme ${applied} times and moves the toolbar ${coloured}`);
     }
     // And reads it again when the browser restores a page from its back-forward cache, as it was
-    // left: Back from a page where the theme had just been changed showed the old one.
+    // left: Back from a page where the theme had just been changed showed the old one. And when
+    // another tab changes it, which left an open page in the same state.
     for (const [where, text] of [['the prerenderer', prerender], ['Nav.jsx', nav]]) {
       assert.match(text, /addEventListener\('pageshow',/u,
         `${where} keeps the theme a restored page was left in, not the one chosen since`);
+      assert.match(text, /addEventListener\('storage',/u,
+        `${where} keeps the theme it opened with after another tab has changed it`);
     }
 
     /*
