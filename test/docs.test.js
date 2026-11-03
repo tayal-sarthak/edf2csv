@@ -1129,6 +1129,14 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(opener, 'the scrolling sidebar opens at its top, wherever the current page is in it');
     assert.equal(count(opener[1]), 1,
       `${opener[1]} is on ${count(opener[1])} page templates, not on the documentation page's`);
+    // And "Skip to content" lands past that sidebar, not on a <main> it comes first inside, where
+    // the skip led through its eleven links before the page.
+    const skip = prerender.indexOf('<a class="skip" href="#main">');
+    const docsBody = prerender.slice(skip, prerender.indexOf('</main>', skip));
+    const landing = /<[^>]*\bid="main"[^>]*>([\s\S]*)/u.exec(docsBody);
+    assert.ok(skip > -1 && landing, 'the documentation page has nothing for its skip link to land on');
+    assert.doesNotMatch(landing[1], /docs__nav/u,
+      'the documentation page skips to its sidebar, not past it');
 
     /*
       And how long that inlined script is, which is the reason it exists.

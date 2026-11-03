@@ -448,12 +448,16 @@ function page(doc, docs, assets) {
     <a class="skip" href="#main">Skip to content</a>
     ${nav(doc.slug)}
 
-    <main class="shell docs" id="main">
+    <main class="shell docs">
       <nav class="docs__nav" aria-label="Documentation">
           ${sidebar}
       </nav>
 
-      <article class="prose">
+      <!--
+        The skip link lands here, not on <main>: the sidebar comes first inside that, so
+        "Skip to content" led through its eleven links before the page.
+      -->
+      <article class="prose" id="main">
         <!--
           Where this page sits in the sequence. The sidebar lists eleven titles and the
           footer offers the next one, but nothing said the documentation is an ordered
