@@ -268,8 +268,12 @@ export default function Waveform({ paused = false, onPause }) {
         read the row when a user lands on it, and what it reads is a snapshot of an
         animation that has already moved on. The svg above already carries the
         description of what this is; the numbers are the same idea drawn twice.
+
+        Out of the tab order too: with the browser's text enlarged the row is wider than the
+        panel and scrolls, and Chrome makes a box that scrolls a tab stop of its own, so Tab
+        landed on something a screen reader is told is not there.
       */}
-      <div className="scope__readout" aria-hidden="true">
+      <div className="scope__readout" aria-hidden="true" tabIndex={-1}>
         <div className="scope__readout-head">
           <span>time_s</span>
           {channels.map((channel) => (

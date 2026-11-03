@@ -3392,6 +3392,23 @@ ${script}`,
     assert.deepEqual(raw.map(([tag]) => tag), [],
       'a code panel on the landing page is rendered outside Code, so it never takes focus');
     assert.ok(/useFocusWhileOverflowing\(textRef\)/u.test(landing), 'the command line no longer takes focus when it overflows');
+    // And a box hidden from assistive technology kept out of the tab order when it scrolls, since
+    // Chrome makes a scrolling box a tab stop of its own: with Large text, Tab landed on the hero's
+    // readout, which a screen reader is told is not there.
+    const sheetForScroll = await read('website/src/styles.css');
+    const scrolling = new Set([...sheetForScroll.matchAll(/\n\.([\w-]+) \{[^}]*overflow(?:-[xy])?:\s*(?:auto|scroll);/gu)]
+      .map((m) => m[1]));
+    const hiddenScrollers = [];
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      const source = await read(`website/src/components/${name}`);
+      for (const [tag, cls] of source.matchAll(/<\w+ className="([\w-]+)"[^>]*>/gu)) {
+        if (scrolling.has(cls) && /aria-hidden="true"/u.test(tag) && !/tabIndex=\{-1\}/u.test(tag)) {
+          hiddenScrollers.push(`${name}: .${cls}`);
+        }
+      }
+    }
+    assert.ok(scrolling.has('scope__readout'), 'the readout no longer scrolls, so this checks nothing it was written for');
+    assert.deepEqual(hiddenScrollers, [], 'these scroll, are hidden from a screen reader, and take Tab');
 
     /*
       And the hero's motion stoppable on the page (WCAG 2.2.2): it starts by itself, runs past
