@@ -1115,6 +1115,14 @@ describe('documentation and source agree on their lists', () => {
       assert.match(text, /addEventListener\('storage',/u,
         `${where} keeps the theme it opened with after another tab has changed it`);
     }
+    // The line under the header once a page has scrolled is `data-scrolled`, which Nav.jsx keeps
+    // and the prerendered pages wrote "false" and left, so no documentation page ever drew it.
+    // Every page that carries the header's toggle carries what moves the line.
+    const liner = /const (\w+) = `[^`]*setAttribute\('data-scrolled'/u.exec(prerender);
+    assert.ok(liner, 'nothing on the prerendered pages sets data-scrolled, so their header has no line');
+    const count = (name) => prerender.split(`<script>\${${name}}</script>`).length - 1;
+    assert.equal(count(liner[1]), count('THEME_TOGGLE_SCRIPT'),
+      `${count('THEME_TOGGLE_SCRIPT')} page templates carry the header and ${count(liner[1])} draw its line`);
 
     /*
       And how long that inlined script is, which is the reason it exists.

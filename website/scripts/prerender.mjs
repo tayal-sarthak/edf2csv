@@ -194,6 +194,16 @@ const SCROLLERS_SCRIPT = `(function(){
 function mark(){document.querySelectorAll('.prose pre,.prose table').forEach(function(el){if(el.scrollWidth>el.clientWidth)el.setAttribute('tabindex','0');else el.removeAttribute('tabindex');});}
 var t;mark();addEventListener('resize',function(){clearTimeout(t);t=setTimeout(mark,150);});})();`;
 
+/*
+  The line under the header once the page has scrolled, which the React header draws and these
+  pages never did: `data-scrolled` was written "false" and nothing changed it, so on every
+  documentation page the prose slid under a header with no edge. A sentinel at the top, as in
+  Nav.jsx, rather than a listener firing on every frame of a scroll.
+*/
+const HEADER_LINE_SCRIPT = `(function(){var n=document.querySelector('.nav');if(!n||!window.IntersectionObserver)return;
+var s=document.createElement('div');s.style.cssText='position:absolute;top:0;height:1px;width:1px;';document.body.prepend(s);
+new IntersectionObserver(function(e){n.setAttribute('data-scrolled',String(!e[0].isIntersecting));}).observe(s);})();`;
+
 function structuredData(doc) {
   const article = {
     '@context': 'https://schema.org',
@@ -461,6 +471,7 @@ ${doc.html}
     ${FOOTER}
     <script>${THEME_TOGGLE_SCRIPT}</script>
     <script>${SCROLLERS_SCRIPT}</script>
+    <script>${HEADER_LINE_SCRIPT}</script>
   </body>
 </html>
 `;
@@ -511,6 +522,7 @@ function notFoundPage(docs, assets) {
     </main>
     ${FOOTER}
     <script>${THEME_TOGGLE_SCRIPT}</script>
+    <script>${HEADER_LINE_SCRIPT}</script>
   </body>
 </html>
 `;
