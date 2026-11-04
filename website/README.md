@@ -53,11 +53,12 @@ the page renders blank. Deploying there means rebuilding with a matching `base`.
 
 ## Notes on the build
 
-Documentation is inlined into the bundle at build time rather than fetched at
-runtime. That makes moving between pages instant and the deploy a plain pile of
-static files with no API behind it, at the cost of a larger initial download. The
-libraries are split into their own chunk so editing a page doesn't invalidate them
-in anyone's cache.
+The JavaScript bundle is the landing page and nothing else. Every documentation page
+is prerendered HTML that loads none of it, so moving between pages is an ordinary
+page load, and the deploy is a plain pile of static files with no API behind it.
+The landing page lists each page's title and summary, so the libraries are split
+into their own chunk: editing the documentation changes the landing page's small
+chunk and leaves them cached.
 
 ## What the build refuses to ship
 

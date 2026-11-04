@@ -2103,6 +2103,15 @@ describe('documentation and source agree on their lists', () => {
     );
     assert.match(vite, new RegExp(`base: '${quoted[1]}'`, 'u'),
       `the README says the base is '${quoted[1]}' and the config says otherwise`);
+    // And what the bundle holds. The build notes said the documentation was inlined into it, so
+    // that moving between pages was instant at the cost of a larger first download, which was a
+    // site long gone: App.jsx renders the landing page alone, and no documentation page loads it.
+    assert.doesNotMatch(await read('website/src/App.jsx'), /from '[^']*(?:content|docs)[^']*'|import\.meta\.glob/u,
+      'App.jsx imports the documentation again, so the build notes below are wrong the other way');
+    const buildNotes = /## Notes on the build\n([\s\S]*?)\n## /u.exec(await read('website/README.md'));
+    assert.ok(buildNotes, 'website/README.md has no notes on the build to check');
+    assert.match(buildNotes[1].replace(/\s+/gu, ' '), /bundle is the landing page and nothing else/u,
+      'the build notes describe a bundle that carries the documentation, which it has not for a long time');
 
     const design = (await read('website/README.md')).replace(/\s+/gu, ' ');
     assert.match(design, /collapses to static under `prefers-reduced-motion: reduce`/u,
