@@ -91,4 +91,5 @@ output more convenient by making it less true is the change that gets declined.
 Not something a pull request needs to do — but if you are the one cutting one: the version
 appears in `package.json`, `package-lock.json` and `CITATION.cff`, and `docs/CHANGELOG.md`
 needs an entry headed with it. The suite checks all four agree, so a partial bump fails
-before it can be published.
+before it can be published. `CITATION.cff`'s `date-released` moves with the version too, and
+that one is yours to remember: the suite can tell it is a real date, not that it is today's.

@@ -4327,6 +4327,11 @@ ${script}`,
     const parsed = new Date(`${day}T00:00:00Z`);
     assert.ok(!Number.isNaN(parsed.getTime()), `date-released is not a real date: ${day}`);
     assert.ok(parsed.getTime() <= Date.now(), `date-released is in the future: ${day}`);
+    // So the release steps have to say it, since nothing here will: they listed the version's
+    // four homes, and a release cut by them left the date at the release before.
+    const steps = /## Releases\n([\s\S]*)/u.exec(await read('CONTRIBUTING.md'));
+    assert.ok(steps && /`date-released`/u.test(steps[1]),
+      'CONTRIBUTING.md\'s release steps leave out date-released, which no check here can catch going stale');
   });
 
   it('has a changelog entry for the version being released', async () => {
