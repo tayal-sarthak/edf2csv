@@ -3383,6 +3383,16 @@ ${script}`,
     assert.match(renderer, /<pre translate="no">/u, 'the docs\' code blocks are open to translation');
     assert.match(renderer, /replaceAll\('<code>', '<code translate="no">'\)/u,
       'the docs\' inline code is open to translation');
+    // And each flag in that inline code kept to one line: a phone broke 104 of them right after
+    // their dashes, `--` ending one line and the name starting the next. Run on the shapes it meets.
+    const flagger = /inner\.replace\(\/(.+?)\/g, '\$1<span class="flag">\$2<\/span>'\)/u.exec(renderer);
+    assert.ok(flagger, 'inline code no longer holds its flags together, and a phone breaks them after their dashes');
+    const held = (code) => code.replace(new RegExp(flagger[1], 'g'), '$1[$2]');
+    assert.deepEqual(
+      ['--annotations-only', 'npm run fuzz -- 42 2000', 'ls -l', '--out=out', '(--bom)', 'T8-P8_ch0', '-1e308'].map(held),
+      ['[--annotations-only]', 'npm run fuzz [--] 42 2000', 'ls [-l]', '[--out]=out', '([--bom])', 'T8-P8_ch0', '-1e308']);
+    assert.match(await read('website/src/styles.css'), /\.prose code \.flag \{\s*white-space: nowrap;/u,
+      'the flags are marked and nothing keeps them on one line');
 
     /*
       And every box that scrolls sideways reachable from the keyboard while it overflows. Safari
