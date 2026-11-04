@@ -4161,6 +4161,14 @@ ${script}`,
     for (const { where, phrase, n } of believed) {
       assert.equal(n, anchors.size, `${where} says "${phrase}" and the site has ${anchors.size}`);
     }
+    // And the README, whose instructions for adding a page said nothing else needed editing,
+    // while each of these files states the count and fails here the moment a page is added.
+    const adding = /Adding a page is([\s\S]*?)\n\n/u.exec(await read('website/README.md'));
+    assert.ok(adding, 'website/README.md no longer says how to add a page');
+    for (const where of new Set(believed.map((one) => one.where))) {
+      assert.ok(adding[1].includes(where.replace(/^website\//u, '')),
+        `adding a page means editing ${where}, and the README's instructions for it do not say so`);
+    }
 
     const complement = /the list of the other (\w+)/u.exec(await read('website/src/styles.css'));
     assert.ok(complement, 'the phone-layout comment no longer counts the pages beside this one');

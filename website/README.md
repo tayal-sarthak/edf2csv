@@ -31,7 +31,9 @@ order: 1
 
 Adding a page is a matter of dropping a new `.md` file in `content/` with that
 frontmatter. It appears in the sidebar and on the landing page automatically, in
-`order` sequence. Nothing else needs editing.
+`order` sequence. The one other edit is to two comments that count the pages, in
+`scripts/prerender.mjs` and `src/styles.css`, which the suite names when they fall
+behind.
 
 ## Running it
 
