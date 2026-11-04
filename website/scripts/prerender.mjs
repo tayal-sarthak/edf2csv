@@ -654,6 +654,13 @@ function sitemap(docs) {
   */
   const template = lastModified('scripts/prerender.mjs');
   const newest = (...dates) => dates.filter(Boolean).sort().at(-1);
+  /*
+    And what this script imports to write those pages: `src/lib`, which turns the Markdown into
+    the prose's HTML, and docs-index.mjs, which names and orders what every sidebar lists. Neither
+    was here, so 0.10.85, which changed how every page's inline code is written, touched no page
+    and not this file, and left all eleven dated the day before.
+  */
+  const imports = newest(lastModified('src/lib'), lastModified('scripts/docs-index.mjs'));
   const urls = [
     /*
       The landing page's date comes from the landing page's own sources.
@@ -687,7 +694,7 @@ function sitemap(docs) {
     },
     ...docs.map((doc) => ({
       loc: `${SITE_URL}/docs/${doc.slug}`,
-      lastmod: newest(template, lastModified(`content/${doc.slug}.md`)),
+      lastmod: newest(template, imports, lastModified(`content/${doc.slug}.md`)),
     })),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>

@@ -1974,6 +1974,17 @@ describe('documentation and source agree on their lists', () => {
     assert.ok(perPage, 'the sitemap no longer dates the documentation pages');
     assert.match(perPage[1], /template/u,
       `a documentation page is dated by ${perPage[1].trim()}, which leaves the renderer out`);
+    // And what the renderer imports to write those pages, which was left out the same way: the
+    // Markdown renderer's directory, and each script beside it.
+    const local = [...renderer.matchAll(/^import [^;]+ from '(\.\.?\/[^']+)';/gmu)]
+      .map((m) => path.posix.join('scripts', m[1]));
+    assert.ok(local.length > 0, 'the renderer imports nothing of its own, so this checks nothing');
+    for (const file of local) {
+      const source = file.startsWith('src/') ? path.posix.dirname(file) : file;
+      const held = new RegExp(`const (\\w+) = [^\\n]*lastModified\\('${source}'\\)`, 'u').exec(dates[0]);
+      assert.ok(held && perPage[1].includes(held[1]),
+        `${file} writes part of every documentation page, and their date does not consult ${source}`);
+    }
 
     /*
       And the size of the fixture set, which the correctness page states six times.
