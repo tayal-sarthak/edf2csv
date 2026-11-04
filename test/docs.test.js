@@ -4169,6 +4169,11 @@ ${script}`,
       assert.ok(adding[1].includes(where.replace(/^website\//u, '')),
         `adding a page means editing ${where}, and the README's instructions for it do not say so`);
     }
+    // CONTRIBUTING.md repeats the instruction in a sentence, and said the same.
+    const contributing = /adding one is a matter of (.*?)\.(?:\s|$)/u.exec((await read('CONTRIBUTING.md')).replace(/\s+/gu, ' '));
+    assert.ok(contributing, 'CONTRIBUTING.md no longer says how to add a documentation page');
+    assert.match(contributing[1], /count the pages[^)]*website\/README\.md/u,
+      `CONTRIBUTING.md says adding a page is "${contributing[1]}", which leaves out the comments that count them`);
 
     const complement = /the list of the other (\w+)/u.exec(await read('website/src/styles.css'));
     assert.ok(complement, 'the phone-layout comment no longer counts the pages beside this one');

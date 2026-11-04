@@ -59,7 +59,8 @@ matches no fixture at all and exits 1 saying that nothing was checked.
 
 `website/` is the documentation and the site that serves it. The pages are Markdown in
 `website/content/`; adding one is a matter of dropping in a file with the frontmatter the
-others have.
+others have and updating the two comments that count the pages (`website/README.md` says
+where).
 
 ```bash
 cd website && npm install && npm run build && npm run preview
