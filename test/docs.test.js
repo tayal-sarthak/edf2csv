@@ -10750,6 +10750,19 @@ ${script}`,
     */
     const compare = await read('test/crossvalidate/compare.py');
     assert.match(compare, /if compared == 0:/u, 'compare.py can still agree over nothing');
+    // And the steps for installing what it needs. A system Python marked externally managed
+    // (PEP 668), which is most of them now, refuses `pip install` outright, so the two lines the
+    // README gave failed at the first. Every block that installs pyEDFlib makes a venv first.
+    let installs = 0;
+    for (const where of ['README.md', 'CONTRIBUTING.md', 'website/content/correctness.md']) {
+      for (const [block] of (await read(where)).matchAll(/```[\s\S]*?```/gu)) {
+        if (!/pip install/u.test(block)) continue;
+        installs++;
+        assert.match(block, /python3 -m venv[\s\S]*pip install/u,
+          `${where} installs pyEDFlib with pip into the system Python, which refuses it`);
+      }
+    }
+    assert.ok(installs >= 2, `${installs} blocks install pyEDFlib, so this checks less than the pages do`);
 
     /*
       Reported as a skip below, not asserted true and returned from.

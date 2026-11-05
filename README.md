@@ -110,9 +110,12 @@ binding around the C library written by the author of the EDF+ specification. Ac
 generated recordings, 16,943 sample values were bit-for-bit identical: not equal to within a
 tolerance, but the same 64 bits.
 
-That check needs Python, so it is a separate command from the test suite:
+That check needs Python, so it is a separate command from the test suite. Most systems'
+own Python refuses a package installed into it (PEP 668), so the first line makes a private
+one:
 
 ```bash
+python3 -m venv .venv && . .venv/bin/activate
 pip install pyedflib
 npm run crossvalidate
 ```

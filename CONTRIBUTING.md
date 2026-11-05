@@ -30,8 +30,9 @@ npm run fuzz         # a damaged file is reported, never a crash
 npm run fuzz:batch   # a batch converts each recording as converting it alone would
 npm run stream       # --stdout writes the file it replaces, byte for byte
 npm run terminal     # every error:, warning: and interrupted ( begins its own line
-npm run crossvalidate  # values are bit-identical to pyEDFlib (needs `pip install pyedflib`;
-                       # exits 2 without it, since a check that did not run has not passed)
+npm run crossvalidate  # values are bit-identical to pyEDFlib (needs it installed, in a venv
+                       # as the README shows; exits 2 without it, since a check that did not
+                       # run has not passed)
 ```
 
 CI runs the first eight on every push, at their default seed. A weekly job runs the two that

@@ -4,6 +4,8 @@ test/fixtures/generated/
 website/src/generated/
 .DS_Store
 test/crossvalidate/generated/
+# Where the README's cross-check steps put pyEDFlib.
+.venv/
 
 # What `npm pack` leaves in the root. Commits here are made with `git add -A`, and the guard
 # that catches a stray top-level entry catches it by failing the suite — which is also what
