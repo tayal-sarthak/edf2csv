@@ -657,6 +657,10 @@ non-obvious thing the conversion did:
 > (https://github.com/tayal-sarthak/edf2csv). Channels recorded at different sampling rates were
 > written to separate files and were not resampled.
 
+For the reference itself, the repository carries a `CITATION.cff` with the title, author and
+release, which GitHub turns into APA or BibTeX from **Cite this repository** on the repository
+page.
+
 edf2csv is MIT licensed, so it can be redistributed, vendored into a pipeline or included in
 supplementary material without restriction. `edf2csv --version` prints the version of whatever
 copy you're running.

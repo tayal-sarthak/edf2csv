@@ -4332,6 +4332,11 @@ ${script}`,
     const steps = /## Releases\n([\s\S]*)/u.exec(await read('CONTRIBUTING.md'));
     assert.ok(steps && /`date-released`/u.test(steps[1]),
       'CONTRIBUTING.md\'s release steps leave out date-released, which no check here can catch going stale');
+    // And the page that answers "How do I cite edf2csv" names this file, which it did not: it
+    // gave a methods sentence and left the reader to write the reference by hand.
+    const cite = /## How do I cite edf2csv[^\n]*\n([\s\S]*?)(?:\n## |$)/u.exec(await read('website/content/faq.md'));
+    assert.ok(cite, 'the FAQ no longer answers how to cite the tool');
+    assert.match(cite[1], /`CITATION\.cff`/u, 'the FAQ says how to cite edf2csv without the file that exists for it');
   });
 
   it('has a changelog entry for the version being released', async () => {
