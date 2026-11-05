@@ -1154,6 +1154,9 @@ a {
   color: var(--text-faint);
   opacity: 0;
   transition: opacity 0.16s var(--ease);
+  /* Not part of the heading's text: selecting a heading to copy it took the # along, so a
+     diagnostic's name pasted into a search arrived as NO_SAMPLES# and matched nothing. */
+  user-select: none;
 }
 
 .prose h2:hover .prose__anchor,

@@ -3840,6 +3840,9 @@ ${script}`,
     }
     assert.doesNotMatch(sheet, /\.prose__anchor:focus\b/u,
       'a :focus rule is back on the permalink, which is out of the tab order and cannot fire');
+    // And out of the heading's text, which a reader selects to copy: it came along as a trailing #.
+    assert.match(/\n\.prose__anchor \{([^}]*)\}/u.exec(sheet)[1], /user-select:\s*none;/u,
+      'copying a heading takes its permalink\'s # along again');
   });
 
   it('keeps the skip link worth having, and counts what it skips', async () => {
