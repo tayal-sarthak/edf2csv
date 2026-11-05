@@ -10789,6 +10789,10 @@ ${script}`,
       (error) => ({ code: error.code, stdout: String(error.stdout ?? '') }),
     );
     assert.match(outcome.stdout, /pyEDFlib is not installed/u, outcome.stdout);
+    // With the steps that install it, a venv first: the hint gave the bare `pip install` the
+    // system Python refuses, as the README had.
+    assert.match(outcome.stdout, /python3 -m venv[\s\S]*pip install pyedflib/u,
+      `compare.py's hint installs into the system Python, which refuses it:\n${outcome.stdout}`);
     assert.notEqual(outcome.code, 0, 'a cross-check that did not run must not exit 0');
     assert.equal(outcome.code, 2, 'and must be tellable apart from values that disagreed');
   });

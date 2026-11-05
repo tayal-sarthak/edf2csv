@@ -4,6 +4,7 @@ The README and the correctness page both say the arithmetic is checked against a
 independent implementation, to the last bit. This is that check, so the claim is something
 anyone can rerun rather than something taken on trust.
 
+    python3 -m venv .venv && . .venv/bin/activate
     pip install pyedflib
     npm run crossvalidate
 
@@ -66,7 +67,9 @@ def load() -> object:
         import pyedflib  # noqa: F401
     except ImportError:
         sys.stdout.write(
-            "pyEDFlib is not installed, so the cross-check did not run.\n"
+            "pyEDFlib is not installed, so the cross-check did not run. A venv first, since most\n"
+            "systems' own Python refuses pip install:\n"
+            "    python3 -m venv .venv && . .venv/bin/activate\n"
             "    pip install pyedflib\n"
         )
         raise SystemExit(2)
