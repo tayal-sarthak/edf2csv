@@ -10795,6 +10795,43 @@ ${script}`,
       `compare.py's hint installs into the system Python, which refuses it:\n${outcome.stdout}`);
     assert.notEqual(outcome.code, 0, 'a cross-check that did not run must not exit 0');
     assert.equal(outcome.code, 2, 'and must be tellable apart from values that disagreed');
+
+    /*
+      And while python3 is here, the Python on the pages, which nothing else reads: the suite has
+      no pandas to run it with. Every name a section's snippets read is one they define, import or
+      Python provides; the units recipe called `ax.set_ylabel` on an `ax` the page never made.
+    */
+    const sections = new Map();
+    for (const name of (await readdir(path.join(ROOT, 'website/content'))).filter((f) => f.endsWith('.md'))) {
+      let heading = '';
+      for (const [, title, lang, body] of (await read(`website/content/${name}`))
+        .matchAll(/^## (.*)$|```(\w*)\n([\s\S]*?)```/gmu)) {
+        if (title !== undefined) heading = title;
+        else if (lang === 'python') {
+          const key = `${name} > ${heading}`;
+          sections.set(key, `${sections.get(key) ?? ''}${body}\n`);
+        }
+      }
+    }
+    assert.ok(sections.size >= 10, `${sections.size} sections of Python found, fewer than the pages hold`);
+    const UNDEFINED = [
+      'import ast, builtins, json, sys',
+      'out = {}',
+      'for title, src in json.loads(sys.argv[1]):',
+      '    tree = ast.parse(src)',
+      '    known = set(dir(builtins))',
+      '    for n in ast.walk(tree):',
+      '        if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load): known.add(n.id)',
+      '        elif isinstance(n, (ast.Import, ast.ImportFrom)):',
+      '            known.update((a.asname or a.name).split(".")[0] for a in n.names)',
+      '        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)): known.add(n.name)',
+      '        elif isinstance(n, ast.arg): known.add(n.arg)',
+      '    used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}',
+      '    if used - known: out[title] = sorted(used - known)',
+      'print(json.dumps(out))',
+    ].join('\n');
+    const names = await run('python3', ['-c', UNDEFINED, JSON.stringify([...sections])]);
+    assert.deepEqual(JSON.parse(names.stdout), {}, 'these snippets read a name nothing on their page defines');
   });
 
   it('ends every diagnostic it prints as a sentence', async () => {

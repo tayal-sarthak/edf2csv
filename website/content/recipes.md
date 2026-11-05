@@ -555,7 +555,7 @@ Temp rectal        Temp rectal  degC                 1    signals_1hz.csv       
 
 ```python
 units = channels["unit"].to_dict()
-ax.set_ylabel(f"EEG Fpz-Cz ({units['EEG Fpz-Cz']})")
+ylabel = f"EEG Fpz-Cz ({units['EEG Fpz-Cz']})"  # "EEG Fpz-Cz (uV)", for a plot's ax.set_ylabel
 ```
 
 The `physical_min`, `physical_max`, `digital_min` and `digital_max` columns are the header's calibration as recorded. They're what edf2csv used to convert the samples, so they let anyone reproduce the arithmetic from the digital values.
