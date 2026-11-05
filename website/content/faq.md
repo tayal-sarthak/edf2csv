@@ -625,11 +625,11 @@ itself — so a conversion can run inside a pipeline without mixing messages int
 
 ## How do I cite edf2csv, or pin a version?
 
-Pin the version wherever the tool is invoked, so a rerun a year from now produces the same bytes:
+Pin the version wherever the tool is invoked, so a rerun a year from now produces the same bytes. `X.Y.Z` here is whatever `edf2csv --version` prints for the copy you used:
 
 ```bash
-npx edf2csv@0.2.0 sleep-study.edf
-npm install -g edf2csv@0.2.0
+npx edf2csv@X.Y.Z sleep-study.edf
+npm install -g edf2csv@X.Y.Z
 ```
 
 Every conversion already records which version produced it. `metadata.json` opens with:
@@ -653,7 +653,7 @@ edf2csv sleep-study.edf --checksum
 For a methods section, name the tool, the version and the repository, and state the one
 non-obvious thing the conversion did:
 
-> EDF recordings were converted to CSV with edf2csv 0.2.0
+> EDF recordings were converted to CSV with edf2csv X.Y.Z
 > (https://github.com/tayal-sarthak/edf2csv). Channels recorded at different sampling rates were
 > written to separate files and were not resampled.
 

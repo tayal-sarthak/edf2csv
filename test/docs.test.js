@@ -9452,6 +9452,11 @@ ${script}`,
       for (const [, version] of stated) {
         assert.equal(version, '...', `${page} states a version inside a tool object: ${version}`);
       }
+      // Nor in a command or a sentence that names one. The FAQ's pinning example was
+      // `npx edf2csv@0.2.0`, so pasting it pinned a release from months before, and its methods
+      // sentence had a paper cite that release too.
+      const pinned = text.match(/\bedf2csv(?:@| )\d+\.\d+\.\d+\b/gu);
+      assert.equal(pinned, null, `${page} states a release where any version is meant: ${pinned}`);
     }
 
     const { mkdtemp, rm } = await import('node:fs/promises');
