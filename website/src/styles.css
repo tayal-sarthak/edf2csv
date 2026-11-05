@@ -1228,9 +1228,11 @@ a {
   color: var(--text);
 }
 
-/* See markdown.js: a flag in inline code, a heading or the contents does not break after its dashes. */
+/* See markdown.js: a flag in inline code, a heading or the contents does not break after its
+   dashes. The landing page writes its one flag by hand, in the lede above the --info output. */
 .prose .flag,
-.docs__toc .flag {
+.docs__toc .flag,
+.section__lede .flag {
   white-space: nowrap;
 }
 

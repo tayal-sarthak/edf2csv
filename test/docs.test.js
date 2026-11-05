@@ -3423,8 +3423,18 @@ ${script}`,
         'parseTimeSpec(&#39;-5s&#39;, &#39;--duration&#39;)', '&quot;--stdout&quot;'].map(held),
       ['[--annotations-only]', 'npm run fuzz [--] 42 2000', 'ls [-l]', '[--out]=out', '([--bom])', 'T8-P8_ch0', '-1e308',
         'parseTimeSpec(&#39;-5s&#39;, &#39;[--duration]&#39;)', '&quot;[--stdout]&quot;']);
-    assert.match(await read('website/src/styles.css'), /\.prose \.flag,\s*\.docs__toc \.flag \{\s*white-space: nowrap;/u,
+    assert.match(await read('website/src/styles.css'), /\.prose \.flag,\s*\.docs__toc \.flag,\s*\.section__lede \.flag \{\s*white-space: nowrap;/u,
       'the flags are marked and nothing keeps them on one line');
+    // The landing page writes its code by hand, so none of the above reaches it: its `--info`
+    // broke after the dashes with the text at Large, and carried the space before it inside.
+    const handwritten = [];
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      if (!name.endsWith('.jsx')) continue;
+      for (const [, attrs, text] of (await read(path.join('website/src/components', name))).matchAll(/<code\b([^>]*)>([^<{]*)<\/code>/gu)) {
+        if (/^\s*--?[a-z]/u.test(text) && (!/className="flag"/u.test(attrs) || text !== text.trim())) handwritten.push(`${name}: ${text}`);
+      }
+    }
+    assert.deepEqual(handwritten, [], 'these flags in a component are not held together');
     // Let go in a heading on a screen narrower than its longest flag: held together there,
     // `--annotations-only` made a 360px page wider than the phone with the text at Very Large.
     assert.match(await read('website/src/styles.css'),

@@ -317,8 +317,8 @@ export default function Landing() {
             See what is in the file before you write 108 MB of it
           </h2>
           <p className="section__lede">
-            An eight hour sleep study at 100 Hz becomes three million rows. Run it with
-            <code translate="no"> --info</code> and the tool reads only the header, prints the channel
+            An eight hour sleep study at 100 Hz becomes three million rows. Run it with{' '}
+            <code translate="no" className="flag">--info</code> and the tool reads only the header, prints the channel
             table, estimates the output, and writes nothing.
           </p>
           <Code html={highlight(INFO_OUTPUT, 'bash')} />
