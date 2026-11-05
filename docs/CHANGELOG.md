@@ -8,6 +8,51 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.85
+
+### steps that could not be followed
+
+Nothing in `src/` changed, and `dist/` builds byte for byte as 0.10.84's. The README did, which
+is the first change to what the package ships in a while: its steps for the cross-check could not
+be followed on most systems.
+
+They were `pip install pyedflib` and `npm run crossvalidate`, and a system Python marked
+externally managed (PEP 668), which Homebrew's is, and Debian's and Ubuntu's since 2023, refuses
+the first line outright. The README, CONTRIBUTING and the correctness page make a venv first now,
+and so does the hint the cross-check prints when pyEDFlib is missing, which had offered the same
+refused command. `.venv/` is ignored, so following the steps does not leave the suite's top-level
+check something to fail on.
+
+### the rest
+
+- **Flags broken across lines.** A browser may break a line after any hyphen, and in the docs'
+  inline code on a phone it broke 104 flags at 375px right after their dashes: `--` ending one
+  line and `annotations-only` starting the next, or `-` and `-channels` where it fell between
+  the two. Each flag keeps to one line; the code around it still wraps at its spaces.
+- **The sitemap's dates.** A documentation page is dated by its Markdown and the prerenderer,
+  and not by what the prerenderer imports to write it, so the change above, which rewrote every
+  page's inline code from `src/lib/markdown.js`, left all eleven dated the day before.
+- **A recipe that could not run.** The units snippet called `ax.set_ylabel` on an `ax` the page
+  never made. The suite now reads every section's Python with Python's own parser and refuses a
+  name nothing on the page defines, which no check could do before, having no pandas to run it.
+- **Pinning a version.** The FAQ's example was `npx edf2csv@0.2.0`, so pasting it pinned a
+  release from months before, and its sentence for a methods section cited that release too.
+  It says `X.Y.Z`, the version `edf2csv --version` prints.
+- **Citing it.** The FAQ answered "How do I cite edf2csv" without naming `CITATION.cff`, which
+  GitHub turns into APA or BibTeX.
+- **Instructions that were not true.** The website README said the documentation was inlined
+  into the bundle, so moving between pages was instant, of a site that has not worked that way
+  for a long time; it and CONTRIBUTING said adding a page needed nothing else edited, and a new
+  page fails the suite on the two comments that count the pages; and CONTRIBUTING's release
+  steps left out `CITATION.cff`'s `date-released`, the one part of a bump no check can catch
+  going stale.
+
+Checked: the venv steps run end to end, 16,943 values agreeing; every Python recipe but the one
+that needs a recording with a seizure marked in it, run against the conversion the page
+describes, and the DuckDB ones through the shell as written; a page
+added to a copy of the repository and the suite run on it; the flags at 320, 375 and 414px in
+Chrome and Firefox.
+
 ## 0.10.84
 
 ### the sidebar a short window cut off
