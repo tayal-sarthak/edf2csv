@@ -78,7 +78,7 @@ EDF stores no time zone, so `start_datetime_local` is written without one: it's 
 ```r
 signals <- read.csv("sleep_csv/signals_100hz.csv", check.names = FALSE)
 names(signals)
-#> [1] "time_s"        "EEG Fpz-Cz"    "EEG Pz-Oz"     "EOG horizontal"
+#> [1] "time_s"         "EEG Fpz-Cz"     "EEG Pz-Oz"      "EOG horizontal"
 
 signals[["EEG Fpz-Cz"]][1:5]
 ```

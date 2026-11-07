@@ -8796,6 +8796,36 @@ ${script}`,
     }
   });
 
+  it('prints the column names the way R prints them', async () => {
+    /*
+      The R recipe shows what `names(signals)` gives for the 100 Hz table, and the spacing was not
+      R's. print() pads each quoted name to the widest of them and puts one space between, so
+      "time_s" stands nine spaces in front of "EEG Fpz-Cz"; the page had eight, and four and five
+      where R prints five and six: an output no R session produces, in the one R snippet that
+      shows its output.
+
+      Held to the file it describes: the 100 Hz table's columns, read from the sleep recording's
+      header, laid out the way print() lays out a character vector that fits on one line.
+    */
+    const page = await read('website/content/recipes.md');
+    const shown = /^#> \[1\] .*$/mu.exec(page);
+    assert.ok(shown, 'the R recipe no longer shows what names() prints');
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-rnames-'));
+    try {
+      const { writeSleepStudy } = await import(path.join(ROOT, 'test/fixtures/sleep-study.mjs'));
+      const recording = writeSleepStudy(path.join(work, 'sleep-study.edf'));
+      const { stdout } = await run(process.execPath, [CLI, recording, '--info', '--json']);
+      const names = ['time_s', ...JSON.parse(stdout).channels
+        .filter((channel) => channel.output_file === 'signals_100hz.csv').map((channel) => channel.column)];
+      const width = Math.max(...names.map((name) => name.length + 2));
+      const printed = `#> [1] ${names.map((name) => `"${name}"`.padEnd(width)).join(' ').trimEnd()}`;
+      assert.ok(printed.length <= 80, 'R would wrap this vector, which the check does not lay out');
+      assert.equal(shown[0], printed, 'R prints names(signals) differently');
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('shows the --json summary that recording really produces', async () => {
     /*
       The FAQ's scripting answer runs `--json` on sleep-study.edf and showed one signals.csv of
