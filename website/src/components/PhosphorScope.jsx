@@ -259,15 +259,27 @@ export default function PhosphorScope({ paused = false }) {
     );
     io.observe(host);
 
-    // Resizing throws away the persisted trail, so the still has to be redrawn. This
-    // observer also fires once on observe, which is what gives the canvas its real
-    // size when the first measurement above came back empty.
     // Resizing reallocates the bitmap, which throws away whatever trail was on it, so
     // the figure has to be laid down again rather than left to rebuild from black. This
     // also fires once on observe, which is what paints the figure the first time and what
     // recovers when the measurement at mount came back empty.
     const ro = new ResizeObserver(paint);
     ro.observe(host);
+
+    // A window moved to a screen of another density changes devicePixelRatio and not the
+    // host's size, so the observer above never heard of it and the bitmap kept the old one:
+    // half resolution on a Retina screen until something resized the window.
+    let density = null;
+    const watchDensity = () => {
+      density?.removeEventListener('change', onDensity);
+      density = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      density.addEventListener('change', onDensity);
+    };
+    const onDensity = () => {
+      watchDensity();
+      paint();
+    };
+    watchDensity();
 
     // The beam colour and its compositing both depend on the theme. When it changes the
     // live trail recolours itself within a second; the still has to be repainted.
@@ -294,6 +306,7 @@ export default function PhosphorScope({ paused = false }) {
       // onTheme, which is what was added. Removing `readTheme` removed nothing:
       // removeEventListener matches on identity, and these are two different functions.
       scheme.removeEventListener('change', onTheme);
+      density.removeEventListener('change', onDensity);
       document.removeEventListener('visibilitychange', sync);
     };
   }, [still]);

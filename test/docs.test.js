@@ -4875,6 +4875,14 @@ ${script}`,
       assert.match(scope, pattern,
         `the docstring says it stops painting when ${what}, and nothing watches for it`);
     }
+
+    // And the bitmap drawn at the screen's density, which a window moved to another screen
+    // changes without resizing anything: the observer never fired, and a Retina screen got the
+    // figure at half resolution.
+    assert.match(scope, /matchMedia\(`\(resolution: \$\{window\.devicePixelRatio\}dppx\)`\)/u,
+      'nothing watches the screen\'s density, so moving the window to another screen leaves the canvas blurred');
+    assert.match(scope, /const onDensity = \(\) => \{\s*watchDensity\(\);\s*paint\(\);/u,
+      'a change of density no longer repaints the canvas, or no longer watches for the next one');
   });
 
   it('draws the argument the whole tool exists to make to scale', async () => {
