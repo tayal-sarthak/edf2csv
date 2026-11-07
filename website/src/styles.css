@@ -1568,7 +1568,17 @@ a {
     transform 0.18s var(--ease);
 }
 
-.doc-card:hover .doc-card__arrow {
+.doc-card:hover .doc-card__arrow,
+.doc-card:focus-visible .doc-card__arrow {
   opacity: 1;
   transform: translateX(0);
+}
+
+/* What the pointer brings in, the keyboard does too, above; and a touch screen has no hover to
+   bring it in with, so there it is simply shown, as the headings' permalinks are. */
+@media (hover: none) {
+  .doc-card__arrow {
+    opacity: 1;
+    transform: none;
+  }
 }

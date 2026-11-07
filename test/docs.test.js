@@ -3845,6 +3845,26 @@ ${script}`,
       'copying a heading takes its permalink\'s # along again');
   });
 
+  it('shows without a pointer what the pointer brings in', async () => {
+    /*
+      Two things on the site appear only under the mouse: a heading's permalink and a doc card's
+      arrow. The permalink had a rule for a touch screen, which has no hover to bring it in with;
+      the arrow had none, so a phone never showed it, and nothing for the keyboard either, so a
+      card reached with Tab kept it hidden behind its focus ring. A heading takes no focus, which
+      is why its permalink answers to the touch rule alone.
+    */
+    const sheet = await read('website/src/styles.css');
+    const touch = [...sheet.matchAll(/@media \(hover: none\) \{([\s\S]*?)\n\}/gu)].map((m) => m[1]).join('\n');
+    const brought = [...sheet.matchAll(/^([^\n{}]*?):hover (\.[\w-]+)/gmu)];
+    assert.ok(brought.length >= 2, `only ${brought.length} rules bring something in on hover`);
+    for (const [, host, target] of brought) {
+      assert.ok(touch.includes(`${target} {`), `${target} appears under the mouse and never on a touch screen`);
+      if (/^\.prose h[23]$/u.test(host)) continue;
+      assert.ok(sheet.includes(`${host}:focus-visible ${target}`),
+        `${target} appears under the mouse and not when ${host} is reached from the keyboard`);
+    }
+  });
+
   it('keeps the skip link worth having, and counts what it skips', async () => {
     /*
       The skip link's rule opens with the reason it is written the way it is:
