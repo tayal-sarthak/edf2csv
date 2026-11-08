@@ -54,6 +54,16 @@ warning: At least one output file will have more than 1,048,576 rows, which is m
          Use --start and --duration to convert a section, or read the file with
          pandas or R.`;
 
+/*
+  The command is shell and what it prints is not. Coloured as shell, the channel table's header
+  row came out as a comment and each negative bound's minus stayed outside its number, `-250`
+  showing its digits in the accent and its sign in the body colour. Every docs page shows this
+  output as plain text, which is how it is shown here too.
+*/
+const INFO_HTML =
+  highlight(INFO_OUTPUT.slice(0, INFO_OUTPUT.indexOf('\n')), 'bash') +
+  highlight(INFO_OUTPUT.slice(INFO_OUTPUT.indexOf('\n')), 'text');
+
 const FILES = [
   {
     name: 'signals_100hz.csv',
@@ -321,7 +331,7 @@ export default function Landing() {
             <code translate="no" className="flag">--info</code> and the tool reads only the header, prints the channel
             table, estimates the output, and writes nothing.
           </p>
-          <Code html={highlight(INFO_OUTPUT, 'bash')} />
+          <Code html={INFO_HTML} />
         </div>
       </section>
 

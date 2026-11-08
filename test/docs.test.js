@@ -4490,6 +4490,11 @@ ${script}`,
       // The tool prints the path it was given; the page shows the bare name it was run with.
       const actual = `${stdout}${stderr}`.replace(recording, 'sleep-study.edf').trim();
       assert.equal(actual, shown);
+      // Coloured as what it is, the command as shell and its output as plain text, as the docs
+      // show it: as shell, the table's header row was a comment and -250's minus sat apart.
+      assert.match(jsx, /highlight\(INFO_OUTPUT\.slice\(INFO_OUTPUT\.indexOf\('\\n'\)\), 'text'\)/u,
+        'the landing page colours what --info prints as if it were shell');
+      assert.doesNotMatch(jsx, /highlight\(INFO_OUTPUT, /u, 'the landing page colours the whole --info block as shell');
 
       /*
         Every page that shows this recording shows the same recording.
