@@ -8,6 +8,61 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.86
+
+### pages wider than the phone
+
+Nothing in `src/` changed and nor did the README, so the package is 0.10.85's under a new
+number. All fourteen changes are to the website, and most were found by reading it at the sizes
+a reader can set: a phone 320 to 414px wide, with the browser's text at Large or Very Large.
+
+### Pages wider than the phone
+
+With the text at Very Large every page was wider than a 320px phone, the warnings page by
+114px. A word with no break in it did most of that: the warnings page's headings are diagnostic
+codes, and `HEADER_BYTES_MISMATCH` with its permalink ran past the edge, as did the FAQ's bare
+repository URL and the landing page's "Documentation". A word breaks now when nothing else fits
+on the line. The rest was two rows of links that could not wrap: the footer's, which put
+"Changelog" off the screen on every page, and the previous and next links under each docs page,
+two long titles side by side. Both wrap, and "next" stays on the right.
+
+### Flags split after their dashes, the rest of them
+
+0.10.85 held the flags in the docs' inline code together. Four kinds were out of its reach:
+
+- **A quoted one in code**, `parseTimeSpec('-5s', '--duration')`, where marked writes the quote
+  as an entity.
+- **Headings**, which name flags in plain text (`Time range: --start, --duration, --end`), and
+  the contents list built from them. A heading lets go only on a screen narrower than its
+  longest flag, below 15.5em, which is 360px with the text at Very Large, where holding
+  `--annotations-only` together made the page wider than the phone.
+- **Three quoted messages** that wrote their flag bare, "Pass --force to overwrite it" among
+  them, where every other quotation in the docs writes it as code.
+- **The landing page's `--info`**, which is written by hand, so the docs' fix never reached it.
+
+### the rest
+
+- **Copying a heading took its permalink.** Selecting a heading picked up the `#` beside it, so
+  a diagnostic's name pasted into a search arrived as `NO_SAMPLES#`.
+- **The hero's figure on another screen.** Moving the window to a screen of another pixel
+  density left the canvas at the old one, half resolution on a Retina screen until something
+  resized the window. It repaints when the density changes.
+- **A doc card's arrow** came in only under the mouse: a card reached with Tab kept it hidden,
+  and a phone never showed it.
+- **The landing page's `--info` block was coloured as shell**, output and all: the channel
+  table's header row as a comment, and `-250` with its digits in the accent and its minus not.
+  The command is coloured and what it prints is plain text, as on every docs page.
+- **The R recipe's `names()` output** was spaced one short of the way R pads a character vector.
+- **The website README** said motion was kept to the two visuals that argue something, and left
+  out the beam that animates behind the hero.
+
+Checked in headless Chrome: all thirteen pages at 320, 360, 375 and 414px with the text at its
+default, Large and Very Large sizes, none of them wider than the screen; no flag split across
+two lines anywhere in the docs at those sizes, and none on the landing page at 65 widths from
+320 to 1280px; a copied heading; a focused card and a phone's; and the canvas's bitmap after the
+event a change of density fires, sent by hand, since headless Chrome changes the density without
+firing it. Each new check was run against the code before it and failed.
+
 ## 0.10.85
 
 ### steps that could not be followed
