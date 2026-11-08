@@ -135,7 +135,11 @@ animates because watching 765 values appear out of nowhere makes the point faste
 than a sentence does. The rest of the page does not fade in on scroll — it used to,
 and a page where every heading rises into place is indistinguishable from every
 other page where every heading rises into place. Content is simply there; motion is
-reserved for the two visuals that argue something and for interaction feedback. The
+reserved for the two visuals that argue something and for interaction feedback, with
+one exception that argues nothing: the beam behind the hero, an oscilloscope tracing a
+figure that never repeats. It is decoration and is built as such: hidden from screen
+readers, still while the trace is paused, and no longer drawing once the hero is off
+screen or the tab is in the background. The
 hero's entrance is CSS rather than JavaScript so the prerendered title is visible
 the instant the HTML paints. Everything collapses to static under
 `prefers-reduced-motion: reduce`.

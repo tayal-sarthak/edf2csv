@@ -3356,6 +3356,18 @@ ${script}`,
     assert.deepEqual(scrolled.sort(), ['RateComparison.jsx'],
       `the README says only the two visuals animate; these enter on scroll: ${scrolled.join(', ')}`);
 
+    // And what runs on its own rather than on entry. The paragraph accounted for the trace and
+    // not for the beam behind it, which animates for as long as the hero is on screen.
+    const looping = [];
+    for (const name of await readdir(path.join(ROOT, 'website/src/components'))) {
+      const source = name.endsWith('.jsx') ? await read(path.join('website/src/components', name)) : '';
+      if (/requestAnimationFrame|repeat: Infinity/u.test(source)) looping.push(name);
+    }
+    assert.deepEqual(looping.sort(), ['PhosphorScope.jsx', 'Waveform.jsx'],
+      `the README accounts for two loops, the trace and the beam behind it; these run one: ${looping.join(', ')}`);
+    assert.match(readme.replace(/\s+/gu, ' '), /the beam behind the hero/u,
+      'the README says motion is kept to what argues something and leaves out the beam, which argues nothing');
+
     /* And the hero entrance, which has to stay in the stylesheet. */
     const landing = await read('website/src/components/Landing.jsx');
     const title = /<h1 className="([^"]*)"/u.exec(landing);
