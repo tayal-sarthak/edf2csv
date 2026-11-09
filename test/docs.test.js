@@ -10966,6 +10966,13 @@ ${script}`,
     }).then((ok) => ({ code: 0, stdout: ok.stdout }), (error) => ({ code: error.code, stdout: String(error.stdout ?? '') }));
     assert.notEqual(outcome.code, 0, `a sweep that predicted nothing exited 0:\n${outcome.stdout}`);
     assert.match(outcome.stdout, /0 predictions over 0 recordings/u, outcome.stdout);
+    // And the filter CONTRIBUTING shows, which held three recordings to the whole set's average
+    // size margin and so failed every time, telling its reader to rewrite the constant to match.
+    const narrowed = await run(process.execPath, [path.join(ROOT, 'test/fuzz/estimate.mjs'), 'biosemi'], {
+      cwd: ROOT,
+    }).then((ok) => ({ code: 0, stdout: ok.stdout }), (error) => ({ code: error.code, stdout: String(error.stdout ?? '') }));
+    assert.equal(narrowed.code, 0, `npm run estimate -- biosemi, as CONTRIBUTING shows it, fails:\n${narrowed.stdout}`);
+    assert.match(narrowed.stdout, /over 3 recordings/u, narrowed.stdout);
   });
 
   it('does not pass its cross-check by not running it', async (t) => {

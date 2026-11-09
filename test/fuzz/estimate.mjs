@@ -277,9 +277,8 @@ export function sweepEstimates(filter = '') {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { problems, checked, names, sized, overBy, worst, worstAt } = sweepEstimates(
-    process.argv[2] ?? '',
-  );
+  const filter = process.argv[2] ?? '';
+  const { problems, checked, names, sized, overBy, worst, worstAt } = sweepEstimates(filter);
 
   process.stdout.write(`\n${checked} predictions over ${names} recordings.\n`);
   /*
@@ -309,7 +308,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
   const margin = sized > 0 ? overBy / sized : 1;
-  if (Math.abs(margin - AVERAGE_SEEN) >= 0.005) {
+  // The average is the whole fixture set's, so only a run over the whole set can disagree with
+  // it. Narrowed by the name filter CONTRIBUTING documents, `npm run estimate -- biosemi` read
+  // 1.230x against 1.16 and exited 1, telling its reader to change the constant and claim 5 to
+  // the average of three BioSemi recordings.
+  if (!filter && Math.abs(margin - AVERAGE_SEEN) >= 0.005) {
     process.stdout.write(
       `Sizes read ${margin.toFixed(3)}x on average and AVERAGE_SEEN says ` +
         `${AVERAGE_SEEN}. Update it here and the percentage in claim 5 on the correctness ` +
