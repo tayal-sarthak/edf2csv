@@ -250,14 +250,10 @@ edf2csv /data/recordings/*.edf --out converted --quiet
 
 Add `--force` if you're re-running over a folder you've already converted; without it an existing output directory is an error rather than something to be overwritten by accident.
 
-To pick up BDF files in the same pass, and to survive spaces in file names, use `find`:
+To pick up BDF files and sub-folders in the same pass, hand edf2csv the folder itself. It converts every `.edf` and `.bdf` inside at any depth and keeps the layout, so `subj1/night1.edf` and `subj2/night1.edf` land in `converted/subj1/night1` and `converted/subj2/night1` rather than one on top of the other, and a space in a name needs nothing special:
 
 ```bash
-find /data/recordings -type f \( -name '*.edf' -o -name '*.bdf' \) -print0 |
-while IFS= read -r -d '' f; do
-  name=$(basename "$f")
-  edf2csv "$f" --out "converted/${name%.*}" --force --quiet 2>>convert.log
-done
+edf2csv /data/recordings --out converted --force --quiet 2>>convert.log
 ```
 
 ## Script over the summary with --json and jq

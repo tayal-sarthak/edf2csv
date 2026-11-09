@@ -8789,6 +8789,46 @@ ${script}`,
     assert.ok(stated >= 3, `expected the pages to state the step, found ${stated}`);
   });
 
+  it('converts a folder of recordings without two of them landing in one place', async () => {
+    /*
+      The batch recipe said that to pick up BDF files and survive spaces in names, use `find`, and
+      named each output after the file's basename. `find` walks into sub-folders, where two
+      recordings can share a name: `subj1/night1.edf` and `subj2/night1.edf` both went to
+      `converted/night1`, and with `--force` the second wrote its metadata.json and signals.csv
+      over the first's while the first's per-rate files stayed beside them, two recordings in one
+      folder with nothing to say so. Handed the folder, edf2csv does what the loop was for and
+      keeps the layout, which is what the recipe says now, so that is checked on a real tree.
+    */
+    for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+      const page = await read(path.join('website/content', name));
+      for (const [, block] of page.matchAll(/^ *```(?:bash|sh)\n([\s\S]*?)^ *```/gmu)) {
+        assert.ok(!(/\bfind\b/u.test(block) && !/-maxdepth 1\b/u.test(block) && /\bbasename\b/u.test(block)),
+          `${name} names outputs after their basename in a walk that reaches into sub-folders`);
+      }
+    }
+    const recipe = /^edf2csv \/data\/recordings --out converted --force --quiet/mu.exec(await read('website/content/recipes.md'));
+    assert.ok(recipe, 'the recipe no longer hands edf2csv the folder');
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-tree-'));
+    try {
+      const tree = path.join(work, 'recordings');
+      const generated = path.join(ROOT, 'test/fixtures/generated');
+      for (const [from, to] of [['mixed-rates.edf', 'subj1/night1.edf'], ['tiny.edf', 'subj 2/night1.edf'],
+        ['biosemi.bdf', 'subj1/night2.bdf']]) {
+        await mkdir(path.dirname(path.join(tree, to)), { recursive: true });
+        await cp(path.join(generated, from), path.join(tree, to));
+      }
+      await run(process.execPath, [CLI, tree, '--out', path.join(work, 'converted'), '--force', '--quiet']);
+      for (const [to, from] of [['subj1/night1', 'subj1/night1.edf'], ['subj 2/night1', 'subj 2/night1.edf'],
+        ['subj1/night2', 'subj1/night2.bdf']]) {
+        const meta = JSON.parse(await readFile(path.join(work, 'converted', to, 'metadata.json'), 'utf8'));
+        assert.equal(meta.source.path, path.join(tree, from), `converted/${to} is not ${from}'s conversion`);
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:
