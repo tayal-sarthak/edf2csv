@@ -4032,6 +4032,10 @@ ${script}`,
       'the docs cards have a floor wider than a narrow screen\'s grid again, and it cuts them off');
     assert.match(/\n\.doc-card__title \{([^}]*)\}/u.exec(sheet)[1], /flex-wrap:\s*wrap;/u,
       'a card\'s arrow can no longer take a line of its own, and runs past the card');
+    // And the sampling-rate comparison's one column, which sized itself to the widest thing in it
+    // that could not break and made the landing page 305px wide on a 280px screen.
+    assert.match(/\n\.rates \{([^}]*)\}/u.exec(sheet)[1], /grid-template-columns:\s*minmax\(0, 1fr\);/u,
+      'the sampling-rate comparison sizes its column to its content again, wider than a narrow screen');
   });
 
   it('offsets an in-page jump once, as the stylesheet says it must', async () => {
