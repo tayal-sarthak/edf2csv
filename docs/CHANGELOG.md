@@ -8,6 +8,61 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.88
+
+### snippets that did the wrong thing
+
+Nothing in `src/` or the README changed, so the package is 0.10.87's under a new number. Four of
+the nine are snippets in the docs that did the wrong thing when run as printed, and four are the
+site on small screens.
+
+### Snippets that did the wrong thing
+
+- **The batch recipe mixed two recordings into one folder.** To pick up BDF files and survive
+  spaces in names it used `find`, and named each output after the file's basename. `find` walks
+  into sub-folders, where names repeat: `subj1/night1.edf` and `subj2/night1.edf` both went to
+  `converted/night1`, and with `--force` the second wrote its `metadata.json` and `signals.csv`
+  over the first's while the first's per-rate files stayed beside them. The recipe hands
+  edf2csv the folder now, which does what the loop was for and keeps the layout.
+- **The event-window recipe converted the wrong 30 seconds.** On a recording without the event
+  the onset came back empty, `max(0.0,  - 15)` is Python for `0.0`, and the recording's first
+  30 seconds were written to `./seizure-window` with exit 0. It stops and says so.
+- **The FAQ's loop closed the terminal.** To stop at the first failure it used `set -e`, which
+  in a terminal the loop is pasted into ends the shell itself, and stays on for every command
+  after. It uses `|| break`.
+- **A pipeline that fails on one warning passed when everything failed.** The warnings page
+  grepped a saved `--json` summary for a code without checking the run, so a recording that
+  could not be read at all saved nothing, the grep found nothing, and the pipeline exited 0. The
+  CLI reference's copy of the same snippet already checked; this one does now.
+
+### Small screens
+
+- **Five docs pages and the landing page were wider than a 280px screen** with the text at Very
+  Large, which 0.10.87 left open. On the docs pages it was `--annotations-only` held to one line
+  in inline code, which now lets go below 15.5em as a heading's and a contents entry's flags do,
+  and which had also hung 13px out of the column at 320px. On the landing page it was the
+  sampling-rate comparison's implicit grid column, the bug 0.10.87 fixed in the contents box.
+- **The sampling-rate comparison could stay empty.** It drew its dots once 40% of it was on
+  screen, which a screen less than two and a half times its height never shows: on a 568x320
+  phone with the text at Very Large, no dot appeared, the three real samples included. It
+  starts when its top is on screen.
+- **The install command's prompt** sat between the two lines of a command that wraps, which
+  0.10.87 made it do on a phone. It is on the first line, and a one-line command is where it was.
+
+### And a sweep
+
+- **`npm run estimate -- biosemi` always failed.** CONTRIBUTING documents the name filter, and
+  the sweep held a filtered run to the whole fixture set's average size margin, so three BioSemi
+  recordings read 1.230x against 1.16 and the sweep exited 1, telling its reader to rewrite the
+  constant and the correctness page's claim 5 to match. Only a full run is held to it now.
+
+Checked: each snippet run as the page prints it, the old one and the new, the `set -e` loop in an
+interactive bash; the batch recipe on a tree with a name repeated across sub-folders, a BDF file
+and a space in a folder name; every page at 280px with the text at its default, Large and Very
+Large sizes in headless Chrome, and at 320, 375, 414 and 568x320 in Firefox with the text at Very
+Large, none wider than the screen; the comparison at six phone sizes in both orientations. Each
+new check was run against the code before it and failed.
+
 ## 0.10.87
 
 ### boxes that scroll or clip
