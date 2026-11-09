@@ -26,8 +26,11 @@ const AT_ONCE = { duration: 0 };
 export default function RateComparison() {
   const ref = useRef(null);
   const reduced = useReducedMotion();
-  // amount 0.4 so the count-up starts once the block is properly on screen.
-  const inView = useInView(ref, { once: true, amount: 0.4 });
+  // Once the block's top is a fifth of the window up from its foot, so the count-up starts with
+  // it properly on screen. Not `amount: 0.4`, which asks for 40% of the block in view at once: on
+  // a screen less than two and a half times its height, a 568x320 phone in landscape with the
+  // text at Very Large, that never happens, and no dot appeared, the three real samples included.
+  const inView = useInView(ref, { once: true, margin: '0px 0px -20% 0px' });
 
   /*
     The 765 fabricated dots are drawn in the browser, not in the server render.

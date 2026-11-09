@@ -5012,6 +5012,15 @@ ${script}`,
 
       assert.ok(new RegExp(`<code(?: [^>]*)?>${slow.output_file.replaceAll('.', '\\.')}</code>`, 'u').test(jsx),
         `the note names a file the slow channel is not written to; it goes to ${slow.output_file}`);
+
+      // And drawn at all, which waits for the block to be in view. A share of the block (`amount`)
+      // is a wait that never ends on a screen less than the block's height over that share: the
+      // dots stayed hidden on a 568x320 phone with the text at Very Large. The block's position is
+      // reachable whatever its height.
+      const trigger = /useInView\(ref, \{([^}]*)\}\)/u.exec(jsx);
+      assert.ok(trigger, 'the comparison no longer waits to be in view, or waits some other way');
+      assert.doesNotMatch(trigger[1], /\bamount\b/u,
+        'the comparison waits for a share of itself in view, which a screen shorter than it never shows');
     } finally {
       await rm(base, { recursive: true, force: true });
     }
