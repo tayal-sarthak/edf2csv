@@ -8829,6 +8829,46 @@ ${script}`,
     }
   });
 
+  it('pulls the window around an event only when the recording has the event', async () => {
+    /*
+      The recipe reads the onset of "Seizure onset" out of annotations.csv and converts 15 s
+      either side of it. On a recording without that event `$onset` came back empty, and the next
+      line still ran: `max(0.0,  - 15)` is Python for 0.0, so the recording's first 30 seconds were
+      written to ./seizure-window, exit 0, as the window around an event it does not have.
+
+      The block is run as the page prints it, with `edf2csv` on the PATH, against a recording that
+      has the event and one that does not.
+    */
+    const page = await read('website/content/recipes.md');
+    const section = page.slice(page.indexOf('## Pull a 30 second window around a marked event'));
+    const block = /```bash\n([\s\S]*?)```/u.exec(section);
+    assert.ok(block, 'the recipe for a window around an event is gone');
+
+    const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-window-'));
+    try {
+      const bin = path.join(work, 'bin');
+      await mkdir(bin);
+      await writeFile(path.join(bin, 'edf2csv'), `#!/bin/sh\nexec "${process.execPath}" "${CLI}" "$@"\n`, { mode: 0o755 });
+      const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+      const generated = path.join(ROOT, 'test/fixtures/generated');
+      for (const [fixture, onset] of [['annotations.edf', 2], ['annotations-front-loaded.edf', null]]) {
+        const dir = path.join(work, fixture);
+        await mkdir(dir);
+        await cp(path.join(generated, fixture), path.join(dir, 'overnight-eeg.edf'));
+        await run('bash', ['-c', block[1]], { cwd: dir, env });
+        const written = await readFile(path.join(dir, 'seizure-window', 'metadata.json'), 'utf8').catch(() => null);
+        if (onset === null) {
+          assert.equal(written, null, `${fixture} has no Seizure onset, and the recipe wrote a window anyway`);
+        } else {
+          assert.ok(written, `${fixture} has a Seizure onset at ${onset} s, and the recipe wrote no window`);
+          assert.equal(JSON.parse(written).conversion.start_seconds, Math.max(0, onset - 15));
+        }
+      }
+    } finally {
+      await rm(work, { recursive: true, force: true });
+    }
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:

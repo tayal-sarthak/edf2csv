@@ -386,9 +386,12 @@ with open('events/annotations.csv', newline='') as f:
             break
 ")
 
-start=$(python3 -c "print(max(0.0, $onset - 15))")
-
-edf2csv overnight-eeg.edf --start "$start" --duration 30 --out ./seizure-window
+if [ -z "$onset" ]; then
+  echo "no Seizure onset in events/annotations.csv" >&2
+else
+  start=$(python3 -c "print(max(0.0, $onset - 15))")
+  edf2csv overnight-eeg.edf --start "$start" --duration 30 --out ./seizure-window
+fi
 ```
 
 ```text
@@ -401,7 +404,7 @@ Done in 0.4s.
 
 Two things make this work. `--start` accepts a plain number as seconds (as well as `30s`, `5m`, `1h30m` and `00:30:00`), so an onset read straight out of `annotations.csv` can be handed to it unchanged. And the window's `annotations.csv` is filtered to events whose onset falls inside the window, so the excerpt arrives with its own event list already attached.
 
-Reading the onset with Python's `csv` module rather than `cut -d,` matters because descriptions are free text and are quoted when they contain a comma.
+Reading the onset with Python's `csv` module rather than `cut -d,` matters because descriptions are free text and are quoted when they contain a comma. And the check that it found one matters because nothing else fails without it: an empty `$onset` leaves `max(0.0,  - 15)`, which Python reads as `max(0.0, -15)`, and the recording's first 30 seconds would be written as the window around an event it does not have.
 
 Finding the event in the resulting CSV is then just arithmetic on `time_s`, which is still measured from the start of the whole recording:
 
