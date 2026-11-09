@@ -3447,11 +3447,12 @@ ${script}`,
       }
     }
     assert.deepEqual(handwritten, [], 'these flags in a component are not held together');
-    // Let go in a heading on a screen narrower than its longest flag: held together there,
-    // `--annotations-only` made a 360px page wider than the phone with the text at Very Large.
+    // Let go on a screen narrower than the longest flag, everywhere one is held: in a heading it
+    // made a 360px page wider than the phone with the text at Very Large, in the contents it ran
+    // past the box, and in inline code it made a 280px page 23px wider than the screen.
     assert.match(await read('website/src/styles.css'),
-      /@media \(max-width: [\d.]+em\) \{\s*\.prose h2 \.flag,\s*\.prose h3 \.flag,\s*\.docs__toc \.flag \{\s*white-space: normal;/u,
-      'a heading or a contents entry holds its flags together on any screen, and one too narrow for them overflows');
+      /@media \(max-width: [\d.]+em\) \{\s*\.prose \.flag,\s*\.docs__toc \.flag \{\s*white-space: normal;/u,
+      'a flag is held together on any screen, and one too narrow for it overflows');
     // Running text writes a flag as code, quoted messages included, which is what holds it
     // together there: three quotations wrote theirs bare, "Pass --force to overwrite it" among
     // them, beside a quotation in the same sentence that did not, and broke after the dashes.
