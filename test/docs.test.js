@@ -8808,6 +8808,13 @@ ${script}`,
         // terminal as its loops are, closed it at the first recording that failed to convert.
         assert.doesNotMatch(block, /^\s*set -[a-z]*e|set -o errexit/mu,
           `${name} has a snippet that ends the terminal it is pasted into at the first failure`);
+        // And a check of a saved summary that checks the run too: one that failed outright saves
+        // none, so a grep for one warning in it found nothing and the pipeline went on, exit 0.
+        for (const [line, saved] of block.matchAll(/^edf2csv [^\n]*--json > (\S+)[^\n]*$/gmu)) {
+          if (block.slice(block.indexOf(line) + line.length).includes(saved)) {
+            assert.match(line, /\|\| exit\b/u, `${name}: "${line}" is read afterwards without its exit status checked`);
+          }
+        }
       }
     }
     const recipe = /^edf2csv \/data\/recordings --out converted --force --quiet/mu.exec(await read('website/content/recipes.md'));

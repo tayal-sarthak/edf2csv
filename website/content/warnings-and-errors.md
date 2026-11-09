@@ -1374,10 +1374,10 @@ The `warnings` array holds one entry per diagnostic:
 }
 ```
 
-To fail a pipeline on a specific code, test for it:
+To fail a pipeline on a specific code, test for it, and test the run first: a conversion that fails outright writes no summary, so the `grep` alone finds nothing and the pipeline carries on as if the recording were fine:
 
 ```bash
-edf2csv recording.edf --out ./converted --json > summary.json
+edf2csv recording.edf --out ./converted --json > summary.json || exit 1
 if grep -q '"RECORD_COUNT_MISMATCH"' summary.json; then
   echo "recording is incomplete" >&2
   exit 1
