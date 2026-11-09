@@ -515,12 +515,12 @@ done
 
 Add `--force` if you expect to rerun the loop over the same destinations, and `--quiet` to keep the
 per-file summaries out of the log while still seeing warnings and errors. To stop the whole loop on
-the first failure, check the exit code:
+the first failure, check the exit code with `|| break`, rather than `set -e`, which in a terminal
+the loop is pasted into ends the shell itself at the first file that fails:
 
 ```bash
-set -e
 for f in /data/recordings/*.edf; do
-  edf2csv "$f" --out "/data/converted/$(basename "${f%.edf}")" --quiet
+  edf2csv "$f" --out "/data/converted/$(basename "${f%.edf}")" --quiet || break
 done
 ```
 

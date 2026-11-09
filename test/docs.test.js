@@ -8804,6 +8804,10 @@ ${script}`,
       for (const [, block] of page.matchAll(/^ *```(?:bash|sh)\n([\s\S]*?)^ *```/gmu)) {
         assert.ok(!(/\bfind\b/u.test(block) && !/-maxdepth 1\b/u.test(block) && /\bbasename\b/u.test(block)),
           `${name} names outputs after their basename in a walk that reaches into sub-folders`);
+        // And none that stops at a failure by ending the shell: the FAQ's `set -e`, pasted into a
+        // terminal as its loops are, closed it at the first recording that failed to convert.
+        assert.doesNotMatch(block, /^\s*set -[a-z]*e|set -o errexit/mu,
+          `${name} has a snippet that ends the terminal it is pasted into at the first failure`);
       }
     }
     const recipe = /^edf2csv \/data\/recordings --out converted --force --quiet/mu.exec(await read('website/content/recipes.md'));
