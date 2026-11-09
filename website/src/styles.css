@@ -489,7 +489,10 @@ a {
 
 .command {
   display: flex;
-  align-items: center;
+  /* The prompt on the command's first line: centred, it sat between the two lines of a command
+     that wraps. A line as tall as the copy button keeps a one-line command where it was. */
+  align-items: baseline;
+  line-height: 1.875rem;
   gap: 0.75rem;
   width: fit-content;
   max-width: 100%;
@@ -514,6 +517,7 @@ a {
 }
 
 .command__copy {
+  align-self: center;
   display: grid;
   place-items: center;
   flex-shrink: 0;

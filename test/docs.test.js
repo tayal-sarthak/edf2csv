@@ -4025,6 +4025,10 @@ ${script}`,
     // instead: "npx edf2csv recor" on a 375px phone with the text at Large.
     assert.doesNotMatch(/\n\.command__text \{([^}]*)\}/u.exec(sheet)[1], /white-space:\s*nowrap/u,
       'the install command is held to one line again, and a phone shows only the start of it');
+    // Which wrapped, it needs its prompt on the first line: centred in the bar, the $ sat between
+    // the command's two lines, belonging to neither.
+    assert.match(/\n\.command \{([^}]*)\}/u.exec(sheet)[1], /align-items:\s*baseline;/u,
+      'the prompt is centred in the command bar again, between the lines of a command that wraps');
     // And the docs cards inside the grid that clips them: a 250px floor in a 240px grid cut 12px
     // off every card on a 280px screen, and a title row that could not wrap put the arrow over
     // the edge at 320px with the text at Very Large.
