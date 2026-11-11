@@ -806,7 +806,7 @@ describe('errors', () => {
       four bytes in its header.
     */
     const { parseHeader } = await import('../dist/index.js');
-    const { writeEdf } = await import('./fixtures/edf-writer.mjs');
+    const { writeEdf, buildTal } = await import('./fixtures/edf-writer.mjs');
     const scratch = await mkdtemp(path.join(tmpdir(), 'edf2csv-refusals-'));
     temporaries.push(scratch);
     const source = path.join(scratch, 'one.edf');
@@ -846,6 +846,15 @@ describe('errors', () => {
         (error) => error.code === code && error.message === message,
         `"${field}" at ${at[0]} was accepted, or refused in other words`,
       );
+    }
+
+    // But not called damage where EDF+ asks for the zero itself, in a file of annotations alone.
+    const scoring = path.join(scratch, 'scoring.edf');
+    writeEdf({ path: scoring, numRecords: 1, recordDuration: 0, talsForRecord: () => buildTal(0, []),
+      signals: [{ label: 'EDF Annotations', dimension: '', physMin: -1, physMax: 1, digMin: -32768,
+        digMax: 32767, samplesPerRecord: 30, annotations: true }] });
+    for (const [bytes, sound] of [[await readFile(scoring), true], [patched(RECORD_DURATION, '0'), false]]) {
+      assert.throws(() => parseHeader(bytes, bytes.length), (error) => /nothing is wrong/u.test(error.hint) === sound);
     }
 
     // And the smallest header either guard permits is still read: one signal, one second.

@@ -822,7 +822,7 @@ The file has no signal channels: it contains only an EDF+ annotations channel.
 
 **Cause.** Some systems export events into a separate companion file alongside the recording proper.
 
-**What edf2csv does.** Writes `annotations.csv`, `metadata.json`, and a `channels.csv` containing only its header row. No signal files are written, because there are no signals.
+**What edf2csv does.** Writes `annotations.csv`, `metadata.json`, and a `channels.csv` containing only its header row. No signal files are written, because there are no signals. A file of this shape that states a record duration of 0, as EDF+ asks it to, is refused instead: see [`INVALID_RECORD_DURATION`](#invalid_record_duration).
 
 ```
 warning: This file has no signal channels; it contains only EDF+ annotations.
@@ -1070,6 +1070,8 @@ error: Header declares a data record duration of 0s; expected a positive number.
 ```
 
 Record duration is the divisor that turns samples per record into a sampling rate, so a zero or negative value makes every rate in the file undefined.
+
+One file states a zero on purpose: EDF+ asks for it in a file holding only annotations, such as a sleep scoring. edf2csv does not read records of no length, and there the second line says that instead of calling the file damaged.
 
 ### NO_SAMPLES
 

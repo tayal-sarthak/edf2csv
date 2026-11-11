@@ -519,10 +519,18 @@ export function parseHeader(buf: Uint8Array, fileSize: number): EdfHeaderInfo {
     );
   }
   if (!(recordDuration > 0)) {
+    // EDF+ asks for a zero itself in a file of annotations and no signal, a sleep scoring being
+    // its own example, and there the usual hint called a sound file truncated or not EDF at all.
+    const scoring = recordDuration === 0 && Array.from({ length: signalCount }, (_, i) =>
+      trimField(dec(buf, FIXED_HEADER_BYTES + i * 16, 16))).every((label) =>
+      label === ANNOTATIONS_LABEL || label === BDF_ANNOTATIONS_LABEL);
     throw new EdfError(
       'INVALID_RECORD_DURATION',
       `Header declares a data record duration of ${plainSeconds(recordDuration)}s; expected a positive number.`,
-      BAD_FIELD_HINT,
+      scoring
+        ? 'EDF+ asks for exactly this in a file holding only annotations, such as a sleep ' +
+          'scoring, so nothing is wrong with the file: edf2csv does not read records of no length.'
+        : BAD_FIELD_HINT,
     );
   }
 

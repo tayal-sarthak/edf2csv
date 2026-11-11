@@ -269,7 +269,9 @@ warning: --annotations-only was requested but this recording has no annotation c
 
 A file whose only content is annotations, with no signal channels at all, converts
 fine. It produces `annotations.csv` and an empty `channels.csv`, plus a warning
-saying the file carries no signal channels.
+saying the file carries no signal channels. The exception is one stating a record
+duration of 0, which EDF+ asks of exactly this file and which edf2csv refuses, as
+[`INVALID_RECORD_DURATION`](/docs/warnings-and-errors#invalid_record_duration) says.
 
 ## When timekeeping is missing or unreadable
 
