@@ -8828,6 +8828,9 @@ ${script}`,
             assert.match(line, /\|\| exit\b/u, `${name}: "${line}" is read afterwards without its exit status checked`);
           }
         }
+        // Nor one piped straight into `jq -e`: a run that fails prints nothing, jq exits 4 on no
+        // input, and the `||` after it said "this recording has gaps" about a file it never read.
+        assert.doesNotMatch(block, /--json \|\s*jq -e/u, `${name} tests for a warning without testing the run`);
       }
     }
     const recipe = /^edf2csv \/data\/recordings --out converted --force --quiet/mu.exec(await read('website/content/recipes.md'));

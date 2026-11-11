@@ -324,8 +324,8 @@ edf2csv recording.edf --out ./out --force --strict ||
 Reach for `--json` when you care about a specific warning rather than any of them:
 
 ```bash
-edf2csv recording.edf --out ./out --force --json |
-  jq -e '[.warnings[].code] | index("DISCONTINUOUS") | not' >/dev/null ||
+edf2csv recording.edf --out ./out --force --json > result.json || exit 1
+jq -e '[.warnings[].code] | index("DISCONTINUOUS") | not' result.json >/dev/null ||
   echo "this recording has gaps" >&2
 ```
 
