@@ -3453,6 +3453,15 @@ ${script}`,
     assert.match(await read('website/src/styles.css'),
       /@media \(max-width: [\d.]+em\) \{\s*\.prose \.flag,\s*\.docs__toc \.flag \{\s*white-space: normal;/u,
       'a flag is held together on any screen, and one too narrow for it overflows');
+    // And the comment's arithmetic, which said 15.5em was 360px at Very Large, where it is 372.
+    const sheetText = await read('website/src/styles.css');
+    const reason = /about\s+([\d.]+) times the browser's text size across, and the column is the\s+screen less ([\d.]+) of them in\s+gutter, so it stops fitting below ([\d.]+) of them; ([\d.]+)em leaves a little room, and is (\d+)px with\s+the text at Very Large/u.exec(sheetText);
+    assert.ok(reason, 'the flag fallback no longer explains its breakpoint');
+    const [, flag, gutter, fits, query, px] = reason.slice(0).map(Number);
+    assert.ok(Math.abs(flag + gutter - fits) < 0.05, `${flag} + ${gutter} is not ${fits}`);
+    assert.equal(query * 24, px, `${query}em at Very Large, 24px, is ${query * 24}px, and the comment says ${px}`);
+    assert.ok(new RegExp(`@media \\(max-width: ${query}em\\) \\{\\s*\\.prose \\.flag`, 'u').test(sheetText),
+      `the comment reasons about ${query}em and the rule below it is at another width`);
     // Running text writes a flag as code, quoted messages included, which is what holds it
     // together there: three quotations wrote theirs bare, "Pass --force to overwrite it" among
     // them, beside a quotation in the same sentence that did not, and broke after the dashes.
