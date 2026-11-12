@@ -8935,6 +8935,28 @@ ${script}`,
     assert.ok(open.length === 0, `these examples close the file only if nothing throws first:\n  ${open.join('\n  ')}`);
   });
 
+  it('bins a fast channel by the slow channel\'s readings, not by whole seconds', async () => {
+    /*
+      The sampling-rates page summarises the EEG "into bins the slow channel defines", and its
+      snippet binned by `time_s // 1.0`, whole seconds, then joined those to the thermistor's
+      `time_s` by equality. Readings need not fall on whole seconds: an EDF+ recording whose first
+      record starts at 0.5 s has them at 0.5, 1.5 and 2.5, and there the bins straddled two
+      readings each, a complete recording's edge bins held 128 against the 256 the page says to
+      expect, and the join matched nothing, leaving an empty frame and no error.
+    */
+    const floored = [];
+    for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+      const page = await read(path.join('website/content', name));
+      for (const [, block] of page.matchAll(/^ *```python\n([\s\S]*?)^ *```/gmu)) {
+        if (/\["time_s"\]\s*\/\/\s*1(?:\.0)?\b/u.test(block) && /right_on="time_s"/u.test(block)) floored.push(name);
+      }
+    }
+    assert.deepEqual(floored, [], 'these join whole seconds to a slow channel\'s readings by equality');
+    const page = await read('website/content/sampling-rates.md');
+    assert.match(page, /pd\.merge_asof\(eeg, temp\[\["time_s"\]\]\.assign\(reading=temp\["time_s"\]\), on="time_s"\)/u,
+      'the summary no longer bins each sample under the reading at or before it');
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:

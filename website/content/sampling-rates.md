@@ -222,17 +222,19 @@ import pandas as pd
 eeg = pd.read_csv("converted/signals_256hz.csv")
 temp = pd.read_csv("converted/signals_1hz.csv")
 
-per_second = (
-    eeg.assign(second=eeg["time_s"] // 1.0)
-       .groupby("second")["EEG Fpz-Cz"]
-       .agg(["mean", "std", "count"])
-       .reset_index()
+# Each EEG sample goes in the bin of the last thermistor reading at or before it.
+binned = pd.merge_asof(eeg, temp[["time_s"]].assign(reading=temp["time_s"]), on="time_s")
+
+per_reading = (
+    binned.groupby("reading")["EEG Fpz-Cz"]
+          .agg(["mean", "std", "count"])
+          .reset_index()
 )
 
-aligned = per_second.merge(temp, left_on="second", right_on="time_s")
+aligned = per_reading.merge(temp, left_on="reading", right_on="time_s")
 ```
 
-The `count` column is a useful check: for a complete 256 Hz recording every bin should hold 256 samples, and a bin that doesn't indicates something about the recording.
+The `count` column is a useful check: for a complete 256 Hz recording every bin should hold 256 samples, and a bin that doesn't indicates something about the recording. The bins are the readings' own rather than whole seconds because the readings need not fall on whole seconds: in a recording whose first record starts at 0.5 s they are at 0.5, 1.5 and 2.5, and binning by `time_s // 1.0` split each interval between two bins, gave a complete recording edge bins of 128, and joined to none of the readings, leaving `aligned` empty.
 
 A time window applies consistently across the files. Converting one second out of the middle of the same recording gives 256, 128 and 1 rows, and each file's `time_s` still carries absolute offsets from the start of the recording rather than restarting at zero:
 
