@@ -361,15 +361,17 @@ const file = await EdfFile.open("sleep-study.edf");
 const signal = file.dataSignals[0];
 const digital = [];
 
-for await (const batch of file.readRecords()) {
-  for (let record = 0; record < batch.recordCount; record++) {
-    for (let sample = 0; sample < signal.samplesPerRecord; sample++) {
-      digital.push(file.sampleAt(batch, record, signal, sample));
+try {
+  for await (const batch of file.readRecords()) {
+    for (let record = 0; record < batch.recordCount; record++) {
+      for (let sample = 0; sample < signal.samplesPerRecord; sample++) {
+        digital.push(file.sampleAt(batch, record, signal, sample));
+      }
     }
   }
+} finally {
+  await file.close();
 }
-
-await file.close();
 console.log(signal.label, digital.slice(0, 8));
 ```
 

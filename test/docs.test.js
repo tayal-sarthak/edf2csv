@@ -8905,6 +8905,27 @@ ${script}`,
     assert.deepEqual(unchecked, [], 'these snippets turn a null start into a clock of NaT without a word');
   });
 
+  it('closes every file an example opens, in the finally the API page asks for', async () => {
+    /*
+      api.md: "It opens a file handle that stays open, so you must call close(), ideally in a
+      finally block." Five of its six examples did, and its sha256 one did not, nor the examples on
+      three other pages that open a recording, among them the dumper the correctness page prints,
+      whose checked-in twin closes in a finally. A read that throws left each one's handle open.
+    */
+    const open = [];
+    for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+      const page = await read(path.join('website/content', name));
+      for (const [, block] of page.matchAll(/^ *```(?:js|javascript|ts)\n([\s\S]*?)^ *```/gmu)) {
+        const opened = /const (\w+) = await EdfFile\.open\(/u.exec(block);
+        if (!opened) continue;
+        if (!new RegExp(`finally \\{\\s*await ${opened[1]}\\.close\\(\\);`, 'u').test(block)) {
+          open.push(`${name}: ${block.split('\n').find((line) => line.includes('EdfFile.open')).trim()}`);
+        }
+      }
+    }
+    assert.ok(open.length === 0, `these examples close the file only if nothing throws first:\n  ${open.join('\n  ')}`);
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:

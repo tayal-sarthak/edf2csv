@@ -374,17 +374,19 @@ at all:
 import { EdfFile } from 'edf2csv';
 
 const file = await EdfFile.open('sleep-study.edf');
-const { annotations, recordStarts, malformed } = await file.readAnnotations();
+try {
+  const { annotations, recordStarts, malformed } = await file.readAnnotations();
 
-for (const a of annotations) {
-  console.log(a.onset, a.duration, a.text, a.recordIndex);
+  for (const a of annotations) {
+    console.log(a.onset, a.duration, a.text, a.recordIndex);
+  }
+
+  // recordStarts[i] is the declared start of record i, or null when the
+  // timekeeping annotation was missing or unreadable.
+  console.log(recordStarts[0], recordStarts.at(-1), malformed);
+} finally {
+  await file.close();
 }
-
-// recordStarts[i] is the declared start of record i, or null when the
-// timekeeping annotation was missing or unreadable.
-console.log(recordStarts[0], recordStarts.at(-1), malformed);
-
-await file.close();
 ```
 
 `readAnnotations` returns annotations sorted by onset, then by record index for

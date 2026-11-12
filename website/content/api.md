@@ -527,8 +527,12 @@ open, so call it before `close()`.
 import { EdfFile } from 'edf2csv';
 
 const file = await EdfFile.open('/data/recordings/sleep-study.edf');
-const digest = await file.sha256();          // hex, over file.fileSize bytes
-await file.close();
+let digest;
+try {
+  digest = await file.sha256();              // hex, over file.fileSize bytes
+} finally {
+  await file.close();
+}
 ```
 
 `modifiedAtOpenMs` is the other half of that: the file's modification time when it was opened, in
