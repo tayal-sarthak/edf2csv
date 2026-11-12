@@ -93,7 +93,8 @@ EDF+ writes the year again in full. Its recording identification field begins
 digits say what two cannot — so where that field is present and agrees about the day, the month
 and the last two digits of the year, `edf2csv` takes the century from it. A 1984 sleep study
 digitised into EDF+ reads as 1984 rather than 2084. A `Startdate` that contradicts the date
-field settles nothing, and the rule above is used instead.
+field settles nothing, and the rule above is used instead. Past 2084 the specification has the
+date field say `yy` and leaves the year to `Startdate` alone, and that is where it is read from.
 
 So `01.01.85` is 1 January 1985, and `02.03.02` is 2 March 2002. Note also that the date is
 day-first: `05.06.09` is 5 June 2009, not 6 May.

@@ -144,6 +144,9 @@ describe('header parsing', () => {
     // Both centuries the rule gets wrong, and both are stated in full by the file.
     assert.equal(await year(dated('old', '02.03.84', 'Startdate 02-MAR-1984 X X X')), 1984);
     assert.equal(await year(dated('new', '02.03.85', 'Startdate 02-MAR-2085 X X X')), 2085);
+    // Which past 2084 is how the specification has it written: `yy`, and the Startdate alone.
+    assert.equal(await year(dated('past', '02.03.yy', 'Startdate 02-MAR-2085 X X X')), 2085);
+    assert.equal(await year(dated('past-bare', '02.03.yy', 'X X X X')), null);
 
     // The rule still decides everything else: no Startdate, a Startdate that contradicts the
     // date field, and one whose year does not end in the digits the header wrote.

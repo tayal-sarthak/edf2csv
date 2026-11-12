@@ -312,7 +312,8 @@ function resolveStartDateTime(
   timeRaw: string,
   recordingId = '',
 ): Date | null {
-  const d = /^(\d{2})[.\-/](\d{2})[.\-/](\d{2})$/u.exec(trimField(dateRaw));
+  // After 2084 EDF+ writes a literal `yy`, and its Startdate alone states the date.
+  const d = /^(\d{2})[.\-/](\d{2})[.\-/](\d{2}|yy)$/u.exec(trimField(dateRaw));
   const t = /^(\d{2})[.:\-](\d{2})[.:\-](\d{2})$/u.exec(trimField(timeRaw));
   if (!d || !t) return null;
 
@@ -327,7 +328,7 @@ function resolveStartDateTime(
 
   const stated = recordingIdStartdate(recordingId);
   const year =
-    stated !== null && stated.day === dd && stated.month === mm && stated.year % 100 === yy
+    stated !== null && stated.day === dd && stated.month === mm && (stated.year % 100 === yy || d[3] === 'yy')
       ? stated.year
       : yy >= 85
         ? 1900 + yy
