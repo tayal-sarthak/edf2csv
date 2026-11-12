@@ -53,8 +53,12 @@ export function makeSlugger() {
 // Where a flag starts and what it spans, for headings and inline code; see the end of renderMarkdown.
 const FLAG = /(^|[\s(=,]|&#39;|&quot;)(--?[A-Za-z][\w-]*|--(?![\w-]))/g;
 
-/** Escaped text with each flag in it wrapped so that a line cannot break inside it. */
-export const holdFlags = (html) => html.replace(FLAG, '$1<span class="flag">$2</span>');
+/**
+ * Escaped text with each flag in it wrapped so that a line cannot break inside it, and closed to
+ * a translator: a heading or a contents entry names its flags in plain text, which inline code's
+ * `translate="no"` never reached, so a translated page rewrote `--annotations-only` there.
+ */
+export const holdFlags = (html) => html.replace(FLAG, '$1<span class="flag" translate="no">$2</span>');
 
 /**
  * Render Markdown to the HTML the site ships: heading anchors applied and fenced

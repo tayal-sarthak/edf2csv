@@ -3421,8 +3421,8 @@ ${script}`,
     assert.ok(flagger, 'inline code no longer holds its flags together, and a phone breaks them after their dashes');
     // In both places a flag is written: inline code, and a heading's plain text ("Time range:
     // --start, --duration, --end"), which broke after its dashes at 320 to 414px.
-    assert.match(renderer, /^export const holdFlags = \(html\) => html\.replace\(FLAG, '\$1<span class="flag">\$2<\/span>'\);$/mu,
-      'nothing wraps a flag in the span that keeps it on one line');
+    assert.match(renderer, /^export const holdFlags = \(html\) => html\.replace\(FLAG, '\$1<span class="flag" translate="no">\$2<\/span>'\);$/mu,
+      'nothing wraps a flag in the span that keeps it on one line and away from a translator');
     const prerender = await read('website/scripts/prerender.mjs');
     for (const [where, source, site] of [['inline code', renderer, /`<code translate="no">\$\{holdFlags\(inner\)\}/u],
       ['a heading', renderer, /`<\$\{tag\} id="\$\{id\}">\$\{holdFlags\(inner\)\}/u],
