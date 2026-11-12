@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.89
+
+### examples that went wrong without a word
+
+Nothing in `src/` or the README changed, so the package is 0.10.88's under a new number. Two of
+the five are examples in the docs that went wrong without a word on a recording unlike the one
+they were written against, and a third left a file open when a read failed.
+
+- **The wall-clock recipe made every timestamp NaT.** It added `time_s` to
+  `start_datetime_local`, which the paragraph beneath it says is `null` when the header's date
+  cannot be read. `pd.Timestamp(None)` is `NaT`, so on such a recording all 2,880,000 rows got a
+  clock of `NaT` and nothing was raised. It stops and says why.
+- **The binning example joined to nothing.** The sampling-rates page summarises the EEG "into
+  bins the slow channel defines" and binned by whole seconds instead, then joined those to the
+  thermistor's readings by equality. In a recording whose first record starts at 0.5 s the
+  readings are at 0.5, 1.5 and 2.5: each bin straddled two of them, a complete recording's edge
+  bins held 128 samples against the 256 the page says to expect, and the join came back empty.
+  Each sample is binned under the reading at or before it now.
+- **Four examples left the file open if a read threw.** api.md says to call `close()` in a
+  `finally`, and five of its own six examples did. Its `sha256` example did not, nor did one on
+  each of three other pages, the dumper the correctness page prints among them, whose checked-in
+  twin does. All four close in a `finally`.
+- **The flags in headings and the contents list were open to translation.** Inline code has
+  been marked `translate="no"` since 0.10.80, so a translated page leaves its flags alone, and a
+  heading names its flags in plain text, where that never reached. The span that holds a flag
+  on one line carries it now.
+- **The flag fallback's comment had its own figure wrong:** 15.5em is 372px with the text at
+  Very Large, not 360, and it still described headings alone after inline code joined them.
+  The test now holds the comment's arithmetic to the rule beneath it.
+
+Checked: the wall-clock recipe on a copy of the sleep recording with its date damaged, and on the
+intact one, where it prints what the page shows; the binning example with pandas on a recording
+starting at 0.5 s and on the page's own, where the bins and the join come out as before; the four
+rewritten examples run against the fixtures; every flag span in the built docs, 761 of them,
+carrying `translate="no"`. Each new check was run against the code before it and failed.
+
 ## 0.10.88
 
 ### snippets that did the wrong thing
