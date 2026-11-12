@@ -56,7 +56,10 @@ import json
 import pandas as pd
 
 meta = json.load(open("sleep_csv/metadata.json"))
-start = pd.Timestamp(meta["recording"]["start_datetime_local"])
+started = meta["recording"]["start_datetime_local"]
+if started is None:
+    raise SystemExit("the header's start date and time are unreadable; see start_date_raw")
+start = pd.Timestamp(started)
 
 signals = pd.read_csv("sleep_csv/signals_100hz.csv")
 signals.index = start + pd.to_timedelta(signals.pop("time_s"), unit="s")
@@ -71,7 +74,7 @@ clock
 2002-03-02 23:10:00.010      1.648      1.404           0.916
 ```
 
-EDF stores no time zone, so `start_datetime_local` is written without one: it's the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`.
+EDF stores no time zone, so `start_datetime_local` is written without one: it's the recorder's own wall clock, exactly as the header spelled it. Nothing needs to be stripped before use. If the header's date is unreadable the field is `null`, and the raw fields survive as `start_date_raw` and `start_time_raw`. The check above is for that case: `pd.Timestamp(None)` is `NaT`, and without it every row's clock is `NaT`, 2,880,000 of them in this recording, with nothing raised.
 
 ## Load signals.csv into R
 

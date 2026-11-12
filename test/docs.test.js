@@ -8884,6 +8884,27 @@ ${script}`,
     }
   });
 
+  it('makes a clock of time_s only when the header has a start to add it to', async () => {
+    /*
+      The wall-clock recipe added time_s to `start_datetime_local`, and the paragraph under it
+      says that field is null when the header's date cannot be read. `pd.Timestamp(None)` is
+      NaT, so on such a recording every row's clock came out NaT, 2,880,000 of them, with nothing
+      raised. Every snippet that reads the field has to say what it does when it is null.
+    */
+    const unchecked = [];
+    for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+      const page = await read(path.join('website/content', name));
+      for (const [, block] of page.matchAll(/^ *```python\n([\s\S]*?)^ *```/gmu)) {
+        if (!block.includes('start_datetime_local')) continue;
+        const read = block.indexOf('start_datetime_local');
+        const checked = block.indexOf(' is None');
+        const used = block.indexOf('pd.Timestamp(');
+        if (checked < read || (used !== -1 && checked > used)) unchecked.push(`${name}: ${block.split('\n')[0]}`);
+      }
+    }
+    assert.deepEqual(unchecked, [], 'these snippets turn a null start into a clock of NaT without a word');
+  });
+
   it('claims the row count and peak that column really has', async () => {
     /*
       The chunked-reader recipe reads `sleep_csv/signals_100hz.csv` and prints what it found:
