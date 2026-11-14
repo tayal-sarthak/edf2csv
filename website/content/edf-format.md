@@ -386,9 +386,10 @@ The onset **must** carry an explicit sign, `+` or `-`. That isn't decoration: it
 tells a TAL from padding, and `edf2csv` rejects any chunk that doesn't start with one. A negative
 onset is legal and means an event before the recording's nominal start.
 
-The first TAL in every data record is special. It carries that record's own start time and no text,
-and that's how an `EDF+D` file states where each record actually sits in time. In an `EDF+C` file
-it's redundant but still required.
+The first TAL in every data record is special. Its onset is that record's own start time and its
+first text is empty, and that's how an `EDF+D` file states where each record actually sits in time.
+In an `EDF+C` file it's redundant but still required. Texts after the empty one are events like any
+other, and the specification's own sleep scoring opens with one, `+0<0x14><0x14>Recording starts<0x14>`.
 
 ### A byte-level example
 

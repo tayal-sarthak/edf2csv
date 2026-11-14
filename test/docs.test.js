@@ -6399,6 +6399,15 @@ ${script}`,
       `the example says the text is "${text}"`);
     assert.equal(decoded.recordStart, Number(onset),
       'the comment says the first TAL of a record carries that record\'s start time');
+
+    // As the format page's does now. It said that TAL holds a start time "and no text", where the
+    // specification's own examples put events after its empty text and the parser keeps them.
+    const page = await read('website/content/edf-format.md');
+    const shown = /`(\+0<0x14><0x14>([^`<]+)<0x14>)`/u.exec(page);
+    assert.ok(shown, 'edf-format.md no longer shows a first TAL that carries an event');
+    const scored = decodeRecordAnnotations(Buffer.from(`${shown[1].replaceAll('<0x14>', '\x14')}\0`), 0, true);
+    assert.deepEqual([scored.recordStart, scored.annotations.map((a) => a.text)], [0, [shown[2]]]);
+    assert.doesNotMatch(page, /start time and no text/u, 'edf-format.md says the first TAL holds no text');
   });
 
   it('shows the two doubles that made one instant into two', async () => {
