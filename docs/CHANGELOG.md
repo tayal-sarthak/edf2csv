@@ -8,6 +8,52 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.90
+
+### what the specification writes, and what --info reads
+
+Two of the six change `src/`, and both were found by reading the EDF+ specification rather than
+the code: a sleep scoring written the way it asks, and a date from after 2084. The rest is
+documentation that said something other than what the tool or the format does.
+
+- **A sleep scoring was told it was damaged.** EDF+ asks a file holding only annotations, a sleep
+  scoring being its own example, to state a record duration of 0. edf2csv does not read records
+  of no length, and refused such a file with "The file may be truncated, byte-shifted, or not an
+  EDF file at all", on the one shape the specification writes that way and the companion file the
+  warnings page says converts. The refusal stays. Its second line now says the file is sound and
+  why it is not read, and the two pages that promise an annotation-only file converts name the
+  exception.
+- **A date past 2084 came back unparseable.** EDF+ has a file from after 2084 write `yy` in the
+  date field and leave the date to `Startdate` alone. The date field's pattern took only digits,
+  so such a header had no start instant and `start_datetime_local` was `null`. It is read from
+  `Startdate` where the day and month agree.
+- **The gap check said a failed run had gaps.** The recipes page piped `--json` straight into
+  `jq -e`, and a conversion that failed, or a file that did not exist, printed nothing for jq to
+  read: it exited 4, and the `||` after it said "this recording has gaps". It tests the run first
+  now, as the same check on cli-reference and warnings-and-errors already did.
+- **`--info` was said to stop at the first record stating a time.** It has read all sixteen since
+  0.9.17, and every annotation channel of them since 0.9.18. Four pages and three comments in the
+  source still described the early stop. warnings-and-errors listed an `EDF+C` contradiction as something
+  `--info` cannot raise, with `liar.edf --info --strict` exiting 0, and gave two examples of
+  entries it misses; cli-reference gave a third. It raises all of them. The example now is one
+  that holds: an unreadable event in the seventeenth record of a continuous file.
+- **The format page said a record's first TAL holds no text.** Its first text is empty, and texts
+  after that are events, as in the specification's own sleep scoring, which opens
+  `+0<0x14><0x14>Recording starts<0x14>`. The parser has always kept them and api.md already said
+  so; a parser written from the page would drop them.
+- **The annotations page gave the wrong reason.** It keeps the annotations channel out of the
+  channel table because its bytes are text, and since 0.7.54 put three sentences on encoding
+  between that reason and its "That's why", the cause it named was "nothing is invented either
+  way".
+
+Checked: a scoring file shaped as the specification's example (one record, duration 0, three
+events) refused with the new hint, while a zero duration on a file with a signal still gets the
+old one; a `05.06.yy` header with `Startdate 05-JUN-2090` read as 2090-06-05 23:10:00; the gap
+recipe on a clean, a discontinuous and a ten-byte file; `--info` against a conversion on a
+three-record file with a corrupt second TAL, on `two-annotation-channels.edf`, on both continuity
+liars and on a twenty-record file with a bad entry in its seventeenth record; the first-TAL
+example through the decoder. Each new check was run against the code before it and failed.
+
 ## 0.10.89
 
 ### examples that went wrong without a word
