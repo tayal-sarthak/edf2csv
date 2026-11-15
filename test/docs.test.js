@@ -10419,6 +10419,11 @@ ${script}`,
     const pages = (await readdir(path.join(ROOT, 'website/content')))
       .filter((f) => f.endsWith('.md'))
       .map((f) => `website/content/${f}`);
+    // Nor one that lands between a reason and its "That's why": 0.7.54 put three sentences on encoding
+    // there, and the page said the annotations channel stays out of the channel table because
+    // "nothing is invented either way" rather than because its bytes are text.
+    assert.match((await read('website/content/edf-plus-annotations.md')).replace(/\s+/gu, ' '),
+      /text rather than samples, the annotations channel never appears in the channel table/u);
     /*
       Lifted out so the detector can be pointed at something with a known answer.
 
