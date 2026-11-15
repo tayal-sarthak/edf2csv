@@ -7041,8 +7041,7 @@ ${script}`,
         — the mode whose entire output is the events, and the one `--info --strict` is
         recommended for screening a folder before. Five of this project's own fixtures raise
         `NO_ANNOTATIONS` when converted that way and nothing under `--info`, because a
-        continuous file's annotation channel is read only as far as the first record that
-        states a start time.
+        continuous file's annotation channel is read only as far as its sixteenth record.
       */
       let compared = 0;
       for (const name of names) {
@@ -7064,6 +7063,32 @@ ${script}`,
         }
       }
       assert.ok(compared > 20, `expected most fixtures to be comparable, got ${compared}`);
+
+      /*
+        And the prose's own example, which went stale with 0.9.17 and 0.9.18: it named a corrupt
+        TAL in a three-record file's second record, and `two-annotation-channels.edf`, as what
+        `--info` misses, and it has raised both since. What it misses is past the sixteenth.
+      */
+      const { writeEdf, buildTal } = await import(path.join(ROOT, 'test/fixtures/edf-writer.mjs'));
+      const late = path.join(work, 'late.edf');
+      writeEdf({ path: late, reserved: 'EDF+C', numRecords: 20, recordDuration: 1,
+        talsForRecord: (r) => `${buildTal(r, [])}${r === 16 ? 'garbage\x14x\x14\x00' : ''}`,
+        signals: [{ label: 'EEG', dimension: 'uV', physMin: -1, physMax: 1, digMin: -10, digMax: 10,
+          samplesPerRecord: 2, gen: () => 1 }, { label: 'EDF Annotations', dimension: '', physMin: -1,
+          physMax: 1, digMin: -32768, digMax: 32767, samplesPerRecord: 30, annotations: true }] });
+      assert.match(section, /seventeenth record of a twenty-record continuous file/u);
+      assert.deepEqual([(await codes([late, '--info', '--json'])).has('ANNOTATION_DECODE_FAILED'),
+        (await codes([late, '--out', path.join(work, 'late'), '--json'])).has('ANNOTATION_DECODE_FAILED')],
+        [false, true], 'the page says --info misses an unreadable event in the seventeenth record');
+      // In each spelling it had: "stopping at the first that says", "the search stops there", "stops
+      // at the first record that states a start time", "as far as the first record stating one".
+      const stale = /stopping at the first that says|the search stops (?:there|at the first)|stops at the first record that states|as far as the first record (?:that states|stating)/u;
+      for (const file of [...(await readdir(path.join(ROOT, 'website/content'))).map((n) => `website/content/${n}`),
+        'src/cli.ts', 'src/edf/reader.ts', 'src/convert/timing.ts']) {
+        // Joined across line breaks and comment markers, since a docstring wraps mid-phrase.
+        assert.doesNotMatch((await read(file)).replace(/\s*\n\s*(?:\*|\/\/)?\s*/gu, ' '), stale,
+          `${file} says --info stops at the first record stating a time, which it has not since 0.9.17`);
+      }
 
       /*
         And the other direction, which nothing checked.
@@ -7108,7 +7133,7 @@ ${script}`,
       converting it, and under `--annotations-only` it passes files the conversion fails.
       Whether an annotation channel carries events rather than only the timekeeping entries
       that place each record is a question about the whole channel, and on a continuous file
-      `--info` reads it only as far as the first record that states a start time.
+      `--info` reads it only as far as its sixteenth record.
 
       The sweep above now crosses `--annotations-only`, so a code in this gap has to be named
       on the page. This holds the page's own example to the exit codes it claims.

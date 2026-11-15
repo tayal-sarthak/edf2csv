@@ -784,8 +784,8 @@ export class EdfFile {
    * `malformed` comes back for the same reason one sentence further on: that hint ends "and is
    * counted above", which is only true where the entry warning is printed too.
    *
-   * All three are of the records this actually read, which is as far as the first record that
-   * states a time — so they are lower bounds on the file, as `malformedTimekeeping` has been
+   * All three are of the records this actually read, which is as far as the sixteenth — so
+   * they are lower bounds on the file, as `malformedTimekeeping` has been
    * since it was returned at all. A conversion reads every record and may count more. What
    * they must not be is inconsistent with each other, which is what a hard-coded zero made
    * them.

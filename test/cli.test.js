@@ -3299,7 +3299,7 @@ describe('converting several recordings at once', () => {
     assert.match(withEvents.stdout, /Would write annotations\.csv and channels\.csv/u);
     // On a continuous recording the event count needs the annotation channel read record by
     // record, which is the scan --info exists to avoid, so it says so rather than inventing a
-    // number: this file is read only as far as the first record stating a start time.
+    // number: this file is read only as far as its sixteenth record.
     assert.match(withEvents.stdout, /cannot be told from the header/u);
     assert.ok(!withEvents.stdout.includes('signals.csv'), 'no signal file is named');
 
@@ -4608,8 +4608,8 @@ describe('what the summary says it did', () => {
 describe('--info and the origin scan', () => {
   it('reports the entries that scan read exactly as a conversion does', async () => {
     /*
-      A continuous recording's origin is read by `scanOrigin`, which stops at the first record
-      that states a time rather than reading the whole annotation channel — that bounded read
+      A continuous recording's origin is read by `scanOrigin`, which stops at the sixteenth record
+      rather than reading the whole annotation channel — that bounded read
       is what keeps `--info` a header summary on a multi-gigabyte file.
 
       It counted what it saw and threw two thirds of it away. `malformedTimekeepingWithText`

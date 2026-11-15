@@ -85,7 +85,7 @@ export function deriveRecordStarts(
         that it asserts a remainder exists; what it was for is the assurance that nothing
         readable was dropped, and that holds however many were readable. Counting instead
         would have split `--info` from a conversion — the scan behind `--info` stops at the
-        first record that states a time and never counts the events, which is the bound that
+        sixteenth record and never counts the events, which is the bound that
         keeps it a header read.
       */
       hint:

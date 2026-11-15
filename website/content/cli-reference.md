@@ -181,7 +181,7 @@ warning: "n2/rec.edf" and "n1/rec.edf" would both be converted into "out/rec", s
 
 How much it reads depends on the file. A plain EDF is the header and nothing else. A continuous EDF+ is the header plus the annotation slot of at most the first sixteen records, which is what finds the offset the recording starts at — 0.4.9 made that offset the point samples are timed from, and a window placed against zero instead lands somewhere else. It reads all sixteen, rather than stopping at the first that answers: until 0.9.17 it returned the moment one record stated a time, so a recording contradicting its own `EDF+C` marker was reported by a conversion and by nothing here, and `--info --strict` — what this page recommends for screening a folder — exited 0 where converting exits 1. The bound is the same one; only the early exit went. A discontinuous EDF+ is the header plus every record's annotation slot, because that is the only place its record times are stored, and the span and the row estimate are wrong without them. All three return in milliseconds on any ordinary recording; only the last scales with record count.
 
-So `--info` sees an unreadable timekeeping entry only up to the record that answers the question — the search stops at the first record stating a start time, which on a well-formed recording is record 0 — and does not see an unreadable *event* later in a continuous file, because it never looks there. A file whose record 0 reads cleanly and whose record 1 does not is the case to know about: the conversion reports the unreadable entry and `--info` says nothing, even though record 1 is inside the sixteen. And if none of the sixteen states a start time — records that say nothing rather than records that cannot be read — `--info` reports the recording as beginning at zero while the conversion finds an origin further in and times every row from it, with no warning on either side. [Warnings and errors](/docs/warnings-and-errors#what---info-can-and-cant-tell-you) lists what that means code by code.
+So `--info` sees an unreadable entry in a continuous file only within those sixteen records, and not one later, because it never looks there: give the seventeenth record of a twenty-record file an unreadable event and the conversion reports it while `--info` says nothing. And if none of the sixteen states a start time — records that say nothing rather than records that cannot be read — `--info` reports the recording as beginning at zero while the conversion finds an origin further in and times every row from it, with no warning on either side. [Warnings and errors](/docs/warnings-and-errors#what---info-can-and-cant-tell-you) lists what that means code by code.
 
 ```bash
 edf2csv sleep-study.edf --info
@@ -484,7 +484,7 @@ are cannot be told from the header, and finding out means reading the annotation
 record by record.
 ```
 
-That is true of a continuous recording, which `--info` reads only as far as the first record stating a start time. A discontinuous one has every record start read out of the annotation channel already, because that is where its record times live — so the events are counted and the line says so:
+That is true of a continuous recording, which `--info` reads only as far as its sixteenth record. A discontinuous one has every record start read out of the annotation channel already, because that is where its record times live — so the events are counted and the line says so:
 
 ```
 Would write annotations.csv with 3 events and channels.csv, and no signal data.

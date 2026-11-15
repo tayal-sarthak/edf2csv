@@ -1118,7 +1118,7 @@ async function showInfo(
       The event count, where reading the channel has already produced it.
 
       Only a discontinuous file, where every record start has to be read out of the annotation
-      channel; a continuous one is read as far as the first record that states a start time and
+      channel; a continuous one is read as far as its sixteenth record and
       no further, so its events are not all in hand. Counted through the same window predicate
       a conversion filters them by, rather than a second copy of it.
     */
