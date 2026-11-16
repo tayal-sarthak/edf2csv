@@ -20,7 +20,7 @@ Full documentation: **[edf2csv.vercel.app](https://edf2csv.vercel.app)**
 recording_csv/
 ├── signals.csv       the data, one row per time point
 ├── channels.csv      each channel's unit, sampling rate and range
-├── annotations.csv   EDF+ events            (only if the file has them)
+├── annotations.csv   EDF+ events (when the file has an annotation channel)
 └── metadata.json     recording details
 ```
 

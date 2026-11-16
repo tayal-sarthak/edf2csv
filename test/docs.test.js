@@ -10593,6 +10593,23 @@ ${script}`,
           ]),
         ),
       );
+
+      // Written whenever there is an annotation channel, events or none, where the README's tree
+      // said "(only if the file has them)" of the events, and a file with none gets its header.
+      const quiet = path.join(base, 'quiet');
+      await run(process.execPath, [CLI, path.join(ROOT, 'test/fixtures/generated/contiguous-fractional.edf'),
+        '--out', quiet, '--quiet']);
+      assert.equal(await readFile(path.join(quiet, 'annotations.csv'), 'utf8'), `${headers['annotations.csv'].join(',')}\n`);
+      assert.match(/^.*annotations\.csv.*$/mu.exec(await read('README.md'))[0], /annotation channel/u,
+        "the README's tree does not say annotations.csv comes with the annotation channel");
+      // As every page that says when it appears has to: recipes said "for EDF+ and BDF+ recordings",
+      // which --info's own Format line says an EDF+ file with no annotation channel is, and gets none.
+      for (const name of await readdir(path.join(ROOT, 'website/content'))) {
+        const text = (await read(`website/content/${name}`)).replace(/\s+/gu, ' ');
+        for (const [when] of text.matchAll(/`annotations\.csv` (?:appears|is written only)[^.]*\./gu)) {
+          assert.match(when, /annotation channel/u, `${name}: ${when}`);
+        }
+      }
     } finally {
       await rm(base, { recursive: true, force: true });
     }
