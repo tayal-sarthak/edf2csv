@@ -8415,13 +8415,14 @@ ${script}`,
         ]);
         assert.equal(stderr, '', `--json ${extra.join(' ')} put "${stderr.trim()}" on stderr`);
       }
-      for (const extra of [[], ['--quiet']]) {
+      for (const extra of [[], ['--quiet'], ['--info']]) {
         const failed = await run(process.execPath, [
-          CLI, noisy, '--out', path.join(work, `strict${extra.length}`), '--json', '--strict', ...extra,
+          CLI, noisy, '--out', path.join(work, `strict${extra.join('')}`), '--json', '--strict', ...extra,
         ]).then(() => assert.fail('--strict did not report the warning as a failure'), (error) => error);
         assert.equal(failed.code, 1);
         JSON.parse(failed.stdout);
-        const lines = failed.stderr.trim().split('\n');
+        // Trimmed at the end only: trimming the start hid the blank line every such run opened with.
+        const lines = failed.stderr.trimEnd().split('\n');
         assert.match(lines[0], /^--strict: \d+ warnings? raised, so this run is reported as a failure\./u);
         assert.ok(lines.length <= 2, `--strict wrote ${lines.length} lines to stderr: ${failed.stderr}`);
         assert.ok(!failed.stderr.includes('warning:'), 'a warning was printed as text under --json');

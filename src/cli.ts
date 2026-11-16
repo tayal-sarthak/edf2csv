@@ -779,7 +779,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       */
       if (strict && warnings > 0) {
         process.stderr.write(
-          `\n${wrap(
+          `${asJson ? '' : '\n'}${wrap(
             `--strict: ${counted(warnings, 'warning')} raised, so this run is ` +
               `reported as a failure. Nothing was written either way, since --info converts nothing.`,
           )}\n`,
@@ -1015,8 +1015,10 @@ export async function main(argv: readonly string[]): Promise<number> {
       to do about it is the caller's decision, and they still have the files to inspect.
     */
     if (strict && warnings > 0) {
+      // After a blank line where warnings or a summary are above it; under --json nothing is, and
+      // a blank first line was the one thing besides the verdict that reached stderr there.
       process.stderr.write(
-        `\n${wrap(
+        `${asJson ? '' : '\n'}${wrap(
           `--strict: ${counted(warnings, 'warning')} raised, so this run is ` +
             `reported as a failure. The output was still written.`,
         )}\n`,
