@@ -8,6 +8,42 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.91
+
+### the same fact, stated otherwise where nothing compared it
+
+Three of the four are a fact the reference pages state correctly and other places state another
+way, where no check compared them: the landing page, the README, getting-started and recipes. The
+fourth is a blank line the check for it trimmed away before looking.
+
+- **The landing page said `--info` reads only the header.** It has read up to sixteen records'
+  annotation slots of a continuous EDF+ recording since 0.5.46, and the transcript under the
+  sentence is of one. The docs pages have been held to this since 0.9.45; the check read
+  `website/content` and never the landing page, which reads it now.
+- **The README and recipes said when `annotations.csv` appears, wrongly.** It is written whenever
+  the recording has an annotation channel, with its header and no rows if the channel carries no
+  events, as getting-started, output-files and the FAQ say. The README's tree said "only if the
+  file has them" of the events, and recipes said "for EDF+ and BDF+ recordings", which an EDF+
+  file with no annotation channel is, by `--info`'s own Format line, and it gets none.
+- **Five sentences said `metadata.json` keeps every warning.** Its `notes` leave out
+  `STALE_OUTPUT`, which is about the directory rather than the recording and is noticed after the
+  file is written; warnings-and-errors and output-files say so. The landing page, getting-started
+  (twice) and recipes (twice) said "every warning raised" or "the full list of warnings", so a
+  conversion over another's leftover files warned about them and recorded nothing.
+- **Under `--json`, `--strict` opened stderr with a blank line.** The verdict is written after a
+  blank line that separates it from the warnings and summary above it, and under `--json` there
+  are none, so stderr began with an empty line, against "nothing else reaches stderr in this
+  mode", and a script reading the first line for the verdict read nothing. The check on it trimmed
+  stderr before splitting it into lines. It trims the end only now, and covers `--info` too.
+
+Checked: `--info` on a continuous EDF+ file with a bad timekeeping entry, which it reports; a
+conversion of `contiguous-fractional.edf`, whose annotation channel carries no events, writing
+`annotations.csv` with its header; an `EDF+C` file with no annotation channel writing none, and
+an unmarked file with one writing it; a conversion over a mixed-rate conversion's leftovers
+warning `STALE_OUTPUT` with `notes` empty; stderr under `--json --strict`, with and without
+`--quiet` and `--info`, starting with the verdict. Each new check was run against the code before
+it and failed.
+
 ## 0.10.90
 
 ### what the specification writes, and what --info reads
