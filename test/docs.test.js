@@ -7220,8 +7220,12 @@ ${script}`,
     const pages = (await readdir(path.join(ROOT, 'website/content')))
       .filter((name) => name.endsWith('.md'));
     let sentences = 0;
+    // And the landing page, which this never read: it said `--info` "reads only the header" over a
+    // transcript of a continuous EDF+ recording, the one kind of file that is not true of.
+    pages.push('../src/components/Landing.jsx');
     for (const page of pages) {
-      const text = (await read(`website/content/${page}`)).replace(/\s+/gu, ' ');
+      const text = (await read(`website/content/${page}`))
+        .replace(/<code[^>]*>(--info)<\/code>/gu, '`$1`').replace(/\{' '\}/gu, ' ').replace(/\s+/gu, ' ');
       for (const [claim] of text.matchAll(CLAIMS)) {
         sentences++;
         if (!HEADER_ONLY.test(claim)) continue;

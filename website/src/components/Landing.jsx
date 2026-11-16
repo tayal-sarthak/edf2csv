@@ -328,8 +328,8 @@ export default function Landing() {
           </h2>
           <p className="section__lede">
             An eight hour sleep study at 100 Hz becomes three million rows. Run it with{' '}
-            <code translate="no" className="flag">--info</code> and the tool reads only the header, prints the channel
-            table, estimates the output, and writes nothing.
+            <code translate="no" className="flag">--info</code> and the tool reads the header and a little of the
+            annotation channel, prints the channel table, estimates the output, and writes nothing.
           </p>
           <Code html={INFO_HTML} />
         </div>
