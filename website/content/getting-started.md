@@ -69,7 +69,7 @@ recording_csv/
   signals.csv       the data: one row per sample time, one column per channel
   channels.csv      one row per channel in the recording, with its calibration
   annotations.csv   EDF+ events, written only when the file has an annotation channel
-  metadata.json     what was read, what was written, and every warning raised
+  metadata.json     what was read, what was written, and every warning but STALE_OUTPUT
 ```
 
 ### signals.csv
@@ -110,7 +110,7 @@ onset_s,duration_s,description,record_index
 
 ### metadata.json
 
-Machine-readable provenance: the tool version, the source path, size and modification time, the recording's format, start time, record count and duration, the exact window converted, the row count of every file written, and the full list of warnings. Add `--checksum` to record a SHA-256 of the input file alongside it.
+Machine-readable provenance: the tool version, the source path, size and modification time, the recording's format, start time, record count and duration, the exact window converted, the row count of every file written, and every warning raised but [`STALE_OUTPUT`](/docs/warnings-and-errors#stale_output), which is about the directory rather than the recording. Add `--checksum` to record a SHA-256 of the input file alongside it.
 
 ## Check a file before you convert it
 

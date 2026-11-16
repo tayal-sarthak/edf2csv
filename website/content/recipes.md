@@ -27,7 +27,7 @@ Four kinds of file can appear:
 - `signals.csv` holds the sample data. Its first column is `time_s`, seconds from the start of the recording, followed by one column per channel named after the channel's EDF label (`EEG Fpz-Cz`, `EOG horizontal`, `Temp rectal`). If the recording mixes sampling rates there's no `signals.csv`; instead you get `signals_100hz.csv`, `signals_1hz.csv` and so on, one file per rate, never resampled.
 - `annotations.csv` appears whenever the recording has an annotation channel, events or none. Columns: `onset_s`, `duration_s`, `description`, `record_index`. `duration_s` is empty for events that carry no duration, and also for events whose stated duration is not a number — the run warns when that happens, since the cell cannot tell the two apart.
 - `channels.csv` always appears. Columns: `column`, `signal_index`, `label`, `unit`, `sampling_rate_hz`, `samples_per_record`, `physical_min`, `physical_max`, `digital_min`, `digital_max`, `transducer`, `prefiltering`, `output_file`, `converted`.
-- `metadata.json` always appears, and records what was converted: the source path and size, the recording's start time and record layout, the exact time window converted, the rate groups, and every warning raised.
+- `metadata.json` always appears, and records what was converted: the source path and size, the recording's start time and record layout, the exact time window converted, the rate groups, and every warning raised but `STALE_OUTPUT`.
 
 ## Load signals.csv into pandas with time as the index
 
@@ -573,7 +573,7 @@ jq -r '.source | "\(.bytes) bytes  \(.sha256)"' ./out/metadata.json
 1548 bytes  2e07d98230275974...
 ```
 
-`--checksum` costs one extra read of the input and writes a SHA-256 into `metadata.json`, where it sits alongside the tool version, the source path and modification time, the exact converted window, and every warning raised. Without the flag the field is `null`.
+`--checksum` costs one extra read of the input and writes a SHA-256 into `metadata.json`, where it sits alongside the tool version, the source path and modification time, the exact converted window, and every warning raised but `STALE_OUTPUT`. Without the flag the field is `null`.
 
 That makes the output directory self-describing. Months later, `metadata.json` still records which file this came from, which version produced it, which seconds of the recording it covers, and what was flagged at the time.
 

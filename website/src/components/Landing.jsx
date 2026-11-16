@@ -112,7 +112,7 @@ Resp oro-nasal,3,Resp oro-nasal,V,10,10,-1,1,...`,
   {
     name: 'metadata.json',
     title: 'What was converted, and from what',
-    body: 'Tool version, source file and size, the recording header, the exact window converted, and every warning raised. Enough to reproduce the run later.',
+    body: 'Tool version, source file and size, the recording header, the exact window converted, and every warning raised but the one about files left over from an earlier run. Enough to reproduce the run later.',
     sample: `{
   "tool": { "name": "edf2csv", "version": "..." },
   "source": { "path": "...", "bytes": 19643392, "sha256": null },

@@ -11402,6 +11402,17 @@ ${script}`,
       the handful that genuinely has no counterpart — so a new field cannot slip in and quietly
       become a fourth mismatch.
     */
+    // And so does every place that lists what metadata.json holds, five of which said it keeps
+    // "every warning raised" or "the full list of warnings", over a notes array without it.
+    for (const file of [...(await readdir(path.join(ROOT, 'website/content'))).map((n) => `website/content/${n}`),
+      'README.md', 'website/src/components/Landing.jsx']) {
+      const text = (await read(file)).replace(/\s+/gu, ' ');
+      for (const claim of text.matchAll(/every warning(?: raised)?|full list of warnings/gu)) {
+        const around = text.slice(Math.max(0, claim.index - 300), claim.index + 120);
+        if (!/metadata\.json/u.test(around.slice(0, 300 + claim[0].length))) continue;
+        assert.match(around.slice(300), /STALE_OUTPUT|left over/u, `${file} says metadata.json keeps ${claim[0]}`);
+      }
+    }
     const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-fields-'));
     try {
       const recordings = ['truncated.edf', 'annotations.edf', 'discontinuous.edf', 'records-backwards.edf'];
