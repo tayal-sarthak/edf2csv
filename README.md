@@ -106,7 +106,7 @@ before you rely on the output.
 ## Accuracy
 
 Values are checked against [pyEDFlib](https://github.com/holgern/pyedflib), the Python
-binding around the C library written by the author of the EDF+ specification. Across the 75
+binding around EDFlib, the C library behind EDFbrowser. Across the 75
 generated recordings, 16,943 sample values were bit-for-bit identical: not equal to within a
 tolerance, but the same 64 bits.
 

@@ -5959,6 +5959,10 @@ ${script}`,
 
     const page = (await read('website/content/correctness.md')).replace(/\s+/gu, ' ');
     const readme = (await read('README.md')).replace(/\s+/gu, ' ');
+    // And what it is checked against: the README credited pyEDFlib's C library to "the author of
+    // the EDF+ specification". EDFlib is EDFbrowser's author's, the specification Kemp and Olivan's.
+    assert.doesNotMatch(readme, /author of the EDF\+? specification/u, 'the README credits EDFlib to the specification');
+    assert.match(readme, /binding around EDFlib, the C library behind EDFbrowser/u);
     const jsx = await read('website/src/components/Landing.jsx');
     const numbers = (text, pattern) =>
       [...text.matchAll(pattern)].map((m) => Number((m[1] ?? m[2]).replaceAll(',', '')));
