@@ -158,8 +158,8 @@ Written with eight, it's `0.00390625`, the exact value, and `time_s * 256` is an
 row in the file.
 
 One kind of rate falls outside this: one whose reciprocal doesn't terminate at all, such as 3 Hz.
-It gets enough places to keep consecutive samples distinct and no more, and is marked "rounded"
-above — the times are accurate to within a fraction of a sample period, but multiplying them by the
+It gets three places past the first significant digit of its sample interval, four for 3 Hz, and
+is marked "rounded" above — the times are accurate to within a fraction of a sample period, but multiplying them by the
 rate won't land on exact integers.
 
 Every power of two through 32768 Hz terminates inside fifteen places, so every rate a recording is

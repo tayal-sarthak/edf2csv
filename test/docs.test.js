@@ -5451,6 +5451,14 @@ ${script}`,
         `${rate} Hz is ${terminates ? 'exact' : 'rounded'}, the page says ${exact}`,
       );
     }
+
+    // And the rule for the rounded kind, which the page gave as "enough places to keep consecutive
+    // samples distinct and no more" over a 3 Hz row of four, where three already do that.
+    assert.match(page.replace(/\s+/gu, ' '), /three places past the first significant digit of its sample interval/u);
+    for (const rate of [0.3, 3, 7, 9.5, 10.5, 30, 123.4, 300]) {
+      const first = -Math.floor(Math.log10(1 / rate));
+      assert.equal(timeDecimals(rate), Math.max(3, first + 3), `${rate} Hz does not follow the stated rule`);
+    }
   });
 
   it('does not claim --info omits a line it prints', async () => {
