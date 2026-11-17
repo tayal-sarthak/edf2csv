@@ -8,6 +8,33 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.92
+
+### the help, the README's credit, and a rule stated as a minimum
+
+Nothing converts differently. One line of `--help` changed, and the rest is the README and the
+output-files page.
+
+- **`--help` said when `annotations.csv` is written by its events.** "When the recording carries
+  EDF+ annotations": the file comes with an annotation channel, events or none, as the README and
+  every page have said since 0.10.91, which did not read `--help`. It says "if the recording has
+  an annotation channel" now, in the same 80 columns.
+- **The README credited pyEDFlib's C library to the author of the EDF+ specification.** EDFlib is
+  the library behind EDFbrowser and comes from that project's author; the specification is Bob
+  Kemp and Jesus Olivan's, as its own page says. The pages on calibration already paired EDFlib
+  with EDFbrowser.
+- **output-files misstated the rule for a rate that never terminates.** A rate such as 3 Hz was
+  said to get "enough places to keep consecutive samples distinct and no more", over a table row
+  giving 3 Hz four, when the section's own minimum of three already keeps 0.333 and 0.667 apart.
+  The rule the code follows is three places past the first significant digit of the sample
+  interval, and that is what the page says, checked against eight such rates from 0.3 Hz to
+  300 Hz.
+
+Checked: `--help` against a conversion of `contiguous-fractional.edf`, whose annotation channel
+carries no events and still gets the file, with every line of the help at 80 columns or fewer;
+EDFlib's own page for who wrote it, and the EDF+ specification's for who wrote that;
+`timeDecimals` on the eight rates. Each new check was run against the text before it and failed.
+
 ## 0.10.91
 
 ### the same fact, stated otherwise where nothing compared it
