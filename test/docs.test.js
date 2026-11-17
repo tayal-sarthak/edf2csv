@@ -10603,6 +10603,10 @@ ${script}`,
       assert.equal(await readFile(path.join(quiet, 'annotations.csv'), 'utf8'), `${headers['annotations.csv'].join(',')}\n`);
       assert.match(/^.*annotations\.csv.*$/mu.exec(await read('README.md'))[0], /annotation channel/u,
         "the README's tree does not say annotations.csv comes with the annotation channel");
+      // And --help, which said "when the recording carries EDF+ annotations" of a file it writes
+      // for a channel carrying none.
+      const help = (await run(process.execPath, [CLI, '--help'])).stdout.replace(/\s+/gu, ' ');
+      assert.match(/annotations\.csv [^.]*\./u.exec(help)[0], /annotation channel/u, 'edf2csv --help says when annotations.csv is written by its events');
       // As every page that says when it appears has to: recipes said "for EDF+ and BDF+ recordings",
       // which --info's own Format line says an EDF+ file with no annotation channel is, and gets none.
       for (const name of await readdir(path.join(ROOT, 'website/content'))) {

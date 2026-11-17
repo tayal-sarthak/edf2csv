@@ -99,7 +99,7 @@ Several recordings
 
 Output
   A directory containing signals.csv, channels.csv, metadata.json, and
-  annotations.csv when the recording carries EDF+ annotations. Channels recorded
+  annotations.csv if the recording has an annotation channel. Channels recorded
   at different sampling rates are written to separate files, never resampled.
   With --gzip each CSV becomes a .csv.gz; metadata.json stays plain text so the
   directory can still be read at a glance. With --bom each CSV starts with a
