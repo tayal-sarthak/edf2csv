@@ -8,6 +8,38 @@ question until 0.6 reached 149 — at which point "0.6.149" tells a reader nothi
 sorting a list of them by eye stops working. Two digits is a number people can compare; three is a
 serial. A roll is not a claim that anything broke.
 
+## 0.10.93
+
+### what the project said about Numbers, the licence and the specification
+
+Four things the project said about the world outside it, checked against the world: Apple's
+page on Numbers, the MIT licence, the EDF specification, and the label BDF+ gives its annotation
+channel. Conversion is unchanged; one warning's wording changed.
+
+- **The row-limit warning said 1,048,576 rows is more than Excel or Numbers can open.** It is
+  Excel's limit. Numbers stops at 1,000,000 rows a table, by Apple's own features page, so a file
+  between the two opened in Excel, not in Numbers, and nothing was said. The warning names Excel
+  alone now, its threshold unchanged, and the FAQ and getting-started give each program its own
+  limit: about 68 minutes of one 256 Hz channel for Excel, about 65 for Numbers.
+- **The FAQ said the licence allows redistribution "without restriction".** The MIT licence
+  grants it subject to one condition, that the copyright and permission notice goes with the copy,
+  and the sentence was advising readers to vendor the tool into pipelines and supplementary
+  material. It names the condition now.
+- **Five pages and `scale.ts` credited `(digital - digitalMin) * gain + physicalMin` to the
+  specification.** The FAQ said the specification "writes" it; the correctness page printed it
+  under "The specification writes it like this". The EDF specification gives the two calibration
+  points, and an offset and a gain per channel in its example, and no formula. It is the line
+  through the two points written directly, and is called the direct form now, in the prose and in
+  the correctness page's runnable example, whose output still matches what it prints.
+- **The tooltips for `isAnnotations` and `dataSignals` named only EDF+'s annotation channel.**
+  The parser treats BDF+'s `BDF Annotations` exactly as it does `EDF Annotations`, and api.md says
+  so; the doc comments a TypeScript editor shows did not.
+
+Checked: Apple's Numbers features page for its row limit; the licence file for its condition; the
+EDF and EDF+ specifications for any calibration formula; the rounding example run, its output
+identical to the page; `biosemi-plus.bdf`'s annotation channel through `annotationSignals`. Each
+new check was run against the text before it and failed.
+
 ## 0.10.92
 
 ### the help, the README's credit, and a rule stated as a minimum
