@@ -625,6 +625,19 @@ describe('documentation and source agree on their lists', () => {
       [],
       'the comment names a format describeFormat cannot return',
     );
+
+    // And the two members a BDF+ reader finds its annotation channel through, whose tooltips gave
+    // only EDF+'s spelling of it while the parser takes both.
+    const { EdfFile } = await import(path.join(ROOT, 'dist/index.js'));
+    const bdf = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/biosemi-plus.bdf'));
+    try {
+      assert.deepEqual(bdf.annotationSignals.map((signal) => signal.label), ['BDF Annotations']);
+    } finally {
+      await bdf.close();
+    }
+    const docOf = (text, member) => new RegExp(`/\\*\\*(?:(?!\\*/)[\\s\\S])*\\*/\\s*${member}`, 'u').exec(text)?.[0] ?? '';
+    assert.match(docOf(source, 'isAnnotations:'), /BDF Annotations/u, 'isAnnotations is documented for EDF+ alone');
+    assert.match(docOf(await read('src/edf/reader.ts'), 'get dataSignals'), /BDF/u, 'dataSignals is documented for EDF+ alone');
   });
 
   it('asks the registry before it claims to have written to it', async () => {

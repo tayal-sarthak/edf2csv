@@ -310,7 +310,7 @@ export class EdfFile {
     }
   }
 
-  /** Signal channels, excluding the EDF+ annotations channel. */
+  /** Signal channels, excluding every annotation channel, EDF+ or BDF+. */
   get dataSignals(): EdfSignal[] {
     return this.header.signals.filter((s) => !s.isAnnotations);
   }

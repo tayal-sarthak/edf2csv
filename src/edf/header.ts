@@ -60,7 +60,7 @@ export interface EdfSignal {
   prefiltering: string;
   samplesPerRecord: number;
   reserved: string;
-  /** True for the EDF+ 'EDF Annotations' channel, which carries text, not signal. */
+  /** True for an annotation channel, 'EDF Annotations' or BDF+'s 'BDF Annotations', which carries text, not signal. */
   isAnnotations: boolean;
   /** samplesPerRecord / recordDuration, in Hz. */
   samplingRate: number;
