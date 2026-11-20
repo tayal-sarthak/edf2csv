@@ -6789,6 +6789,13 @@ ${script}`,
       shell block saying what a command prints is the same kind of claim as a pasted output
       block, and this is the check for it.
     */
+    // And the limit that warning names. Numbers stops at 1,000,000 rows, Apple's own features page
+    // says, so calling 1,048,576 "more than Excel or Numbers can open" was silent between the two.
+    for (const file of ['src/convert/plan.ts', 'website/src/components/Landing.jsx',
+      ...(await readdir(path.join(ROOT, 'website/content'))).map((name) => `website/content/${name}`)]) {
+      assert.doesNotMatch(await read(file), /Excel (?:or|and) Numbers (?:can open|stop)/u, `${file} gives Numbers Excel's limit`);
+    }
+    assert.match((await read('website/content/faq.md')).replace(/\s+/gu, ' '), /Numbers sooner, at 1,000,000/u);
     const work = await mkdtemp(path.join(tmpdir(), 'edf2csv-warnblock-'));
     const shown = [];
     try {

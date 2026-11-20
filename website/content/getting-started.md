@@ -148,7 +148,7 @@ Anything the tool noticed is printed after the table, on stderr — for this rec
 ```text
 warning: Channels use 3 different sampling rates (100 Hz, 10 Hz, 1 Hz).
          They are written to one file per rate so no channel is resampled.
-warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
          Use --start and --duration to convert a section, or read the file with
          pandas or R.
 ```
@@ -220,10 +220,10 @@ Without `check.names = FALSE`, R rewrites `EEG Fpz-Cz` into `EEG.Fpz.Cz` and the
 
 ### Excel and Numbers
 
-Open `signals.csv` directly. It's plain UTF-8 CSV with a header row and needs no import wizard. The limit is the row count: spreadsheets stop at 1,048,576 rows including the header, which is about 68 minutes of a single 256 Hz channel. edf2csv warns you before writing when any output file would exceed that:
+Open `signals.csv` directly. It's plain UTF-8 CSV with a header row and needs no import wizard. The limit is the row count: Excel stops at 1,048,576 rows including the header, which is about 68 minutes of a single 256 Hz channel, and Numbers at 1,000,000, about 65. edf2csv warns you before writing when any output file would exceed Excel's limit:
 
 ```text
-warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
          Use --start and --duration to convert a section, or read the file with
          pandas or R.
 ```

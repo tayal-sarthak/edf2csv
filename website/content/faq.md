@@ -79,12 +79,12 @@ Compressing the result afterwards works well, since CSV of this kind is very rep
 
 ## Can I open the output in Excel?
 
-Sometimes. Excel and Numbers stop at 1,048,576 rows including the header. One hour of a single
-256 Hz channel is 921,600 rows, so it just fits. Two hours doesn't. When any output file will
-exceed the limit, edf2csv warns you before writing:
+Sometimes. Excel stops at 1,048,576 rows including the header, and Numbers sooner, at 1,000,000.
+One hour of a single 256 Hz channel is 921,600 rows, so it fits both. Two hours doesn't. When any
+output file will exceed Excel's limit, edf2csv warns you before writing:
 
 ```text
-warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
          Use --start and --duration to convert a section, or read the file with
          pandas or R.
 ```
@@ -603,7 +603,7 @@ edf2csv sleep-study.edf --out ./converted --json > result.json
     {
       "code": "LARGE_OUTPUT",
       "severity": "warning",
-      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open."
+      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel can open."
     }
   ]
 }

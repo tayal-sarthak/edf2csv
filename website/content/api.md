@@ -698,7 +698,7 @@ try {
   console.log(plan.estimate);
 
   if (plan.estimate.exceedsSpreadsheetLimit) {
-    console.log(`over ${SPREADSHEET_ROW_LIMIT} rows: not openable in Excel or Numbers`);
+    console.log(`over ${SPREADSHEET_ROW_LIMIT} rows: not openable in Excel`);
   }
 } finally {
   await file.close();

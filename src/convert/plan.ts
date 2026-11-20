@@ -515,9 +515,9 @@ export function buildPlan(input: PlanInput, options: PlanOptions = {}): Conversi
       severity: 'warning',
       message: toStdout
         ? `The CSV on stdout will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} rows, ` +
-          `which is more than Excel or Numbers can open.`
+          `which is more than Excel can open.`
         : `At least one output file will have more than ${grouped(SPREADSHEET_ROW_LIMIT)} ` +
-          `rows, which is more than Excel or Numbers can open.`,
+          `rows, which is more than Excel can open.`,
       hint: toStdout
         ? 'Use --start and --duration to stream a section, or read the stream with pandas ' +
           'or R rather than redirecting it into a spreadsheet.'

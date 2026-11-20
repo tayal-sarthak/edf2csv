@@ -806,11 +806,11 @@ warning: Channels use 3 different sampling rates (256 Hz, 128 Hz, 1 Hz).
 edf2csv sleep-study.edf --channels "EEG Fpz-Cz"
 #   one channel, one file, so no rate warning — but this recording is eight hours
 #   at 100 Hz, and the other warning it raises does not go away with it:
-#   warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+#   warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
 
 edf2csv sleep-study.edf --channels "EEG Fpz-Cz,Temp rectal"
 #   warning: Channels use 2 different sampling rates (100 Hz, 1 Hz).
-#   warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+#   warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
 ```
 
 `parseHeader` is the exception, and deliberately: it reports what the header says, having no conversion to describe.
@@ -846,7 +846,7 @@ At least one output file will have more than 1,048,576 rows, which is the limit 
 **What edf2csv does.** Nothing differently. The file is written in full and is a valid CSV. The warning exists so you aren't surprised when a spreadsheet opens it and shows only the first million rows.
 
 ```
-warning: At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open.
+warning: At least one output file will have more than 1,048,576 rows, which is more than Excel can open.
          Use --start and --duration to convert a section, or read the file with
          pandas or R.
 ```

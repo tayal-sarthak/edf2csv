@@ -95,8 +95,8 @@ export function counted(n: number, singular: string, plural = `${singular}s`): s
  *     Duration   8h 00m 0s  (28800 records of 1s)
  *     Would write 3,196,800 rows, roughly 108 MB.
  *
- * and the warning under them, "more than 1,048,576 rows, which is more than Excel or Numbers
- * can open", made three. Row counts were grouped because they were written that way; every
+ * and the warning under them, "more than 1,048,576 rows, which is more than Excel can open",
+ * made three. Row counts were grouped because they were written that way; every
  * count that went through `counted` was not, because it was written the other way. Nothing
  * decided that — the two were never compared.
  *

@@ -471,7 +471,7 @@ a conversion reproducible six months later.
     {
       "code": "LARGE_OUTPUT",
       "severity": "warning",
-      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel or Numbers can open."
+      "message": "At least one output file will have more than 1,048,576 rows, which is more than Excel can open."
     }
   ]
 }
