@@ -478,11 +478,11 @@ Check the low-order digits before assuming a bug. edf2csv computes each physical
 `gain * (offset + digital)`, which is the arrangement EDFlib uses, and the results are bit-for-bit
 identical to pyEDFlib on the recordings used for testing.
 
-The specification writes the same mapping as `(digital - digitalMin) * gain + physicalMin`. That
+Written directly from the two calibration points, the same mapping is `(digital - digitalMin) * gain + physicalMin`. That
 form is algebraically equivalent but numerically worse: on a channel spanning plus or minus
 800 uV it computes a value near 800 and then subtracts 800, and the cancellation discards
 low-order bits. Digital code 0 comes out as `0.19536019536019467` when the correctly rounded value
-is `0.19536019536019536`. A tool using the literal ordering will differ from edf2csv in the last
+is `0.19536019536019536`. A tool using that direct form will differ from edf2csv in the last
 few digits, and the edf2csv value is the correctly rounded one.
 
 Larger disagreements usually have a structural cause rather than an arithmetic one. If another

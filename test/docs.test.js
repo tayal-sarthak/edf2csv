@@ -6031,7 +6031,7 @@ ${script}`,
       computed.
 
       `scale.ts` explains why the conversion is arranged EDFlib's way rather than the
-      specification's: "a channel spanning +/-800 uV computes a value near 800 and then
+      direct way: "a channel spanning +/-800 uV computes a value near 800 and then
       subtracts 800, and the cancellation throws away low-order bits: digital 0 yields
       0.19536019536019467 when the exact value is 0.19536019536019536."
 
@@ -6051,6 +6051,15 @@ ${script}`,
       channel the prose describes and the one edf.test.js uses; its calibration is asserted
       first, so the arithmetic below is the arithmetic the pages are about.
     */
+    // And whose ordering the other one is. Five pages and scale.ts said the specification writes
+    // it; the EDF specification gives the two calibration points, and an offset and a gain per
+    // channel in its example, and no formula. It is the line through the points written directly.
+    for (const where of ['src/edf/scale.ts',
+      ...(await readdir(path.join(ROOT, 'website/content'))).map((name) => `website/content/${name}`)]) {
+      assert.doesNotMatch((await read(where)).replace(/\s+/gu, ' '),
+        /spec(?:ification)?'s literal|spec-literal|specification writes (?:it|the same|as)|spec formula|specification's own arrangement/u,
+        `${where} credits the direct form to the specification`);
+    }
     const { EdfFile, makeScaler } = await import(path.join(ROOT, 'dist/index.js'));
     const file = await EdfFile.open(path.join(ROOT, 'test/fixtures/generated/quirky-labels.edf'));
     let naive;

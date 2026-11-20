@@ -283,7 +283,7 @@ physical = gain * (offset + digital)
 ```
 
 The second and third lines are EDFlib's arrangement of the same line, and `edf2csv` uses it because
-it's more accurate than the spec's literal `(digital - digitalMin) * gain + physicalMin`. Written
+it's more accurate than the direct `(digital - digitalMin) * gain + physicalMin`. Written
 that way, a channel spanning plus or minus 800 uV computes a value near 800 and then subtracts 800,
 and the cancellation throws away low-order bits: digital 0 yields `0.19536019536019467` when the
 exact answer is `0.19536019536019536`. Keeping the intermediate small returns the correctly rounded

@@ -251,8 +251,8 @@ channel. That's useful for diffing two conversions or for shrinking a file, but 
 distinct samples together, which is why it isn't the default.
 
 The value itself is computed as `gain * (offset + digital)`, EDFlib's arrangement of the EDF
-calibration formula rather than the specification's literal ordering. The two are algebraically
-equal but not numerically equal: the literal form computes a large intermediate and then subtracts
+calibration line rather than its direct form. The two are algebraically
+equal but not numerically equal: the direct form computes a large intermediate and then subtracts
 a large constant, and the cancellation drops low bits. The arrangement used here returns the
 correctly rounded result, and it's bit-for-bit identical to pyEDFlib and EDFbrowser, which share
 the same arithmetic.

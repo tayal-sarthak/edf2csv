@@ -2,7 +2,7 @@
  * Digital-to-physical conversion.
  *
  * EDF defines the mapping by two calibration points, (digitalMin -> physicalMin)
- * and (digitalMax -> physicalMax), which the specification writes as:
+ * and (digitalMax -> physicalMax), and gives no formula; the line through them, written directly:
  *
  *   gain     = (physicalMax - physicalMin) / (digitalMax - digitalMin)
  *   physical = (digital - digitalMin) * gain + physicalMin
@@ -157,8 +157,8 @@ export function makeScaler(signal: EdfSignal): Scaler {
 
   // Deriving the offset divides by the gain. For every realistic calibration that is
   // both safe and more accurate, but an absurd header (a huge physical range over a
-  // near-zero gain) could overflow it, so fall back to the specification's own
-  // arrangement rather than emitting Infinity.
+  // near-zero gain) could overflow it, so fall back to the direct form of the
+  // line rather than emitting Infinity.
   const offset = physicalMax / gain - digitalMax;
   if (!Number.isFinite(offset)) {
     return (digital: number): number => {

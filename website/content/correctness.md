@@ -217,7 +217,7 @@ Two caveats. This comparison isn't part of `npm test`, because it needs a Python
 
 ## The conversion formula and its arrangement
 
-EDF stores samples as integers. Each channel's header gives two calibration points — digital minimum to physical minimum, and digital maximum to physical maximum — and the physical value is the straight line through them. The specification writes it like this:
+EDF stores samples as integers. Each channel's header gives two calibration points — digital minimum to physical minimum, and digital maximum to physical maximum — and the physical value is the straight line through them. The specification gives the two points and no formula; written directly, the line is:
 
 ```
 gain     = (physicalMax - physicalMin) / (digitalMax - digitalMin)
@@ -237,7 +237,7 @@ The two forms are algebraically identical but not numerically identical. Floatin
 
 Take a channel calibrated at plus or minus 800 uV stored over the digital range -2048 to 2047, the ordinary 12-bit case that appears in many public EEG datasets. The digital span is 4095, so the gain is 1600/4095 and the exact physical value for digital 0 is 800/4095.
 
-The specification's literal ordering computes `(0 - (-2048)) * gain` first. That intermediate is `800.1953601953602`, a number near 800. It then subtracts `physicalMin`, which is -800, leaving a result near 0.195. Subtracting two numbers of similar magnitude to get a small one is catastrophic cancellation: the absolute error carried by the large intermediate, invisible at a magnitude of 800, ends up in the low digits of a result whose magnitude is 0.195.
+The direct form computes `(0 - (-2048)) * gain` first. That intermediate is `800.1953601953602`, a number near 800. It then subtracts `physicalMin`, which is -800, leaving a result near 0.195. Subtracting two numbers of similar magnitude to get a small one is catastrophic cancellation: the absolute error carried by the large intermediate, invisible at a magnitude of 800, ends up in the low digits of a result whose magnitude is 0.195.
 
 EDFlib's ordering computes `offset` once at setup. Here it works out to exactly `0.5`, and `0.5 + digital` is a small number a double represents exactly. There's then a single multiplication — one inexact operation in the whole computation rather than three, and no cancellation.
 
@@ -260,7 +260,7 @@ const physMin = -800, physMax = 800, digMin = -2048, digMax = 2047;
 const gain = (physMax - physMin) / (digMax - digMin);
 const offset = physMax / gain - digMax;
 
-const specLiteral = (d) => (d - digMin) * gain + physMin;
+const direct = (d) => (d - digMin) * gain + physMin;
 const edf2csvForm = (d) => gain * (offset + d);
 
 // The exact value for digital d is (2d + 1) * 800 / 4095, computed here in
@@ -273,30 +273,30 @@ const exact = (d) => {
   return sign * (Number(scaled) / 2 ** Number(bits));
 };
 
-let specWrong = 0, oursWrong = 0;
+let directWrong = 0, oursWrong = 0;
 for (let d = digMin; d <= digMax; d++) {
-  if (specLiteral(d) !== exact(d)) specWrong++;
+  if (direct(d) !== exact(d)) directWrong++;
   if (edf2csvForm(d) !== exact(d)) oursWrong++;
 }
 
-console.log('digital 0, exact       ', exact(0));
-console.log('digital 0, edf2csv     ', edf2csvForm(0));
-console.log('digital 0, spec-literal', specLiteral(0));
-console.log('intermediate, edf2csv     ', offset + 0);
-console.log('intermediate, spec-literal', (0 - digMin) * gain);
-console.log(`codes not correctly rounded: spec-literal ${specWrong}, edf2csv ${oursWrong}, of 4096`);
+console.log('digital 0, exact      ', exact(0));
+console.log('digital 0, edf2csv    ', edf2csvForm(0));
+console.log('digital 0, direct form', direct(0));
+console.log('intermediate, edf2csv    ', offset + 0);
+console.log('intermediate, direct form', (0 - digMin) * gain);
+console.log(`codes not correctly rounded: direct form ${directWrong}, edf2csv ${oursWrong}, of 4096`);
 ```
 
 ```
-digital 0, exact        0.19536019536019536
-digital 0, edf2csv      0.19536019536019536
-digital 0, spec-literal 0.19536019536019467
-intermediate, edf2csv      0.5
-intermediate, spec-literal 800.1953601953602
-codes not correctly rounded: spec-literal 2077, edf2csv 20, of 4096
+digital 0, exact       0.19536019536019536
+digital 0, edf2csv     0.19536019536019536
+digital 0, direct form 0.19536019536019467
+intermediate, edf2csv     0.5
+intermediate, direct form 800.1953601953602
+codes not correctly rounded: direct form 2077, edf2csv 20, of 4096
 ```
 
-Of the 4096 possible digital codes on this channel, the specification's literal ordering returns something other than the correctly rounded value for 2077 of them, and at worst it's 32 units in the last place away. The arrangement edf2csv uses is exact for 4076 codes and never more than one unit in the last place away.
+Of the 4096 possible digital codes on this channel, the direct form returns something other than the correctly rounded value for 2077 of them, and at worst it's 32 units in the last place away. The arrangement edf2csv uses is exact for 4076 codes and never more than one unit in the last place away.
 
 The remaining 20 come from the gain itself. `gain` is the result of a division and is already rounded to a double before any sample is converted, so the computed result is the correctly rounded product of an already-rounded gain, which permits a final error of one unit in the last place and no more. Removing it would mean carrying the gain in higher precision, which no reader of this format does, and which would break exact agreement with every other tool.
 
@@ -304,7 +304,7 @@ The remaining 20 come from the gain itself. `gain` is the result of a division a
 
 On an ordinary microvolt channel you won't see the difference in a CSV.
 
-edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Forcing the maximum `--decimals` accepts, 20, is where the two forms part company: edf2csv prints `0.19536019536019536003` and the specification's literal ordering prints `0.19536019536019466614`, first differing at the fifteenth decimal. That is the difference this section is about, and three decimals is why an ordinary conversion never shows it.
+edf2csv chooses each channel's decimal precision from its quantization step, so no two adjacent digital codes can round to the same text. For a plus or minus 800 uV channel the step is 0.39 uV and the precision works out to three decimals, which prints `0.195` either way. Forcing the maximum `--decimals` accepts, 20, is where the two forms part company: edf2csv prints `0.19536019536019536003` and the direct form prints `0.19536019536019466614`, first differing at the fifteenth decimal. That is the difference this section is about, and three decimals is why an ordinary conversion never shows it.
 
 It matters for four reasons:
 
@@ -322,7 +322,7 @@ Real headers are sometimes self-contradictory. In each case the code does someth
 | `digitalMin` equals `digitalMax` | The mapping is undefined, so the scaler yields `NaN` and those cells are written empty rather than filled with a stand-in number. A `DEGENERATE_DIGITAL_RANGE` warning is raised. |
 | Gain is zero | Every sample legitimately converts to the same value, so that value is written. |
 | Gain is not finite | The physical span overflowed a double, so there is no mapping at all: the cells are left empty and `UNUSABLE_PHYSICAL_RANGE` is raised. |
-| The derived offset overflows to non-finite | Only possible for an absurd calibration. The code falls back to the specification's literal ordering, which is less accurate but finite. |
+| The derived offset overflows to non-finite | Only possible for an absurd calibration. The code falls back to the direct form, which is less accurate but finite. |
 | Gain is negative — exactly one of the two bounds pairs reversed | The channel's polarity is inverted. Converted exactly as the header specifies, inversion included, with an `INVERTED_PHYSICAL_RANGE` warning. Correcting the header would mean guessing about the recording. Reversing both pairs leaves the gain positive, which is an ordinary channel and draws nothing. |
 
 The first and last of these have fixtures and tests of their own, listed below.
