@@ -1422,6 +1422,10 @@ describe('documentation and source agree on their lists', () => {
     // The licence, as a URL in the markup and as a word in the file that grants it.
     assert.equal(manifest.license, 'MIT');
     assert.match(licence, /MIT License/u, 'the licence file is no longer the one package.json names');
+    // With the condition it grants that under, which the FAQ dropped: "without restriction".
+    assert.match(licence.replace(/\s+/gu, ' '), /notice shall be included in all copies/u);
+    const granted = /MIT licensed, so it can be[^.]*\./u.exec((await read('website/content/faq.md')).replace(/\s+/gu, ' '));
+    assert.match(granted?.[0] ?? '', /notice/u, 'the FAQ grants the licence without the notice it is conditional on');
     /*
       The footer, which is on every page of the site and is written twice.
 

@@ -664,5 +664,5 @@ release, which GitHub turns into APA or BibTeX from **Cite this repository** on 
 page.
 
 edf2csv is MIT licensed, so it can be redistributed, vendored into a pipeline or included in
-supplementary material without restriction. `edf2csv --version` prints the version of whatever
-copy you're running.
+supplementary material, on the one condition the licence sets: its copyright and permission notice
+go with the copy. `edf2csv --version` prints the version of whatever copy you're running.
